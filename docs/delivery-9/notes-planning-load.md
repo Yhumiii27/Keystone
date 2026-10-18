@@ -139,3 +139,138 @@ the window on both screens ("Hours by role, next 8 weeks" / "8 weeks" / "week sh
    the remaining span (the what-if does that on its copy). Keep?
 8. **Capacity** is unchanged (40 h a person a week, stored department capacities pro rata): R-084's capacity part (contractual
    hours, validated absences, public holidays) waits for Cursus (R-031) and the contractual-hours source.
+
+Answered on 18 Oct 2026 (fourth round, §5): 1 (named demo assignments: yes), 2 (external crews out of the load plan), 3 (keep
+2 h/d, warn the PM at J-15), 4 (department + skills-matrix levels are enough); 5 follows from answer 2 (the owner's 2 h/d count
+when an activity has no EPC2i labour). 6–8 stay open.
+
+## 5. Owner answers 18 Oct 2026 — fourth round
+
+| # | Answer | What changed |
+|---|---|---|
+| 1 | « Les équipes externes ne rentrent pas dans le plan de charge » | External labour is left out of the load plan (no person load, no trade demand, no unmet demand); it stays in the schedule. |
+| 2 | « Aucune activité ne devrait être sans affectation, donc laisse 2 h, mais à 15 jours d'une activité sans affectation préviens le chef de projet » | Owner-only activities keep 2 h/d on the owner's department; a J-15 morning notice to the PM of record; a second card on Project resources. |
+| 3 | « Le service et les niveaux de compétences de la matrice de compétences sont suffisants » | Trade = department, unchanged. No assignment or role carries a required skill today, so nothing to refine yet (below). |
+| 4 | « Ajouter des affectations nominatives aux plannings de démo : oui » | 61 named assignments in the demo seed (`src/server/db/seed/demo-assignments.ts`); the test fixture `overload.test-fixture.ts` is removed. |
+| 5 | « Nouveau risque sur un prérequis : ne pas clôturer l'ancien, il peut y avoir plusieurs sources » | Recorded in `notes-prereq-alert.md` §7 (the default stands, no code change). |
+
+### 5.1 External crews (answer 1) — the rule
+
+`src/domain/planning-load.ts`:
+- **labour** (`isLabour`) = an assignment that carries hours: units × h/d, else planned hours (the spreading rule's own test).
+  Equipment days and material tonnes are not labour.
+- **external labour** (`isExternalLabour`) = labour that is not EPC2i staff: **unnamed and without a department** (a crew, a
+  subcontractor, an imported labour resource matched to nobody — "Steel erection crew, Subcontractor · 6 ironworkers"), or
+  **named after a person whose rate-grid role is external** (`rate_roles.is_external`, R-083: "Contractor — structural
+  (external)"; no demo person has one).
+- **EPC2i labour** (`isInternalLabour`) = a named staff person, or an unnamed assignment carrying an EPC2i department (a role
+  such as "2 electricians · MEP"). Only EPC2i labour loads a person or a department.
+
+The assignments have no type column: the department is what the schedule import and the table import already set from the
+matched person (and what the levelling reads); an unnamed assignment without one cannot be placed in any capacity. No migration.
+The what-if engine is unchanged: it still costs the crew and can shorten an activity with it (the crew is a lever, not a load).
+The trade kind `'resource'` (a named crew as its own trade) is no longer produced by `planningLoad` (kept in the types and UI for
+callers that classify any assignment).
+
+### 5.2 Owner-only activities and the J-15 notice (answer 2)
+
+- **Load**: an activity's owner puts 2 h per working day on their department whenever the activity has **no EPC2i labour** —
+  owner only (unchanged), but also an external crew only, or equipment / material only (the owner coordinates the subcontractor
+  or the hire; before, any assignment cancelled the owner's share — open question 5 of §4).
+- **J-15 list** (`unassignedActivitiesAt(activities, assignments, today, days = 15)`, `listUnassignedActivities(today, code?)`):
+  needs work (not a milestone, not complete), **has an owner**, **no labour assignment at all**, dated, and **start ≤ business
+  date + 15 calendar days** — so an activity already started (or late) and still unassigned is included and warned once.
+  Choices: an **external crew counts as an assignment** (the work is staffed, by a subcontractor: no warning); equipment /
+  material only does not (nobody is assigned to the work: warned); an activity **without an owner** is the existing
+  "undeclared" alert, not repeated here; undated activities are not listed (no date to measure J-15 against).
+- **Notice**: the same daily job `undeclared-resource-alerts` (07:00 Paris, one pass for each kind), a **distinct** notice —
+  title "Activity without an assignment at J-15" (FR « Activité sans affectation à J-15 »), sub "A1410 · HV connection &
+  switchgear · 17 Aug" (code · name as typed · start), opens the activity on the Plan (`sel`), to the **PM of record**.
+  Deduplicated without a migration like the undeclared one (a notice of that title on the project for that code = already
+  alerted; once per activity, not again if it loses its assignment later). A PM without an active account: "without recipient",
+  retried the next morning. The job's counts gain `unassigned`; its summary "… · N without an assignment at J-15 · …".
+- **Project resources**: a second card "Activities without an assignment" (« Activités sans affectation ») — sub "Starting within
+  15 days or started, owner only: assign the people who will do the work" — code · name (link to the activity on the Plan) and
+  the start date ("17 Aug" / « 17 août »), at the business date.
+- Runbook: `docs/EXPLOITATION.md` (job table).
+
+### 5.3 Skills (answer 3) — what was possible
+
+The skills matrix is per person (`person_skills`, levels 0–5 on the Settings skills; "Skills without an expert" tiles, R-5b).
+No schedule assignment, resource request or rate role carries a **required skill** or a minimum level, so a department × level
+demand cannot be derived: the trade stays the department (the assigned person's levels are known, the need is not). To refine
+it, the owner would provide — per activity type or per assignment — the skill and the minimum level required (a column on the
+assignment, filled by the plan drawer / the imports, i.e. a migration). Nothing built.
+
+### 5.4 Named demo assignments (answer 4) — derivation
+
+`DEMO_ASSIGNMENTS` (person → [project, activity, h/d]), inserted by `seedDemoAssignments` after the chapter-4 seed (fresh demo
+database) and, once, on a demo database seeded before (backfill while its schedules name at most the prototype's one person).
+Production seed unchanged. Each row: resource = the person's full name, `person_id`, detail = job title, `1 × h/d`, planned
+hours = h/d × the activity's original duration, actual = planned × % complete, department = the person's.
+- Target: each person's prototype allocation (PEOPLE, % of 40 h for the 8 weeks from w/c 28 Sep), the week of 21 Sep taking
+  the first week's value.
+- Candidates: the activities they **own** in the window (the prototype's owners, all eight in the pool) plus activities of the
+  same projects calling on their department / job title / skills (Julien Wagner — structural 5, crane 4 — on crane delivery &
+  rigging and load tests; Hélène Sauvage, QA/QC, on inspections, tests, handovers; Fabien Bertrand on procurement; Thomas
+  Kerbrat on the lifts).
+- Rates: bounded least squares of Σ h/d × working days in the week against the target, 0.5 h steps in [0.5, 8], then a local
+  search keeping who is above 110 % in which week as in the prototype; one manual tweak (Hélène Sauvage A1430 6.5 → 5 h/d).
+- **HLT-026 A1410** "HV connection & switchgear" (Pauline Noguès, started 17 Aug) is left owner-only on purpose: it shows the
+  J-15 card / notice and the "counted by trade" note (50 h on MEP).
+
+### 5.5 Values on the demo data set (Fri 25 Sep 2026; default window 21 Sep – 9 Nov unless stated)
+
+| Screen | Prototype (seeded allocations) | Third round (schedules, 1 named person) | Fourth round (named demo assignments) |
+|---|---|---|---|
+| Resources — Team utilization | 75 % | 5 % | **84 %** (prototype window `?week=2026-09-28`: **83 %**, as the prototype) |
+| Resources — Over-allocated | 3 people · Peak weeks 42–44 | 0 people · No week above 110% | **3 people · Peak weeks 42–44** (Amélie Ollivier, Julien Wagner, Pauline Noguès) |
+| Resources — Unmet demand | 280 h · Mostly engineering | 900 h · Mostly steel erection crew | **102 h · Mostly controls & planning** (prototype window 80 h) |
+| Resources — heatmap, Julien Wagner | 0 · 90 · 100 · 130 · 125 · 110 · 100 · 80 | 100 · 100 · 100 · 0 · 0 · 0 · 0 · 0 | **100 · 100 · 106 · 125 · 125 · 108 · 88 · 65** |
+| Resources — heatmap, the others | seeded % | all 0 | Amélie 106·100·100·131·106·106·106·85 · Pauline 69·79·108·81·113·113·102·105 · Thomas 56·56·88·110·75·75·56·20 · Léa 69·73·71·75·75·75·81·65 · Damien 88·99·86·96·90·81·94·66 · Hélène 44·44·48·64·76·90·101·76 · Fabien 100·99·95·81·56·56·49·35 |
+| Resources — Capacity vs demand | 1110/960 · 690/640 · 510/480 · 560/640 · 370/320 | 170/960 · 214/640 · 300/480 · 574/640 · 106/320 · Steel erection crew 900/0 | **Engineering 327/960 · Site operations 551/640 · MEP 358/480 · Controls & planning 742/640 · Quality 217/320** (no crew bar); note "Of which **50 h** not assigned to a person" (2144 h) |
+| Resources — week view 21 Sep | — | Julien 100 % · "HLT-026 40 h", others empty | 79 % · 0 people · 23 h; every person has a split (Julien "HLT-026 40 h") |
+| Resources — week view 12 Oct, Julien Wagner | 130 % · 52 h · +12 h | 0 % (footnote "assign no one") | **125 % · 50 h / 40 h · +10 h · over · "HLT-026 40 h · RCF-019 7.5 h · MSR-012 2.5 h"** |
+| Suggested rebalancing (portfolio) | relief of Julien Wagner… | crew unit · crew overtime | **Gabriel Comte joins Hélène Sauvage on A1430 (+10 d · −€5k) · Overtime A1430 Hélène Sauvage 5 → 10 h/d · Contract crane operations joins Thomas Kerbrat on A1260** |
+| Project resources HLT-026 (`?week=2026-09-28`) | 83 % · 3 people · 0 h | 3 % · 0 people · 600 h | **83 % · 3 people · Peak weeks 42–44 · 34 h**; bars Site ops 521/640, Engineering 320/320, MEP 354/320, C&P 720/960, Quality 240/320; note 40 h; **new card "Activities without an assignment": A1410 · 17 Aug** |
+| Project resources NDC-031 (prototype window) | 80 % · 1 person · MEP 314/320, C&P 717/960 | 0 % · MEP 68, C&P 218 | **81 % · 1 person (weeks 43–44) · 0 h · MEP 314/320, C&P 720/960**; 3 suggestions (reliefs of Léa Marchand A3330, Fabien Bertrand A3420 / A3410) |
+| Project resources RCF-019 (prototype window) | 3 h · Site ops 323/320 | 0 h · 10 / 82 / 44 | **92 % · 2 people · 6 h · Site ops 326/320, MEP 314/320, Quality 240/320** |
+| What-if HLT-026 (current horizon) | peak 130 % (Julien, 12 Oct) · [0,0,1,2,3,2,0,1] | peak 100 % · all 0 · 2 levers | **peak 131 % (Amélie Ollivier, 12 Oct) · [1,0,2,3,3,3,3,1] · "Weeks 42–45" · 23 levers** (A1250's relief, crew overtime, crew unit first; shifts A1320 / A1330 / A1520); scenario A 17 levers (finish 17 Dec 2026, +0 d), B 6 levers (4 Jan 2027, −9 d); auto-level date 6 · budget 7 · people 15 levers |
+| What-if NDC-031 | — | no lever | **11 levers** (reliefs) |
+| Home — department head | 83 % · 3 people · 42–44 · 280 h · Julien 99 % | 5 % · 0 · 900 h · Julien 38 % | **84 % · 3 people · Peak weeks 42–44 · 102 h Mostly controls & planning · Julien Wagner 102 % (accent)** |
+| Home director / Portfolio overview — Needs attention | "3 people over 110%" | no over-allocation alert (7) | **"3 people over 110%" · Weeks 42–44 · Amélie Ollivier, Julien Wagner, Pauline Noguès** (8 alerts, also in every zone) |
+| Approvals — Engineering | 90 % · 1110 h · RQ-041 90 → 120 % | 100 % · 170 h · 100 → 130 % | **100 % · Committed 327 h · RQ-041 100 → 130 %** |
+| Approvals — Site ops / C&P / Quality | 80 % · 690 h / 87 % · 560 h / RQ-044 100 → 110 % / RQ-042 40 → 60 % | 0 % · 214 h / 0 % · 574 h / 0 → 10 % / 0 → 20 % | **81 % · 551 h / 86 % · 742 h (over capacity, accent) / Fabien 99 → 109 % / Hélène 44 → 64 %; Quality committed 217 h** |
+| My work — Load next 2 wks | Julien 95 %, Hélène 45 % | 100 %, 0 % | **Julien 103 % "Over capacity — rebalance", Hélène 46 %** |
+| Site HLT-026 — conflicts | 8 | 6 | **7** (Julien Wagner load 125 % in the week of 19 Oct; Amélie Ollivier 106 %, no load conflict) |
+| Prioritisation — capacity what-if | committed 318·532·314·716·252 h; gaps 151·86·12·305·73 h | 170·214·300·574·106; 49·24·0·83·18 | **327·551·358·742·217; gaps WSA-044 239 · EWA-051 146 · FTU-052 68 · RBR-048 417 ("Needs 3 additional people or a later start") · CER-047 133 h** |
+| Activities without a declared resource | — | none | none |
+| Activities without an assignment at J-15 | — | — | **HLT-026 A1410** (card + one morning notice to Romain Aubert) |
+
+### 5.6 Tests
+
+- `src/domain/planning-load.test.ts`: external crews left out; the owner's 2 h/d with equipment / crew only; `isLabour`,
+  `isExternalLabour` (external rate role), `unassignedActivitiesAt` (J-15 boundary, started / late, crew = assigned, equipment =
+  not, no owner, complete, milestone, undated).
+- `src/server/dal/planning-load.test.ts`: the eight people and their loads, trades (only A1410 on MEP), departments, capacity
+  model; the J-15 list, the Project resources card EN / FR, the job (one notice, deduplicated), the horizon moving with the date;
+  the undeclared tests adapted to the second pass.
+- The fixture `src/features/resources/overload.test-fixture.ts` is removed (the seed overloads Julien Wagner, Amélie Ollivier,
+  Pauline Noguès); its users read the demo data set: `actions`, `whatif-horizon`, `resources-page`, `drafts`, `d8-roles-rates-hr`,
+  `portfolio-alerts`, `site/conflicts`.
+- Demo-DB expectations updated (comments cite the owner's answer of 18 Oct 2026): `load-window`, `delivery2(-writes)`,
+  `delivery3`, `delivery5(-writes)`, `home`, `portfolio`, `portfolio/render`, `requests/model`, `pfinance/model|render`,
+  `mywork-render`, `site/render`, `scripts/db-check.ts` (65 assignment rows, pool, J-15 list, 23 levers, gap 239 h, 7 conflicts).
+
+### 5.7 Open questions
+
+1. **What-if levers on part-time assignments**: the engine derives "overtime" on any critical driving assignment, so a
+   2.5 h/d assignment gets "Overtime 2.5 → 10 h/d" (Thomas Kerbrat A1260, Pauline Noguès A1420) and scenario A drafts it as a
+   request; on HLT-026 the what-if now lists 23 levers and scenario A 17 (17 draft requests on Select). Restrict overtime to
+   assignments at ≥ 8 h/d (a full day), and/or cap the levers shown?
+2. Should the J-15 notice also go to the co-PMs / deputies, and be sent again when the activity is still unassigned at J-5?
+   Default: once, PM of record only (like the other alerts).
+3. External labour: is "no department" the right marker, or should the assignment carry an explicit internal / external type
+   (a column filled by the imports)? A subcontractor with a department would count as EPC2i labour today.
+4. Skills: which activities / assignments require which skill and level (data the owner provides) before the trade can be
+   refined by the skills matrix.

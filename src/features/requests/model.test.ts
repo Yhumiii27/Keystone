@@ -115,10 +115,10 @@ describe('Approvals model', () => {
     expect(m.kpis.map((k) => [k.label, k.value, k.sub, k.color])).toEqual([
       ['Pending approvals', '2', '52 h requested', 'var(--color-accent-300)'],
       // R-084 (owner answers 17 Oct 2026, third round): loads and committed hours from the schedules over the current window
-      // (21 Sep – 15 Nov) — Julien Wagner 100 % on A1250; Engineering committed 170 h (90 % w/c 28 Sep and 1110 h on the seeded
-      // allocation rows and stored ROLES).
+      // (21 Sep – 15 Nov) — Julien Wagner 100 % on A1250; Engineering committed 327 h with the named demo assignments of 18 Oct
+      // 2026 (90 % w/c 28 Sep and 1110 h on the seeded allocation rows and stored ROLES).
       ['Team load w/c 21 Sep', '100%', '1 person', 'var(--color-text)'],
-      ['Capacity · 8 wks', '960 h', 'Committed 170 h', 'var(--color-text)'],
+      ['Capacity · 8 wks', '960 h', 'Committed 327 h', 'var(--color-text)'],
       ['Decided', '0', '0 approved · 0 rejected', 'var(--color-text)'],
       // A-12 (chapter 4): nothing decided yet in Engineering (prototype 0.9 d).
       ['Avg response', '—', 'Target ≤ 1 day', 'var(--color-text)'],
@@ -143,17 +143,17 @@ describe('Approvals model', () => {
     const site = approvalsModel((await getApprovalsScreenData('Site operations'))!, FR, 'fr', HEAD);
     expect(site.kpis.map((k) => [k.label, k.value, k.sub])).toEqual([
       ['Approbations en attente', '0', '0 h demandées'],
-      // R-084: nobody of Site operations is named on a schedule; committed = their owner-only activities counted by trade.
-      ['Charge équipe sem. du 21 sept.', '0%', '2 personnes'],
-      ['Capacité · 8 sem.', '640 h', 'Engagé 214 h'],
+      // R-084: the schedules' hours of Site operations' people (named demo assignments, 18 Oct 2026).
+      ['Charge équipe sem. du 21 sept.', '81%', '2 personnes'],
+      ['Capacité · 8 sem.', '640 h', 'Engagé 551 h'],
       ['Décidé', '2', '1 approuvée · 1 refusée'],
       ['Délai de réponse moyen', '1,0 j', 'Cible ≤ 1 jour'], // A-12: RQ-037 and RQ-039 answered the next working day
     ]);
     expect(site.decided.map((r) => [r.id, r.statusLabel])).toEqual([['RQ-039', 'Approuvée · affectée'], ['RQ-037', 'Refusée']]);
     expect(site.queueEmpty).toBe('Rien en attente — toutes les demandes pour Exploitation chantier sont traitées');
-    // R-084 (100 / 110 % and 60 / 100 % on the seeded rows).
-    expect(site.team.map((p) => [p.name, p.w1.v, p.w2.v, p.pend])).toEqual([['Amélie Ollivier', '0%', '0%', '—'], ['Thomas Kerbrat', '0%', '0%', '—']]);
-    expect(site.team[0].w2.bg).toBe('var(--color-neutral-900)');
+    // R-084 + named demo assignments (100 / 110 % and 60 / 100 % on the seeded rows).
+    expect(site.team.map((p) => [p.name, p.w1.v, p.w2.v, p.pend])).toEqual([['Amélie Ollivier', '106%', '100%', '—'], ['Thomas Kerbrat', '56%', '56%', '—']]);
+    expect(site.team[1].w2.bg).toBe('var(--color-neutral-900)');
     const mep = approvalsModel((await getApprovalsScreenData('MEP'))!, FR, 'fr', HEAD);
     expect(mep.decided.map((r) => r.id)).toEqual(['RQ-038']);
     expect(approvalsTitle('Engineering', reqT(FR, 'fr'))).toBe('Approbations — Ingénierie');
@@ -177,23 +177,24 @@ describe('Approvals model', () => {
 
   it('Controls & planning and Quality (EN): impact at the 110 % boundary, decided rows (prototype reqRow / apprKpis)', async () => {
     const cp = approvalsModel((await getApprovalsScreenData('Controls & planning'))!, EN, 'en', HEAD);
-    // R-084: loads and committed hours from the schedules (87 % · 560 h on the seeded rows and stored ROLES).
-    expect(cp.kpis.map((k) => [k.value, k.sub])).toEqual([['1', '4 h requested'], ['0%', '3 people'], ['640 h', 'Committed 574 h'], ['2', '2 approved · 0 rejected'], ['0.5 d', 'Target ≤ 1 day']]); // A-12: RQ-035 same day, RQ-040 next day
-    expect(cp.kpis[2].color).toBe('var(--color-text)');
-    // 0 % + round(4/40·100) = 10 % → not over, neutral colour. R-084: Fabien Bertrand is on no schedule — the seeded 100 %
-    // tested the 110 % boundary (100 % + 10 % = 110 %, not over; the rule's own tests keep it).
+    // R-084: loads and committed hours from the schedules (87 % · 560 h on the seeded rows and stored ROLES); with the named
+    // demo assignments (18 Oct 2026) the department is committed beyond its capacity — accent colour.
+    expect(cp.kpis.map((k) => [k.value, k.sub])).toEqual([['1', '4 h requested'], ['86%', '3 people'], ['640 h', 'Committed 742 h'], ['2', '2 approved · 0 rejected'], ['0.5 d', 'Target ≤ 1 day']]); // A-12: RQ-035 same day, RQ-040 next day
+    expect(cp.kpis[2].color).toBe('var(--color-accent-300)');
+    // 99 % + round(4/40·100) = 109 % → not over, neutral colour (the seeded 100 % + 10 % = 110 % tested the boundary; the rule's
+    // own tests keep it).
     expect(cp.queue.map((q) => [q.id, q.impact, q.impactColor, q.proposedByShift[0]])).toEqual([
-      ['RQ-044', 'Fabien at 0% w/c 28 Sep → 10% with this request', 'var(--color-neutral-400)', '5 Oct – 6 Oct'],
+      ['RQ-044', 'Fabien at 99% w/c 28 Sep → 109% with this request', 'var(--color-neutral-400)', '5 Oct – 6 Oct'],
     ]);
     expect(cp.decided.map((r) => [r.id, `${r.person} · ${r.dates} · ${r.hours}`, r.response])).toEqual([
       ['RQ-040', 'Damien Roux · 28 Sep – 1 Oct · 8 h', 'Approved · Ines Duarte · Thu 24 Sep'],
       ['RQ-035', 'Léa Marchand · 25 Sep – 29 Sep · 4 h', 'Approved · Ines Duarte · Mon 21 Sep'],
     ]);
     expect(cp.team.map((p) => [p.name, p.w1.v, p.w2.v, p.pend])).toEqual([
-      ['Léa Marchand', '0%', '0%', '—'], ['Damien Roux', '0%', '0%', '—'], ['Fabien Bertrand', '0%', '0%', '+4 h'], // R-084
+      ['Léa Marchand', '69%', '73%', '—'], ['Damien Roux', '88%', '99%', '—'], ['Fabien Bertrand', '100%', '99%', '+4 h'], // R-084 + named demo assignments
     ]);
     const q = approvalsModel((await getApprovalsScreenData('Quality'))!, EN, 'en', HEAD);
-    expect(q.queue.map((x) => [x.id, x.impact, x.impactColor])).toEqual([['RQ-042', 'Hélène at 0% w/c 28 Sep → 20% with this request', 'var(--color-neutral-400)']]); // R-084 (40 → 60 %)
+    expect(q.queue.map((x) => [x.id, x.impact, x.impactColor])).toEqual([['RQ-042', 'Hélène at 44% w/c 28 Sep → 64% with this request', 'var(--color-neutral-400)']]); // R-084 + named demo assignments (40 → 60 % on the seeded rows)
     expect(q.decided.map((r) => [r.id, r.response])).toEqual([['RQ-036', 'Approved · Gabriel Comte · Mon 21 Sep']]);
   });
 

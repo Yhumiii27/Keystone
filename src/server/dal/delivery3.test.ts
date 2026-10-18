@@ -366,10 +366,11 @@ describe('prioritisation & capacity (03 §6)', () => {
   // R-084 (owner answers 17 Oct 2026, third round): committed = the planning load over the 8 weeks from the business date's week
   // (21 Sep – 15 Nov) — the hours the schedules assign the department's pool members + the work no named person carries counted
   // against the department as a trade — no longer Σ seeded allocation % × 40 h ([318, 532, 314, 716, 252] h, and the adds
-  // [73, 122, 72, 164, 58] h for WSA-044). Capacity unchanged.
-  const POOL: [number, number][] = [[320, 170], [640, 214], [320, 300], [960, 574], [320, 106]];
+  // [73, 122, 72, 164, 58] h for WSA-044). Capacity unchanged. With the named demo assignments (owner answer 18 Oct 2026, fitted
+  // to PEOPLE) the committed hours come back close to the prototype's: [327, 551, 358, 742, 217] h.
+  const POOL: [number, number][] = [[320, 327], [640, 551], [320, 358], [960, 742], [320, 217]];
   const ADD: Record<string, number[]> = {
-    'WSA-044': [39, 49, 69, 131, 24], 'EWA-051': [25, 32, 44, 85, 16], 'FTU-052': [5, 7, 10, 19, 3], 'RBR-048': [58, 73, 103, 197, 36], 'CER-047': [22, 27, 38, 73, 14],
+    'WSA-044': [75, 126, 82, 170, 50], 'EWA-051': [48, 82, 53, 110, 32], 'FTU-052': [11, 18, 12, 24, 7], 'RBR-048': [112, 189, 123, 255, 75], 'CER-047': [42, 70, 46, 95, 28],
   };
   it.each(['WSA-044', 'EWA-051', 'FTU-052', 'RBR-048', 'CER-047'])('capacity what-if of %s', async (code) => {
     const g = G.prioritisation.capacity[code];

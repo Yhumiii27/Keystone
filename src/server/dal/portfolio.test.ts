@@ -34,15 +34,16 @@ describe('portfolio DAL', () => {
       ['off-HLT-026', { screen: 'schedule', code: 'HLT-026' }], ['slip-RCF-019', { screen: 'schedule', code: 'RCF-019' }],
       ['slip-HLT-026', { screen: 'schedule', code: 'HLT-026' }], ['slip-MSR-012', { screen: 'schedule', code: 'MSR-012' }],
       ['slip-NDC-031', { screen: 'schedule', code: 'NDC-031' }], ['cost-RCF-019', { screen: 'budget', code: 'RCF-019' }],
-      // R-084: no over-allocation alert — the loads come from the schedules, nobody above 110 % on the demo data set.
-      ['approvals', { screen: 'myapprovals' }],
+      // R-084 + named demo assignments (owner answer 18 Oct 2026): the over-allocated pool as on the seeded rows.
+      ['people', { screen: 'resources' }], ['approvals', { screen: 'myapprovals' }],
     ]);
     expect(ov.alerts[2]).toMatchObject({
       title: 'Harbor Line Terminal Expansion — critical path slip',
       detail: 'Critical path −27 d · forecast finish 14 Jan 2027 (baseline 18 Dec 2026) · 2 milestones late: Structure topped out, Cranes operational.',
     });
     expect(ov.alerts[5].detail).toBe('Forecast €1.40M vs budget €1.35M (+€46k) · CPI 0.97.');
-    expect(ov.alerts[6]).toMatchObject({ title: '1 approval waiting more than 5 days', detail: 'Oldest: INV-HC-7781 · Halvorsen Cranes · €1,286,400 · since 10 Sep 2026 (15 d).' });
+    expect(ov.alerts[6]).toMatchObject({ title: '3 people over 110%', detail: 'Weeks 42–44 · Amélie Ollivier, Julien Wagner, Pauline Noguès.' });
+    expect(ov.alerts[7]).toMatchObject({ title: '1 approval waiting more than 5 days', detail: 'Oldest: INV-HC-7781 · Halvorsen Cranes · €1,286,400 · since 10 Sep 2026 (15 d).' });
     const fr = await getPortfolioOverview(null, 'fr');
     expect([fr.alerts[0].title, fr.alerts[0].detail]).toEqual([
       'Extension du terminal Harbor Line — hors trajectoire', 'SPI 0,82 · CPI 0,89 — sous le seuil « hors trajectoire » 0,90.',
@@ -53,10 +54,10 @@ describe('portfolio DAL', () => {
   it('overview: zone filter on rows and alerts', async () => {
     const afr = await getPortfolioOverview('afr', 'en');
     expect(afr.rows.map((r) => r.code)).toEqual(['NDC-031']);
-    expect(afr.alerts.map((a) => a.key)).toEqual(['slip-NDC-031', 'approvals']); // R-084: no over-allocation alert
+    expect(afr.alerts.map((a) => a.key)).toEqual(['slip-NDC-031', 'people', 'approvals']); // R-084 + named demo assignments: the over-allocation alert (portfolio-wide)
     const euna = await getPortfolioOverview('euna', 'en');
     expect(euna.rows.map((r) => r.code)).toEqual(['HLT-026', 'RCF-019', 'ERP-202', 'MSR-012', 'PRS-038']);
-    expect(euna.alerts.map((a) => a.key)).toEqual(['off-HLT-026', 'slip-RCF-019', 'slip-HLT-026', 'slip-MSR-012', 'cost-RCF-019', 'approvals']);
+    expect(euna.alerts.map((a) => a.key)).toEqual(['off-HLT-026', 'slip-RCF-019', 'slip-HLT-026', 'slip-MSR-012', 'cost-RCF-019', 'people', 'approvals']);
     // WSA-044 (APD) is in the pipeline, not in the overview (A-3).
     expect((await getPortfolioOverview('apac', 'en')).rows).toEqual([]);
   });

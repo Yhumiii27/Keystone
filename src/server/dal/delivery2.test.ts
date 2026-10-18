@@ -142,21 +142,27 @@ describe('resources (06 §1, 05 §4)', () => {
     expect(pool.people.map((p) => p.department)).toEqual(pool.people.map((p) => P.DEPT_OF[p.name]));
     // R-084 (owner answer 17 Oct 2026, third round): the loads are the hours the schedules assign (40 h = 100 %), no longer the
     // prototype's PEOPLE percentages (seeded in `allocations`, kept but not read: 83 % utilisation, 3 people above 110 %). The
-    // demo data set names one person: Julien Wagner on HLT-026 A1250 (40 h/wk until Fri 9 Oct).
-    expect(pool.people.map((p) => [p.name, p.loads.join(',')]).filter(([, l]) => l !== '0,0,0,0,0,0,0,0')).toEqual([['Julien Wagner', '100,100,0,0,0,0,0,0']]);
-    expect(Math.round(pool.people.reduce((a, p) => a + p.avg, 0) / pool.people.length)).toBe(3);
-    expect(pool.people.filter((p) => p.max > 110).length).toBe(0);
+    // demo data set names the eight people of the pool since the owner's answer of 18 Oct 2026 (src/server/db/seed/demo-assignments.ts,
+    // fitted to PEOPLE): 83 % utilisation and 3 people above 110 % again.
+    expect(pool.people.map((p) => [p.name, p.loads.join(',')])).toEqual([
+      ['Amélie Ollivier', '100,100,131,106,106,106,85,81'], ['Julien Wagner', '100,106,125,125,108,88,65,81'], ['Pauline Noguès', '79,108,81,113,113,102,105,81'],
+      ['Thomas Kerbrat', '56,88,110,75,75,56,20,10'], ['Léa Marchand', '73,71,75,75,75,81,65,81'], ['Damien Roux', '99,86,96,90,81,94,66,75'],
+      ['Hélène Sauvage', '44,48,64,76,90,101,76,100'], ['Fabien Bertrand', '99,95,81,56,56,49,35,44'],
+    ]);
+    expect(Math.round(pool.people.reduce((a, p) => a + p.avg, 0) / pool.people.length)).toBe(83);
+    expect(pool.people.filter((p) => p.max > 110).map((p) => p.name)).toEqual(['Amélie Ollivier', 'Julien Wagner', 'Pauline Noguès']);
   });
 
   it('departments with heads and ROLES capacity; project teams; labour cost', async () => {
     const d = await listDepartments();
     expect(d.map((x) => [x.name, x.head?.name, x.headTitle])).toEqual(Object.entries(P.DEPTS as Record<string, [string, string]>).map(([n, [h, t]]) => [n, h, t]));
     // R-084: the capacity is ROLES' (stored, pro rata of the weeks); the demand is computed from the schedules — the department's
-    // people's assigned hours + the work no named person carries counted by trade (ROLES' demand: 1110, 690, 510, 560, 370 h).
+    // people's assigned hours + the work no named person carries counted by trade (ROLES' demand: 1110, 690, 510, 560, 370 h) —
+    // with the named demo assignments (18 Oct 2026) the only unnamed work left is HLT-026 A1410 (owner only, MEP).
     const roles = d.filter((x) => x.capacityH != null).sort((a, b) => a.capacityPosition! - b.capacityPosition!);
     expect(roles.map((x) => [x.name, x.capacityH])).toEqual((P.ROLES as [string, number, number][]).map(([n, c]) => [n, c]));
     expect(roles.map((x) => [x.name, x.demandH, x.unnamedH])).toEqual([
-      ['Engineering', 170, 50], ['Site operations', 214, 214], ['MEP', 300, 300], ['Controls & planning', 574, 574], ['Quality', 106, 106],
+      ['Engineering', 327, 0], ['Site operations', 551, 0], ['MEP', 358, 50], ['Controls & planning', 742, 0], ['Quality', 217, 0],
     ]);
     expect((await listDepartments(['2026-09-21'])).filter((x) => x.capacityH != null).map((x) => x.capacityH)).toEqual([120, 80, 60, 40, 80]);
     expect((await getProjectTeam('NDC-031')).map((p) => p.name)).toEqual(['Pauline Noguès', 'Damien Roux', 'Léa Marchand', 'Fabien Bertrand']);
@@ -167,26 +173,24 @@ describe('resources (06 §1, 05 §4)', () => {
 
   it('what-if: levers derived from the data (chapter 4, S-7), scenarios A/B, the KPIs from data', async () => {
     const w = (await getWhatIf('HLT-026'))!;
-    // S-7: the prototype's static LEVERS / AUTO are replaced by levers derived from the plan — on HLT-026 only A1250 carries
-    // labour assignments (Julien Wagner 8 h/d, steel crew 6 × 10 h/d); seed scenario A (contractor + overtime) maps onto them.
-    // R-084: the loads are the schedules' — Julien Wagner is at 100 %, not above: no relief lever, nothing for "Protect people"
-    // (the seeded rows overloaded him: relief lever, people → [relief]).
-    expect(w.levers.map((l) => l.code)).toEqual(['overtime:A1250:steel-erection-crew', 'extra_resource:A1250:steel-erection-crew']);
-    expect(w.autoLevers).toEqual({ date: ['overtime:A1250:steel-erection-crew', 'extra_resource:A1250:steel-erection-crew'], budget: [], people: [] });
-    expect(w.scenarios.map((s) => [s.name, s.priority, Object.keys(s.levers).filter((k) => s.levers[k])])).toEqual([
-      ['A', 'date', ['overtime:A1250:steel-erection-crew', 'extra_resource:A1250:steel-erection-crew']],
-      ['B', 'people', []],
-    ]);
+    // S-7: the prototype's static LEVERS / AUTO are replaced by levers derived from the plan — on HLT-026, A1250 (Julien Wagner
+    // 8 h/d, steel crew 6 × 10 h/d) and, since the named demo assignments (owner answer 18 Oct 2026), the activities its people
+    // work on: 23 levers; seed scenario A (contractor + overtime) and B (delay + move) map onto them. R-084: the loads are the
+    // schedules' — Julien Wagner is above 100 % again: relief lever.
+    expect(w.levers).toHaveLength(23);
+    expect(w.levers.slice(0, 3).map((l) => l.code)).toEqual(['extra_resource:A1250:julien-wagner', 'overtime:A1250:steel-erection-crew', 'extra_resource:A1250:steel-erection-crew']);
+    expect([w.autoLevers.date.length, w.autoLevers.budget.length, w.autoLevers.people.length]).toEqual([6, 7, 15]);
+    expect(w.scenarios.map((s) => [s.name, s.priority, Object.keys(s.levers).filter((k) => s.levers[k]).length])).toEqual([['A', 'date', 17], ['B', 'people', 6]]);
     // R-085 (R-7 a): the horizon is the current load window, 21 Sep – 9 Nov 2026 on the demo date (was the seeded 28 Sep –
-    // 16 Nov). R-084: peak 100 % (Julien Wagner, A1250, from the week of 21 Sep), nobody above 100 % (130 % on 12 Oct and
+    // 16 Nov). R-084 + named demo assignments: peak 131 % (Amélie Ollivier, week of 12 Oct; 130 % on 12 Oct and
     // [0, 0, 1, 2, 3, 2, 0, 1] on the seeded rows).
     expect(w.weeks.map((x) => x.start)).toEqual(['2026-09-21', '2026-09-28', '2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02', '2026-11-09']);
     expect([w.forecastFinish, w.floatDays, w.baselineFinish, w.peak, w.overByWeek]).toEqual([
-      '2027-01-14', -27, '2026-12-18', { pct: 100, person: 'Julien Wagner', weekStart: '2026-09-21' }, [0, 0, 0, 0, 0, 0, 0, 0],
+      '2027-01-14', -27, '2026-12-18', { pct: 131, person: 'Amélie Ollivier', weekStart: '2026-10-12' }, [1, 0, 2, 3, 3, 3, 3, 1],
     ]);
-    expect(Math.max(...w.overByWeek)).toBe(0);
-    // S-7: any project with a plan has a what-if (no lever on NDC-031); a project without activities has none.
-    expect((await getWhatIf('NDC-031'))?.levers).toEqual([]);
+    // S-7: any project with a plan has a what-if (NDC-031: 11 levers relieving its people since the named demo assignments); a
+    // project without activities has none.
+    expect((await getWhatIf('NDC-031'))?.levers).toHaveLength(11);
     expect(await getWhatIf('EWA-051')).toBeNull();
   });
 });

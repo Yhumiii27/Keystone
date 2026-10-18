@@ -1,6 +1,8 @@
 // R-084 (owner answers 17 Oct 2026, third round) on the demo database (business date Fri 25 Sep 2026): the planning load — the
 // ONE source of the people's load and of the demand by trade, from the schedules' assignments — and the alert for activities
-// that declare no resource at all (Project resources card, morning bell notice to the PM of record, deduplicated).
+// that declare no resource at all (Project resources card, morning bell notice to the PM of record, deduplicated). Owner answers
+// 18 Oct 2026 (fourth round): the named demo assignments, external crews out of the load, the J-15 alert on activities without an
+// assignment.
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 const jar = new Map<string, string>();
 vi.mock('next/headers', () => ({ cookies: async () => ({ get: (k: string) => (jar.has(k) ? { name: k, value: jar.get(k)! } : undefined) }) }));
@@ -22,9 +24,9 @@ import { jobDefinition } from '@/server/jobs/definitions';
 import { COOKIE } from '@/server/session';
 import { capacityModel, loadNextWeeks } from './kpis';
 import { listNotifications } from './notifications';
-import { getPlanningLoad, listUndeclaredActivities } from './planning-load';
+import { getPlanningLoad, listUnassignedActivities, listUndeclaredActivities } from './planning-load';
 import { getCapacityDemand, getProjectTradeDemand, getResourcePool, listDepartments } from './resources';
-import { UNDECLARED_ALERT_TITLE, alertUndeclaredActivities } from './undeclared-alerts';
+import { UNASSIGNED_ALERT_TITLE, UNDECLARED_ALERT_TITLE, alertUndeclaredActivities } from './undeclared-alerts';
 
 const WINDOW = ['2026-09-21', '2026-09-28', '2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02', '2026-11-09'];
 const as = (role: string, lang = 'en') => {
@@ -54,55 +56,101 @@ beforeAll(async () => {
 beforeEach(() => as('director'));
 
 describe('getPlanningLoad on the demo data set', () => {
-  it('people: the named assignments only — Julien Wagner on HLT-026 A1250, 40 h a week until Fri 9 Oct', async () => {
+  // Owner answer 18 Oct 2026 (fourth round): named demo assignments (src/server/db/seed/demo-assignments.ts) — the eight people of
+  // the pool on the six scheduled projects, fitted to the prototype's PEOPLE profile.
+  it('people: the named assignments of every project — the eight people of the pool', async () => {
     const l = await getPlanningLoad(WINDOW);
-    const names = Object.entries(l.people).map(([id, h]) => [l.names[id], h]);
-    expect(names).toEqual([['Julien Wagner', [40, 40, 40, 0, 0, 0, 0, 0]]]);
-    expect(Object.values(l.personProjects)).toEqual([{ 'HLT-026': [40, 40, 40, 0, 0, 0, 0, 0] }]);
+    const byName = Object.fromEntries(Object.entries(l.people).map(([id, h]) => [l.names[id], h]));
+    expect(Object.keys(byName).sort()).toEqual(['Amélie Ollivier', 'Damien Roux', 'Fabien Bertrand', 'Hélène Sauvage', 'Julien Wagner', 'Léa Marchand', 'Pauline Noguès', 'Thomas Kerbrat']);
+    // A1250 "40 h/wk" until 9 Oct (the prototype's assignment), then crane delivery & rigging, load tests, roof decking.
+    expect(byName['Julien Wagner']).toEqual([40, 40, 42.5, 50, 50, 43, 35, 26]);
+    const julien = Object.entries(l.personProjects).find(([id]) => l.names[id] === 'Julien Wagner')![1];
+    expect(julien).toEqual({ 'HLT-026': [40, 40, 42.5, 40, 40, 40, 35, 26], 'RCF-019': [0, 0, 0, 7.5, 7.5, 3, 0, 0], 'MSR-012': [0, 0, 0, 2.5, 2.5, 0, 0, 0] });
   });
 
-  it('trades: the unnamed crew under its own name; owner-only activities on their owner\'s department at 2 h per working day', async () => {
+  it('trades: external crews left out (18 Oct); the one owner-only activity on its owner\'s department at 2 h per working day', async () => {
     const l = await getPlanningLoad(WINDOW);
-    const crew = l.trades.find((t) => t.trade === 'Steel erection crew')!;
-    // 6 × 10 h/d on A1250 until 9 Oct: 300 h a week; the crane (no hours) and the steel (tonnes) add nothing.
-    expect([crew.kind, crew.hours, crew.ownersH]).toEqual(['resource', [300, 300, 300, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0]]);
-    expect(Object.keys(crew.byProject)).toEqual(['HLT-026']);
-    expect(l.trades.filter((t) => t.kind === 'department').map((t) => t.trade).sort()).toEqual(['Controls & planning', 'Engineering', 'MEP', 'Quality', 'Site operations']);
-    // Every department trade comes from owner-only activities (no unnamed assignment carries a department in the demo data).
-    for (const t of l.trades.filter((x) => x.kind === 'department')) expect(t.unnamedH.every((h) => h === 0)).toBe(true);
-    // R. Aubert owns HLT-026 activities and has no department: "Other".
-    expect(l.trades.some((t) => t.kind === 'other')).toBe(l.trades.some((t) => t.trade === 'Other'));
+    // « Les équipes externes ne rentrent pas dans le plan de charge »: the steel erection crew (A1250, 6 × 10 h/d, no department)
+    // puts no demand anywhere. HLT-026 A1410 (Pauline Noguès, MEP) is left without an assignment in the demo: 2 h/d until 23 Oct.
+    expect(l.trades.map((t) => [t.trade, t.kind, t.hours, t.unnamedH, t.ownersH])).toEqual([
+      ['MEP', 'department', [10, 10, 10, 10, 10, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [10, 10, 10, 10, 10, 0, 0, 0]],
+    ]);
+    expect(l.trades[0].byProject).toEqual({ 'HLT-026': [10, 10, 10, 10, 10, 0, 0, 0] });
   });
 
   it('the pool, the departments, the project demand and the capacity model read the same source', async () => {
     const pool = await getResourcePool(WINDOW);
-    expect(pool.people.find((p) => p.name === 'Julien Wagner')).toMatchObject({ loads: [100, 100, 100, 0, 0, 0, 0, 0], hours: [40, 40, 40, 0, 0, 0, 0, 0] });
+    expect(pool.people.map((p) => [p.name, p.loads])).toEqual([
+      ['Amélie Ollivier', [106, 100, 100, 131, 106, 106, 106, 85]],
+      ['Julien Wagner', [100, 100, 106, 125, 125, 108, 88, 65]],
+      ['Pauline Noguès', [69, 79, 108, 81, 113, 113, 102, 105]],
+      ['Thomas Kerbrat', [56, 56, 88, 110, 75, 75, 56, 20]],
+      ['Léa Marchand', [69, 73, 71, 75, 75, 75, 81, 65]],
+      ['Damien Roux', [88, 99, 86, 96, 90, 81, 94, 66]],
+      ['Hélène Sauvage', [44, 44, 48, 64, 76, 90, 101, 76]],
+      ['Fabien Bertrand', [100, 99, 95, 81, 56, 56, 49, 35]],
+    ]);
+    expect(pool.people.find((p) => p.name === 'Julien Wagner')!.hours).toEqual([40, 40, 42.5, 50, 50, 43, 35, 26]);
     const depts = await listDepartments(WINDOW);
-    const eng = depts.find((d) => d.name === 'Engineering')!;
-    // Julien Wagner's 120 h + the engineering activities their owner carries alone (J. Wagner owns 2 open ones: 50 h).
-    expect([eng.capacityH, eng.demandH, eng.unnamedH]).toEqual([960, 170, 50]);
+    const mep = depts.find((d) => d.name === 'MEP')!;
+    // Pauline Noguès's 308 h + A1410 carried by its owner alone (50 h).
+    expect([mep.capacityH, mep.demandH, mep.unnamedH]).toEqual([480, 358, 50]);
     const rows = await getCapacityDemand(WINDOW);
     expect(rows.map((r) => [r.name, r.kind, r.demandH, r.capacityH])).toEqual([
-      ['Engineering', 'department', 170, 960], ['Site operations', 'department', 214, 640], ['MEP', 'department', 300, 480],
-      ['Controls & planning', 'department', 574, 640], ['Quality', 'department', 106, 320], ['Steel erection crew', 'resource', 900, 0],
+      ['Engineering', 'department', 327, 960], ['Site operations', 'department', 551, 640], ['MEP', 'department', 358, 480],
+      ['Controls & planning', 'department', 742, 640], ['Quality', 'department', 217, 320],
     ]);
-    expect(await getProjectTradeDemand('HLT-026', WINDOW)).toEqual([
-      { trade: 'Steel erection crew', kind: 'resource', hours: 900 }, { trade: 'Site operations', kind: 'department', hours: 106 },
-      { trade: 'Engineering', kind: 'department', hours: 50 }, { trade: 'MEP', kind: 'department', hours: 96 },
-    ]);
+    expect(await getProjectTradeDemand('HLT-026', WINDOW)).toEqual([{ trade: 'MEP', kind: 'department', hours: 50 }]);
     const cap = await capacityModel([], {});
     expect(cap.map((c) => [c.department, c.committedH])).toEqual([
-      ['Engineering', 170], ['Site operations', 214], ['MEP', 300], ['Controls & planning', 574], ['Quality', 106],
+      ['Engineering', 327], ['Site operations', 551], ['MEP', 358], ['Controls & planning', 742], ['Quality', 217],
     ]);
     // "Load next 2 wks": the weeks of 28 Sep and 5 Oct.
-    expect([await loadNextWeeks('Julien Wagner'), await loadNextWeeks('Hélène Sauvage'), await loadNextWeeks('Marie Lefebvre')]).toEqual([100, 0, null]);
+    expect([await loadNextWeeks('Julien Wagner'), await loadNextWeeks('Hélène Sauvage'), await loadNextWeeks('Marie Lefebvre')]).toEqual([103, 46, null]);
   });
+});
+
+describe('activities without an assignment at J-15 (owner answer 18 Oct 2026, fourth round)', () => {
+  it('HLT-026 A1410 (owner only, started): the Project resources card, one notice to the PM, once', async () => {
+    expect((await listUnassignedActivities('2026-09-25')).map((a) => [a.projectCode, a.code, a.start])).toEqual([['HLT-026', 'A1410', '2026-08-17']]);
+    expect(await listUnassignedActivities('2026-09-25', 'NDC-031')).toEqual([]);
+    const body = await projectPage('HLT-026');
+    expect(body.props.view.unassigned).toEqual([{ code: 'A1410', name: 'HV connection & switchgear', start: '17 Aug', href: '/projects/HLT-026/plan?act=A1410' }]);
+    const out = renderToStaticMarkup(createElement(Provider, { lang: 'en' }, body));
+    for (const s of ['Activities without an assignment', 'Starting within 15 days or started, owner only: assign the people who will do the work', 'href="/projects/HLT-026/plan?act=A1410"'])
+      expect(out).toContain(s);
+    as('director', 'fr');
+    const fr = renderToStaticMarkup(createElement(Provider, { lang: 'fr' }, await projectPage('HLT-026')));
+    for (const s of ['Activités sans affectation', 'Début sous 15 jours ou déjà commencées', '17 août']) expect(fr).toContain(s);
+    as('director');
+
+    const before = (await listNotifications('pm')).length;
+    expect(await jobDefinition('undeclared-resource-alerts').run()).toMatchObject({
+      counts: { undeclared: 0, unassigned: 1, alerted: 1, already: 0, unaddressed: 0 }, warn: false,
+    });
+    const mine = await listNotifications('pm');
+    expect(mine).toHaveLength(before + 1);
+    expect(mine[0]).toMatchObject({
+      kind: 'alert', title: UNASSIGNED_ALERT_TITLE, sub: 'A1410 · HV connection & switchgear · 17 Aug', screen: 'plan', params: { sel: 'A1410' }, projectCode: 'HLT-026',
+    });
+    expect(await alertUndeclaredActivities()).toEqual({ today: '2026-09-25', undeclared: 0, unassigned: 1, alerted: 0, already: 1, unaddressed: 0 });
+    expect(await listNotifications('pm')).toHaveLength(before + 1);
+  }, 60_000);
+
+  it('the J-15 horizon moves with the business date: an owner-only activity starting on 26 Oct is warned from 11 Oct', async () => {
+    await addActivity('TST-J15', { percentComplete: 0, durationDays: 5, startDate: '2026-10-26', finishDate: '2026-10-30' });
+    expect((await listUnassignedActivities('2026-10-10')).map((a) => a.code)).not.toContain('TST-J15');
+    expect((await listUnassignedActivities('2026-10-11')).map((a) => a.code)).toContain('TST-J15');
+    expect(await alertUndeclaredActivities('2026-10-11')).toMatchObject({ unassigned: 2, alerted: 1, already: 1 });
+    const db = await getDb();
+    await db.delete(activities).where(eq(activities.code, 'TST-J15'));
+  }, 60_000);
 });
 
 describe('activities without any declared resource (owner answer B: an alert)', () => {
   it('none on the demo data set: every activity has an owner', async () => {
     expect(await listUndeclaredActivities()).toEqual([]);
-    expect(await alertUndeclaredActivities()).toEqual({ today: '2026-09-25', undeclared: 0, alerted: 0, already: 0, unaddressed: 0 });
+    expect(await alertUndeclaredActivities()).toMatchObject({ today: '2026-09-25', undeclared: 0, alerted: 0 });
   });
 
   it('listed when it needs work and has neither assignment nor owner; the Project resources card; one notice to the PM, once', async () => {
@@ -110,7 +158,8 @@ describe('activities without any declared resource (owner answer B: an alert)', 
     // Not listed: a milestone, a complete activity, one with an owner.
     await addActivity('TST-MS', { ownerPersonId: null, percentComplete: 0, durationDays: 0 });
     await addActivity('TST-DONE', { ownerPersonId: null, percentComplete: 100, durationDays: 5 });
-    await addActivity('TST-OWNED', { percentComplete: 0, durationDays: 5 });
+    // (Starting after the J-15 horizon: no "without an assignment" notice either.)
+    await addActivity('TST-OWNED', { percentComplete: 0, durationDays: 5, startDate: '2027-01-04', finishDate: '2027-01-08' });
     expect((await listUndeclaredActivities()).map((a) => [a.projectCode, a.code, a.name])).toEqual([['HLT-026', 'TST-NONE', 'Test TST-NONE']]);
     expect((await listUndeclaredActivities('NDC-031'))).toEqual([]);
 
@@ -127,22 +176,24 @@ describe('activities without any declared resource (owner answer B: an alert)', 
 
     // The morning job: Romain Aubert (PM of record of HLT-026) is told once.
     const before = (await listNotifications('pm')).length;
+    // (A1410's J-15 notice went out in the block above: already alerted.)
     expect(await jobDefinition('undeclared-resource-alerts').run()).toMatchObject({
-      counts: { undeclared: 1, alerted: 1, already: 0, unaddressed: 0 }, warn: false,
+      counts: { undeclared: 1, unassigned: 1, alerted: 1, already: 1, unaddressed: 0 }, warn: false,
     });
     const mine = await listNotifications('pm');
     expect(mine).toHaveLength(before + 1);
     expect(mine[0]).toMatchObject({ kind: 'alert', title: UNDECLARED_ALERT_TITLE, sub: 'TST-NONE · Test TST-NONE', screen: 'plan', params: { sel: 'TST-NONE' }, projectCode: 'HLT-026' });
     // A second run (a restart, another worker the same day, the next morning) sends nothing more.
-    expect(await alertUndeclaredActivities()).toMatchObject({ undeclared: 1, alerted: 0, already: 1 });
+    expect(await alertUndeclaredActivities()).toMatchObject({ undeclared: 1, alerted: 0, already: 2 });
     expect(await listNotifications('pm')).toHaveLength(before + 1);
-    // Declared (an owner): no longer listed, no card.
+    // Declared (an owner): no longer listed, no card — but now an owner-only activity starting on 5 Oct, within J-15.
     const db = await getDb();
     const [julien] = await db.select({ id: persons.id }).from(persons).where(eq(persons.fullName, 'Julien Wagner'));
     await db.update(activities).set({ ownerPersonId: julien.id }).where(eq(activities.code, 'TST-NONE'));
     expect(await listUndeclaredActivities()).toEqual([]);
     as('director');
     expect((await projectPage('HLT-026')).props.view.undeclared).toEqual([]);
+    expect((await listUnassignedActivities('2026-09-25')).map((a) => a.code)).toEqual(['A1410', 'TST-NONE']);
   }, 60_000);
 
   it('a PM without an active account: counted without recipient (a warning), tried again the next run', async () => {
@@ -151,11 +202,12 @@ describe('activities without any declared resource (owner answer B: an alert)', 
     const [hlt] = await db.select({ pm: projects.pmPersonId }).from(projects).where(eq(projects.code, 'HLT-026'));
     await db.update(users).set({ active: false }).where(eq(users.personId, hlt.pm!));
     try {
-      expect(await alertUndeclaredActivities()).toMatchObject({ undeclared: 1, alerted: 0, unaddressed: 1 });
+      // TST-NONE2 (undeclared) and TST-NONE (owner only since the test above, J-15) find nobody.
+      expect(await alertUndeclaredActivities()).toMatchObject({ undeclared: 1, unassigned: 2, alerted: 0, already: 1, unaddressed: 2 });
       expect(await db.select().from(notifications).where(and(eq(notifications.title, UNDECLARED_ALERT_TITLE)))).toHaveLength(1); // the first test's
     } finally {
       await db.update(users).set({ active: true }).where(eq(users.personId, hlt.pm!));
     }
-    expect(await alertUndeclaredActivities()).toMatchObject({ undeclared: 1, alerted: 1, unaddressed: 0 });
+    expect(await alertUndeclaredActivities()).toMatchObject({ undeclared: 1, alerted: 2, unaddressed: 0 });
   }, 60_000);
 });
