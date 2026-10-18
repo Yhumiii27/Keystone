@@ -13,7 +13,8 @@ import { ResourcesView } from '@/features/resources/resources-view';
 import { suggestionInputs } from '@/features/resources/suggestions';
 import { listResourceRequests } from '@/server/dal/requests';
 import { getLaborCost, getLoadWindow, getProjectTradeDemand, getWeekProjectSplit, getProjectTeam, getRebalancingSuggestions, getResourcePool } from '@/server/dal/resources';
-import { listUndeclaredActivities } from '@/server/dal/planning-load';
+import { listUnassignedActivities, listUndeclaredActivities } from '@/server/dal/planning-load';
+import { businessToday } from '@/server/clock';
 import { LoadWindowNav } from '@/features/resources/window-nav';
 import { screenHref } from '@/config/screens';
 import { canManageTeam } from '@/domain/rights';
@@ -33,7 +34,7 @@ export default async function ProjectResourcesPage({
   const canEdit = ctx.canEdit('presources');
   const manageTeam = canEdit && canManageTeam(ctx.viewer.role, ctx.access);
   const win = await getLoadWindow(sp.week, sp.view);
-  const [{ t, lang }, pool, weekSplit, team, labor, pending, suggestions, named, candidates, trades, undeclared] = await Promise.all([
+  const [{ t, lang }, pool, weekSplit, team, labor, pending, suggestions, named, candidates, trades, undeclared, unassigned] = await Promise.all([
     getI18n(),
     getResourcePool(win.weeks),
     win.view === 'week' ? getWeekProjectSplit(win.start) : Promise.resolve(undefined),
@@ -45,6 +46,7 @@ export default async function ProjectResourcesPage({
     manageTeam ? teamCandidates(p.code) : Promise.resolve(null),
     getProjectTradeDemand(p.code, win.weeks),
     listUndeclaredActivities(p.code),
+    businessToday().then((today) => listUnassignedActivities(today, p.code)),
   ]);
   // Pool order (PEOPLE order), team members only — as the prototype's PEOPLE.filter(team.includes).
   const members = new Set(team.map((m) => m.name));
@@ -67,6 +69,8 @@ export default async function ProjectResourcesPage({
       // that declare no resource at all.
       projectTrades: trades,
       undeclared,
+      // Owner answer 18 Oct 2026, fourth round: the activities without an assignment at J-15 (the PM is warned).
+      unassigned,
       labor,
       openRequests: pending.length,
       suggestions: suggestions.length ? suggestionInputs(suggestions, { portfolio: false, canEdit, readOnly: () => false }) : null,

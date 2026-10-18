@@ -2,5 +2,8 @@
   "Hours by role, 8 weeks": "Heures par rôle, 8 semaines",
   "Activities without a declared resource": "Activités sans ressource déclarée",
   "No assignment and no owner: their load counts nowhere": "Ni affectation ni responsable : leur charge n’est comptée nulle part",
-  "Activity without a declared resource": "Activité sans ressource déclarée"
+  "Activity without a declared resource": "Activité sans ressource déclarée",
+  "Activities without an assignment": "Activités sans affectation",
+  "Starting within 15 days or started, owner only: assign the people who will do the work": "Début sous 15 jours ou déjà commencées, responsable seul : affectez les personnes qui feront le travail",
+  "Activity without an assignment at J-15": "Activité sans affectation à J-15"
 }

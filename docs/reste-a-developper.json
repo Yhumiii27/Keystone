@@ -74,6 +74,10 @@
   {
    "date": "2026-10-18",
    "text": "Livraison 9 : charge calculée depuis les affectations des plannings et par métier, alerte des activités sans ressource (R-084, partie charge) ; alerte J-15 avec risque déjà lié (R-121)."
+  },
+  {
+   "date": "2026-10-18",
+   "text": "Réponses du 18 oct. : équipes externes exclues de la charge, alerte J-15 sur activité sans affectation, affectations nominatives dans les plannings de démonstration ; anciens risques de prérequis laissés ouverts."
   }
  ],
  "items": [
@@ -2491,7 +2495,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "Livraison 9",
-    "note": "Lot « planning-load » (docs/delivery-9/notes-planning-load.md) : la charge vient des affectations des plannings (une seule source, getPlanningLoad) ; le travail non affecté à une personne compte par métier (service) ; alerte du matin au CP pour une activité sans ressource déclarée. Reste la partie capacité (horaire contractuel, absences Cursus)."
+    "note": "Lot « planning-load » (docs/delivery-9/notes-planning-load.md) : la charge vient des affectations des plannings (une seule source, getPlanningLoad) ; le travail non affecté à une personne compte par métier (service) ; alerte du matin au CP pour une activité sans ressource déclarée. Reste la partie capacité (horaire contractuel, absences Cursus). Quatrième tour (18 oct.) : équipes externes hors du plan de charge ; alerte du matin au CP à J-15 pour une activité sans affectation ; plannings de démonstration enrichis d’affectations nominatives (occupation 84 %, 3 personnes surchargées). Les niveaux de compétence attendent les besoins par activité."
    }
   },
   {

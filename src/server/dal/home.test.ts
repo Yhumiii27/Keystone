@@ -155,16 +155,20 @@ const CLIENT_DB: Record<Lang, [string, string][]> = {
  */
 const DEPTHEAD_A12: Record<Lang, [Kpi, Kpi]> = {
   // R-084 (owner answers 17 Oct 2026, third round): loads and demand from the schedules over the current window (21 Sep – 15 Nov)
-  // — nobody above 110 %; the steel erection crew (no department, no capacity: 900 h) is the largest unmet demand. On the seeded
-  // allocation rows and stored ROLES: 3 people · Peak weeks 42–44 · 280 h · Mostly engineering.
-  en: [['Over-allocated', '0 people', 'No week above 110%', false], ['Unmet demand', '900 h', 'Mostly steel erection crew', true]],
-  fr: [['Surchargés', '0 personnes', 'Aucune semaine au-dessus de 110 %', false], ['Demande non couverte', '900 h', 'Surtout steel erection crew', true]],
+  // — with the named demo assignments (owner answer 18 Oct 2026) 3 people above 110 % in weeks 42–44 as on the seeded rows;
+  // Controls & planning is the largest unmet demand (102 h; 280 h · Mostly engineering on the stored ROLES). External crews are
+  // out of the load (18 Oct).
+  en: [['Over-allocated', '3 people', 'Peak weeks 42–44', true], ['Unmet demand', '102 h', 'Mostly controls & planning', true]],
+  fr: [['Surchargés', '3 personnes', 'Pointe semaines 42–44', true], ['Demande non couverte', '102 h', 'Surtout contrôle et planification', true]],
 };
 
-/** R-084: the department head's team utilisation and Julien Wagner's 8-week average (the seeded rows gave 83 % and 99 %). */
-const DEPTHEAD_R084: Record<Lang, { util: Kpi; julien: string }> = {
-  en: { util: ['Team utilization', '5%', 'Target 85–95%', false], julien: '38%' },
-  fr: { util: ['Taux d’occupation', '5%', 'Cible 85–95 %', false], julien: '38%' },
+/**
+ * R-084: the department head's team utilisation and Julien Wagner's 8-week average over the current window, with the named demo
+ * assignments of 18 Oct 2026 (the seeded rows gave 83 % and 99 %).
+ */
+const DEPTHEAD_R084: Record<Lang, { util: Kpi; julien: string; julienTag: string }> = {
+  en: { util: ['Team utilization', '84%', 'Target 85–95%', false], julien: '102%', julienTag: 'tag tag-accent' },
+  fr: { util: ['Taux d’occupation', '84%', 'Cible 85–95 %', false], julien: '102%', julienTag: 'tag tag-accent' },
 };
 
 /**
@@ -205,7 +209,8 @@ const DIRECTOR_D7: Record<Lang, Pick<Golden, 'kpis' | 'lr'>> = {
       ['Marseille Metro Signage Rollout — critical path slip', 'Critical path −9 d · forecast finish 9 Nov 2026 (baseline 1 Nov 2026).', '', ''],
       ['Northgate Data Center Retrofit — critical path slip', 'Critical path −4 d · forecast finish 5 Apr 2027 (baseline 1 Apr 2027).', '', ''],
       ['Clinique Pasteur Lyon Fit-out — cost overrun', 'Forecast €1.40M vs budget €1.35M (+€46k) · CPI 0.97.', '', ''],
-      // R-084: no over-allocation alert — the loads come from the schedules ("3 people over 110%" on the seeded rows).
+      // R-084 + named demo assignments (owner answer 18 Oct 2026): the over-allocation alert as on the seeded rows.
+      ['3 people over 110%', 'Weeks 42–44 · Amélie Ollivier, Julien Wagner, Pauline Noguès.', '', ''],
       ['1 approval waiting more than 5 days', 'Oldest: INV-HC-7781 · Halvorsen Cranes · €1,286,400 · since 10 Sep 2026 (15 d).', '', ''],
     ],
   },
@@ -221,6 +226,7 @@ const DIRECTOR_D7: Record<Lang, Pick<Golden, 'kpis' | 'lr'>> = {
       ['Déploiement signalétique métro de Marseille — glissement du chemin critique', 'Chemin critique −9 j · fin prévue 9 nov. 2026 (référence 1 nov. 2026).', '', ''],
       ['Rénovation du data center Northgate — glissement du chemin critique', 'Chemin critique −4 j · fin prévue 5 avr. 2027 (référence 1 avr. 2027).', '', ''],
       ['Aménagement de la Clinique Pasteur Lyon — dépassement de coût', 'Prévision 1,40 M€ pour un budget de 1,35 M€ (+46 k€) · CPI 0,97.', '', ''],
+      ['3 personnes au-delà de 110 %', 'Semaines 42–44 · Amélie Ollivier, Julien Wagner, Pauline Noguès.', '', ''],
       ['1 approbation en attente depuis plus de 5 jours', 'La plus ancienne : INV-HC-7781 · Halvorsen Cranes · 1 286 400 € · depuis le 10 sept. 2026 (15 j).', '', ''],
     ],
   },
@@ -246,7 +252,7 @@ function expected(role: RoleKey, lang: Lang): Golden {
   if (role === 'depthead') {
     [g.kpis[2], g.kpis[3]] = DEPTHEAD_A12[lang];
     g.kpis[1] = DEPTHEAD_R084[lang].util;
-    g.rr = g.rr.map((r) => (r[0] === 'Julien Wagner' ? [r[0], r[1], DEPTHEAD_R084[lang].julien, r[3]] : r));
+    g.rr = g.rr.map((r) => (r[0] === 'Julien Wagner' ? [r[0], r[1], DEPTHEAD_R084[lang].julien, DEPTHEAD_R084[lang].julienTag] : r));
   }
   for (const [i, k] of Object.entries(R073[role]?.[lang] ?? {})) g.kpis[Number(i)] = k;
   const out = lang === 'fr' ? mapStrings(g, fixFr) : g;
@@ -306,7 +312,7 @@ describe('Home view', () => {
       ['Forecast (EAC)', '€11.97M', '−€437k vs budget', true],
       ['Cost perf. (CPI)', '0.95', 'Earned per $1 spent', true],
     ]);
-    expect(euna.lr).toHaveLength(6); // R-084: no over-allocation alert
+    expect(euna.lr).toHaveLength(7); // R-084 + named demo assignments: the over-allocation alert (portfolio-wide)
     const afr = (await render('director', 'en', 'HLT-026', 'afr')).out;
     expect(afr.kpis).toEqual([
       ['Total budget', '€2.10M', '1 active project', false],
@@ -314,7 +320,7 @@ describe('Home view', () => {
       ['Forecast (EAC)', '€1.91M', '+€192k vs budget', true],
       ['Cost perf. (CPI)', '1.10', 'Earned per $1 spent', false],
     ]);
-    expect(afr.lr.map((r) => r[0])).toEqual(['Northgate Data Center Retrofit — critical path slip', '1 approval waiting more than 5 days']);
+    expect(afr.lr.map((r) => r[0])).toEqual(['Northgate Data Center Retrofit — critical path slip', '3 people over 110%', '1 approval waiting more than 5 days']);
   });
 
   it('PM home follows the current project (NDC-031)', async () => {
@@ -352,7 +358,7 @@ describe('Home view', () => {
       // side, SPI 0.82 ≤ CPI 0.89; RCF-019's cost overrun on its budget).
       l: [
         '/projects/HLT-026/schedule', '/projects/RCF-019/schedule', '/projects/HLT-026/schedule', '/projects/MSR-012/schedule', '/projects/NDC-031/schedule',
-        '/projects/RCF-019/budget', '/my/approvals', // R-084: no over-allocation alert (it opened /resources)
+        '/projects/RCF-019/budget', '/resources', '/my/approvals', // R-084 + named demo assignments: the over-allocation alert
       ],
       r: ['/projects/HLT-026/changes?cr=CR-008', '/projects/HLT-026/orders', '/reference/eco', '/resources/requests'],
     });

@@ -6,15 +6,30 @@
 // (B) « Il faut les compter par rapport à un métier et non une personne ; si pas de déclaration du tout alors il faut faire une
 //     alerte » — work no named person carries is demand on a TRADE, not on a person:
 //     - an assignment without a person (crew, team, role, subcontractor) → the trade of the assignment: its department
-//       (`activity_assignments.department_id`, the field the levelling by department uses), else the resource itself ("Steel
-//       erection crew"), at the same spreading rule (units × h/d, else planned hours);
+//       (`activity_assignments.department_id`, the field the levelling by department uses), at the same spreading rule (units ×
+//       h/d, else planned hours) — one without a department (the "Steel erection crew") is external labour since 18 Oct (below);
 //     - an activity whose only resource is its owner (no assignment at all) → the owner's department (else "Other"), at the
 //       what-if's coordination rate WHATIF_RULES.ownerHoursPerDay (2 h per working day) — the owner is not loaded with it;
 //     - an activity that needs work (not a milestone, not complete) with no assignment and no owner is "undeclared": it raises an
 //       alert (`undeclaredActivities`).
-// Equipment and material (no hours) add nothing; a complete activity or a milestone adds nothing. Pure; golden values in
-// planning-load.test.ts.
-import type { IsoDate, WorkCalendar } from './calendar';
+// Equipment and material (no hours) add nothing; a complete activity or a milestone adds nothing.
+//
+// Owner answers 18 Oct 2026, fourth round:
+// (1) « Les équipes externes ne rentrent pas dans le plan de charge » — EXTERNAL labour is left out of the load plan: no person
+//     load, no trade demand, no unmet demand (it stays in the schedule). An assignment is external when it carries hours
+//     (`isLabour`) and is not EPC2i staff: unnamed and without a department (a crew, a subcontractor, an imported labour resource
+//     matched to nobody), or named after a person whose rate-grid role is external (R-083 `isExternal`). EPC2i labour is a named
+//     person (staff role) or an unnamed assignment carrying an EPC2i department (`isInternalLabour`).
+// (2) « Aucune activité ne devrait être sans affectation, donc laisse 2 h » — the owner's 2 h per working day on their trade is
+//     kept, and applies whenever the activity has no EPC2i labour assignment: owner only, but also external crews, equipment or
+//     material only (the owner coordinates the subcontractor / the hire). « … mais à 15 jours d'une activité sans affectation
+//     préviens le chef de projet » — `unassignedActivitiesAt`: the activities that need work, have no labour assignment at all
+//     (an external crew IS an assignment — the work is staffed, by a subcontractor), have an owner (the ones without are the
+//     "undeclared" alert above) and start within UNASSIGNED_ALERT_DAYS of the business date (already started included).
+// (3) « Le service et les niveaux de compétences de la matrice de compétences sont suffisants » — the trade stays the department;
+//     no assignment carries a required skill, so the competence levels cannot refine it yet (notes-planning-load.md §5).
+// Pure; golden values in planning-load.test.ts.
+import { addCalendarDays, type IsoDate, type WorkCalendar } from './calendar';
 import { HOURS_PER_PERSON_WEEK, assignmentHoursInWeek } from './load-week';
 import { OTHER_DEPARTMENT } from './resources';
 
@@ -50,6 +65,8 @@ export interface PlanAssignment {
   person: string | null;
   /** Department of the assignment (unnamed: its trade); null when none. */
   department: string | null;
+  /** Named person whose rate-grid role is external (R-083 `rate_roles.is_external`): not EPC2i staff. Absent = staff. */
+  personExternal?: boolean;
   units: number | null;
   hoursPerDay: number | null;
   plannedHours: number | null;
@@ -61,7 +78,27 @@ export const isMilestone = (a: Pick<PlanActivity, 'durationDays'>): boolean => a
 /** The activity still needs work: not a milestone, not complete. */
 export const needsWork = (a: Pick<PlanActivity, 'durationDays' | 'percentComplete'>): boolean => !isMilestone(a) && a.percentComplete < 100;
 
-/** Trade of an unnamed assignment: its department, else the resource it names ("Steel erection crew"), else "Other". */
+type LabourFacts = Pick<PlanAssignment, 'units' | 'hoursPerDay' | 'plannedHours'>;
+
+/** The assignment carries working hours (units × h/d, else planned hours): labour — not equipment days or material tonnes. */
+export const isLabour = (a: LabourFacts): boolean =>
+  ((a.units ?? 0) > 0 && (a.hoursPerDay ?? 0) > 0) || (a.plannedHours ?? 0) > 0;
+
+/**
+ * External labour (owner answer 18 Oct 2026: « Les équipes externes ne rentrent pas dans le plan de charge »): labour that is not
+ * EPC2i staff — unnamed without a department (crew, subcontractor), or a named person with an external rate role.
+ */
+export const isExternalLabour = (a: LabourFacts & Pick<PlanAssignment, 'person' | 'department' | 'personExternal'>): boolean =>
+  isLabour(a) && (a.person ? !!a.personExternal : !a.department);
+
+/** EPC2i labour: counted in the load plan (a person's load, or its department's demand). */
+export const isInternalLabour = (a: LabourFacts & Pick<PlanAssignment, 'person' | 'department' | 'personExternal'>): boolean =>
+  isLabour(a) && !isExternalLabour(a);
+
+/**
+ * Trade of an unnamed assignment: its department, else the resource it names, else "Other". `planningLoad` only reads it for EPC2i
+ * labour (a department), the other branches are kept for callers that classify any assignment.
+ */
 export function tradeOfAssignment(a: Pick<PlanAssignment, 'department' | 'resource'>): Pick<TradeLoad, 'trade' | 'kind'> {
   if (a.department) return { trade: a.department, kind: 'department' };
   const r = a.resource.trim();
@@ -113,7 +150,8 @@ export function planningLoad(
   activities: readonly PlanActivity[], assignments: readonly PlanAssignment[], weeks: readonly IsoDate[], ownerHoursPerDay: number,
 ): PlanningLoad {
   const act = new Map(activities.map((a) => [`${a.project}|${a.code}`, a]));
-  const declared = new Set(assignments.map((a) => `${a.project}|${a.activity}`));
+  // Owner answer 18 Oct 2026 (2): the owner's coordination share applies unless EPC2i labour is assigned.
+  const staffed = new Set(assignments.filter(isInternalLabour).map((a) => `${a.project}|${a.activity}`));
   const zero = () => weeks.map(() => 0);
   const people: Record<string, number[]> = {};
   const personProjects: Record<string, Record<string, number[]>> = {};
@@ -130,7 +168,8 @@ export function planningLoad(
 
   for (const s of assignments) {
     const a = act.get(`${s.project}|${s.activity}`);
-    if (!a || !needsWork(a)) continue;
+    // Owner answer 18 Oct 2026 (1): external crews and subcontractors stay out of the load plan.
+    if (!a || !needsWork(a) || !isInternalLabour(s)) continue;
     const hours = spread(a, s.units, s.hoursPerDay, s.plannedHours);
     if (!hours.some((h) => h > 0)) continue;
     if (s.person) {
@@ -144,7 +183,7 @@ export function planningLoad(
     add((row.byProject[s.project] ??= zero()), hours);
   }
   for (const a of activities) {
-    if (!a.owner || !needsWork(a) || declared.has(`${a.project}|${a.code}`)) continue;
+    if (!a.owner || !needsWork(a) || staffed.has(`${a.project}|${a.code}`)) continue;
     const hours = spread(a, 1, ownerHoursPerDay, null);
     if (!hours.some((h) => h > 0)) continue;
     const row = tradeRow(tradeOfOwner(a));
@@ -167,6 +206,24 @@ export function undeclaredActivities<A extends Pick<PlanActivity, 'project' | 'c
 ): A[] {
   const declared = new Set(assignments.map((a) => `${a.project}|${a.activity}`));
   return activities.filter((a) => needsWork(a) && !a.owner && !declared.has(`${a.project}|${a.code}`));
+}
+
+/** J-15 (owner answer 18 Oct 2026): the PM is told when an activity without an assignment starts within 15 days. */
+export const UNASSIGNED_ALERT_DAYS = 15;
+
+/**
+ * Activities the PM is warned about at J-15 (owner answer 18 Oct 2026, fourth round: « à 15 jours d'une activité sans affectation
+ * préviens le chef de projet »): they need work, have an owner but no labour assignment at all (owner only, or equipment /
+ * material only — an external crew is an assignment), are dated and start no later than `today` + `days` calendar days. An
+ * activity already started (or late) and still without an assignment is included: it is warned once like the others. Without an
+ * owner it is "undeclared" (`undeclaredActivities`, its own notice), not listed here. In the given order.
+ */
+export function unassignedActivitiesAt<A extends Pick<PlanActivity, 'project' | 'code' | 'owner' | 'start' | 'durationDays' | 'percentComplete'>>(
+  activities: readonly A[], assignments: readonly (Pick<PlanAssignment, 'project' | 'activity'> & LabourFacts)[], today: IsoDate, days = UNASSIGNED_ALERT_DAYS,
+): A[] {
+  const assigned = new Set(assignments.filter(isLabour).map((a) => `${a.project}|${a.activity}`));
+  const horizon = addCalendarDays(today, days);
+  return activities.filter((a) => needsWork(a) && !!a.owner && !!a.start && a.start <= horizon && !assigned.has(`${a.project}|${a.code}`));
 }
 
 /** Σ of the hours (one decimal). */

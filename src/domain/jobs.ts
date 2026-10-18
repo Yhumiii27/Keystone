@@ -37,7 +37,8 @@ export type JobName =
   // ── Delivery 9 · R-121 (D-4 'a'): client prerequisites late at J-15 → the PM of record notified, a risk proposed; daily.
   | 'site-prerequisite-alerts'
   // ── Delivery 9 · R-084 (owner answer 17 Oct 2026, third round, B): activities that need work with no declared resource → the PM
-  // of record notified once per activity; daily, at the reminders hour.
+  // of record notified once per activity; daily, at the reminders hour. Owner answer 18 Oct 2026: also, at J-15, the activities
+  // with an owner but no assignment (a distinct notice, once per activity).
   | 'undeclared-resource-alerts'
   ;
 
@@ -80,7 +81,8 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
   // restart, or two workers, alert nothing twice.
   // Owner's answer of 17 Oct 2026: reminders arrive in the morning — at the reminders hour (07:00 Paris by default).
   { name: 'site-prerequisite-alerts', everyMs: 24 * HOUR, leaseMs: 15 * MIN, firstDelayMs: 50_000, daily: 'reminders' },
-  // ── Delivery 9 · R-084: one notice per activity without any declared resource (no assignment, no owner); a reminder job.
+  // ── Delivery 9 · R-084: one notice per activity without any declared resource (no assignment, no owner), and (owner, 18 Oct
+  // 2026) one per activity with an owner but no assignment starting within 15 days; a reminder job.
   { name: 'undeclared-resource-alerts', everyMs: 24 * HOUR, leaseMs: 15 * MIN, firstDelayMs: 55_000, daily: 'reminders' },
 ];
 

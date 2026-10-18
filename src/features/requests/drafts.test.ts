@@ -33,7 +33,6 @@ import { reqT } from './i18n';
 import { requestsScreenModel } from './model';
 import { canHandleDraft, draftRights } from './permissions';
 import { RequestsScreen } from './requests-screen';
-import { overloadJulienWagner } from '@/features/resources/overload.test-fixture';
 
 const EN = makeT('en');
 const FR = makeT('fr');
@@ -64,8 +63,7 @@ const NOT_DRAFT = 'This request is no longer a draft';
 
 beforeAll(async () => {
   setDb(await openDatabase());
-  // R-084: the relief lever exists only when Julien Wagner is above 100 % on the schedules (overload.test-fixture.ts).
-  await overloadJulienWagner();
+  // R-084: the relief lever exists when Julien Wagner is above 100 % on the schedules (the named demo assignments, 18 Oct 2026).
 }, 60_000);
 beforeEach(() => {
   revalidated.length = 0;

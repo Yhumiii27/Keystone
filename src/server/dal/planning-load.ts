@@ -4,16 +4,19 @@ import 'server-only';
 // calendars). Every load reader goes through it: Resources (heatmap, week view, capacity vs demand), Project resources, the
 // what-if, the department head's Home, the portfolio over-allocation alert, Approvals, the new-request dialog, My work, Site
 // conflicts, the capacity what-if of Prioritisation, the exports. The `allocations` table is no longer read for load.
-// Also: the activities that need work and declare no resource at all (owner answer B: an alert).
+// Also: the activities that need work and declare no resource at all (owner answer B: an alert), and — owner answers 18 Oct 2026,
+// fourth round — those with no assignment that start within 15 days (J-15 alert); external crews are left out of the load.
 import { cache } from 'react';
 import { and, asc, eq, gte, inArray, isNotNull, lte } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { addCalendarDays, type WorkCalendar } from '@/domain/calendar';
 import { DEFAULT_PROJECT_CALENDAR, projectCalendarCode } from '@/domain/ch4-defaults';
-import { planningLoad, undeclaredActivities, type PlanActivity, type PlanAssignment, type PlanningLoad } from '@/domain/planning-load';
+import {
+  planningLoad, unassignedActivitiesAt, undeclaredActivities, type PlanActivity, type PlanAssignment, type PlanningLoad,
+} from '@/domain/planning-load';
 import { WHATIF_RULES } from '@/domain/whatif';
 import { getDb } from '@/server/db/client';
-import { activities, activityAssignments, departments, persons, projects } from '@/server/db/schema';
+import { activities, activityAssignments, departments, persons, projects, rateRoles } from '@/server/db/schema';
 import { loadWorkCalendars } from './calendars';
 
 /** Name of a person as the pool names them (full name, else short name). */
@@ -53,9 +56,11 @@ async function planFacts(from: string, to: string): Promise<{ acts: PlanActivity
     .select({
       act: activityAssignments.activityId, resource: activityAssignments.resource, person: activityAssignments.personId, full: who.fullName, short: who.shortName,
       dept: adept.name, units: activityAssignments.resourceCount, hpd: activityAssignments.hoursPerDay, planned: activityAssignments.plannedHours,
+      external: rateRoles.isExternal,
     })
     .from(activityAssignments)
     .leftJoin(who, eq(who.id, activityAssignments.personId))
+    .leftJoin(rateRoles, eq(rateRoles.id, who.rateRoleId))
     .leftJoin(adept, eq(adept.id, activityAssignments.departmentId))
     .where(inArray(activityAssignments.activityId, rows.map((r) => r.id)))
     .orderBy(asc(activityAssignments.position));
@@ -70,7 +75,10 @@ async function planFacts(from: string, to: string): Promise<{ acts: PlanActivity
     })),
     asg: asg.flatMap((a) => {
       const r = byId.get(a.act);
-      return r ? [{ project: r.project, activity: r.code, resource: a.resource, person: a.person, department: a.dept, units: a.units, hoursPerDay: a.hpd, plannedHours: a.planned }] : [];
+      return r ? [{
+        project: r.project, activity: r.code, resource: a.resource, person: a.person, department: a.dept, personExternal: !!a.external, units: a.units, hoursPerDay: a.hpd,
+        plannedHours: a.planned,
+      }] : [];
     }),
     names,
   };
@@ -103,11 +111,8 @@ export interface UndeclaredActivity {
   percentComplete: number;
 }
 
-/**
- * Activities that need work (not a milestone, not complete) with no resource declared at all — no assignment and no owner
- * (owner answer 17 Oct 2026, third round, B: an alert). Of one project, or of every project; in plan order.
- */
-export async function listUndeclaredActivities(projectCode?: string): Promise<UndeclaredActivity[]> {
+/** Activities that need work (of one project, or every project; plan order) with their assignments' quantities. */
+async function staffingFacts(projectCode?: string) {
   const db = await getDb();
   const rows = await db
     .select({
@@ -118,16 +123,39 @@ export async function listUndeclaredActivities(projectCode?: string): Promise<Un
     .innerJoin(projects, eq(projects.id, activities.projectId))
     .where(projectCode ? eq(projects.code, projectCode) : undefined)
     .orderBy(asc(projects.sortOrder), asc(activities.position));
-  const open = rows.filter((r) => !r.owner && r.durationDays > 0 && r.percentComplete < 100);
-  if (!open.length) return [];
-  const declared = await db
-    .selectDistinct({ id: activityAssignments.activityId })
+  const open = rows.filter((r) => r.durationDays > 0 && r.percentComplete < 100);
+  if (!open.length) return { open, asg: [] };
+  const list = await db
+    .select({ id: activityAssignments.activityId, units: activityAssignments.resourceCount, hoursPerDay: activityAssignments.hoursPerDay, plannedHours: activityAssignments.plannedHours })
     .from(activityAssignments)
     .where(inArray(activityAssignments.activityId, open.map((r) => r.id)));
-  const byId = new Map(rows.map((r) => [r.id, r]));
-  const asg = declared.flatMap((d) => {
+  const byId = new Map(open.map((r) => [r.id, r]));
+  const asg = list.flatMap((d) => {
     const r = byId.get(d.id);
-    return r ? [{ project: r.project, activity: r.code }] : [];
+    return r ? [{ project: r.project, activity: r.code, units: d.units, hoursPerDay: d.hoursPerDay, plannedHours: d.plannedHours }] : [];
   });
-  return undeclaredActivities(open, asg).map((r) => ({ projectCode: r.project, code: r.code, name: r.name, start: r.start, finish: r.finish, percentComplete: r.percentComplete }));
+  return { open, asg };
+}
+
+const toUndeclared = (r: Awaited<ReturnType<typeof staffingFacts>>['open'][number]): UndeclaredActivity => ({
+  projectCode: r.project, code: r.code, name: r.name, start: r.start, finish: r.finish, percentComplete: r.percentComplete,
+});
+
+/**
+ * Activities that need work (not a milestone, not complete) with no resource declared at all — no assignment and no owner
+ * (owner answer 17 Oct 2026, third round, B: an alert). Of one project, or of every project; in plan order.
+ */
+export async function listUndeclaredActivities(projectCode?: string): Promise<UndeclaredActivity[]> {
+  const { open, asg } = await staffingFacts(projectCode);
+  return undeclaredActivities(open, asg).map(toUndeclared);
+}
+
+/**
+ * Activities the PM is warned about at J-15 (owner answer 18 Oct 2026, fourth round: « à 15 jours d'une activité sans affectation
+ * préviens le chef de projet »): need work, an owner but no labour assignment, starting within 15 days of `today` (the business
+ * date) or already started (rule `unassignedActivitiesAt`). Of one project, or of every project; in plan order.
+ */
+export async function listUnassignedActivities(today: string, projectCode?: string): Promise<UndeclaredActivity[]> {
+  const { open, asg } = await staffingFacts(projectCode);
+  return unassignedActivitiesAt(open, asg, today).map(toUndeclared);
 }

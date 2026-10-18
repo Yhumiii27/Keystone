@@ -107,12 +107,13 @@ const RUNS: Record<JobName, () => Promise<JobOutcome>> = {
     };
   },
   // ── Delivery 9 · R-084 (owner answer 17 Oct 2026, third round, B): activities that need work and declare no resource at all
-  // (no assignment, no owner) — the PM of record notified once per activity. A reminder job (morning).
+  // (no assignment, no owner) — the PM of record notified once per activity. Owner answer 18 Oct 2026, fourth round: also the
+  // activities with an owner but no assignment that start within 15 days (J-15), a distinct notice. A reminder job (morning).
   'undeclared-resource-alerts': async (): Promise<JobOutcome> => {
     const r = await (await import('@/server/dal/undeclared-alerts')).alertUndeclaredActivities();
     return {
-      summary: `Activities without a declared resource at ${r.today} · ${r.undeclared} found · ${r.alerted} PM notified · ${r.already} already alerted · ${r.unaddressed} without recipient`,
-      counts: { undeclared: r.undeclared, alerted: r.alerted, already: r.already, unaddressed: r.unaddressed }, warn: r.unaddressed > 0,
+      summary: `Activities without a declared resource at ${r.today} · ${r.undeclared} found · ${r.unassigned} without an assignment at J-15 · ${r.alerted} PM notified · ${r.already} already alerted · ${r.unaddressed} without recipient`,
+      counts: { undeclared: r.undeclared, unassigned: r.unassigned, alerted: r.alerted, already: r.already, unaddressed: r.unaddressed }, warn: r.unaddressed > 0,
     };
   },
 };
