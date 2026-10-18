@@ -1,5 +1,5 @@
--- Vendored copy of Matrix (github.com/Yhumiii27/Matrix, private) infra/postgres/init/02-schemas.sql at commit 16a7a50
--- (last change of infra/postgres/init: cb66837). Used by Keystone's CI only (.github/workflows/ci.yml, job postgres) to
+-- Vendored copy of Matrix (github.com/Yhumiii27/Matrix, private) infra/postgres/init/02-schemas.sql at commit 7dd3619
+-- (last change of infra/postgres/init: cdfd2e7). Used by Keystone's CI only (.github/workflows/ci.yml, job postgres) to
 -- build the shared EPC2I server's base layer. Do not edit here: copy the file again from Matrix.
 
 -- Serveur PostgreSQL commun EPC2I, étape 2 sur 3 : un schéma par outil.
