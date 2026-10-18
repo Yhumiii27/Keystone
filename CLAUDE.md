@@ -53,6 +53,7 @@ Keystone PM is EPC2i's project and portfolio management tool. It is a Next.js 16
 - **Data access:**
   - DAL in `src/server/dal/`, Drizzle schema in `src/server/db/schema/`.
   - Migrations in `drizzle/`: generate a new one with `npm run db:generate` and never edit an existing one.
+  - PostgreSQL (shared EPC2I server, owner 18 Oct 2026): tables, `pub_` views and journal in schema `keystone` (role `keystone_app`); schema files keep `pgTable`, the server migrator (`applyServerMigrations`, `src/server/db/migrations.ts`) rewrites `"public".` → `"keystone".` and every connection sets `search_path=keystone`; server transactions take the write lock `hashtext('keystone.ecritures')`. PGlite stays in `public`. Write raw SQL and views unqualified. `pub_` views (`drizzle/0035_share.sql`) are contracts: never drop or rename a column they read (recreate the view first).
   - The PGlite database is seeded from the prototype constants (`src/server/prototype/*.json`).
 - **Pure logic:** lives in `src/domain/`. Golden tests compare it with the prototype's own logic (`scripts/proto-golden-*.ts`). If a deliberate change alters a displayed value, update the test with a comment citing the decision id (for example "A-13").
 - **UI:**
