@@ -288,9 +288,9 @@ const urlOf = (name: string) => {
   u.pathname = `/${name}`;
   return u.toString();
 };
-async function admin(sqlText: string): Promise<void> {
+async function admin(sqlText: string, database?: string): Promise<void> {
   const { default: pg } = await import('pg');
-  const c = new pg.Client({ connectionString: ADMIN_URL });
+  const c = new pg.Client({ connectionString: database ? urlOf(database) : ADMIN_URL });
   await c.connect();
   try {
     await c.query(sqlText);
@@ -306,8 +306,11 @@ describe.skipIf(!ADMIN_URL)('snapshot and restore (PostgreSQL, KEYSTONE_TEST_DAT
   let pgDb: DB;
 
   beforeAll(async () => {
-    await admin(`create database ${src}`);
-    await admin(`create database ${dst}`);
+    // Each database gets the `keystone` schema, as the shared server's base layer creates it (Keystone never creates a schema).
+    for (const name of [src, dst]) {
+      await admin(`create database ${name}`);
+      await admin('create schema keystone', name);
+    }
     const { openPostgres, migrateAndSeedPostgres } = await import('@/server/db/postgres');
     const h = await openPostgres({ url: urlOf(src), poolMax: 4 });
     await migrateAndSeedPostgres(h, 'demo');

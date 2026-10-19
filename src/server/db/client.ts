@@ -1,4 +1,5 @@
 import 'server-only';
+import path from 'node:path';
 import { getConfig, type SeedMode } from '@/server/config';
 import { declareKeystoneSchema } from '@/server/integrations/matrix';
 import { log } from '@/server/log';
@@ -10,6 +11,7 @@ import type { DB } from './types';
 // Database of this server process (R-002), chosen by the configuration (src/server/config):
 // - DATABASE_URL set → PostgreSQL server through a node-postgres pool (src/server/db/postgres.ts). Migrations and the seed
 //   run at deploy time (`npm run db:migrate`); a database with pending migrations is refused.
+//   `next build` never opens it, even with DATABASE_URL set: it uses the PGlite of the data dir (the build's pre-rendering).
 // - otherwise → embedded PGlite in <data dir>/pg, created on first use, migrated from ./drizzle and seeded (KEYSTONE_SEED:
 //   demo data set by default, reference data only with "production"). The data dir is ./.data, or KEYSTONE_DATA_DIR when
 //   set (the Mac app keeps its own copy in ~/Library/Application Support/Keystone).
@@ -17,9 +19,12 @@ export type { DB, Tx } from './types';
 
 const g = globalThis as unknown as { __ksDb?: Promise<DB> };
 
+/** True while `next build` runs (Next sets NEXT_PHASE): it pre-renders pages and must never open the shared server. */
+const isProductionBuild = () => process.env.NEXT_PHASE === 'phase-production-build';
+
 async function openConfigured(): Promise<DB> {
   const cfg = getConfig();
-  if (cfg.database.driver === 'postgres') {
+  if (cfg.database.driver === 'postgres' && !isProductionBuild()) {
     const { openPostgres } = await import('./postgres');
     const h = await openPostgres({ url: cfg.database.url, poolMax: cfg.database.poolMax });
     try {
@@ -36,7 +41,7 @@ async function openConfigured(): Promise<DB> {
     await warnSeedMismatch(h.db, cfg.seedExplicit ? cfg.seed : null);
     return h.db;
   }
-  const db = await openDatabase(cfg.database.dir, undefined, { seed: cfg.seed });
+  const db = await openDatabase(cfg.database.driver === 'pglite' ? cfg.database.dir : path.join(cfg.dataDir, 'pg'), undefined, { seed: cfg.seed });
   log.info('Database opened', { component: 'db', driver: 'pglite' });
   await warnSeedMismatch(db, cfg.seedExplicit ? cfg.seed : null);
   return db;

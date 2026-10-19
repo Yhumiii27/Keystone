@@ -179,7 +179,7 @@ Keystone.app lance un serveur local avec sa propre base PGlite sur le port 3000.
 
 **~~R-002 · Passer de PGlite à un serveur PostgreSQL~~** — *Bloquant production · non commencé · effort M* · **fait (Livraison 7)**  
 Remplacer PGlite (base embarquée, une seule connexion) par PostgreSQL serveur via drizzle-orm/node-postgres et un pool de connexions. Les migrations doivent tourner au déploiement et non au premier getDb() d’un processus, pour que plusieurs instances partagent la base.  
-*Attend : Choix de l’hébergement par l’IT et la DSI (I-1a) pour la base gérée · Sources : I-1a, 00 §8.10, DELIVERY-1.md §3*
+*Avancement : Livraison 7 : pilote node-postgres, db:migrate au déploiement. 18 oct. 2026 : serveur commun EPC2I (schéma keystone, rôle keystone_app, docs/EXPLOITATION.md § 4.1). · Attend : Choix de l’hébergement par l’IT et la DSI (I-1a) pour la base gérée · Sources : I-1a, 00 §8.10, DELIVERY-1.md §3*
 
 **~~R-006 · Mettre en place des tâches planifiées côté serveur~~** — *Bloquant production · non commencé · effort M* · **fait (Livraison 7)**  
 Ajouter un worker ou une file de tâches pour le gel du vendredi (S-4), la relance des outbox Vigie et Cursus, le résumé e-mail quotidien (X-6b), la purge de la corbeille du plan et celle des fichiers orphelins. Il servira ensuite à l’import Sage (I-3b) et à la synchro PDM horaire (E-7) quand ces connecteurs existeront. Aujourd’hui rien ne tourne en tâche de fond : tout part d’un clic ou de l’affichage d’une page.  
@@ -896,6 +896,7 @@ Proposition : version tablette des écrans Chantier, Réserves et Livraisons ave
 ## 3. Mises à jour
 
 - 2026-10-19 — Correctif de déploiement (Coolify, mono-conteneur PGlite) : le script d’entrée de l’image rend /data à l’utilisateur node quand le volume a été écrit en root par l’image de la PR #1 (« PGlite failed to initialize properly ») ; curl gardé pour le contrôle de santé de Coolify.
+- 2026-10-18 — Serveur PostgreSQL commun EPC2I (étape 3, décision M-01) : sur PostgreSQL, tables, vues pub_ et journal des migrations dans le schéma keystone (rôle keystone_app), migrations publiées inchangées (« "public". » remplacé par « "keystone". » à l’application, verrou hashtext('keystone.migrations')), verrou d’écriture des transactions, numéro et code analytique d’un nouveau projet calculés dans la transaction, sauvegarde limitée au schéma keystone ; migrations 0034_share_prerequisites et 0035_share (12 vues pub_ du partage). PGlite inchangé.
 - 2026-10-18 — Réponses du 18 oct. : équipes externes exclues de la charge, alerte J-15 sur activité sans affectation, affectations nominatives dans les plannings de démonstration ; anciens risques de prérequis laissés ouverts.
 - 2026-10-18 — Livraison 9 : charge calculée depuis les affectations des plannings et par métier, alerte des activités sans ressource (R-084, partie charge) ; alerte J-15 avec risque déjà lié (R-121).
 - 2026-10-17 — PR #12 fusionnée : Keystone déclare le schéma de sa base à Matrix (catalogue des bases EPC2i) au démarrage, en arrière-plan ; variables MATRIX_URL et MATRIX_TOKEN.

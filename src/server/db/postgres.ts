@@ -3,14 +3,17 @@ import 'server-only';
 // instead of the embedded PGlite. Schema, queries and DAL are the same (src/server/db/types.ts). The application never
 // migrates nor seeds a server database: `npm run db:migrate` does both at deploy time under an advisory lock
 // (scripts/db-migrate.ts); getDb() refuses to start on a database with pending migrations.
+// Shared EPC2I server (M-01): Keystone's tables and journal live in the schema `keystone` — every connection sets
+// search_path=keystone and the migrator rewrites `"public".` (./server-schema.ts, ./migrations.ts applyServerMigrations).
 // `pg` is loaded only on this path, so development, tests and the Mac app (PGlite) never need it.
 import type { Pool, PoolClient } from 'pg';
 import { log } from '@/server/log';
-import { MIGRATIONS_FOLDER, MIGRATION_LOCK_KEY, pendingMigrations } from './migrations';
+import { MIGRATIONS_FOLDER, applyServerMigrations, type MigrationClient } from './migrations';
 import * as schema from './schema';
+import { MIGRATION_LOCK_NAME, SERVER_CONNECTION_OPTIONS, WRITE_LOCK_NAME, markServerDatabase } from './server-schema';
 import { seedIfEmpty } from './seed';
 import { readSeedRecord } from './seed/mode';
-import { withSerializableTransactions } from './transactions';
+import { withWriteLockedTransactions } from './transactions';
 import type { DB } from './types';
 import type { SeedMode } from '@/server/config/parse';
 
@@ -25,8 +28,6 @@ export interface PostgresOptions {
 export interface PostgresHandle {
   db: DB;
   pool: Pool;
-  /** Applies the pending migrations of `migrationsFolder` (drizzle's node-postgres migrator). */
-  migrate(migrationsFolder: string): Promise<void>;
   /** Closes the pool (scripts). */
   close(): Promise<void>;
 }
@@ -34,33 +35,29 @@ export interface PostgresHandle {
 /** Pool settings: idle connections are closed after 30 s, a connection attempt fails after 10 s. */
 export const POOL_TIMEOUTS = { idleTimeoutMillis: 30_000, connectionTimeoutMillis: 10_000 } as const;
 
-/** Opens a pool on a PostgreSQL server and the Drizzle handle over it (SERIALIZABLE transactions with retry, R-010). */
+/** Opens a pool on a PostgreSQL server and the Drizzle handle over it (transactions behind Keystone's write lock, with retry). */
 export async function openPostgres(opts: PostgresOptions): Promise<PostgresHandle> {
-  const [{ default: pg }, { drizzle }, { migrate }] = await Promise.all([
-    import('pg'), import('drizzle-orm/node-postgres'), import('drizzle-orm/node-postgres/migrator'),
-  ]);
+  const [{ default: pg }, { drizzle }] = await Promise.all([import('pg'), import('drizzle-orm/node-postgres')]);
   const pool = new pg.Pool({
-    connectionString: opts.url, max: opts.poolMax, application_name: opts.applicationName ?? 'keystone', ...POOL_TIMEOUTS,
+    connectionString: opts.url, max: opts.poolMax, application_name: opts.applicationName ?? 'keystone', options: SERVER_CONNECTION_OPTIONS, ...POOL_TIMEOUTS,
   });
   // An idle connection dropped by the server must not crash the process: the pool replaces it.
   pool.on('error', (err) => log.error('PostgreSQL pool connection error', { component: 'db', err }));
   const raw = drizzle({ client: pool, schema });
-  return {
-    db: withSerializableTransactions<DB>(raw),
-    pool,
-    migrate: (migrationsFolder) => migrate(raw, { migrationsFolder }),
-    close: () => pool.end(),
-  };
+  return { db: markServerDatabase(withWriteLockedTransactions<DB>(raw, WRITE_LOCK_NAME)), pool, close: () => pool.end() };
 }
 
-/** Holds the migration lock on a dedicated connection while `run` executes. */
-export async function withMigrationLock<T>(pool: Pool, run: () => Promise<T>): Promise<T> {
+/**
+ * Holds the migration lock — pg_advisory_lock(hashtext('keystone.migrations')), a key of Keystone's own on the shared database —
+ * on a dedicated connection while `run` executes; `run` receives that connection (the server migrator runs on it).
+ */
+export async function withMigrationLock<T>(pool: Pool, run: (client: MigrationClient) => Promise<T>): Promise<T> {
   const client: PoolClient = await pool.connect();
   try {
-    await client.query('select pg_advisory_lock($1)', [MIGRATION_LOCK_KEY]);
-    return await run();
+    await client.query('select pg_advisory_lock(hashtext($1))', [MIGRATION_LOCK_NAME]);
+    return await run(client as unknown as MigrationClient);
   } finally {
-    await client.query('select pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY]).catch(() => null);
+    await client.query('select pg_advisory_unlock(hashtext($1))', [MIGRATION_LOCK_NAME]).catch(() => null);
     client.release();
   }
 }
@@ -77,11 +74,10 @@ export interface MigrateResult {
  * under the migration lock. `seed: null` refuses to seed an empty database (KEYSTONE_SEED must be chosen explicitly, A-15).
  */
 export async function migrateAndSeedPostgres(h: PostgresHandle, seed: SeedMode | null, migrationsFolder = MIGRATIONS_FOLDER()): Promise<MigrateResult> {
-  return withMigrationLock(h.pool, async () => {
-    const pending = await pendingMigrations(h.db, migrationsFolder);
-    if (pending.length) await h.migrate(migrationsFolder);
+  return withMigrationLock(h.pool, async (client) => {
+    const applied = await applyServerMigrations(client, migrationsFolder);
     const seeded = await seedServerDatabase(h.db, seed);
-    return { applied: pending.length, seeded };
+    return { applied, seeded };
   });
 }
 

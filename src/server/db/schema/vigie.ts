@@ -51,6 +51,8 @@ export const vigieEcos = pgTable('vigie_ecos', {
   vigieUpdatedAt: timestamp('vigie_updated_at', { withTimezone: true }),
   /** Last refresh of this row from Vigie. */
   lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }).notNull(),
+  /** Share D12 (Matrix): when Vigie released the ECO (its pub_ view), for the release-date KPI; null until released or synced. */
+  releasedAt: timestamp('released_at', { withTimezone: true }),
 });
 
 /** Approval keys of an ECO and their state in Vigie (englead, quality, pm). */
@@ -200,6 +202,12 @@ export const vigieNcrs = pgTable(
     position: integer('position').notNull(),
     vigieUpdatedAt: timestamp('vigie_updated_at', { withTimezone: true }),
     lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }).notNull(),
+    /** Share D13 (Matrix): closure date reported by Vigie (NCR closure KPI); null while open or until synced. */
+    closedOn: date('closed_on', { mode: 'string' }),
+    /** Share D16: the supplier (suppliers.id, as Vigie reads it in keystone.pub_fournisseurs) of a supplier NCR; null otherwise. */
+    supplierId: uuid('supplier_id'),
+    /** Share D01: Cursus matricule of the NCR owner ("EMP-0018"), as Vigie sends it; null for an external owner or until synced. */
+    ownerMatricule: text('owner_matricule'),
   },
   (t) => [unique().on(t.projectCode, t.number)],
 );

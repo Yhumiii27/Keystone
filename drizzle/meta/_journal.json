@@ -239,6 +239,20 @@
       "when": 1792161094924,
       "tag": "0033_wild_paper_doll",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1792315021502,
+      "tag": "0034_share_prerequisites",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1792315023459,
+      "tag": "0035_share",
+      "breakpoints": true
     }
   ]
 }

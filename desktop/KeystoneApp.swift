@@ -106,6 +106,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     env["NODE_ENV"] = "production"
     env["NEXT_TELEMETRY_DISABLED"] = "1"
     env["KEYSTONE_DATA_DIR"] = supportDir.appendingPathComponent("data").path
+    // The Mac app always keeps its own PGlite: an empty DATABASE_URL counts as unset, and Next does not fill it from a
+    // project .env file (one with a DATABASE_URL for development would otherwise point the app at the shared server).
+    env["DATABASE_URL"] = ""
     // `next build` type-checks the project: it needs more than Node's default ~2 GB heap (a larger value set by the user wins).
     env["NODE_OPTIONS"] = "--max-old-space-size=4096 " + (env["NODE_OPTIONS"] ?? "")
     return env

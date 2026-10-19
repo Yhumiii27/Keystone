@@ -1,6 +1,7 @@
 // Organisation and reference data (docs/spec/11 §3.1): persons, users (one per person, R-039), departments, zones,
 // countries, cities, clients.
-import { boolean, date, doublePrecision, integer, pgTable, text, timestamp, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { boolean, char, check, date, doublePrecision, integer, pgTable, text, timestamp, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { ZoneCode } from '../codes';
 import { id, num, timestamps } from './_common';
 import { rateRoles } from './resources';
@@ -16,15 +17,24 @@ export const clients = pgTable('clients', {
 });
 
 /** Departments (DEPTS 3268). */
-export const departments = pgTable('departments', {
-  id: id(),
-  name: text('name').notNull().unique(),
-  headPersonId: uuid('head_person_id').references((): AnyPgColumn => persons.id),
-  /** "Head of engineering" (EN source string). */
-  headTitle: text('head_title'),
-  sortOrder: integer('sort_order').notNull(),
-  ...timestamps,
-});
+export const departments = pgTable(
+  'departments',
+  {
+    id: id(),
+    name: text('name').notNull().unique(),
+    headPersonId: uuid('head_person_id').references((): AnyPgColumn => persons.id),
+    /** "Head of engineering" (EN source string). */
+    headTitle: text('head_title'),
+    sortOrder: integer('sort_order').notNull(),
+    ...timestamps,
+    /**
+     * Share D15 (Matrix): the unit of matrix.pub_organigramme (service, or department without service) this department stands
+     * for ("ENG-MEC"); null until mapped. Keystone's departments become a cache refreshed from that view.
+     */
+    orgCode: text('org_code').unique('departments_org_code_unique'),
+  },
+  (t) => [check('departments_org_code_check', sql`${t.orgCode} ~ '^[A-Z]{3}(-[A-Z0-9]{2,12}){0,2}$'`)],
+);
 
 /**
  * Staff and external contacts (PEOPLE, OWN, PERSONAS, DEPTS heads, zone managers, ENG_DISC leads, DOC_WHO and
@@ -122,11 +132,20 @@ export const zones = pgTable('zones', {
 });
 
 /** Countries → zone (COUNTRY_ZONE 3171). */
-export const countries = pgTable('countries', {
-  name: text('name').primaryKey(),
-  zoneCode: text('zone_code').$type<ZoneCode>().notNull().references(() => zones.code),
-  sortOrder: integer('sort_order').notNull(),
-});
+export const countries = pgTable(
+  'countries',
+  {
+    name: text('name').primaryKey(),
+    zoneCode: text('zone_code').$type<ZoneCode>().notNull().references(() => zones.code),
+    sortOrder: integer('sort_order').notNull(),
+    /**
+     * Share D17 (Matrix): ISO 3166-1 alpha-2 code ("FR"), the key of matrix.pays. Written by both seeds; null only for a country
+     * added without one (no screen adds countries today).
+     */
+    iso2: char('iso2', { length: 2 }).unique('countries_iso2_unique'),
+  },
+  (t) => [check('countries_iso2_check', sql`${t.iso2} ~ '^[A-Z]{2}$'`)],
+);
 
 /** Cities used to resolve free-text sites (CITY_COUNTRY 3174, zoneOfSite). */
 export const cities = pgTable('cities', {

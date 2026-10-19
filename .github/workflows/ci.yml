@@ -2,7 +2,8 @@
 # unit tests (vitest), production build into .next-ci, then the end-to-end scenarios (Playwright, tests/e2e) against
 # `next start` on that build with a fresh database. Nothing reaches Vigie, Cursus, Codex or Anthropic: their URLs and
 # keys are not set here, so the mock connectors and the local transcript analyser run. A second job builds the deployment
-# image (Dockerfile, R-003) and starts it; the dependency audit runs in its own light workflow (audit.yml, R-174).
+# image (Dockerfile, R-003) and starts it; a third one migrates and checks Keystone on a PostgreSQL 16 shaped like the shared
+# EPC2I server; the dependency audit runs in its own light workflow (audit.yml, R-174).
 name: CI
 
 on:
@@ -113,3 +114,66 @@ jobs:
       - name: Server log
         if: always()
         run: docker logs keystone 2>&1 | tail -n 200
+
+  # Shared EPC2I server (decision M-01): a PostgreSQL 16 with the base layer of Matrix (vendored in infra/postgres-socle/: the
+  # Matrix repository is private), then, as keystone_app (owner of the schema keystone only, no CREATE on the database): two
+  # `npm run db:migrate` at the same time (one applies the migrations and seeds, the other waits for the lock and finds nothing
+  # to do), scripts/db-check.ts --postgres, and the opt-in PostgreSQL tests (fresh databases created as the superuser).
+  postgres:
+    name: PostgreSQL 16 (shared server layout)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Base layer (roles, schemas, rights)
+        run: |
+          for v in KEYSTONE_APP_PASSWORD CODEX_APP_PASSWORD CURSUS_APP_PASSWORD VIGIE_APP_PASSWORD MATRIX_APP_PASSWORD EPC2I_SAUVEGARDE_PASSWORD; do
+            p=$(openssl rand -hex 16); echo "$v=$p" >> "$GITHUB_ENV"; export "$v=$p"
+          done
+          for f in infra/postgres-socle/*.sql; do psql -d postgres -v ON_ERROR_STOP=1 -q -f "$f"; done
+
+      - name: Two db:migrate at the same time, as keystone_app
+        env:
+          KEYSTONE_SEED: demo
+        run: |
+          export DATABASE_URL="postgres://keystone_app:${KEYSTONE_APP_PASSWORD}@localhost:5432/epc2i"
+          npm run db:migrate > migrate-1.log 2>&1 & first=$!
+          npm run db:migrate > migrate-2.log 2>&1 & second=$!
+          wait $first; wait $second
+          cat migrate-1.log migrate-2.log
+          test "$(psql -d epc2i -Atc 'select count(*) from keystone.__drizzle_migrations')" = "$(ls drizzle/*.sql | wc -l)"
+          test "$(psql -d epc2i -Atc "select count(*) from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname in ('public', 'drizzle')")" = 0
+
+      - name: db-check on the server
+        run: DATABASE_URL="postgres://keystone_app:${KEYSTONE_APP_PASSWORD}@localhost:5432/epc2i" npx tsx --conditions=react-server scripts/db-check.ts --postgres
+
+      - name: PostgreSQL tests (driver parity, concurrency, backup and restore)
+        env:
+          KEYSTONE_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+        run: npx vitest run src/server/db/postgres.integration.test.ts src/server/backup/backup.test.ts

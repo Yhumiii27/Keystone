@@ -3,7 +3,7 @@ import 'server-only';
 import { asc, eq, like, sql } from 'drizzle-orm';
 import { cache } from 'react';
 import { healthOf, type Health, type HealthThresholds } from '@/domain/health';
-import { getDb } from '@/server/db/client';
+import { getDb, type DB, type Tx } from '@/server/db/client';
 import { clientCode3, machineType, stage, type CalendarCode, type CostType, type MachineTypeCode, type StageCode } from '@/server/db/codes';
 import { clients, countries, persons, projectControls, projectSites, projects } from '@/server/db/schema';
 import type { ZoneKey } from '@/server/session';
@@ -176,9 +176,12 @@ export async function getProjectData(code: string): Promise<ProjectData | null> 
 
 // ── Numbering and creation (New project wizard, docs/spec/03 §5.8) ─────────────────────────────────────
 
-/** Next project number: "#" + (max number + 1) on 3 digits — "#045" with the seed (nextProjectId 3177). */
-export async function nextProjectNumber(): Promise<string> {
-  const db = await getDb();
+/**
+ * Next project number: "#" + (max number + 1) on 3 digits — "#045" with the seed (nextProjectId 3177). Read through `q`: the
+ * wizard previews it on the database, createProject computes it inside its write transaction (plan § 4.5 in Matrix).
+ */
+export async function nextProjectNumber(q?: DB | Tx): Promise<string> {
+  const db = q ?? (await getDb());
   const [{ max }] = await db
     .select({ max: sql<number | null>`max(cast(substring(${projects.number} from 2) as integer))` })
     .from(projects);
@@ -186,16 +189,16 @@ export async function nextProjectNumber(): Promise<string> {
 }
 
 /** Registered 3-letter code of a client, else the proposed one (clientCode3 3176). */
-export async function clientCodeOf(clientName: string): Promise<{ code3: string; registered: boolean }> {
-  const db = await getDb();
+export async function clientCodeOf(clientName: string, q?: DB | Tx): Promise<{ code3: string; registered: boolean }> {
+  const db = q ?? (await getDb());
   const [c] = clientName ? await db.select({ code3: clients.code3 }).from(clients).where(eq(clients.name, clientName)) : [];
   return { code3: clientCode3(clientName, c?.code3), registered: !!c?.code3 };
 }
 
-/** Next analytic code for a client: code3 + (projects with that prefix + 1) on 3 digits (nextAnalytic 3178). */
-export async function nextAnalyticCode(clientName: string): Promise<string> {
-  const db = await getDb();
-  const { code3 } = await clientCodeOf(clientName);
+/** Next analytic code for a client: code3 + (projects with that prefix + 1) on 3 digits (nextAnalytic 3178). Read through `q`. */
+export async function nextAnalyticCode(clientName: string, q?: DB | Tx): Promise<string> {
+  const db = q ?? (await getDb());
+  const { code3 } = await clientCodeOf(clientName, db);
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(projects).where(like(projects.analyticCode, `${code3}%`));
   return code3 + String(n + 1).padStart(3, '0');
 }
@@ -220,12 +223,14 @@ export interface NewProjectInput {
  */
 export async function createProject(input: NewProjectInput): Promise<string> {
   const db = await getDb();
-  const number = await nextProjectNumber();
-  const analytic = await nextAnalyticCode(input.client);
-  const { code3 } = await clientCodeOf(input.client);
-  const code = `${code3}-${number.slice(1)}`;
   const budget = input.categories.reduce((a, c) => a + (c.budget || 0), 0) * (1 + input.contingencyPct / 100);
-  await db.transaction(async (tx) => {
+  // Number, analytic code and project code are computed inside the write transaction (SERIALIZABLE, R-010): two creations at
+  // the same time never get the same "#NNN" — the second one is run again on the first one's result.
+  return db.transaction(async (tx) => {
+    const number = await nextProjectNumber(tx);
+    const analytic = await nextAnalyticCode(input.client, tx);
+    const { code3 } = await clientCodeOf(input.client, tx);
+    const code = `${code3}-${number.slice(1)}`;
     let clientId: string | null = null;
     if (input.client) {
       const [c] = await tx.select({ id: clients.id }).from(clients).where(eq(clients.name, input.client));
@@ -244,6 +249,6 @@ export async function createProject(input: NewProjectInput): Promise<string> {
       isNew: true, currency: input.currency, calendar: input.calendar, contingencyPct: input.contingencyPct,
       templateCode: input.templateCode, sortOrder: min - 1,
     });
+    return code;
   });
-  return code;
 }
