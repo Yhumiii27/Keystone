@@ -31,7 +31,10 @@ export interface OpenedDatabase {
  * database of development, tests and the Mac app; a PostgreSQL server is opened by ./postgres.ts instead (R-002).
  */
 export async function openPglite(dataDir?: string, migrationsFolder = MIGRATIONS_FOLDER(), opts: OpenDatabaseOptions = {}): Promise<OpenedDatabase> {
-  if (dataDir) fs.mkdirSync(path.dirname(dataDir), { recursive: true });
+  if (dataDir) {
+    fs.mkdirSync(path.dirname(dataDir), { recursive: true });
+    assertWritable(dataDir);
+  }
   const client = dataDir ? new PGlite(dataDir) : new PGlite();
   const pglite = drizzle(client, { schema });
   const db: DB = withSerializableTransactions<DB>(pglite);
@@ -42,6 +45,22 @@ export async function openPglite(dataDir?: string, migrationsFolder = MIGRATIONS
   declareKeystoneSchema((sql) => client.query<Record<string, unknown>>(sql).then((r) => r.rows), { persistent: !!dataDir });
   const seeded = await seedIfEmpty(db, { mode: opts.seed });
   return { db, applied, seeded };
+}
+
+/**
+ * An existing PGlite folder this process cannot write (a volume written by an image that ran as root, a host folder) makes
+ * PGlite fail with a bare "PGlite failed to initialize properly": name the folder and the fix instead.
+ */
+function assertWritable(dataDir: string): void {
+  for (const target of [dataDir, path.join(dataDir, 'PG_VERSION')]) {
+    if (!fs.existsSync(target)) continue;
+    try {
+      fs.accessSync(target, fs.constants.W_OK);
+    } catch {
+      const uid = typeof process.getuid === 'function' ? process.getuid() : '?';
+      throw new Error(`The PGlite data folder ${dataDir} is not writable by this process (uid ${uid}): give the folder and its files to this user (chown -R), or start the container as root so its entrypoint does it`);
+    }
+  }
 }
 
 /** openPglite() returning the handle only (the app, tests and scripts). */
