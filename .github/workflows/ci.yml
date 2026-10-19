@@ -82,9 +82,17 @@ jobs:
       - name: Build the image
         run: docker build --tag keystone-pm:ci .
 
-      - name: Start it (PGlite, demo data, demo sign-in)
+      # The volume of a deployment made with the PR #1 image, which ran as root: a PGlite database owned by root (Coolify,
+      # 18 Oct 2026: "PGlite failed to initialize properly" once the image ran as node). The entrypoint gives it to node.
+      - name: A data volume written as root
         run: >-
-          docker run --detach --name keystone --publish 127.0.0.1:3080:3000
+          docker volume create keystone-data &&
+          docker run --rm --user root --entrypoint npm --volume keystone-data:/data --env KEYSTONE_SEED=demo
+          keystone-pm:ci run db:migrate
+
+      - name: Start it on that volume (PGlite, demo data, demo sign-in)
+        run: >-
+          docker run --detach --name keystone --publish 127.0.0.1:3080:3000 --volume keystone-data:/data
           --env KEYSTONE_SEED=demo --env KEYSTONE_AUTH=demo --env KEYSTONE_FILE_SCAN=off --env KEYSTONE_JOBS=inprocess
           keystone-pm:ci
 
@@ -99,7 +107,8 @@ jobs:
           test "$code" = 200 || { echo "health: $code"; exit 1; }
           page=$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:3080/)
           test "$page" = 200 || { echo "home page: $page"; exit 1; }
-          test "$(docker inspect --format '{{.Config.User}}' keystone-pm:ci)" = node
+          test "$(docker exec keystone stat -c %U /proc/1)" = node
+          test "$(docker exec keystone stat -c %U /data/pg)" = node
 
       - name: Server log
         if: always()

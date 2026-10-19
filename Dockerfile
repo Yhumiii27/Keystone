@@ -11,7 +11,7 @@
 FROM node:22-bookworm-slim
 
 # PostgreSQL 16 client tools for the backups (Debian bookworm ships 15, which cannot dump a 16 server) and the time zone data
-# TZ needs. curl is only used here and removed again: the health check below uses node's fetch.
+# TZ needs. curl stays: Coolify's own health check (enabled in its UI) needs curl or wget in the image.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates curl tzdata \
  && install -d /usr/share/postgresql-common/pgdg \
@@ -19,7 +19,6 @@ RUN apt-get update \
  && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
  && apt-get update \
  && apt-get install -y --no-install-recommends postgresql-client-16 \
- && apt-get purge -y --auto-remove curl \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -54,12 +53,14 @@ ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0
 
 # A non-root user owns the data folder, the backup folder (a named volume mounted there takes this ownership) and Next's
-# runtime cache; the code stays read-only to it.
+# runtime cache; the code stays read-only to it. The container starts as root only for deploy/entrypoint.sh, which gives
+# /data and /backups to that user when a volume holds files owned by root (a volume of the PR #1 image, which ran as root, or
+# a host folder), then runs every command (web server, migration, worker, backups) as that user.
 RUN mkdir -p /data /backups && chown node:node /data /backups && chown -R node:node /app/.next
-USER node
 
 EXPOSE 3000
-# GET /api/health: 200 when the database answers and has no pending migration (R-009). No curl or wget in the slim image.
+# GET /api/health: 200 when the database answers and has no pending migration (R-009).
 HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=3 \
   CMD ["node", "-e", "fetch('http://127.0.0.1:3000/api/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+ENTRYPOINT ["/app/deploy/entrypoint.sh"]
 CMD ["node_modules/.bin/next", "start", "-H", "0.0.0.0", "-p", "3000"]

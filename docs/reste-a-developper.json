@@ -1,6 +1,6 @@
 {
  "generated": "2026-10-10",
- "updated": "2026-10-18",
+ "updated": "2026-10-19",
  "branch": "main-2a2fep",
  "history": [
   {
@@ -78,6 +78,10 @@
   {
    "date": "2026-10-18",
    "text": "Réponses du 18 oct. : équipes externes exclues de la charge, alerte J-15 sur activité sans affectation, affectations nominatives dans les plannings de démonstration ; anciens risques de prérequis laissés ouverts."
+  },
+  {
+   "date": "2026-10-19",
+   "text": "Correctif de déploiement (Coolify, mono-conteneur PGlite) : le script d’entrée de l’image rend /data à l’utilisateur node quand le volume a été écrit en root par l’image de la PR #1 (« PGlite failed to initialize properly ») ; curl gardé pour le contrôle de santé de Coolify."
   }
  ],
  "items": [
