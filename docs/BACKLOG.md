@@ -98,6 +98,15 @@ plusieurs exemplaires — par exemple **une EMP et plusieurs MEMU**. L’approch
 commun au projet (contrat, facturation, équipe, documents) ; l’effet sur les modèles de type de machine et sur les projets
 existants (un seul équipement). D’ici là, aucune nouvelle fonction ne doit supposer « un seul type de machine par projet ».
 
+## 1 quater. Demandé — Méthodologie DIG-PRODI (CAPEX filiale → besoin machine → projet EPC2i)
+
+**Besoin (2026-10-21, responsable produit).** Le CDC DIG-PRODI v4.0 (brouillon, `docs/dig-prodi/CDC-DIG-PRODI-v4.0-draft.md`)
+décrit le pilotage du CAPEX d’usine par les filiales (4 phases, jalons G1/G2/G3, 3 dossiers vivants). Le projet doit commencer
+par un CAPEX ouvert par la filiale, qui ouvre un besoin machine chez EPC2i, idéalement depuis un catalogue de machines.
+
+**Analyse et lots proposés D-1 à D-12** : `docs/dig-prodi/ANALYSE-DIG-PRODI.md` (§6 : décisions à prendre). Rien n’est
+construit avant validation ; le cadrage multi-équipements (§1 ter) est à trancher dans le lot D-3.
+
 ## 2. Proposés — à valider
 
 | # | Outil | Pourquoi (contexte Keystone) | Portée indicative |
