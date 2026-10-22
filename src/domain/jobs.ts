@@ -43,6 +43,9 @@ export type JobName =
   // ── Delivery 9 · R-180: Keystone's planned tasks (schedule assignments and tasks per person) sent to Cursus as a snapshot,
   // every night (Cursus docs/API-KEYSTONE.md: « un instantané chaque nuit pour rattraper un envoi perdu »).
   | 'cursus-tasks'
+  // ── Delivery 9 · R-189 (Arche K-04): the progress and SPI of each project, computed in TypeScript, kept for the SQL view
+  // pub_avancement_projets (share_project_progress); hourly, a row changes only when a value does.
+  | 'share-progress'
   ;
 
 export interface JobSchedule {
@@ -97,6 +100,9 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
   // ── Delivery 9 · R-180: the Cursus task snapshot, once a night at NIGHT_JOBS_AT (a retryable failure is sent again by
   // "cursus-outbox"); with the mock connector it records what would be sent.
   { name: 'cursus-tasks', everyMs: 24 * HOUR, leaseMs: 15 * MIN, firstDelayMs: 60_000, daily: 'night' },
+  // ── Delivery 9 · R-189: progress and SPI published to Arche (pub_avancement_projets), every hour — the view's readers poll
+  // every 15 minutes and the figures move with the activities' progress, which the PM records during the week.
+  { name: 'share-progress', everyMs: HOUR, leaseMs: 15 * MIN, firstDelayMs: 65_000 },
 ];
 
 export const JOB_NAMES: readonly JobName[] = JOB_SCHEDULES.map((j) => j.name);

@@ -8,7 +8,7 @@ Format d'une entrée :
 - Validé par Guillaume le : (date)
 
 ## [2026-10-22] Crucible → Keystone — Publier les jalons des projets (vue pub_jalons)
-- Statut : OUVERTE
+- Statut : FAITE
 - Demande : publier une vue `keystone.pub_jalons` des jalons des projets, avec la date de fin de l'activité liée quand elle est datée.
 - Justification : Crucible (planification des moyens d'essais R&D partagés, dépôt Yhumiii27/Crucible) anticipe les besoins d'essais à partir des échéances des projets (rétro-planification, plan de charge prévisionnel, livraison 3 de Crucible). Les jalons existent dans Keystone mais ne sont pas publiés. Sans la vue, les jalons des projets présents dans Keystone sont ressaisis à la main dans Crucible (double saisie, risque d'écart). Matrix a déjà prévu le droit de lecture (`infra/postgres/partage/90-droits.sql` : `keystone.pub_jalons` → `crucible_app`).
 - Détails techniques : vue `pub_jalons` (schéma `keystone`, `WITH (security_barrier)`, contrat : colonnes ajoutées en fin seulement) sur `milestones` jointe à `projects` et, si `activity_id` est posé, à `activities`. Colonnes : `projet_code` (text, `projects.code`), `jalon_id` (uuid), `nom` (text), `position` (integer), `mois_reference` (`baseline_month`), `mois_prevu` (`forecast_month`), `statut` (text), `activite_code` (text, null si aucune activité liée), `date_fin_activite` (date, `activities.finish_date`, null si non datée), `maj_le` (timestamptz). Lecteur : `crucible_app` (droit accordé par Matrix). Crucible lit par `projet_code` et `maj_le`.
@@ -26,14 +26,14 @@ Format d'une entrée :
 - Validé par Guillaume le : 2026-10-22
 
 ## [2026-10-22] Arche → Keystone — Rattacher les projets EPC2i au CAPEX dans pub_projets (R-190)
-- Statut : OUVERTE
+- Statut : ACCEPTÉE — fait : capex_code et besoin_ref en fin de pub_projets (écran Contrat) ; reste : drapeau « client interne » sur les clients (avec R-179)
 - Demande : (K-05) ajouter en fin de vue `pub_projets` les colonnes `capex_code` et `besoin_ref` ; admettre qu'une filiale du groupe soit le client d'un projet (client interne).
 - Justification : Arche affiche, sur chaque CAPEX, les projets EPC2i qui livrent ses machines. Sans ces colonnes, Arche ne retrouve un projet que par le `projet_code` d'une réponse acceptée (`pub_reponses_besoins`) : un projet ouvert hors de ce circuit reste invisible dans Arche.
 - Détails techniques : `capex_code` text (`CPX-SAI-2026-01`, null pour un projet sans CAPEX), `besoin_ref` text (premier besoin à l'origine du projet, `CPX-SAI-2026-01/B01`), ajoutées après `maj_le` (contrat D02 v1 inchangé pour les lecteurs actuels). Arche lit `code`, `nom`, `phase_code`, `phase`, `chef_projet_nom`, `capex_code`, `besoin_ref`, `maj_le`.
 - Validé par Guillaume le : 2026-10-22
 
 ## [2026-10-22] Arche → Keystone — Vues de suivi des projets pour les jalons CAPEX (R-189, R-191)
-- Statut : OUVERTE
+- Statut : ACCEPTÉE — fait : pub_jalons_projets, pub_avancement_projets, pub_avenants, pub_reserves, pub_livrables + 3 colonnes ; reste : pub_pack_ingenierie (attend R-191) et les dates BL1 des jalons (reference_le vide)
 - Demande : (K-04) publier `pub_jalons_projets`, `pub_avancement_projets` (côté vente seulement : aucun coût interne, taux ni marge), `pub_avenants`, `pub_reserves` ; (K-06) ajouter en fin de `pub_livrables` les colonnes `type`, `accepte_le`, `maj_le` ; (K-08) publier `pub_pack_ingenierie`.
 - Justification : trois critères des jalons d'Arche en dépendent — K3 « SAT EPC2i planifiés », G3 « réserves A/B levées et PV de réception acceptés », G2 « pack d'ingénierie au-dessus du seuil » — ainsi que le suivi des projets EPC2i sur la page du CAPEX (livraisons 5 et 6 d'Arche). Sans ces vues, ces critères sont forcés avec motif et la page n'affiche aucun suivi en production.
 - Détails techniques : schéma `keystone`, `WITH (security_barrier)`, lecteur `arche_app` ; Arche filtre par `projet_code`.

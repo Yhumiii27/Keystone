@@ -26,6 +26,8 @@ describe('jobs and schedules', () => {
       ['undeclared-resource-alerts', 1440, 15],
       // Delivery 9 (R-180): Keystone's planned tasks sent to Cursus as one snapshot, once a night.
       ['cursus-tasks', 1440, 15],
+      // Delivery 9 (R-189, Arche K-04): progress and SPI kept for pub_avancement_projets, hourly.
+      ['share-progress', 60, 15],
     ]);
     expect(JOB_SCHEDULES.filter((j) => j.daily === 'night').map((j) => j.name)).toEqual(['cursus-tasks']);
     expect(NIGHT_JOBS_AT).toBe('02:00');

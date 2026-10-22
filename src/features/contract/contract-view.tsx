@@ -4,7 +4,7 @@
 // Delivery 7: "Currency & budget rate" (C-9, R-075 — the portfolio director edits it), the amendments' signature cycle and
 // the guarantees' release (R-079), and the amendments' own milestones grouped under them in the schedule (NEW-D3-3).
 import { FileText } from '@phosphor-icons/react/dist/ssr';
-import { Fragment } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { KpiGrid, KpiTile } from '@/components/app/Kpi';
 import { Stack } from '@/components/app/SectionCard';
 import type { FormDef } from '@/components/app/form-def';
@@ -15,6 +15,7 @@ import { Table, Th } from '@/components/ds/Table';
 import { documentsHref } from '@/features/docs/links';
 import type { T } from '@/i18n/translate';
 import { BudgetRateForm } from './budget-rate-form';
+import { CapexLinkForm } from './capex-link-form';
 import { FormButton } from './form-button';
 import type { ContractView, CurrencyView } from './model';
 import { EditMilestoneButton, ReleaseBondButton, RemoveMilestoneButton, SendAmendmentButton, SignAmendmentButton } from './row-actions';
@@ -38,6 +39,8 @@ export interface ContractScreenProps {
     editMilestone?: (onAmendment: boolean) => FormDef;
   };
   t: T;
+  /** R-190: the "CAPEX link" card, rendered after "Currency & budget rate". */
+  capexCard?: ReactNode;
 }
 
 /** "Currency & budget rate" card (C-9): read-only line for everyone, the editor for the portfolio director. */
@@ -71,7 +74,37 @@ export function CurrencyCard({ fx, code, canSetRate, t }: { fx: CurrencyView; co
   );
 }
 
-export function ContractScreen({ view, code, canEdit, canSetRate, context, forms, t }: ContractScreenProps) {
+/**
+ * "CAPEX link" card (R-190, Arche K-05): the subsidiary CAPEX the project delivers and the machine need at its origin (as typed,
+ * Arche's references), published to Arche in pub_projets; the editor for the director and the project's leads.
+ */
+export function CapexLinkCard({ link, code, canEdit, t }: { link: { capexCode: string | null; needRef: string | null }; code: string; canEdit: boolean; t: T }) {
+  return (
+    <Card className={s.listCard}>
+      <div className={s.headTop}>
+        <div className={s.titleCol}>
+          <CardTitle>{t('CAPEX link')}</CardTitle>
+          <span className={s.subtitle}>{t('The subsidiary CAPEX this project delivers · shared with the CAPEX application')}</span>
+        </div>
+      </div>
+      <div className={s.rateLine}>
+        <span>{t('CAPEX code')}</span>
+        <span className={s.num}>{link.capexCode ?? '—'}</span>
+        <span className={s.meta}>{link.capexCode ? (link.needRef ?? t('No machine need')) : t('No CAPEX')}</span>
+      </div>
+      {canEdit && (
+        <CapexLinkForm
+          code={code}
+          capexCode={link.capexCode ?? ''}
+          needRef={link.needRef ?? ''}
+          labels={{ capex: t('CAPEX code'), need: t('Machine need'), save: t('Save CAPEX link'), saved: t('CAPEX link saved') }}
+        />
+      )}
+    </Card>
+  );
+}
+
+export function ContractScreen({ view, code, canEdit, canSetRate, context, forms, t, capexCard }: ContractScreenProps) {
   const add = (kind: 'amendment' | 'bond' | 'milestone', label: string) =>
     canEdit && <FormButton kind={kind} code={code} context={context} form={forms[kind]} label={t(label)} size="xs" push nowrap />;
   const base = view.milestones.filter((m) => m.group == null);
@@ -129,6 +162,7 @@ export function ContractScreen({ view, code, canEdit, canSetRate, context, forms
       </Card>
 
       <CurrencyCard fx={view.fx} code={code} canSetRate={canSetRate} t={t} />
+      {capexCard}
 
       <div className={s.pair}>
         <Card className={s.listCard}>

@@ -129,6 +129,11 @@ const RUNS: Record<JobName, () => Promise<JobOutcome>> = {
     if (r.state === 'sent') return { summary: `Cursus tasks sent · ${what} · ${r.rejected} refused`, counts, warn: r.rejected > 0 };
     return { summary: `Cursus tasks ${r.state === 'pending' ? 'not sent (retried every 5 minutes)' : 'refused'} · ${what} · ${r.error ?? ''}`, counts, warn: true };
   },
+  // ── Delivery 9 · R-189 (Arche K-04): progress and SPI of every project, kept for pub_avancement_projets.
+  'share-progress': async (): Promise<JobOutcome> => {
+    const r = await (await import('@/server/dal/share-progress')).refreshShareProgress();
+    return { summary: `Shared progress · ${r.projects} projects · ${r.changed} changed`, counts: r };
+  },
 };
 
 export const JOB_DEFINITIONS: readonly JobDefinition[] = JOB_SCHEDULES.map((s) => ({ ...s, run: RUNS[s.name] }));

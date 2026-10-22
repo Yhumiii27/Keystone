@@ -114,6 +114,10 @@
   {
    "date": "2026-10-22",
    "text": "Tâches planifiées envoyées à Cursus (R-180) : chaque nuit et avec « Synchroniser », les affectations nominatives du planning et les tâches Keystone de chaque personne qui a un matricule partent vers Cursus en un instantané, pour que la feuille de temps « Propose depuis Keystone » ; reprise automatique après un échec, tâches refusées comptées, état visible sur la ligne Cursus d’Activité & intégrations."
+  },
+  {
+   "date": "2026-10-22",
+   "text": "Vues de partage pour Crucible et Arche (R-195, R-190, R-189) : pub_jalons, pub_jalons_projets, pub_avancement_projets (côté vente, sans coût ni marge), pub_avenants, pub_reserves ; colonnes ajoutées en fin de pub_projets (capex_code, besoin_ref, saisis sur l’écran Contrat) et de pub_livrables (type, accepte_le, maj_le) ; tâche horaire share-progress pour l’avancement et le SPI ; droits des lecteurs à poser dans Matrix."
   }
  ],
  "items": [
@@ -5464,8 +5468,9 @@
     "drizzle/0035_share.sql (vues pub_ existantes)"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-04 — pub_jalons_projets, pub_avancement_projets (côté vente, sans coût ni marge), pub_avenants, pub_reserves ; K-06 — pub_livrables : type, accepte_le, maj_le en fin de vue ; K-11 — index sur maj_le des vues lues (lecture incrémentale)."
+    "state": "en_cours",
+    "delivery": "Livraison 9",
+    "note": "Livraison 9, lot « share-views » (docs/delivery-9/notes-share-views.md, migration 0038_share_followup) : pub_jalons_projets (8 jalons par projet : commande, fin d’études, FAT, expédition, arrivée site, SAT, PV, fin de garantie, rapprochés des étapes, de l’ITP, de la mise en service, des PV et de la garantie), pub_avancement_projets (côté vente seulement : avancement physique et SPI tenus par la tâche horaire share-progress, fin prévue, contrat, avenants signés et facturé en k€ ; aucun coût interne, taux, CPI, EAC ni marge — testé), pub_avenants (brouillons exclus), pub_reserves ; pub_livrables + type, accepte_le, maj_le en fin de vue ; colonnes vérifiées par db-check (aussi sur PostgreSQL). Reste : droits d’arche_app et copie des vues dans Matrix (demande à déposer après validation), dates BL1 des jalons (reference_le vide : code de jalon CAPEX sur les jalons du planning, à valider), index maj_le (K-11), pub_pack_ingenierie (R-191)."
    }
   },
   {
@@ -5487,8 +5492,9 @@
     "src/server/db/schema/portfolio.ts (clients, projects)"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-05 — pub_projets : capex_code et besoin_ref en fin de vue ; client interne = filiale."
+    "state": "en_cours",
+    "delivery": "Livraison 9",
+    "note": "Livraison 9, lot « share-views » : projects.capex_code et besoin_ref (formats d’Arche CPX-SAI-2026-01, CPX-SAI-2026-01/B01, contrôlés en base), carte « Rattachement CAPEX » de l’écran Contrat pour le directeur et les responsables du projet (audit et fil d’activité), publiés en fin de pub_projets. Un client peut déjà être une filiale (saisie libre) ; drapeau « client interne » non ajouté (aucun écran d’administration des clients) — à reprendre avec R-179 (portail réservé aux clients externes) et la création du projet à la commande (R-187)."
    }
   },
   {
@@ -5607,8 +5613,9 @@
     "src/server/db/schema (jalons des projets)"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": "Consigné le 22 oct. 2026 (demande de Crucible) ; à valider avant de construire."
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Livraison 9, lot « share-views » (docs/delivery-9/notes-share-views.md) : vue pub_jalons (projet_code, jalon_id, nom, position, mois_reference, mois_prevu, statut, activite_code, date_fin_activite, maj_le) selon la demande validée de Crucible ; milestones.updated_at ajouté (maj_le). Le droit de lecture de crucible_app (et le rôle) reste à poser dans Matrix (partage/90-droits.sql)."
    }
   },
   {

@@ -260,6 +260,20 @@
       "when": 1792701579008,
       "tag": "0036_cursus_task_pushes",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1792706749282,
+      "tag": "0037_share_followup_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1792706796627,
+      "tag": "0038_share_followup",
+      "breakpoints": true
     }
   ]
 }
