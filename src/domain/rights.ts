@@ -113,6 +113,13 @@ export const canManageTeam = (role: RoleKey, a: Pick<ProjectAccess, 'teamRole'>)
 export const canEditContract = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) =>
   role === 'director' || role === 'finance' || (a.lead && role !== 'client' && canSee(role, 'contract'));
 
+/**
+ * R-190 (Arche K-05): the project's CAPEX link (CAPEX code, machine need) — the director and the project's leads (PM of record,
+ * co-PM, deputy) who see the Contract screen; not Finance, which edits the contract's money, not the project's origin.
+ */
+export const canSetCapexLink = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) =>
+  role === 'director' || (a.lead && role !== 'client' && role !== 'finance' && canSee(role, 'contract'));
+
 /** R-044: Finance reads Budget, Hours and Billing, even on a project whose team it is on (billing gate unchanged). */
 export const FINANCE_READ_ONLY_SCREENS: readonly ScreenId[] = ['budget', 'hours', 'billing'];
 export const financeReadOnly = (role: RoleKey, screen: ScreenId) => role === 'finance' && FINANCE_READ_ONLY_SCREENS.includes(screen);

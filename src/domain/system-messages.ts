@@ -70,6 +70,12 @@ const MESSAGES = {
     (p) => `Raised ${p.risk} from a late client prerequisite (after ${p.previous}) · ${p.prerequisite}`,
     (p, f) => `Risque ${p.risk} ouvert depuis un prérequis client en retard (après ${p.previous}) · ${f.data(p.prerequisite)}`,
   ),
+  // R-190 (Arche K-05): the project's CAPEX link set on the Contract screen (audit trail and activity feed; '—' = none).
+  'project.capexLink': def(
+    { from: 'ref', to: 'ref' },
+    (p) => `CAPEX link: ${p.from} → ${p.to}`,
+    (p) => `Rattachement CAPEX : ${p.from} → ${p.to}`,
+  ),
 } as const;
 
 export type MessageKey = keyof typeof MESSAGES;

@@ -19,7 +19,9 @@ import {
   MilestoneEditError, addAmendment, addBond, addPaymentMilestone, getContract, issueInvoice, markInvoicePaid, releaseBond, removePaymentMilestone,
   sendAmendmentForSignature, signAmendment, updateContractSheet, updatePaymentMilestone, type ProjectContract,
 } from '@/server/dal/contract';
-import { canSetBudgetRate } from '@/domain/rights';
+import { canSetBudgetRate, canSetCapexLink } from '@/domain/rights';
+import { parseCapexLink } from '@/domain/capex-link';
+import { setCapexLink } from '@/server/dal/capex-link';
 import { setProjectBudgetRate } from '@/server/dal/currency';
 import { getProject } from '@/server/dal/projects';
 import { getProjectContext } from '@/server/project-context';
@@ -317,6 +319,28 @@ export async function setBudgetRateAction(code: string, currency: string, rate: 
     await setProjectBudgetRate(project.code, { currency, rate }, { name: ctx.viewer.name, role: ctx.viewer.role });
   } catch (e) {
     return { error: await tr(knownError(e) ?? 'The change could not be saved') };
+  }
+  refresh();
+  return { ok: true };
+}
+
+/**
+ * R-190 (Arche K-05): the project's CAPEX link — the subsidiary CAPEX code and the first machine need at its origin, published at
+ * the end of pub_projets for Arche. The director and the project's leads (`canSetCapexLink`), on a project they may edit; Arche's
+ * formats (CPX-SAI-2026-01, CPX-SAI-2026-01/B01); empty clears.
+ */
+export async function setCapexLinkAction(code: string, capexCode: string, needRef: string): Promise<ContractEditResult> {
+  if (typeof code !== 'string' || !code || typeof capexCode !== 'string' || typeof needRef !== 'string') return { error: await tr('Invalid request') };
+  const project = await getProject(code);
+  if (!project) return { error: await tr('Unknown project') };
+  const ctx = await getProjectContext(project.code, 'contract');
+  if (!canSetCapexLink(ctx.viewer.role, ctx.access) || !ctx.canEdit('contract')) return { error: await tr('Only the project’s leads and the director set the CAPEX link') };
+  const parsed = parseCapexLink({ capexCode, needRef });
+  if (!parsed.ok) return { error: await tr(parsed.error) };
+  try {
+    await setCapexLink(project.code, parsed.value, { name: ctx.viewer.name, role: ctx.viewer.role });
+  } catch {
+    return { error: await tr('The change could not be saved') };
   }
   refresh();
   return { ok: true };

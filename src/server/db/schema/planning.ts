@@ -158,6 +158,8 @@ export const milestones = pgTable('milestones', {
   forecastMonth: months('forecast_month').notNull(),
   status: text('status').$type<MilestoneStatus>().notNull(),
   activityId: uuid('activity_id').references(() => activities.id),
+  /** Last change (R-195: `maj_le` of pub_jalons, read by Crucible); set by the schedule's milestone roll-up. */
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 /**

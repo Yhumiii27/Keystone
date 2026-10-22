@@ -1,0 +1,15 @@
+{
+  "CAPEX link": "Rattachement CAPEX",
+  "The subsidiary CAPEX this project delivers · shared with the CAPEX application": "Le CAPEX de la filiale que ce projet livre · partagé avec l’application CAPEX",
+  "CAPEX code": "Code CAPEX",
+  "No machine need": "Aucun besoin machine",
+  "No CAPEX": "Aucun CAPEX",
+  "Machine need": "Besoin machine",
+  "Save CAPEX link": "Enregistrer le rattachement",
+  "CAPEX link saved": "Rattachement CAPEX enregistré",
+  "Only the project’s leads and the director set the CAPEX link": "Seuls les responsables du projet et le directeur fixent le rattachement CAPEX",
+  "Enter a CAPEX code like CPX-SAI-2026-01": "Saisissez un code CAPEX de la forme CPX-SAI-2026-01",
+  "Enter the CAPEX code first": "Saisissez d’abord le code CAPEX",
+  "Enter a need reference like CPX-SAI-2026-01/B01": "Saisissez une référence de besoin de la forme CPX-SAI-2026-01/B01",
+  "The need belongs to another CAPEX": "Ce besoin appartient à un autre CAPEX"
+}

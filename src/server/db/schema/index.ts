@@ -31,3 +31,4 @@ export * from './scheduling';
 export * from './files';
 export * from './jobs';
 export * from './cost-control';
+export * from './share';

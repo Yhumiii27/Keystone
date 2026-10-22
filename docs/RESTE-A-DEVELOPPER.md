@@ -8,21 +8,21 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-22 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 104 faits, 27 en cours, 66 à faire, sur 197 points.
+**Avancement** : 105 faits, 29 en cours, 63 à faire, sur 197 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
 | Bloquant production | 16 | ≈ 106 |
 | Prochaine étape | 22 | ≈ 184 |
-| À décider | 35 | ≈ 290 |
+| À décider | 34 | ≈ 286 |
 | Plus tard | 20 | ≈ 74 |
-| **Total** | **93** | **≈ 653** |
+| **Total** | **92** | **≈ 649** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
-| Non commencé | 42 |
+| Non commencé | 41 |
 | Partiel | 11 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
@@ -31,7 +31,7 @@ L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il
 |---|---:|---:|---:|---:|---:|---:|
 | Plateforme et mise en production | 7 | 5 | 0 | 2 | 14 | 11 |
 | Authentification, utilisateurs et droits | 1 | 0 | 3 | 1 | 5 | 12 |
-| Intégrations avec les autres systèmes | 5 | 6 | 5 | 5 | 21 | 4 |
+| Intégrations avec les autres systèmes | 5 | 6 | 4 | 5 | 20 | 5 |
 | Projets, cycle de vie et modèles par type de machine | 0 | 1 | 4 | 1 | 6 | 3 |
 | Planning | 1 | 0 | 3 | 1 | 5 | 3 |
 | Coûts, contrat et finance | 0 | 2 | 3 | 0 | 5 | 12 |
@@ -108,7 +108,6 @@ Décisions à prendre et données à fournir avant de pouvoir développer. Les q
 - **R-190** Filiale = client interne ; projet rattaché à son CAPEX — R-187
 - **R-191** Part EPC2i du pack ingénierie et son % de complétude (vue pub_pack_ingenierie) — Liste type du pack ingénierie (CDC, point C-9)
 - **R-192** Sécurité machine : HazOp / AMDEC, ATEX, condition PSSR avant mise en service — Vigie : porte-t-il HazID / HazOp / AMDEC / PSSR ?
-- **R-195** Vue pub_jalons des échéances des projets (pour Crucible) — Validation du responsable produit ; contrat commun avec R-189
 - **R-196** Catégorie « R&D » des projets lisible dans pub_projets (pour Crucible) — Décision : comment reconnaître un projet R&D
 
 ### 1.3 Ce qui attend les autres applications
@@ -244,9 +243,9 @@ Choisir si les rôles (directeur, CP, chef de service, achats, qualité, futur r
 Le responsable produit a retenu « pas d'accès client au lancement » (I-2b) ; le portail est construit mais le client n'est qu'un profil de démonstration rattaché à une organisation codée en dur. Avant d'ouvrir le portail, décider du mode de connexion des clients (invités Entra B2B ou lien par e-mail), de leur rattachement à une organisation et des conditions d'utilisation, puis le brancher.  
 *Attend : Décision du responsable produit et de la DSI sur la date d'ouverture du portail et le mode de connexion client · Sources : I-2b, 00 §8.12, 00 §10 I-2, P-10c, DELIVERY-6.md §4 (Client portal), §8 P-1*
 
-**R-190 · Filiale = client interne ; projet rattaché à son CAPEX** — *À décider · non commencé · effort S*  
+**R-190 · Filiale = client interne ; projet rattaché à son CAPEX** — *À décider · non commencé · effort S* · **en cours (Livraison 9)**  
 Un client peut être une filiale du groupe (organisation interne) ; un projet porte la référence de son CAPEX et de son besoin ; les filiales suivent leurs projets dans l’application CAPEX, pas dans le portail client (réservé aux clients externes, R-179).  
-*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-05 — pub_projets : capex_code et besoin_ref en fin de vue ; client interne = filiale. · Attend : R-187 · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
+*Avancement : Livraison 9, lot « share-views » : projects.capex_code et besoin_ref (formats d’Arche CPX-SAI-2026-01, CPX-SAI-2026-01/B01, contrôlés en base), carte « Rattachement CAPEX » de l’écran Contrat pour le directeur et les responsables du projet (audit et fil d’activité), publiés en fin de pub_projets. Un client peut déjà être une filiale (saisie libre) ; drapeau « client interne » non ajouté (aucun écran d’administration des clients) — à reprendre avec R-179 (portail réservé aux clients externes) et la création du projet à la commande (R-187). · Attend : R-187 · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
 
 **R-051 · Ajouter la délégation des validations à un suppléant sur une période** — *Plus tard · non commencé · effort M*  
 L’approbateur déclare un suppléant et des dates ; pendant cette période, ses validations (documents, demandes, commandes, Mes validations) sont routées vers le suppléant, et les décisions sont tracées à son nom.  
@@ -300,7 +299,7 @@ Seuls l’organisateur et le CP du projet envoient le compte rendu ; les interne
 Chercher commandes, CR, NCR et risques sur tous les projets, chaque résultat ouvrant son projet, en filtrant les résultats selon les droits du lecteur (un client ne voit que ses projets). Aujourd’hui la recherche ignore l’utilisateur et limite ces objets au projet courant.  
 *Avancement : Livraison 8 : recherche globale sur tout le portefeuille (X-5), projet courant d’abord ; le client voit les demandes de modification de ses propres projets. · Sources : X-5, 01 OQ18, 00 §7.6, DELIVERY-1.md §4*
 
-### 2.3 Intégrations avec les autres systèmes (21 restants, 4 faits)
+### 2.3 Intégrations avec les autres systèmes (20 restants, 5 faits)
 
 **R-022 · Réconcilier les codes projet (#000, XXX000, Cursus, Vigie) dans la fiche projet** — *Bloquant production · attend le responsable produit · effort M*  
 La fiche projet doit porter et réconcilier le numéro ingénierie #000 (liste incrémentée) et le code analytique XXX000 créé dans Sage et donc imposé, au lieu de les générer. Elle doit aussi tenir la correspondance avec les identifiants Cursus (chantier K-26xx) et Vigie (K-2025-042), clé commune de tous les connecteurs.  
@@ -354,13 +353,9 @@ Keystone créera le chantier Cursus (NEW-CURSUS-1), mais rien n'est décidé pou
 Connecteur capex (miroir de pub_capex et pub_besoins_machines, liens profonds, simulation) ; corbeille « Besoins des filiales » ; qualification, réponse chiffrée avec classe d’estimation, devis puis offre (Codex) ; création du projet EPC2i au G2 du CAPEX avec la référence du CAPEX et du besoin ; vue pub_reponses_besoins. Rejoint la proposition P6 (offres et chiffrage).  
 *Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-02 — connecteur capex (lire arche.pub_capex et arche.pub_besoins_machines, liens profonds <ARCHE_URL>/capex/<code>), corbeille « Besoins des filiales », pub_reponses_besoins ; K-10 — à la commande, créer le projet EPC2i ou ajouter des équipements à un projet existant, code publié dans pub_reponses_besoins.projet_code. · Attend : R-185, R-186, R-188 et l’application CAPEX · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
 
-**R-189 · Vues de suivi pour le CAPEX : jalons, avancement côté vente, avenants, réserves** — *À décider · non commencé · effort M*  
+**R-189 · Vues de suivi pour le CAPEX : jalons, avancement côté vente, avenants, réserves** — *À décider · non commencé · effort M* · **en cours (Livraison 9)**  
 Vues pub_jalons_projets (commande, FAT, expédition, arrivée site, SAT, PV, fin de garantie), pub_avancement_projets (avancement physique, SPI, fin prévue, contrat + avenants et facturé côté vente — aucun coût interne ni marge, P-05), pub_avenants, pub_reserves ; contrats documentés avec Matrix.  
-*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-04 — pub_jalons_projets, pub_avancement_projets (côté vente, sans coût ni marge), pub_avenants, pub_reserves ; K-06 — pub_livrables : type, accepte_le, maj_le en fin de vue ; K-11 — index sur maj_le des vues lues (lecture incrémentale). · Attend : Réponse P-05 (données financières visibles par la filiale) · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
-
-**R-195 · Vue pub_jalons des échéances des projets (pour Crucible)** — *À décider · non commencé · effort M*  
-Crucible (K-2) lit les échéances des projets pour anticiper les besoins d’essais : vue pub_jalons (projet_code, jalon_id, nom, mois_reference, mois_prevu, statut, activite_code, date_activite_fin = fin au plus tôt de l’activité liée si datée, maj_le). La lecture de pub_projets par crucible_app (K-1) est un droit à accorder dans Matrix (partage/90-droits.sql), pas un changement de Keystone. Proche de pub_jalons_projets demandée par Arche (R-189) : une seule vue pour les deux lecteurs si les colonnes se rejoignent.  
-*Avancement : Consigné le 22 oct. 2026 (demande de Crucible) ; à valider avant de construire. · Attend : Validation du responsable produit ; contrat commun avec R-189 · Sources : Crucible (application de planification des moyens d’essais R&D), docs/DEMANDES-KEYSTONE.md, 22 oct. 2026*
+*Avancement : Livraison 9, lot « share-views » (docs/delivery-9/notes-share-views.md, migration 0038_share_followup) : pub_jalons_projets (8 jalons par projet : commande, fin d’études, FAT, expédition, arrivée site, SAT, PV, fin de garantie, rapprochés des étapes, de l’ITP, de la mise en service, des PV et de la garantie), pub_avancement_projets (côté vente seulement : avancement physique et SPI tenus par la tâche horaire share-progress, fin prévue, contrat, avenants signés et facturé en k€ ; aucun coût interne, taux, CPI, EAC ni marge — testé), pub_avenants (brouillons exclus), pub_reserves ; pub_livrables + type, accepte_le, maj_le en fin de vue ; colonnes vérifiées par db-check (aussi sur PostgreSQL). Reste : droits d’arche_app et copie des vues dans Matrix (demande à déposer après validation), dates BL1 des jalons (reference_le vide : code de jalon CAPEX sur les jalons du planning, à valider), index maj_le (K-11), pub_pack_ingenierie (R-191). · Attend : Réponse P-05 (données financières visibles par la filiale) · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
 
 **R-196 · Catégorie « R&D » des projets lisible dans pub_projets (pour Crucible)** — *À décider · non commencé · effort S*  
 Crucible (K-3) filtre les projets R&D : si les projets R&D sont des projets internes de Keystone, une nature ou une étiquette « R&D » lisible dans pub_projets (colonne en fin de vue, ex. categorie). Le type de machine « R&D » existe déjà ; à décider : type de machine, nature du projet ou étiquette.  
@@ -401,6 +396,10 @@ Point d’entrée HTTP protégé par clé d’API pour heures.validees, absence.
 **~~R-180 · Exposer à Cursus les tâches Keystone de chaque personne par semaine~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 9)**  
 Pour que Cursus propose les lignes de feuille de temps « depuis les tâches Keystone » et renvoie les heures par tâche (NEW-CURSUS-5 = c), Keystone doit offrir un point de lecture authentifié : tâches et activités affectées à un matricule pour une semaine, avec leur identifiant et le code projet. Aucune route de ce type n'existe ; c'est le pendant sortant de la réception des heures.  
 *Avancement : Lot « cursus-tasks » (docs/delivery-9/notes-cursus-tasks.md, contrat docs/integrations/cursus-contract.md § 7) : selon le contrat de Cursus, Keystone pousse (pas de route de lecture) — chaque nuit à 02:00 (tâche cursus-tasks) et avec « Synchroniser » : PUT /v1/projets/{code} pour les projets cités, puis PUT /v1/instantane (section taches, depuis = lundi courant moins 4 semaines ; Cursus supprime les tâches absentes). Envoyées pour chaque personne qui a un matricule : affectations nominatives du planning (heures par jour ouvré du calendrier de l’activité) et tâches Keystone (règle de la vue pub_taches_jours), une tâche couverte par une affectation de la même personne sur la même activité n’étant pas envoyée deux fois. Échec réessayable renvoyé par cursus-outbox ; tâche refusée par Cursus (matricule inconnu) retirée et comptée ; connecteur simulé : envoi enregistré, rien n’est envoyé ; ligne Cursus d’Activité & intégrations : dernier envoi, tâches, refus, personnes sans matricule. À confirmer : la priorité affectation / tâche, l’heure de nuit ; les personnes n’ont pas encore de matricule (annuaire R-027). · Attend : Contrat d'API à convenir avec Cursus (Cursus lit aujourd'hui ses propres données fictives) · Sources : BACKLOG.md §1 bis (« Point de lecture des tâches »), NEW-CURSUS-5, R-6a, C-2b*
+
+**~~R-195 · Vue pub_jalons des échéances des projets (pour Crucible)~~** — *À décider · non commencé · effort M* · **fait (Livraison 9)**  
+Crucible (K-2) lit les échéances des projets pour anticiper les besoins d’essais : vue pub_jalons (projet_code, jalon_id, nom, mois_reference, mois_prevu, statut, activite_code, date_activite_fin = fin au plus tôt de l’activité liée si datée, maj_le). La lecture de pub_projets par crucible_app (K-1) est un droit à accorder dans Matrix (partage/90-droits.sql), pas un changement de Keystone. Proche de pub_jalons_projets demandée par Arche (R-189) : une seule vue pour les deux lecteurs si les colonnes se rejoignent.  
+*Avancement : Livraison 9, lot « share-views » (docs/delivery-9/notes-share-views.md) : vue pub_jalons (projet_code, jalon_id, nom, position, mois_reference, mois_prevu, statut, activite_code, date_fin_activite, maj_le) selon la demande validée de Crucible ; milestones.updated_at ajouté (maj_le). Le droit de lecture de crucible_app (et le rôle) reste à poser dans Matrix (partage/90-droits.sql). · Attend : Validation du responsable produit ; contrat commun avec R-189 · Sources : Crucible (application de planification des moyens d’essais R&D), docs/DEMANDES-KEYSTONE.md, 22 oct. 2026*
 
 ### 2.4 Projets, cycle de vie et modèles par type de machine (6 restants, 3 faits)
 
@@ -952,6 +951,7 @@ Proposition : version tablette des écrans Chantier, Réserves et Livraisons ave
 
 ## 3. Mises à jour
 
+- 2026-10-22 — Vues de partage pour Crucible et Arche (R-195, R-190, R-189) : pub_jalons, pub_jalons_projets, pub_avancement_projets (côté vente, sans coût ni marge), pub_avenants, pub_reserves ; colonnes ajoutées en fin de pub_projets (capex_code, besoin_ref, saisis sur l’écran Contrat) et de pub_livrables (type, accepte_le, maj_le) ; tâche horaire share-progress pour l’avancement et le SPI ; droits des lecteurs à poser dans Matrix.
 - 2026-10-22 — Tâches planifiées envoyées à Cursus (R-180) : chaque nuit et avec « Synchroniser », les affectations nominatives du planning et les tâches Keystone de chaque personne qui a un matricule partent vers Cursus en un instantané, pour que la feuille de temps « Propose depuis Keystone » ; reprise automatique après un échec, tâches refusées comptées, état visible sur la ligne Cursus d’Activité & intégrations.
 - 2026-10-22 — Mise à jour de sécurité de Next.js (16.4.0 → 16.4.2, avec eslint-config-next) : la construction signalait une vulnérabilité connue ; typecheck, lint, tests, audit et tests de bout en bout verts.
 - 2026-10-22 — Congés de démonstration déplacés hors des affectations (décision du responsable produit, option 1) : mêmes personnes, mêmes jours et types, sur des semaines sans charge ou peu chargées ; la démonstration retrouve 3 personnes au-delà de 110 % (semaines 42–44), une occupation de 84 % et 7 conflits sur le chantier HLT-026 ; une base de démonstration existante est corrigée une fois à l’ouverture (R-084).

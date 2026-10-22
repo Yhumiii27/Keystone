@@ -92,7 +92,7 @@ describe.skipIf(!ADMIN_URL)('PostgreSQL server (KEYSTONE_TEST_DATABASE_URL)', ()
     expect(rows.filter((r) => r.schema !== 'keystone')).toEqual([]);
     const tables = rows.find((r) => r.kind === 'r')?.n ?? 0;
     expect(tables).toBeGreaterThan(200);
-    expect(rows.find((r) => r.kind === 'v')?.n).toBe(12);
+    expect(rows.find((r) => r.kind === 'v')?.n).toBe(17);
     const journal = await pg.pool.query<{ n: number }>('select count(*)::int as n from keystone.__drizzle_migrations');
     expect(journal.rows[0].n).toBeGreaterThan(30);
     const counts = await pg.pool.query<{ v: number; t: number }>('select (select count(*)::int from pub_projets) as v, (select count(*)::int from projects) as t');

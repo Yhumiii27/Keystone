@@ -310,10 +310,10 @@ export async function refreshRollups(tx: Q, code: string): Promise<void> {
   const rolled = rolledMilestones(s);
   for (const { m, anchor, rolled: r } of rolled) {
     if (!anchor || !r) continue;
-    await tx
-      .update(milestones)
-      .set({ activityId: anchor.id, forecastMonth: r.forecastMonth, baselineMonth: r.baselineMonth ?? m.baselineMonth, status: r.status })
-      .where(eq(milestones.id, m.id));
+    const next = { activityId: anchor.id, forecastMonth: r.forecastMonth, baselineMonth: r.baselineMonth ?? m.baselineMonth, status: r.status };
+    // R-195: `updated_at` (pub_jalons.maj_le, read by Crucible) moves only when the milestone changes.
+    if (next.activityId === m.activityId && next.forecastMonth === m.forecastMonth && next.baselineMonth === m.baselineMonth && next.status === m.status) continue;
+    await tx.update(milestones).set({ ...next, updatedAt: new Date() }).where(eq(milestones.id, m.id));
   }
 
   // Project control header (Schedule KPIs, Home, registers, portfolio).

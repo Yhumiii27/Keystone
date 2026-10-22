@@ -15,6 +15,8 @@ import { getTableName, is, sql } from 'drizzle-orm';
 import { PgTable } from 'drizzle-orm/pg-core';
 import { healthOf } from '@/domain/health';
 import { D7_ACTUAL, D7_HEALTH, D7_PROGRESS_PCT, D7_SPI } from '@/test/d7-cost-control';
+import { INTERNAL_MONEY_COLUMN, SHARE_VIEW_COLUMNS } from '@/server/db/share-contracts';
+import { refreshShareProgress } from '@/server/dal/share-progress';
 import { getCostControl, listChangeRequests } from '@/server/dal/cost';
 import { getStageChecklist, getStageHistory, listStages, toggleStageDeliverable } from '@/server/dal/lifecycle';
 import { getOwnerDirectory, getPersonByName, listDepartmentCapacities, listPeople, listUsers, listZones } from '@/server/dal/people';
@@ -237,7 +239,7 @@ async function main() {
   console.log('\nShare views (pub_)');
   const views = await db.execute(sql`select table_name as v from information_schema.views where table_schema = current_schema() and table_name like 'pub\_%' order by 1`);
   const viewNames = (views.rows as { v: string }[]).map((r) => r.v);
-  check('12 pub_ views', viewNames.length === 12, viewNames);
+  check('17 pub_ views (0035_share: 12, 0038_share_followup: 5 more)', viewNames.length === 17, viewNames);
   for (const v of viewNames) {
     const r = await db.execute(sql`select count(*)::int as n from ${sql.identifier(v)}`);
     console.log(`  ${v.padEnd(34)} ${String((r.rows[0] as { n: number }).n).padStart(5)}`);
@@ -245,6 +247,32 @@ async function main() {
   const share = (await db.execute(sql`select (select count(*)::int from pub_projets) as projets, (select count(*)::int from projects) as projects,
     (select count(*)::int from countries where iso2 is null) as no_iso2, (select count(*)::int from pub_clients) as clients`)).rows[0] as { projets: number; projects: number; no_iso2: number; clients: number };
   check('pub_projets lists every project, every seeded country has its ISO code', share.projets === share.projects && share.no_iso2 === 0 && share.clients === counts.clients, share);
+  // Delivery 9 (0038_share_followup, docs/delivery-9/notes-share-views.md): the contracts' columns in order (the existing ones of
+  // pub_projets and pub_livrables unchanged, the new ones at the end), and what the new views publish.
+  for (const [view, cols] of Object.entries(SHARE_VIEW_COLUMNS)) {
+    const got = (await db.execute(sql`select column_name as c from information_schema.columns where table_schema = current_schema() and table_name = ${view} order by ordinal_position`)).rows as { c: string }[];
+    check(`${view}: ${cols.length} columns in contract order`, isDeepStrictEqual(got.map((r) => r.c), cols), got.map((r) => r.c));
+  }
+  const progressCols = (await db.execute(sql`select column_name as c from information_schema.columns where table_schema = current_schema() and table_name in ('pub_avancement_projets', 'share_project_progress')`)).rows as { c: string }[];
+  check('pub_avancement_projets: no internal cost, rate, actual cost, CPI, EAC or margin (P-05 / AC-2)', !progressCols.some((r) => INTERNAL_MONEY_COLUMN.test(r.c)), progressCols.map((r) => r.c));
+  const refreshed = await refreshShareProgress();
+  const again = await refreshShareProgress();
+  check('share-progress job: one row per project, a second run changes nothing', refreshed.projects === counts.projects && again.changed === 0, { refreshed, again });
+  const followup = (await db.execute(sql`select
+      (select count(*)::int from pub_jalons) as jalons, (select count(*)::int from milestones) as milestones,
+      (select count(*)::int from pub_jalons_projets) as jalons_projets,
+      (select count(*)::int from pub_reserves) as reserves, (select count(*)::int from punch_items) as punch,
+      (select spi::float8 from pub_avancement_projets where projet_code = 'HLT-026') as spi,
+      (select montant_contrat_keur::float8 from pub_avancement_projets where projet_code = 'HLT-026') as contrat,
+      (select montant_avenants_keur::float8 from pub_avancement_projets where projet_code = 'HLT-026') as avenants,
+      (select facture_keur::float8 from pub_avancement_projets where projet_code = 'HLT-026') as facture,
+      (select string_agg(numero || ':' || statut, ',' order by numero) from pub_avenants where projet_code = 'HLT-026') as avenants_hlt,
+      (select reel_le::text from pub_jalons_projets where projet_code = 'HLT-026' and jalon_code = 'commande') as commande`)).rows[0] as Record<string, unknown>;
+  check('pub_jalons: every milestone; pub_jalons_projets: 8 per project; pub_reserves: every punch item', followup.jalons === followup.milestones
+    && followup.jalons_projets === 8 * counts.projects && followup.reserves === followup.punch, followup);
+  check('HLT-026 shared: SPI 0.82, 5400 k€ contract, 120 k€ signed amendments, 2970 k€ invoiced, AV-01 signed / AV-02 proposed, ordered 14 Jan 2026',
+    followup.spi === D7_SPI['HLT-026'] && followup.contrat === 5400 && followup.avenants === 120 && followup.facture === 2970
+    && followup.avenants_hlt === 'AV-01:signe,AV-02:propose' && followup.commande === '2026-01-14', followup);
 
   console.log('\nDelivery 3 tables (golden row counts)');
   for (const [table, n] of Object.entries(D3_COUNTS)) check(`${table} = ${n}`, counts[table] === n, counts[table]);

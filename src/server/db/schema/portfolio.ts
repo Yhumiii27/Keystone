@@ -216,7 +216,18 @@ export const projects = pgTable('projects', {
    * projects). Every project Keystone creates today is a client project.
    */
   kind: text('kind').$type<'client' | 'internal'>().notNull().default('client'),
-}, (t) => [check('projects_kind_check', sql`${t.kind} in ('client', 'internal')`)]);
+  /**
+   * R-190 (Arche K-05): the subsidiary CAPEX the project delivers ("CPX-SAI-2026-01", Arche's code N-9) and the first machine
+   * need at its origin ("CPX-SAI-2026-01/B01"); null for a project without CAPEX. Set by the project's leads on the Contract
+   * screen; published at the end of pub_projets. A cross-schema reference: text, no foreign key (sharing convention).
+   */
+  capexCode: text('capex_code'),
+  besoinRef: text('besoin_ref'),
+}, (t) => [
+  check('projects_kind_check', sql`${t.kind} in ('client', 'internal')`),
+  check('projects_capex_code_check', sql`${t.capexCode} ~ '^CPX-[A-Z]{3}-[0-9]{4}-[0-9]{2,}$'`),
+  check('projects_besoin_ref_check', sql`${t.besoinRef} is null or (${t.capexCode} is not null and ${t.besoinRef} ~ '^CPX-[A-Z]{3}-[0-9]{4}-[0-9]{2,}/B[0-9]{2,}$' and starts_with(${t.besoinRef}, ${t.capexCode} || '/'))`),
+]);
 
 /** Project site (GEO 3169). Zone = zoneOverride ?? country zone. */
 export const projectSites = pgTable('project_sites', {

@@ -9,12 +9,13 @@
 import { EmptyState } from '@/components/app/EmptyState';
 import { Stack } from '@/components/app/SectionCard';
 import { PageHeader } from '@/components/app/shell/page-header';
-import { ContractScreen, CurrencyCard } from '@/features/contract/contract-view';
+import { CapexLinkCard, ContractScreen, CurrencyCard } from '@/features/contract/contract-view';
 import { FormButton } from '@/features/contract/form-button';
 import {
   amendmentFormDef, bondFormDef, contractView, currencyView, editMilestoneFormDef, milestoneFormDef, releaseFormDef, signFormDef,
 } from '@/features/contract/model';
-import { canSetBudgetRate } from '@/domain/rights';
+import { canSetBudgetRate, canSetCapexLink } from '@/domain/rights';
+import { getCapexLink } from '@/server/dal/capex-link';
 import { getContract } from '@/server/dal/contract';
 import { getProjectFx } from '@/server/dal/currency';
 import { getProjectContext } from '@/server/project-context';
@@ -25,9 +26,11 @@ export default async function ContractPage({ params }: { params: Promise<{ code:
   const { code } = await params;
   const ctx = await getProjectContext(code, 'contract');
   const projectCode = ctx.project.code;
-  const [{ t, lang }, contract] = await Promise.all([getI18n(), getContract(projectCode)]);
+  const [{ t, lang }, contract, capexLink] = await Promise.all([getI18n(), getContract(projectCode), getCapexLink(projectCode)]);
   // C-9: the portfolio director and Finance (R-044) set the project's currency and budget rate.
   const canSetRate = canSetBudgetRate(ctx.viewer.role) && ctx.canEdit('contract');
+  // R-190: the director and the project's leads set its CAPEX link (also on a project without contract).
+  const capexCard = <CapexLinkCard link={capexLink} code={projectCode} canEdit={canSetCapexLink(ctx.viewer.role, ctx.access) && ctx.canEdit('contract')} t={t} />;
 
   if (!contract)
     return (
@@ -36,6 +39,7 @@ export default async function ContractPage({ params }: { params: Promise<{ code:
         <Stack>
           <EmptyState variant="boxed">{t('No contract registered for this project')}</EmptyState>
           <CurrencyCard fx={currencyView(await getProjectFx(projectCode), lang)} code={projectCode} canSetRate={canSetRate} t={t} />
+          {capexCard}
         </Stack>
       </>
     );
@@ -59,7 +63,7 @@ export default async function ContractPage({ params }: { params: Promise<{ code:
   return (
     <>
       <PageHeader screen="contract" projectCode={projectCode} primary={primary} crumbExtra={contract.sheet.reference} />
-      <ContractScreen view={contractView(contract, t, lang)} code={projectCode} canEdit={canEdit} canSetRate={canSetRate} context={context} forms={forms} t={t} />
+      <ContractScreen view={contractView(contract, t, lang)} code={projectCode} canEdit={canEdit} canSetRate={canSetRate} context={context} forms={forms} t={t} capexCard={capexCard} />
     </>
   );
 }
