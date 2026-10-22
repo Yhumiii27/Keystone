@@ -106,6 +106,10 @@
   {
    "date": "2026-10-22",
    "text": "Congés de démonstration déplacés hors des affectations (décision du responsable produit, option 1) : mêmes personnes, mêmes jours et types, sur des semaines sans charge ou peu chargées ; la démonstration retrouve 3 personnes au-delà de 110 % (semaines 42–44), une occupation de 84 % et 7 conflits sur le chantier HLT-026 ; une base de démonstration existante est corrigée une fois à l’ouverture (R-084)."
+  },
+  {
+   "date": "2026-10-22",
+   "text": "Mise à jour de sécurité de Next.js (16.4.0 → 16.4.2, avec eslint-config-next) : la construction signalait une vulnérabilité connue ; typecheck, lint, tests, audit et tests de bout en bout verts."
   }
  ],
  "items": [

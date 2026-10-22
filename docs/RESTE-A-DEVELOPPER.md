@@ -952,6 +952,7 @@ Proposition : version tablette des écrans Chantier, Réserves et Livraisons ave
 
 ## 3. Mises à jour
 
+- 2026-10-22 — Mise à jour de sécurité de Next.js (16.4.0 → 16.4.2, avec eslint-config-next) : la construction signalait une vulnérabilité connue ; typecheck, lint, tests, audit et tests de bout en bout verts.
 - 2026-10-22 — Congés de démonstration déplacés hors des affectations (décision du responsable produit, option 1) : mêmes personnes, mêmes jours et types, sur des semaines sans charge ou peu chargées ; la démonstration retrouve 3 personnes au-delà de 110 % (semaines 42–44), une occupation de 84 % et 7 conflits sur le chantier HLT-026 ; une base de démonstration existante est corrigée une fois à l’ouverture (R-084).
 - 2026-10-22 — Demandes d’Arche (application CAPEX) rattachées aux lots R-185 à R-194, et demandes de Crucible (moyens d’essais R&D) inscrites (R-195 à R-197) ; les dépôts frères restent des sources d’information, Keystone n’y écrit pas.
 - 2026-10-22 — Contrat Cursus : Keystone accepte le format réel des événements de Cursus (adresse /api/cursus/v1/evenements, jeton Bearer, donnees, absence.annulee, accusé), appelle les routes /v1 de Cursus, et la capacité de chacun tient compte de ses absences (R-029, R-031, R-084).
