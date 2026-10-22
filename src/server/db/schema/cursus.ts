@@ -4,7 +4,9 @@
 // travel requests). Passports, visa files, vaccination records and medical data stay in Cursus: only approvals, their
 // confirmation and dates are stored here (10 §3.4.f). Written only by the Cursus connector (src/server/integrations/cursus).
 import { boolean, date, index, integer, jsonb, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
-import type { CursusClearance, CursusEventStatus, CursusRequestKind, CursusSyncStatus, CursusVaccination, CursusVerdict, CursusVisa } from '../codes';
+import type {
+  CursusClearance, CursusEventStatus, CursusRequestKind, CursusSyncStatus, CursusTaskPushStatus, CursusVaccination, CursusVerdict, CursusVisa,
+} from '../codes';
 import { id } from './_common';
 import { persons } from './organisation';
 
@@ -111,4 +113,44 @@ export const cursusEvents = pgTable(
     processedAt: timestamp('processed_at', { withTimezone: true }),
   },
   (t) => [index('cursus_events_replace_idx').on(t.type, t.replaceKey), index('cursus_events_status_idx').on(t.status), index('cursus_events_received_idx').on(t.receivedAt)],
+);
+
+/**
+ * R-180: the snapshots of Keystone's planned tasks sent to Cursus (`PUT /api/integrations/keystone/v1/instantane`, section
+ * `taches`, after `PUT …/v1/projets/{code}` for the projects they cite; rules src/domain/cursus-tasks.ts, push
+ * src/server/integrations/cursus/tasks.ts). One row per push (nightly job "cursus-tasks", "Sync now" of the Cursus connector);
+ * the body is kept on the latest row only (the mock connector's record of what would be sent). Rows older than 90 days are
+ * removed by the next push.
+ */
+export const cursusTaskPushes = pgTable(
+  'cursus_task_pushes',
+  {
+    id: id(),
+    requestedAt: timestamp('requested_at', { withTimezone: true }).notNull(),
+    /** 'job' (nightly) or 'sync' ("Sync now"). */
+    trigger: text('trigger').$type<'job' | 'sync'>().notNull(),
+    mode: text('mode').$type<'mock' | 'http'>().notNull(),
+    status: text('status').$type<CursusTaskPushStatus>().notNull(),
+    /** `depuis` of the snapshot (Cursus deletes only the absent tasks that end on or after it). */
+    since: date('since', { mode: 'string' }).notNull(),
+    projects: integer('projects').notNull().default(0),
+    tasks: integer('tasks').notNull().default(0),
+    /** Distinct matricules of the tasks. */
+    persons: integer('persons').notNull().default(0),
+    /** Persons with planned work but no matricule (no proposal in Cursus). */
+    withoutMatricule: integer('without_matricule').notNull().default(0),
+    /** Tasks Cursus refused (400 VALIDATION on their fields, e.g. a matricule Cursus does not know): left out of the snapshot sent. */
+    rejected: integer('rejected').notNull().default(0),
+    /** The snapshot `{ depuis, projets, taches }`; null once a newer push exists. */
+    payload: jsonb('payload').$type<Record<string, unknown>>(),
+    /** Cursus's `bilan`, and the refused tasks `{ id, champ, message }` (no personal data beyond the matricule-free ids). */
+    result: jsonb('result').$type<Record<string, unknown>>(),
+    attempts: integer('attempts').notNull().default(0),
+    lastAttemptAt: timestamp('last_attempt_at', { withTimezone: true }),
+    lastError: text('last_error'),
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+    /** Set while a delivery is in flight (R-010: two deliveries never send the same push); cleared by the result. */
+    claimedAt: timestamp('claimed_at', { withTimezone: true }),
+  },
+  (t) => [index('cursus_task_pushes_requested_idx').on(t.requestedAt), index('cursus_task_pushes_status_idx').on(t.status)],
 );

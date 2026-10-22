@@ -1019,6 +1019,12 @@ export type CursusRequestKind = 'reminder' | 'travel_request';
 export type CursusEventStatus = 'received' | 'unresolved' | 'ignored' | 'error';
 export type CursusSyncStatus = 'pending' | 'sent' | 'failed';
 export const cursusSyncStatus = codec<CursusSyncStatus, string>([['pending', 'Pending sync with Cursus'], ['sent', 'Sent to Cursus'], ['failed', 'Sync with Cursus failed']]);
+/**
+ * R-180: a snapshot of Keystone's planned tasks for Cursus (`cursus_task_pushes`). pending = not sent yet (mock connector, or a
+ * retryable refusal: sent again by the "cursus-outbox" job); sent; failed = refused for good; superseded = a newer snapshot
+ * replaced it before it was sent.
+ */
+export type CursusTaskPushStatus = 'pending' | 'sent' | 'failed' | 'superseded';
 
 /** Site equipment (SITE_EQUIP 3575; seed values are French data values), prerequisites (SITE_PREREQ 3576), collisions (SITE_COLLISIONS 3578). */
 export type EquipmentSource = 'shipped' | 'local_rental' | 'client';

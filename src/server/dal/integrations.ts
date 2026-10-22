@@ -24,6 +24,7 @@ import { cursusConnectorMode } from '@/server/integrations/cursus/connection';
 import { getCursusConnector } from '@/server/integrations/cursus/connector';
 import { cursusInboxState } from '@/server/integrations/cursus/inbox';
 import { recordFailedSync } from '@/server/integrations/cursus/mirror';
+import { lastCursusTaskPush, pushCursusTasks } from '@/server/integrations/cursus/tasks';
 import { vigieConnectorMode } from '@/server/integrations/vigie/connection';
 import { getVigieEcoConnector } from '@/server/integrations/vigie/eco-connector';
 import { getVigieQualityConnector } from '@/server/integrations/vigie/quality-connector';
@@ -102,23 +103,35 @@ async function vigieState() {
  */
 async function cursusState() {
   const db = await getDb();
-  const [people, out, runs, inbox] = await Promise.all([
+  const [people, out, runs, inbox, push] = await Promise.all([
     db.select({ code: cursusClearances.projectCode }).from(cursusClearances),
     db.select({ s: cursusRequests.syncStatus }).from(cursusRequests),
     db.select({ code: cursusSyncRuns.projectCode, at: cursusSyncRuns.syncedAt, ok: cursusSyncRuns.ok }).from(cursusSyncRuns).orderBy(desc(cursusSyncRuns.syncedAt)),
     cursusInboxState(db),
+    lastCursusTaskPush(),
   ]);
   const byCode = new Map<string, number>();
   for (const p of people) byCode.set(p.code, (byCode.get(p.code) ?? 0) + 1);
   const events = inbox.lastReceivedAt
     ? [`Last Cursus event · ${stampText(inbox.lastReceivedAt)}`, ...(inbox.unresolved ? [`Unresolved events · ${inbox.unresolved}`] : [])]
     : [];
-  const volume = [[...byCode].map(([code, n]) => `${n} people · ${code}`).join(' · ') || '0 people', ...events].join(' · ');
+  // R-180: the last snapshot of planned tasks ("Last task push · 23 Oct 02:00 · Tasks · 42", then what needs attention).
+  const pushFailed = !!push && (push.status === 'failed' || (push.mode === 'http' && push.status === 'pending' && !!push.lastError));
+  const tasks = push
+    ? [
+      `Last task push · ${stampText(new Date(push.at))} · Tasks · ${push.tasks}`,
+      ...(push.status === 'failed' ? ['Task push failed'] : pushFailed ? ['Task push pending'] : []),
+      ...(push.rejected ? [`Tasks refused · ${push.rejected}`] : []),
+      ...(push.withoutMatricule ? [`Persons without matricule · ${push.withoutMatricule}`] : []),
+    ]
+    : [];
+  const volume = [[...byCode].map(([code, n]) => `${n} people · ${code}`).join(' · ') || '0 people', ...events, ...tasks].join(' · ');
   const latest = new Map<string, boolean>();
   for (const r of runs) if (!latest.has(r.code)) latest.set(r.code, r.ok);
   return {
     volume, pending: out.filter((x) => x.s === 'pending').length, failed: out.filter((x) => x.s === 'failed').length,
-    lastSyncAt: runs.find((r) => r.ok)?.at ?? null, lastRunFailed: [...latest.values()].some((ok) => !ok),
+    lastSyncAt: [runs.find((r) => r.ok)?.at ?? null, push?.status === 'sent' ? new Date(push.at) : null].filter((d): d is Date => !!d).sort((a, b) => b.getTime() - a.getTime())[0] ?? null,
+    lastRunFailed: [...latest.values()].some((ok) => !ok) || pushFailed || (!!push && push.rejected > 0),
   };
 }
 
@@ -248,6 +261,17 @@ export async function syncConnector(
         }
       }
       volume = `${received} approvals received`;
+      // R-180: Keystone's planned tasks sent to Cursus as one snapshot (HTTP), or recorded as what would be sent (mock). The
+      // volume names them once there is something to say ("· 12 tasks sent", "· 12 tasks pending"; nothing for 0 in mock).
+      try {
+        const push = await pushCursusTasks('sync');
+        if (push.state === 'sent') volume += ` · ${push.tasks - push.rejected} tasks sent`;
+        else if (push.state !== 'disabled' && (push.tasks > 0 || push.state !== 'mock')) volume += ` · ${push.tasks} tasks pending`;
+        if (push.state === 'pending' || push.state === 'failed') errors.push(`tasks: ${push.error ?? 'not sent'}`);
+        else if (push.rejected) errors.push(`tasks: ${push.rejected} refused by Cursus`);
+      } catch (e) {
+        errors.push(`tasks: ${e instanceof Error ? e.message : String(e)}`);
+      }
       if (errors.length) { ok = false; error = errors.join(' · '); }
     } else if (opts.exchange && link === 'live') {
       // R-033: a live static connector's exchange (Codex: outbox, then index read — admin-connectors.ts).

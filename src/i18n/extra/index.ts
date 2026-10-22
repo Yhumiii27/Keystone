@@ -69,6 +69,7 @@ import d8SiteQuality from './d8-site-quality.json';
 import d9LoadWindow from './d9-load-window.json';
 import d9PrereqAlert from './d9-prereq-alert.json';
 import d9PlanningLoad from './d9-planning-load.json';
+import d9CursusTasks from './d9-cursus-tasks.json';
 
 export const EXTRA_FR: Record<string, string> = {
   ...common,
@@ -138,4 +139,5 @@ export const EXTRA_FR: Record<string, string> = {
   ...d9PrereqAlert,
   ...d9LoadWindow,
   ...d9PlanningLoad,
+  ...d9CursusTasks,
 };

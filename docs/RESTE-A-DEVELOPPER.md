@@ -8,21 +8,21 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-22 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 103 faits, 27 en cours, 67 à faire, sur 197 points.
+**Avancement** : 104 faits, 27 en cours, 66 à faire, sur 197 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
 | Bloquant production | 16 | ≈ 106 |
-| Prochaine étape | 23 | ≈ 188 |
+| Prochaine étape | 22 | ≈ 184 |
 | À décider | 35 | ≈ 290 |
 | Plus tard | 20 | ≈ 74 |
-| **Total** | **94** | **≈ 657** |
+| **Total** | **93** | **≈ 653** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
-| Non commencé | 43 |
+| Non commencé | 42 |
 | Partiel | 11 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
@@ -31,7 +31,7 @@ L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il
 |---|---:|---:|---:|---:|---:|---:|
 | Plateforme et mise en production | 7 | 5 | 0 | 2 | 14 | 11 |
 | Authentification, utilisateurs et droits | 1 | 0 | 3 | 1 | 5 | 12 |
-| Intégrations avec les autres systèmes | 5 | 7 | 5 | 5 | 22 | 3 |
+| Intégrations avec les autres systèmes | 5 | 6 | 5 | 5 | 21 | 4 |
 | Projets, cycle de vie et modèles par type de machine | 0 | 1 | 4 | 1 | 6 | 3 |
 | Planning | 1 | 0 | 3 | 1 | 5 | 3 |
 | Coûts, contrat et finance | 0 | 2 | 3 | 0 | 5 | 12 |
@@ -300,7 +300,7 @@ Seuls l’organisateur et le CP du projet envoient le compte rendu ; les interne
 Chercher commandes, CR, NCR et risques sur tous les projets, chaque résultat ouvrant son projet, en filtrant les résultats selon les droits du lecteur (un client ne voit que ses projets). Aujourd’hui la recherche ignore l’utilisateur et limite ces objets au projet courant.  
 *Avancement : Livraison 8 : recherche globale sur tout le portefeuille (X-5), projet courant d’abord ; le client voit les demandes de modification de ses propres projets. · Sources : X-5, 01 OQ18, 00 §7.6, DELIVERY-1.md §4*
 
-### 2.3 Intégrations avec les autres systèmes (22 restants, 3 faits)
+### 2.3 Intégrations avec les autres systèmes (21 restants, 4 faits)
 
 **R-022 · Réconcilier les codes projet (#000, XXX000, Cursus, Vigie) dans la fiche projet** — *Bloquant production · attend le responsable produit · effort M*  
 La fiche projet doit porter et réconcilier le numéro ingénierie #000 (liste incrémentée) et le code analytique XXX000 créé dans Sage et donc imposé, au lieu de les générer. Elle doit aussi tenir la correspondance avec les identifiants Cursus (chantier K-26xx) et Vigie (K-2025-042), clé commune de tous les connecteurs.  
@@ -345,10 +345,6 @@ Synchroniser chaque heure les données des plans (numéro, titre, révision, ét
 **R-036 · Envoyer les notifications par e-mail, avec préférences par utilisateur** — *Prochaine étape · non commencé · effort L*  
 Ajouter le canal e-mail (Microsoft Graph via l’application Entra, ou SMTP) : envoi immédiat pour ce qui attend une action et pour les clients, résumé quotidien pour le reste, préférences réglées par chacun. Les invitations SAT et les notifications client, affichées comme envoyées, ne partent pas aujourd’hui, et le pied du panneau de notifications annonce à tort un résumé e-mail, un canal Teams (non retenu par X-6b) et des préférences inexistantes.  
 *Attend : IT : relais SMTP ou déclaration de Keystone dans Microsoft 365 ; comptes réels avec adresse e-mail · Sources : X-6b, I-3c, DELIVERY-5.md §6, §8 X-6, DELIVERY-6.md §6 (Mail)*
-
-**R-180 · Exposer à Cursus les tâches Keystone de chaque personne par semaine** — *Prochaine étape · non commencé · effort M*  
-Pour que Cursus propose les lignes de feuille de temps « depuis les tâches Keystone » et renvoie les heures par tâche (NEW-CURSUS-5 = c), Keystone doit offrir un point de lecture authentifié : tâches et activités affectées à un matricule pour une semaine, avec leur identifiant et le code projet. Aucune route de ce type n'existe ; c'est le pendant sortant de la réception des heures.  
-*Attend : Contrat d'API à convenir avec Cursus (Cursus lit aujourd'hui ses propres données fictives) · Sources : BACKLOG.md §1 bis (« Point de lecture des tâches »), NEW-CURSUS-5, R-6a, C-2b*
 
 **R-181 · Décider qui crée le projet dans Codex et Vigie à sa création dans Keystone** — *À décider · attend le responsable produit · effort M*  
 Keystone créera le chantier Cursus (NEW-CURSUS-1), mais rien n'est décidé pour Codex (espace documentaire du projet) ni pour Vigie, qui utilise ses propres identifiants de projet. Décider si la création d'un projet dans Keystone ouvre automatiquement le projet dans Codex et Vigie avec le code commun, puis le construire dans les connecteurs.  
@@ -401,6 +397,10 @@ Le dialogue « Configurer » est déjà en lecture seule, mais « Ajouter un con
 **~~R-029 · Créer le point d’entrée des événements poussés par Cursus~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 9)**  
 Point d’entrée HTTP protégé par clé d’API pour heures.validees, absence.validee, demande.decision et verdict.modifie. Un renvoi remplace la semaine déjà reçue pour un même salarié sans doublon, chaque réception est tracée dans l’audit, et l’émetteur peut renvoyer en cas d’échec.  
 *Avancement : Livraison 8 : point d’entrée (clé dédiée CURSUS_EVENTS_KEY, idempotent, purge planifiée). Livraison 9, lot « cursus-contract » (docs/delivery-9/notes-cursus-contract.md) : aligné sur le contrat de Cursus (qui fait foi) — adresse POST /api/cursus/v1/evenements (l’ancienne reste servie), jeton Authorization: Bearer, enveloppe donnees, accusé de réception « accuse », decision de demande.decision ; appels sortants sur les routes /v1 de Cursus (reference des demandes, 409 DEMANDE_EN_DOUBLE). · Attend : Contrat d’événements à définir avec Cursus (POST /events, jeton) · Sources : NEW-CURSUS-7, NEW-CURSUS-4, NEW-CURSUS-5, BACKLOG.md §1 bis*
+
+**~~R-180 · Exposer à Cursus les tâches Keystone de chaque personne par semaine~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 9)**  
+Pour que Cursus propose les lignes de feuille de temps « depuis les tâches Keystone » et renvoie les heures par tâche (NEW-CURSUS-5 = c), Keystone doit offrir un point de lecture authentifié : tâches et activités affectées à un matricule pour une semaine, avec leur identifiant et le code projet. Aucune route de ce type n'existe ; c'est le pendant sortant de la réception des heures.  
+*Avancement : Lot « cursus-tasks » (docs/delivery-9/notes-cursus-tasks.md, contrat docs/integrations/cursus-contract.md § 7) : selon le contrat de Cursus, Keystone pousse (pas de route de lecture) — chaque nuit à 02:00 (tâche cursus-tasks) et avec « Synchroniser » : PUT /v1/projets/{code} pour les projets cités, puis PUT /v1/instantane (section taches, depuis = lundi courant moins 4 semaines ; Cursus supprime les tâches absentes). Envoyées pour chaque personne qui a un matricule : affectations nominatives du planning (heures par jour ouvré du calendrier de l’activité) et tâches Keystone (règle de la vue pub_taches_jours), une tâche couverte par une affectation de la même personne sur la même activité n’étant pas envoyée deux fois. Échec réessayable renvoyé par cursus-outbox ; tâche refusée par Cursus (matricule inconnu) retirée et comptée ; connecteur simulé : envoi enregistré, rien n’est envoyé ; ligne Cursus d’Activité & intégrations : dernier envoi, tâches, refus, personnes sans matricule. À confirmer : la priorité affectation / tâche, l’heure de nuit ; les personnes n’ont pas encore de matricule (annuaire R-027). · Attend : Contrat d'API à convenir avec Cursus (Cursus lit aujourd'hui ses propres données fictives) · Sources : BACKLOG.md §1 bis (« Point de lecture des tâches »), NEW-CURSUS-5, R-6a, C-2b*
 
 ### 2.4 Projets, cycle de vie et modèles par type de machine (6 restants, 3 faits)
 
@@ -952,6 +952,7 @@ Proposition : version tablette des écrans Chantier, Réserves et Livraisons ave
 
 ## 3. Mises à jour
 
+- 2026-10-22 — Tâches planifiées envoyées à Cursus (R-180) : chaque nuit et avec « Synchroniser », les affectations nominatives du planning et les tâches Keystone de chaque personne qui a un matricule partent vers Cursus en un instantané, pour que la feuille de temps « Propose depuis Keystone » ; reprise automatique après un échec, tâches refusées comptées, état visible sur la ligne Cursus d’Activité & intégrations.
 - 2026-10-22 — Mise à jour de sécurité de Next.js (16.4.0 → 16.4.2, avec eslint-config-next) : la construction signalait une vulnérabilité connue ; typecheck, lint, tests, audit et tests de bout en bout verts.
 - 2026-10-22 — Congés de démonstration déplacés hors des affectations (décision du responsable produit, option 1) : mêmes personnes, mêmes jours et types, sur des semaines sans charge ou peu chargées ; la démonstration retrouve 3 personnes au-delà de 110 % (semaines 42–44), une occupation de 84 % et 7 conflits sur le chantier HLT-026 ; une base de démonstration existante est corrigée une fois à l’ouverture (R-084).
 - 2026-10-22 — Demandes d’Arche (application CAPEX) rattachées aux lots R-185 à R-194, et demandes de Crucible (moyens d’essais R&D) inscrites (R-195 à R-197) ; les dépôts frères restent des sources d’information, Keystone n’y écrit pas.

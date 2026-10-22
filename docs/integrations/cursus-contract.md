@@ -1,6 +1,6 @@
 # Keystone ↔ Cursus — interface contract
 
-> **Status: aligned with Cursus's contract (delivery 9, lot `cursus-contract`; R-027, R-029, R-031, R-084).** Cursus owns the
+> **Status: aligned with Cursus's contract (delivery 9, lots `cursus-contract` and `cursus-tasks`; R-027, R-029, R-031, R-084, R-180).** Cursus owns the
 > data (people's clearances and site Go / No Go, timesheets, absences), so **Cursus's documents are authoritative**:
 > Cursus `docs/API-KEYSTONE.md` (version 1) and its OpenAPI 3.1 specification `docs/keystone-openapi.json` (also served by
 > `GET /api/integrations/keystone/v1/openapi.json`). Where this page and Cursus's documents differ, Cursus's documents win and
@@ -18,6 +18,7 @@ task — proposal only), NEW-CURSUS-7 "a" (Cursus pushes, and re-sends after a f
 | Direction | What | Where in Keystone |
 |---|---|---|
 | Keystone → Cursus (Cursus API v1) | `GET /api/integrations/keystone/v1/chantiers/{id}/go-no-go`, `POST /api/integrations/keystone/v1/demandes`, header `X-Api-Key: <CURSUS_API_KEY>` (Cursus's `KEYSTONE_API_KEY`) | `connector.ts` |
+| Keystone → Cursus (Cursus API v1, R-180) | `PUT /api/integrations/keystone/v1/projets/{code}`, then `PUT /api/integrations/keystone/v1/instantane` (section `taches`) — the planned tasks of each person (§ 7) | `tasks.ts` (job `cursus-tasks`, "Sync now") |
 | Keystone → Cursus (**Keystone's proposal, absent from Cursus**) | `GET /api/integrations/keystone/annuaire` — the staff directory (§5) | `connector.ts` `listDirectory` (off: `CURSUS_DIRECTORY=off`) |
 | Cursus → Keystone (Cursus's webhook `evenement`) | `POST /api/cursus/v1/evenements` — travel-request decisions, validated hours and absences, Go / No Go changes (§2, §3) | `events.ts`, `inbox.ts` |
 
@@ -144,6 +145,8 @@ Accepted (200) and ignored, their data not kept.
 |---|---|---|
 | `GET /api/integrations/keystone/v1/chantiers/{id}/go-no-go` | — | `{ chantier, evalue_le, statut, ressources: [{ matricule, statut, motifs: [{ code, niveau, libelle? }] }] }`; the note shows the `libelle` (detailed sharing) else the code. A bare code (deprecated route's shape) is still read. |
 | `POST /api/integrations/keystone/v1/demandes` | `{ reference, matricule, chantier, destination, depart, retour }` — `reference` = Keystone's request id (unique, so a retry is recognised) | `201 { resultat: "cree", demande: { id, … } }` → `demande.id` kept; `409 DEMANDE_EN_DOUBLE` (a retry already received) → delivered, `demande.id` kept; any other refusal → failed with Cursus's status and code (`Cursus POST … → 400 VALIDATION`), redelivered by the `cursus-outbox` job. |
+| `PUT /api/integrations/keystone/v1/projets/{code}` | `{ nom }` for each project a planned task cites (R-180, § 7) | `resultat` (`cree` / `modifie` / `inchange`); a refusal fails the push |
+| `PUT /api/integrations/keystone/v1/instantane` | `{ depuis, taches: [{ id, projet, tache, matricule, debut, fin, heures }] }` (R-180, § 7) | `{ resultat: "synchronise", bilan }` kept on the push; `400 VALIDATION` naming tasks → sent again without them |
 
 Header `X-Api-Key` on every call; 5 s time-out. The routes without `/v1` (deprecated by Cursus) are no longer called.
 
@@ -166,9 +169,70 @@ the persons it does not know (never a user account); never deletes anyone; never
 | Staff directory | No `/annuaire` route in Cursus: needed for R-027 (§5), or another way to get matricule, name, e-mail and team. |
 | Absences as data | No `pub_absences` view (Cursus is not on the shared EPC2I PostgreSQL server yet: no PostgreSQL schema, no `pub_` views). Keystone relies on the events only; a view would let it re-sync after a failed event. |
 | Contractual hours | Cursus exposes no contractual hours / part time: Keystone's capacity stays 40 h a week less the absence days (R-084). |
-| Planned hours per day | Nothing reads Keystone's `pub_taches_jours` view in Cursus (Cursus takes the planned hours by `PUT /v1/taches`). |
+| Planned hours per day | Keystone now pushes them (§ 7, R-180) by Cursus's routes; nothing in Cursus reads the `pub_taches_jours` view (kept: the push uses its rule for Keystone tasks). |
+| Planned tasks: owner of the precedence | Keystone sends the schedule's named assignments and the tasks not covered by one (§ 7.2): Cursus proposes one line per task; confirm with EPC2i that a to-do inside an assignment of the same person and activity is not proposed on its own. |
+| Planned tasks: weekend and holidays | Tasks follow `pub_taches_jours` (Monday–Friday); assignments follow the activity's working calendar (a 6-day site calendar includes Saturday). Cursus zeroes holidays, absences and days off itself. |
 | Matricule in cancellations at exit | Cursus `server/src/actions/sorties.ts:71` sends `absence.annulee` with the default `EMP-xxxx` matricule (`absenceKeystone('absence.annulee', a)`) instead of `identifiantKeystone(...)`, unlike the other senders. Keystone removes the weeks by absence id, so it copes, but the matricule differs after the payroll-matricule switch. |
 | Project identifier | Keystone sends and expects its own project codes until EPC2i settles the shared project key (NEW-SYS-1 / R-022). |
 | Half days | Sent as whole days (Cursus's rule); Keystone stores whole days. A half-day field only if EPC2i asks for it. |
 | Refusal body | Keystone answers `{ ok, error }`; adding Cursus's suggested `code` is possible if Cursus wants it. |
 | Travel decisions | Keystone stores `demande.decision` only; updating the Keystone travel request from it (by `reference`) is a later lot. |
+
+## 7. Planned tasks: Keystone → Cursus (R-180, NEW-CURSUS-5 "c")
+
+Cursus's timesheet « Proposer depuis Keystone » proposes, for the week shown (Monday to Sunday), one line per Keystone task
+with the hours planned each day (Cursus `docs/API-KEYSTONE.md` « Tâches planifiées », `shared/rules/temps.ts` `suggestLines`).
+Keystone sends them; it exposes no read route (Cursus stores the tasks, table `taches`).
+
+### 7.1 Calls and order
+
+1. `PUT /api/integrations/keystone/v1/projets/{code}` `{ "nom": "<project name, 120 chars>" }` for every project the tasks cite
+   (Cursus refuses a task whose project it has not received; idempotent: an unchanged project answers `inchange`).
+2. `PUT /api/integrations/keystone/v1/instantane` `{ "depuis": "<Monday of the current week − 4 weeks>", "taches": [...] }` —
+   only the section `taches` (never `projets`, `chantiers`, `affectations`, which would archive every project or site absent
+   from them). The section is the complete state: Cursus creates or updates each task by its id and **deletes the Keystone
+   tasks absent from it that end on or after `depuis`** — a task removed or emptied in Keystone, an assignment removed, a
+   person who lost their matricule. Tasks ending before `depuis` are kept (timesheet history). All or nothing on Cursus's side.
+
+```json
+{ "depuis": "2026-08-24",
+  "taches": [{ "id": "KA-0b9d7c1e-2f4a-4d3b-9a61-3c5e8f7a1b20", "projet": "HLT-026", "tache": "A1250 · Steel erection — Bays 3–4", "matricule": "EMP-0018",
+               "debut": "2026-08-17", "fin": "2026-10-09", "heures": { "2026-08-17": 8, "2026-08-18": 8, "…": 8 } },
+             { "id": "KT-T-2318", "projet": "HLT-026", "tache": "T-2318 · Weld inspection report — Bay 3", "matricule": "EMP-0012",
+               "debut": "2026-09-25", "fin": "2026-10-01", "heures": { "2026-09-25": 1.2, "2026-09-28": 1.2, "2026-09-29": 1.2, "2026-09-30": 1.2, "2026-10-01": 1.2 } }] }
+```
+
+Why the snapshot rather than unit `PUT /taches/{id}` + `DELETE /taches/{id}`: Cursus's contract recommends a nightly snapshot to
+catch up lost calls, and the snapshot carries the deletions without Keystone keeping a record of every task sent. Keystone has
+no single write path for tasks and assignments (Plan, My work, approvals, imports, what-if), so no per-change push is wired;
+"Sync now" sends at once.
+
+### 7.2 What is sent (`src/domain/cursus-tasks.ts`)
+
+| Source | Cursus id | Label (`tache`, 160 chars) | Hours per day |
+|---|---|---|---|
+| Named schedule assignment (`activity_assignments` with a person; R-084: the one source of planned hours) | `KA-<assignment id>` | `<activity code> · <activity name>` | every working day of the activity's calendar between its start and finish: units × h/d, else planned hours ÷ working days (`assignmentHoursInWeek` per day) |
+| Keystone task (`tasks`, My work) | `KT-<task number>` | `<number> · <title>` | `pub_taches_jours` rule: estimate ÷ weekdays (Mon–Fri) between start and due date, 2 decimals — the view and the push agree |
+
+- A Keystone task whose assignee is also assigned on the task's activity is **not sent**: it is a to-do inside that assignment,
+  whose hours already cover it (otherwise Cursus would propose the work twice).
+- Only persons with a matricule (`persons.matricule`, sent as is: the identifier Cursus is set to receive — `EMP-xxxx` by default,
+  the payroll matricule after Cursus's switch); only open projects (not `clos` / `annule`); milestones, equipment, material and
+  external labour (R-083) are not sent; a task without hours is not sent.
+- 2 decimals, 24 h a day at most (Cursus's limit); ids, lengths and dates are checked as Cursus checks them, so one bad record
+  never refuses the whole snapshot.
+- A reassigned task keeps its id: Cursus updates its matricule.
+
+### 7.3 When, retries, mock
+
+| Situation | What happens |
+|---|---|
+| Every night at 02:00 Paris (job `cursus-tasks`) and on "Sync now" of the Cursus connector | the snapshot is prepared at the business date and sent; one row in `cursus_task_pushes` (body kept on the newest only, rows kept 90 days) |
+| Retryable failure — no answer, `401` (Cursus's key just changed), `408`, `429`, `5xx` (`503 NON_CONFIGUREE`) | the push stays pending; job `cursus-outbox` sends it again every 5 minutes; the next night's push supersedes it |
+| `400 VALIDATION` naming tasks (`details[].champ` = `taches[3].matricule`: a matricule Cursus does not know) | those tasks are left out and the snapshot sent again (3 rounds at most); recorded as refused. Every task refused: nothing applied (a snapshot without them would delete them all) |
+| Any other refusal (`400` on `depuis`, `403` proxy, `413`, `415`), or a body above 2 MB | failed until the next push (warning on the connector) |
+| Mock connector (`CURSUS_API_URL` unset) | nothing is sent; the push is recorded with the body that would be sent |
+| Connector disabled by IT (D-7a) | nothing prepared |
+
+Activity & integrations, Cursus row: `Last task push · <date> · Tasks · <n>`, then `Task push failed` / `Task push pending`,
+`Tasks refused · <n>`, `Persons without matricule · <n>`; a failed or refused push puts the connector in warning.

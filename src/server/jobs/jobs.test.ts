@@ -135,11 +135,13 @@ describe('reminder jobs: once per morning', () => {
 
   it('the J-15 alerts are a reminder job at KEYSTONE_REMINDERS_AT (07:00 by default); technical jobs keep their intervals', () => {
     expect(jobDailyAt(jobDefinition('site-prerequisite-alerts'))).toBe('07:00');
+    // R-180: the Cursus task snapshot is a night job (02:00 Paris, a constant).
+    expect(jobDailyAt(jobDefinition('cursus-tasks'))).toBe('02:00');
     vi.stubEnv('KEYSTONE_REMINDERS_AT', '06:30');
     expect(jobDailyAt(jobDefinition('site-prerequisite-alerts'))).toBe('06:30');
     const entries = scheduledEntries(JOB_DEFINITIONS, 'W');
     // R-084: the alerts of activities without a declared resource are a reminder job too.
-    expect(entries.filter((e) => e.dailyAt).map((e) => [e.name, e.dailyAt])).toEqual([['site-prerequisite-alerts', '06:30'], ['undeclared-resource-alerts', '06:30']]);
+    expect(entries.filter((e) => e.dailyAt).map((e) => [e.name, e.dailyAt])).toEqual([['site-prerequisite-alerts', '06:30'], ['undeclared-resource-alerts', '06:30'], ['cursus-tasks', '02:00']]);
     expect(entries.find((e) => e.name === 'vigie-outbox')).toMatchObject({ everyMs: 300_000, dailyAt: null });
   });
 });

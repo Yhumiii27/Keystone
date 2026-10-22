@@ -40,3 +40,10 @@ FR_RULES.push(
   ] as const).map(([en, fr]): [RegExp, string] => [new RegExp(`^${en} (\\d{4})$`), `${fr} $1`]),
   [/^Q([1-4]) (\d{4})$/, 'T$1 $2'],
 );
+
+// R-180: Keystone's planned tasks pushed to Cursus, in the Cursus connector's "Sync now" volume ("12 approvals received · 12 tasks
+// sent", "· 3 tasks pending").
+FR_RULES.push(
+  [/^(\d+) tasks sent$/, '$1 tâches envoyées'],
+  [/^(\d+) tasks pending$/, '$1 tâches en attente'],
+);

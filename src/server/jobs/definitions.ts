@@ -8,6 +8,7 @@ import { codexConnectorMode } from '@/server/integrations/codex/config';
 import { redeliverCodexOutbox } from '@/server/integrations/codex/connector';
 import { redeliverCursusOutbox } from '@/server/integrations/cursus/connector';
 import { purgeOldCursusEvents } from '@/server/integrations/cursus/inbox';
+import { pushCursusTasks, redeliverCursusTaskPush } from '@/server/integrations/cursus/tasks';
 import { directoryRunSummary, runDirectoryImport } from '@/server/dal/persons-directory';
 import { redeliverEcoOutbox } from '@/server/integrations/vigie/eco-connector';
 import { redeliverNcrOutbox } from '@/server/integrations/vigie/quality-connector';
@@ -43,8 +44,9 @@ const RUNS: Record<JobName, () => Promise<JobOutcome>> = {
     const ncr = await redeliverNcrOutbox();
     return outboxOutcome('Vigie', [eco, ncr]);
   },
-  // Travel requests (and reminders, which stay pending: no Cursus endpoint) sent to Cursus.
-  'cursus-outbox': async () => outboxOutcome('Cursus', [await redeliverCursusOutbox()]),
+  // Travel requests (and reminders, which stay pending: no Cursus endpoint) sent to Cursus; R-180: the task snapshot a retryable
+  // failure left pending, sent again (HTTP connector only).
+  'cursus-outbox': async () => outboxOutcome('Cursus', [await redeliverCursusOutbox(), await redeliverCursusTaskPush()]),
   // Document approval decisions and engineering circuit starts sent to Codex (R-124).
   'codex-outbox': async () => outboxOutcome('Codex', [await redeliverCodexOutbox()]),
   'plan-trash-purge': async () => {
@@ -115,6 +117,17 @@ const RUNS: Record<JobName, () => Promise<JobOutcome>> = {
       summary: `Activities without a declared resource at ${r.today} · ${r.undeclared} found · ${r.unassigned} without an assignment at J-15 · ${r.alerted} PM notified · ${r.already} already alerted · ${r.unaddressed} without recipient`,
       counts: { undeclared: r.undeclared, unassigned: r.unassigned, alerted: r.alerted, already: r.already, unaddressed: r.unaddressed }, warn: r.unaddressed > 0,
     };
+  },
+  // ── Delivery 9 · R-180: Keystone's planned tasks (named schedule assignments, Keystone tasks) of each person with a matricule,
+  // sent to Cursus as one snapshot (projects first); a night job. Mock: recorded, nothing sent. Disabled by IT: nothing prepared.
+  'cursus-tasks': async (): Promise<JobOutcome> => {
+    const r = await pushCursusTasks('job');
+    const counts = { tasks: r.tasks, persons: r.persons, projects: r.projects, withoutMatricule: r.withoutMatricule, rejected: r.rejected };
+    if (r.state === 'disabled') return { summary: 'Cursus connector disabled · tasks not sent', counts };
+    const what = `${r.tasks} tasks · ${r.persons} persons · ${r.projects} projects · ${r.withoutMatricule} persons without matricule`;
+    if (r.state === 'mock') return { summary: `Cursus mock connector · tasks not sent · ${what} recorded`, counts };
+    if (r.state === 'sent') return { summary: `Cursus tasks sent · ${what} · ${r.rejected} refused`, counts, warn: r.rejected > 0 };
+    return { summary: `Cursus tasks ${r.state === 'pending' ? 'not sent (retried every 5 minutes)' : 'refused'} · ${what} · ${r.error ?? ''}`, counts, warn: true };
   },
 };
 

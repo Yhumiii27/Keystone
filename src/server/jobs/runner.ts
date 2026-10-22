@@ -3,10 +3,11 @@ import 'server-only';
 // A job whose lease another worker holds — or that another worker started less than ~one interval ago — is skipped.
 // A failure is caught, logged and recorded: it never stops the worker; the job runs again at its next turn.
 // A reminder job (`daily: 'reminders'`, owner's answer of 17 Oct 2026 to R-121) runs only once today's reminders hour has passed
-// (Europe/Paris, KEYSTONE_REMINDERS_AT) and only if it has not started since — the day's run, once.
+// (Europe/Paris, KEYSTONE_REMINDERS_AT) and only if it has not started since — the day's run, once. A night job (`daily: 'night'`,
+// R-180) follows the same rule at NIGHT_JOBS_AT (02:00 Paris).
 import os from 'node:os';
 import { randomBytes } from 'node:crypto';
-import { minGapMs, passedDailySlot, type JobSchedule } from '@/domain/jobs';
+import { NIGHT_JOBS_AT, minGapMs, passedDailySlot, type JobSchedule } from '@/domain/jobs';
 import { getConfig } from '@/server/config';
 import { acquireJobLock, releaseJobLock } from '@/server/dal/job-locks';
 import type { JobDefinition } from './definitions';
@@ -21,8 +22,12 @@ export type JobRunResult =
 /** Identity of a worker in the leases and the log: "worker@host:pid:1a2b". */
 export const holderId = (kind: 'worker' | 'server') => `${kind}@${os.hostname()}:${process.pid}:${randomBytes(2).toString('hex')}`;
 
-/** Hour (HH:MM, Europe/Paris) of a reminder job — the configured reminders hour; null for an interval job. */
-export const jobDailyAt = (job: Pick<JobSchedule, 'daily'>): string | null => (job.daily === 'reminders' ? getConfig().remindersAt : null);
+/**
+ * Hour (HH:MM, Europe/Paris) of a daily job — a reminder job's configured reminders hour, a night job's NIGHT_JOBS_AT (R-180); null
+ * for an interval job.
+ */
+export const jobDailyAt = (job: Pick<JobSchedule, 'daily'>): string | null =>
+  job.daily === 'reminders' ? getConfig().remindersAt : job.daily === 'night' ? NIGHT_JOBS_AT : null;
 
 /**
  * Runs `job` once if its lease is free. `force` (a manual `--once` run) ignores the gap since its last start and the reminders
@@ -32,7 +37,7 @@ export async function runJob(job: JobDefinition, holder: string, opts: { force?:
   const dailyAt = opts.force ? null : jobDailyAt(job);
   const slot = dailyAt ? passedDailySlot(opts.at ?? new Date(), dailyAt) : null;
   if (dailyAt && !slot) {
-    jobLog('info', 'Job skipped', { job: job.name, holder, reason: `before the reminders hour (${dailyAt} Europe/Paris)` });
+    jobLog('info', 'Job skipped', { job: job.name, holder, reason: `before its hour (${dailyAt} Europe/Paris)` });
     return { status: 'skipped' };
   }
   let acquired: boolean;
