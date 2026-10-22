@@ -1,15 +1,19 @@
 import 'server-only';
-// POST /api/integrations/cursus/events — the entry point of the events Cursus pushes to Keystone (R-029, NEW-CURSUS-7 "a";
-// contract: docs/integrations/cursus-contract.md, a proposal). Server to server: no viewer, no session (isPublicPath lets it
-// through the Entra proxy), no same-origin check; the caller is authenticated by its key only.
-// Order of the checks (each answer is JSON `{ ok, … }`, never cached):
+// POST /api/cursus/v1/evenements (Cursus's contract, authoritative: Cursus docs/API-KEYSTONE.md « Événements envoyés par
+// Cursus ») and its earlier alias POST /api/integrations/cursus/events — the entry point of the events Cursus pushes to Keystone
+// (R-029, R-031, NEW-CURSUS-7 "a"; Keystone's notes: docs/integrations/cursus-contract.md). Server to server: no viewer, no
+// session (isPublicPath lets both paths through the Entra proxy), no same-origin check; the caller is authenticated by its key
+// only — `Authorization: Bearer <key>` (Cursus's KEYSTONE_TOKEN) or `X-Api-Key: <key>`, the same CURSUS_EVENTS_KEY.
+// Order of the checks (each answer is JSON `{ ok, … }`, never cached; Cursus retries 408, 429 and 5xx, any other 4xx is final):
 //   429  too many requests from that address (bucket "events", generous: Cursus re-sends its backlog after an outage)
 //   503  no events key configured (production without CURSUS_EVENTS_KEY) — Retry-After: Cursus keeps the event
-//   401  X-Api-Key missing or wrong (constant-time comparison of SHA-256 digests)
+//   401  key missing or wrong (constant-time comparison of SHA-256 digests)
 //   413  body over 256 KB
 //   400  not JSON, or not a valid event
 //   503  Cursus connector disabled by IT (D-7a), or the database unavailable — Retry-After
-//   200  { ok: true, id, status } — or { ok: true, id, duplicate: true } for an event id already received
+//   200  { ok: true, id, status, accuse } — or { ok: true, id, duplicate: true, accuse } for an event id already received
+//        (`accuse`: Cursus keeps it and shows it to the HR department; the Idempotency-Key header equals `id`, which is
+//        what Keystone deduplicates on)
 // Nothing in a refusal echoes the key or the body.
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { MAX_CURSUS_EVENT_BYTES, parseCursusEvent } from '@/domain/cursus-events';
@@ -20,7 +24,9 @@ import { cursusEventsKey } from './connection';
 import { refreshCursusSiteNow } from './connector';
 import { markCursusEventError, receiveCursusEvent } from './inbox';
 
-/** The endpoint's path (public in Entra mode: src/domain/auth.ts). */
+/** The endpoint's path in Cursus's contract (public in Entra mode: src/domain/auth.ts INBOUND_API_PATHS). */
+export const CURSUS_EVENTS_V1_PATH = '/api/cursus/v1/evenements';
+/** Keystone's earlier path, kept as an alias (same handler). */
 export const CURSUS_EVENTS_PATH = '/api/integrations/cursus/events';
 /** Seconds Cursus waits before retrying a 503. */
 export const CURSUS_RETRY_AFTER_SEC = 60;
@@ -35,6 +41,19 @@ export function sameKey(presented: string | null, expected: string): boolean {
   if (!presented) return false;
   return timingSafeEqual(digest(presented), digest(expected));
 }
+
+/** The key the caller presents: `Authorization: Bearer <key>` (Cursus's contract), else `X-Api-Key`. */
+export function presentedKey(headers: Headers): string | null {
+  const auth = headers.get('authorization');
+  const bearer = auth ? /^Bearer[ ]+(\S+)\s*$/i.exec(auth)?.[1] ?? null : null;
+  return bearer ?? headers.get('x-api-key');
+}
+
+/**
+ * The acknowledgement Cursus keeps for an event (`accuse`, 200 characters at most): Keystone's status of the event and its id —
+ * the same for a duplicate as long as the stored status has not changed (a replay can resolve an "unresolved" one).
+ */
+export const accuseOf = (id: string, status: string): string => `${status} · ${id}`.slice(0, 200);
 
 /** Reads the body as text, refusing more than `max` bytes (whatever Content-Length says). */
 async function readBody(request: Request, max: number): Promise<string | null> {
@@ -66,7 +85,7 @@ export async function handleCursusEvent(request: Request): Promise<Response> {
     log.warn('Cursus event refused: CURSUS_EVENTS_KEY is not set', { component: 'cursus' });
     return unavailable('Events are not accepted yet');
   }
-  if (!sameKey(request.headers.get('x-api-key'), key)) return json(401, { ok: false, error: 'Invalid API key' });
+  if (!sameKey(presentedKey(request.headers), key)) return json(401, { ok: false, error: 'Invalid API key' });
   const text = await readBody(request, MAX_CURSUS_EVENT_BYTES).catch(() => null);
   if (text == null) return json(413, { ok: false, error: 'Event too large (256 KB at most)' });
   let body: unknown;
@@ -87,7 +106,7 @@ export async function handleCursusEvent(request: Request): Promise<Response> {
     logError('Cursus event', e, { component: 'cursus', event: ev.id, type: ev.type });
     return unavailable('Keystone cannot store the event now');
   }
-  if (received.duplicate) return json(200, { ok: true, id: ev.id, duplicate: true });
+  if (received.duplicate) return json(200, { ok: true, id: ev.id, duplicate: true, accuse: accuseOf(ev.id, received.status) });
   // verdict.modifie (HTTP mode): the site's Go / No Go is refreshed now, after the event is stored.
   if (received.refreshProject) {
     try {
@@ -95,9 +114,9 @@ export async function handleCursusEvent(request: Request): Promise<Response> {
     } catch (e) {
       logError('Cursus event · site refresh', e, { component: 'cursus', event: ev.id, project: received.refreshProject });
       await markCursusEventError(ev.id, `Go / No Go refresh failed: ${e instanceof Error ? e.message : String(e)}`).catch(() => null);
-      return json(200, { ok: true, id: ev.id, status: 'error' });
+      return json(200, { ok: true, id: ev.id, status: 'error', accuse: accuseOf(ev.id, 'error') });
     }
   }
   log.info('Cursus event received', { component: 'cursus', event: ev.id, type: ev.type, status: received.status });
-  return json(200, { ok: true, id: ev.id, status: received.status });
+  return json(200, { ok: true, id: ev.id, status: received.status, accuse: accuseOf(ev.id, received.status) });
 }

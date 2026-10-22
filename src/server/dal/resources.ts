@@ -15,7 +15,7 @@ import { businessToday } from '@/server/clock';
 import { yearOfIso } from '@/domain/clock';
 import { LOAD_WINDOW_WEEKS, isPastWindow, loadWindow, parseLoadViewParam, parseLoadWeekParam, type LoadWindow } from '@/domain/load-window';
 import type { WeekProjectHours } from '@/domain/load-week';
-import { loadPctOfHours, sumHours, type TradeKind } from '@/domain/planning-load';
+import { capacityOf, loadPctOfHours, sumHours, type TradeKind } from '@/domain/planning-load';
 import { getPlanningLoad } from './planning-load';
 import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import {
@@ -50,12 +50,14 @@ export interface PoolPerson {
   jobTitle: string | null;
   department: string | null;
   /**
-   * % of the 40 h week per window week: the hours the schedules assign the person (R-084, `getPlanningLoad`), rounded; 0 when
-   * nobody assigns them.
+   * % of the person's weekly capacity per window week: the hours the schedules assign the person (R-084, `getPlanningLoad`) on
+   * the 40 h week less their absence days (R-084 absences, `capacityH`), rounded; 0 when nobody assigns them.
    */
   loads: number[];
   /** Hours the schedules assign the person per window week (one decimal). */
   hours: number[];
+  /** R-084 (absences): the person's capacity per window week — 40 h less 8 h per day of leave or absence. */
+  capacityH: number[];
   /** Mean of the weekly loads (unrounded; the screens show round(avg) %). */
   avg: number;
   max: number;
@@ -103,7 +105,8 @@ export async function currentLoadWeeks(): Promise<string[]> {
 /**
  * Pool members and their weekly loads over `weeks` (ISO Mondays; default: the current 8-week window). R-084 (owner answer 17
  * Oct 2026, third round: « partir des allocations du planning pour faire les calculs de charge »): a person's load is the hours
- * the schedules assign them that week (`getPlanningLoad`) on the 40 h week — the `allocations` table is no longer read.
+ * the schedules assign them that week (`getPlanningLoad`) on the 40 h week less their absence days (R-084 absences) — the
+ * `allocations` table is no longer read.
  */
 async function poolRows(personIds?: string[], weeks?: readonly string[]) {
   const db = await getDb();
@@ -119,9 +122,11 @@ async function poolRows(personIds?: string[], weeks?: readonly string[]) {
   ]);
   const toPerson = (p: typeof persons.$inferSelect, dept: string | null): PoolPerson => {
     const hours = load.people[p.id] ?? weekStarts.map(() => 0);
-    const loads = hours.map((h) => loadPctOfHours(h));
+    // R-084 (absences): each week against the person's capacity that week (40 h less their days off).
+    const capacityH = capacityOf(load.capacity, p.id, weekStarts.length);
+    const loads = hours.map((h, i) => loadPctOfHours(h, capacityH[i]));
     return {
-      name: p.fullName ?? p.shortName, shortName: p.shortName, initials: p.initials, jobTitle: p.jobTitle, department: dept, loads, hours,
+      name: p.fullName ?? p.shortName, shortName: p.shortName, initials: p.initials, jobTitle: p.jobTitle, department: dept, loads, hours, capacityH,
       avg: loads.length ? loads.reduce((a, b) => a + b, 0) / loads.length : 0, max: loads.length ? Math.max(...loads) : 0,
     };
   };
@@ -453,7 +458,7 @@ async function loadWhatIfState(projectCode: string, horizon?: string | null): Pr
       activity: a.act, resource: a.resource, person: a.short ? (a.full ?? a.short) : null, jobTitle: a.job, department: a.adept ?? a.pdept, units: a.units, hoursPerDay: a.hpd,
       rateEur: a.short ? at(a.rateRoleId) : (gridRates.find((r) => r.role.toLowerCase() === a.resource.trim().toLowerCase())?.rateEur ?? null),
     })),
-    people: team.map((p) => ({ name: p.name, jobTitle: p.jobTitle, department: p.department, loads: p.loads, rateEur: at(roleOfPerson.get(p.name) ?? null) })),
+    people: team.map((p) => ({ name: p.name, jobTitle: p.jobTitle, department: p.department, loads: p.loads, capacityH: p.capacityH, rateEur: at(roleOfPerson.get(p.name) ?? null) })),
     weeks,
     // R-084: the team's loads and the departments' demand come from the schedules over the horizon (getPlanningLoad); an
     // owner-only activity is demand on the owner's trade, not on the owner (owner answer 17 Oct 2026, third round, B).

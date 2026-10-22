@@ -14,9 +14,10 @@ test('Cursus pushes an event: stored once, duplicates answered, a wrong key refu
   // Server to server: no cookie, no same-origin header.
   const first = await request.post(PATH, { data: event, headers: { 'x-api-key': KEY! } });
   expect(first.status()).toBe(200);
-  expect(await first.json()).toEqual({ ok: true, id: event.id, status: 'received' });
+  // The reply carries Cursus's acknowledgement (`accuse`, Cursus contract, delivery 9).
+  expect(await first.json()).toEqual({ ok: true, id: event.id, status: 'received', accuse: `received · ${event.id}` });
   const again = await request.post(PATH, { data: event, headers: { 'x-api-key': KEY! } });
-  expect(await again.json()).toEqual({ ok: true, id: event.id, duplicate: true });
+  expect(await again.json()).toMatchObject({ ok: true, id: event.id, duplicate: true, accuse: expect.stringMatching(new RegExp(` · ${event.id}$`)) });
   const wrong = await request.post(PATH, { data: { ...event, id: `${event.id}-x` }, headers: { 'x-api-key': 'demo-cursus-events' } });
   expect(wrong.status()).toBe(401);
   const invalid = await request.post(PATH, { data: { id: 'x', type: 'absence.validee', emis_le: 'yesterday', data: {} }, headers: { 'x-api-key': KEY! } });

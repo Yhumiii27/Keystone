@@ -22,6 +22,7 @@ import { openDatabase } from '@/server/db/open';
 import { activities, notifications, persons, projects, users } from '@/server/db/schema';
 import { jobDefinition } from '@/server/jobs/definitions';
 import { COOKIE } from '@/server/session';
+import { removeCursusAbsence, replaceCursusAbsence } from './hr';
 import { capacityModel, loadNextWeeks } from './kpis';
 import { listNotifications } from './notifications';
 import { getPlanningLoad, listUnassignedActivities, listUndeclaredActivities } from './planning-load';
@@ -80,16 +81,25 @@ describe('getPlanningLoad on the demo data set', () => {
 
   it('the pool, the departments, the project demand and the capacity model read the same source', async () => {
     const pool = await getResourcePool(WINDOW);
+    // R-084 (absences): each week against the person's capacity — 40 h less 8 h per day of the seeded leave. R-084 (absences), demo
+    // leave shifted (owner 22 Oct 2026, src/server/db/seed/demo-leave.ts): in this window only Hélène Sauvage's 2 sick days (28 Sep,
+    // 18 h on 24 h: 44 → 73 %), Léa Marchand's RTT (5 Oct, 71 → 89 %) and Julien Wagner's RTT (9 Nov, Wed 11 Nov a holiday: 65 →
+    // 81 %); the full weeks of CP fall on weeks without assigned hours (23 Nov – 15 Jan). The prototype's LEAVE (Amélie Ollivier
+    // CP 12 and 19 Oct…) read 231 % and six people above 110 %.
     expect(pool.people.map((p) => [p.name, p.loads])).toEqual([
       ['Amélie Ollivier', [106, 100, 100, 131, 106, 106, 106, 85]],
-      ['Julien Wagner', [100, 100, 106, 125, 125, 108, 88, 65]],
+      ['Julien Wagner', [100, 100, 106, 125, 125, 108, 88, 81]],
       ['Pauline Noguès', [69, 79, 108, 81, 113, 113, 102, 105]],
       ['Thomas Kerbrat', [56, 56, 88, 110, 75, 75, 56, 20]],
-      ['Léa Marchand', [69, 73, 71, 75, 75, 75, 81, 65]],
+      ['Léa Marchand', [69, 73, 89, 75, 75, 75, 81, 65]],
       ['Damien Roux', [88, 99, 86, 96, 90, 81, 94, 66]],
-      ['Hélène Sauvage', [44, 44, 48, 64, 76, 90, 101, 76]],
+      ['Hélène Sauvage', [44, 73, 48, 64, 76, 90, 101, 76]],
       ['Fabien Bertrand', [100, 99, 95, 81, 56, 56, 49, 35]],
     ]);
+    expect(pool.people.find((p) => p.name === 'Hélène Sauvage')!.capacityH).toEqual([40, 24, 40, 40, 40, 40, 40, 40]);
+    expect(pool.people.find((p) => p.name === 'Amélie Ollivier')!.capacityH).toEqual([40, 40, 40, 40, 40, 40, 40, 40]);
+    expect((await getResourcePool(['2026-12-07', '2026-12-14'])).people.find((p) => p.name === 'Amélie Ollivier')).toMatchObject({ capacityH: [0, 0], loads: [0, 0] });
+    expect(pool.people.find((p) => p.name === 'Damien Roux')!.capacityH).toEqual([40, 40, 40, 40, 40, 40, 40, 40]);
     expect(pool.people.find((p) => p.name === 'Julien Wagner')!.hours).toEqual([40, 40, 42.5, 50, 50, 43, 35, 26]);
     const depts = await listDepartments(WINDOW);
     const mep = depts.find((d) => d.name === 'MEP')!;
@@ -106,7 +116,24 @@ describe('getPlanningLoad on the demo data set', () => {
       ['Engineering', 327], ['Site operations', 551], ['MEP', 358], ['Controls & planning', 742], ['Quality', 217],
     ]);
     // "Load next 2 wks": the weeks of 28 Sep and 5 Oct.
-    expect([await loadNextWeeks('Julien Wagner'), await loadNextWeeks('Hélène Sauvage'), await loadNextWeeks('Marie Lefebvre')]).toEqual([103, 46, null]);
+    // R-084 (absences), demo leave shifted (owner 22 Oct 2026): Hélène Sauvage's 2 sick days in the week of 28 Sep — 73 · 48 → 61 %.
+    expect([await loadNextWeeks('Julien Wagner'), await loadNextWeeks('Hélène Sauvage'), await loadNextWeeks('Marie Lefebvre')]).toEqual([103, 61, null]);
+  });
+});
+
+describe('R-084 (absences): an absence received from Cursus lowers the person\'s capacity', () => {
+  it('Damien Roux, 2 days off in the week of 19 Oct: 36 h on 24 h → 150 %; cancelled → 90 % again', async () => {
+    const db = await getDb();
+    const [damien] = await db.select({ id: persons.id }).from(persons).where(eq(persons.fullName, 'Damien Roux'));
+    const week = ['2026-10-19'];
+    const before = (await getResourcePool(week)).people.find((p) => p.name === 'Damien Roux')!;
+    expect([before.hours, before.capacityH, before.loads]).toEqual([[36], [40], [90]]);
+    await db.transaction((tx) => replaceCursusAbsence(tx, { personId: damien.id, type: 'absence', start: '2026-10-19', end: '2026-10-20', key: 'cursus:probe-1' }));
+    const during = (await getResourcePool(['2026-10-19', '2026-10-26'])).people.find((p) => p.name === 'Damien Roux')!;
+    expect([during.hours, during.capacityH, during.loads]).toEqual([[36, 32.5], [24, 40], [150, 81]]);
+    expect((await getPlanningLoad(['2026-10-19', '2026-10-26'])).capacity[damien.id]).toEqual([24, 40]);
+    await db.transaction((tx) => removeCursusAbsence(tx, 'cursus:probe-1'));
+    expect((await getResourcePool(['2026-10-19', '2026-11-02'])).people.find((p) => p.name === 'Damien Roux')!.loads[0]).toBe(90);
   });
 });
 

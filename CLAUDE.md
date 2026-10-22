@@ -41,6 +41,7 @@ Keystone PM is EPC2i's project and portfolio management tool. It is a Next.js 16
 | CAPEX app (name to choose) | Subsidiaries' CAPEX, DIG-PRODI phases and gates, living dossiers, machine needs (demand side), ramp-up |
 | Keystone | Deliverables and client PV acceptance, ITP and punch list, site readiness and daily reports, commissioning, lessons learned (REX), installed base and claims, client portal, administration |
 
+- **Cross-repo rules (owner, 22 Oct 2026).** This chat owns `Yhumiii27/Keystone` only; Matrix, Cursus, Arche, Crucible, Vigie, Codex are read-only sources. Other apps file requests to Keystone in `REQUESTS.md` (repo root): at the start of each session read it and report the OPEN entries to the owner; handle them only after the owner's approval. The only write allowed elsewhere is a new entry in another repo's `REQUESTS.md` (or the status of an entry Keystone created), and only after presenting a detailed note (target repo, exact request, why, what happens without it) and getting the owner's explicit « validé ».
 - **Connectors.** Each connector lives in `src/server/integrations/<app>/`. It has a read-only mirror, an outbox ("pending sync"), deep links, and a mock until the real API exists.
 
 ## Conventions

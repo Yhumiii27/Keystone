@@ -1,12 +1,17 @@
 import 'server-only';
 // Cursus connector (user decision, Delivery 5). Cursus owns individual site clearances and the people Go / No Go per
 // site; Keystone shows them on the Site screen, opens Cursus (links.ts) and sends reminders and travel requests.
-// Cursus's contract (Cursus README, server/src/index.ts, shared/domain.ts):
-//   GET  /api/integrations/keystone/chantiers/:id/go-no-go   → { chantier, evalue_le, statut, ressources: [{ matricule, statut, motifs }] }
-//   POST /api/integrations/keystone/demandes                 { matricule, chantier, destination, depart, retour } → 201 { id, statut }
-//   GET  /api/integrations/keystone/annuaire                 → [{ matricule, nom, prenom, email, equipe }]  TODO(cursus): proposal (R-027)
+// Cursus's contract, version 1 (authoritative: Cursus docs/API-KEYSTONE.md and docs/keystone-openapi.json; the routes without
+// /v1 are deprecated there):
+//   GET  /api/integrations/keystone/v1/chantiers/:id/go-no-go → { chantier, evalue_le, statut, ressources: [{ matricule, statut,
+//                                                             motifs: [{ code, niveau, libelle? }] }] }
+//   POST /api/integrations/keystone/v1/demandes              { reference, matricule, chantier, destination?, depart, retour }
+//                                                             → 201 { resultat: "cree", demande: { id, …, statut } }; a retry
+//                                                             → 409 DEMANDE_EN_DOUBLE with the request already recorded (`demande`)
+//   GET  /api/integrations/keystone/annuaire                 → [{ matricule, nom, prenom, email, equipe }]  TODO(cursus): Keystone's
+//                                                             proposal (R-027) — Cursus has NO such route (off by default, CURSUS_DIRECTORY)
 //   header X-Api-Key (Cursus's KEYSTONE_API_KEY, "demo-keystone" by default)
-// What Cursus pushes to Keystone (POST /api/integrations/cursus/events, R-029) is received by ./events.ts and ./inbox.ts.
+// What Cursus pushes to Keystone (POST /api/cursus/v1/evenements, R-029) is received by ./events.ts and ./inbox.ts.
 // Two implementations behind one interface:
 // - mock (default; tests and the default run never need Cursus): the local mirror seeded from the prototype's SITE_DOCS;
 //   reminders and travel requests wait in the outbox ("pending sync with Cursus");
@@ -122,6 +127,16 @@ export function resetCursusRefreshThrottle(): void {
   g.__ksCursusInFlight = undefined;
 }
 
+/** Base path of Cursus's API version 1 (Cursus docs/API-KEYSTONE.md). */
+export const CURSUS_V1 = '/api/integrations/keystone/v1';
+
+/** A refusal from Cursus: its HTTP status and its stable error code (`{ error, code }` body), when it gave one. */
+export class CursusHttpError extends Error {
+  constructor(readonly status: number, readonly code: string | null, readonly body: unknown, message: string) {
+    super(message);
+  }
+}
+
 async function cursusFetch(path: string, init?: RequestInit): Promise<Response> {
   const base = cursusApiUrl();
   if (!base) throw new Error('CURSUS_API_URL is not set');
@@ -134,7 +149,11 @@ async function cursusFetch(path: string, init?: RequestInit): Promise<Response> 
       ...init, signal: ctrl.signal,
       headers: { 'content-type': 'application/json', accept: 'application/json', 'x-api-key': apiKey, ...init?.headers },
     });
-    if (!res.ok) throw new Error(`Cursus ${init?.method ?? 'GET'} ${path} → ${res.status}`);
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as { code?: unknown } | null;
+      const code = typeof body?.code === 'string' ? body.code : null;
+      throw new CursusHttpError(res.status, code, body, `Cursus ${init?.method ?? 'GET'} ${path} → ${res.status}${code ? ` ${code}` : ''}`);
+    }
     return res;
   } finally {
     clearTimeout(timer);
@@ -151,8 +170,9 @@ const VERDICT: Record<CursusGoNoGoPayload['statut'], CursusVerdict> = { GO: 'go'
 export function recordsOfPayload(projectCode: string, payload: CursusGoNoGoPayload, names: Map<string, string>): CursusClearanceRecord[] {
   return payload.ressources.map((r) => {
     const verdict = VERDICT[r.statut] ?? 'no_go';
+    // v1: always { code, niveau, libelle? } (libelle in Cursus's detailed sharing only); a bare code from the deprecated route.
     const codes = r.motifs.map((m) => (typeof m === 'string' ? m : m.code));
-    const labels = r.motifs.map((m) => (typeof m === 'string' ? m : m.libelle));
+    const labels = r.motifs.map((m) => (typeof m === 'string' ? m : (m.libelle ?? m.code)));
     const clearanceIssue = codes.some((c) => c === 'HABILITATION' || c === 'CERTIFICATION');
     const travelIssue = codes.some((c) => c === 'FORMALITES_VOYAGE' || c === 'DEPLACEMENT');
     const clearance: CursusClearance = !clearanceIssue ? 'ok' : verdict === 'no_go' ? 'missing' : 'expiring';
@@ -169,7 +189,7 @@ async function refresh(projectCode: string): Promise<number> {
   const db = await getDb();
   const chantierId = await db.transaction(async (tx) => (await chantierOf(tx, projectCode)).chantierId);
   if (!chantierId) throw new Error(`No Cursus site is linked to ${projectCode}`);
-  const res = await cursusFetch(`/api/integrations/keystone/chantiers/${encodeURIComponent(chantierId)}/go-no-go`);
+  const res = await cursusFetch(`${CURSUS_V1}/chantiers/${encodeURIComponent(chantierId)}/go-no-go`);
   const payload = (await res.json()) as CursusGoNoGoPayload;
   if (!payload || !Array.isArray(payload.ressources)) throw new Error('Cursus: unexpected go-no-go payload');
   // R-027: a person imported from Cursus's staff directory names its matricule first; else the name the mirror already has.
@@ -206,7 +226,8 @@ export async function refreshCursusSiteNow(projectCode: string): Promise<number>
 
 /**
  * R-027: Cursus's staff directory. TODO(cursus): GET /api/integrations/keystone/annuaire is Keystone's proposal (NEW-CURSUS-2:
- * Cursus needs a new access) — field names, team codes and paging may change when Cursus publishes it.
+ * Cursus needs a new access) — Cursus's API version 1 has no such route (a call answers 404 ROUTE_INCONNUE); field names, team
+ * codes and paging may change when Cursus publishes it. Off by default (CURSUS_DIRECTORY).
  */
 async function fetchDirectory(): Promise<CursusDirectoryPayload> {
   const res = await cursusFetch('/api/integrations/keystone/annuaire');
@@ -216,7 +237,14 @@ async function fetchDirectory(): Promise<CursusDirectoryPayload> {
   return { entries: entries.filter((e): e is NonNullable<typeof e> => !!e), invalid: entries.filter((e) => !e).length };
 }
 
-/** Delivers the outbox: travel requests go to POST /demandes; reminders have no Cursus endpoint (TODO(cursus), C-2). */
+/** Cursus's id of a travel request: `demande.id` (v1, and the 409 of a retry), else `id` (deprecated route). */
+export function cursusRequestId(body: unknown): string | null {
+  const b = (body ?? {}) as { demande?: { id?: unknown }; id?: unknown };
+  const id = b.demande && typeof b.demande === 'object' ? b.demande.id : b.id;
+  return typeof id === 'number' || (typeof id === 'string' && id) ? String(id) : null;
+}
+
+/** Delivers the outbox: travel requests go to POST /v1/demandes; reminders have no Cursus endpoint (TODO(cursus), C-2). */
 async function deliverOutbox(): Promise<{ delivered: number; failed: number; pending: number }> {
   const db = await getDb();
   // D-7a: a connector IT disabled exchanges nothing; the entries stay pending until it is enabled again.
@@ -230,9 +258,18 @@ async function deliverOutbox(): Promise<{ delivered: number; failed: number; pen
       if (!e.matricule) throw new Error(`No Cursus matricule for ${e.personName}`);
       const chantierId = await db.transaction(async (tx) => (await chantierOf(tx, e.projectCode)).chantierId);
       if (!chantierId) throw new Error(`No Cursus site is linked to ${e.projectCode}`);
-      const res = await cursusFetch('/api/integrations/keystone/demandes', { method: 'POST', body: JSON.stringify({ matricule: e.matricule, chantier: chantierId, ...e.payload }) });
-      const body = (await res.json().catch(() => ({}))) as { id?: number | string };
-      await markRequestDelivery(db, e.id, { ok: true, cursusRef: body.id != null ? String(body.id) : null });
+      // v1: `reference` is required and unique — Keystone's request id, so a retry after a lost answer is recognised by Cursus.
+      const body = JSON.stringify({ reference: e.id, matricule: e.matricule, chantier: chantierId, ...e.payload });
+      let cursusRef: string | null;
+      try {
+        const res = await cursusFetch(`${CURSUS_V1}/demandes`, { method: 'POST', body });
+        cursusRef = cursusRequestId(await res.json().catch(() => ({})));
+      } catch (err) {
+        // 409 DEMANDE_EN_DOUBLE: the request was already received (a retry) — `demande` is the one Cursus recorded.
+        if (!(err instanceof CursusHttpError && err.status === 409 && err.code === 'DEMANDE_EN_DOUBLE')) throw err;
+        cursusRef = cursusRequestId(err.body);
+      }
+      await markRequestDelivery(db, e.id, { ok: true, cursusRef });
       delivered++;
     } catch (err) {
       await markRequestDelivery(db, e.id, { ok: false, error: err instanceof Error ? err.message : String(err) });
