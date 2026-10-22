@@ -110,6 +110,10 @@
   {
    "date": "2026-10-22",
    "text": "Mise à jour de sécurité de Next.js (16.4.0 → 16.4.2, avec eslint-config-next) : la construction signalait une vulnérabilité connue ; typecheck, lint, tests, audit et tests de bout en bout verts."
+  },
+  {
+   "date": "2026-10-22",
+   "text": "Tâches planifiées envoyées à Cursus (R-180) : chaque nuit et avec « Synchroniser », les affectations nominatives du planning et les tâches Keystone de chaque personne qui a un matricule partent vers Cursus en un instantané, pour que la feuille de temps « Propose depuis Keystone » ; reprise automatique après un échec, tâches refusées comptées, état visible sur la ligne Cursus d’Activité & intégrations."
   }
  ],
  "items": [
@@ -5228,7 +5232,9 @@
    "id": "R-180",
    "verdict": "ajout_critique",
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Lot « cursus-tasks » (docs/delivery-9/notes-cursus-tasks.md, contrat docs/integrations/cursus-contract.md § 7) : selon le contrat de Cursus, Keystone pousse (pas de route de lecture) — chaque nuit à 02:00 (tâche cursus-tasks) et avec « Synchroniser » : PUT /v1/projets/{code} pour les projets cités, puis PUT /v1/instantane (section taches, depuis = lundi courant moins 4 semaines ; Cursus supprime les tâches absentes). Envoyées pour chaque personne qui a un matricule : affectations nominatives du planning (heures par jour ouvré du calendrier de l’activité) et tâches Keystone (règle de la vue pub_taches_jours), une tâche couverte par une affectation de la même personne sur la même activité n’étant pas envoyée deux fois. Échec réessayable renvoyé par cursus-outbox ; tâche refusée par Cursus (matricule inconnu) retirée et comptée ; connecteur simulé : envoi enregistré, rien n’est envoyé ; ligne Cursus d’Activité & intégrations : dernier envoi, tâches, refus, personnes sans matricule. À confirmer : la priorité affectation / tâche, l’heure de nuit ; les personnes n’ont pas encore de matricule (annuaire R-027)."
    }
   },
   {

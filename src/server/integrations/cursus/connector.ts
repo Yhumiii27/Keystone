@@ -137,13 +137,17 @@ export class CursusHttpError extends Error {
   }
 }
 
-async function cursusFetch(path: string, init?: RequestInit): Promise<Response> {
+/**
+ * One call to Cursus's API (header X-Api-Key); a refusal throws CursusHttpError with Cursus's status and code. `timeoutMs`: 5 s by
+ * default (R-180: the task snapshot, one transaction on Cursus's side, waits longer).
+ */
+export async function cursusFetch(path: string, init?: RequestInit, timeoutMs = HTTP_TIMEOUT_MS): Promise<Response> {
   const base = cursusApiUrl();
   if (!base) throw new Error('CURSUS_API_URL is not set');
   const apiKey = cursusApiKey();
   if (!apiKey) throw new Error('CURSUS_API_KEY is not set');
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), HTTP_TIMEOUT_MS);
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const res = await fetch(`${base}${path}`, {
       ...init, signal: ctrl.signal,

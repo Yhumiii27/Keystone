@@ -64,8 +64,12 @@ export function volumeT(text: string, t: T, lang: Lang): string {
   if (run) return `${plural(+run[1], 'envoyé', 'envoyés')} · ${run[2]} en attente · ${plural(+run[3], 'actualisé', 'actualisés')}`;
   const codex = /^(\d+) records( · (\d+) linked to (\S+))?$/.exec(text);
   if (codex) return `${plural(+codex[1], 'fiche', 'fiches')}${codex[2] ? ` · ${plural(+codex[3], 'liée', 'liées')} à ${codex[4]}` : ''}`;
-  const cursus = /^(\d+) approvals received$/.exec(text);
-  if (cursus) return plural(+cursus[1], 'approbation reçue', 'approbations reçues');
+  // R-180: "· 12 tasks sent" / "· 3 tasks pending" — the Cursus task push of "Sync now".
+  const cursus = /^(\d+) approvals received(?: · (\d+) tasks (sent|pending))?$/.exec(text);
+  if (cursus) {
+    const tasks = cursus[2] == null ? '' : ` · ${plural(+cursus[2], 'tâche', 'tâches')} ${cursus[3] === 'sent' ? (+cursus[2] === 1 ? 'envoyée' : 'envoyées') : 'en attente'}`;
+    return `${plural(+cursus[1], 'approbation reçue', 'approbations reçues')}${tasks}`;
+  }
   if (text === 'First sync scheduled') return 'Première synchro planifiée';
   return t(text);
 }

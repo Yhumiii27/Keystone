@@ -40,6 +40,9 @@ export type JobName =
   // of record notified once per activity; daily, at the reminders hour. Owner answer 18 Oct 2026: also, at J-15, the activities
   // with an owner but no assignment (a distinct notice, once per activity).
   | 'undeclared-resource-alerts'
+  // ── Delivery 9 · R-180: Keystone's planned tasks (schedule assignments and tasks per person) sent to Cursus as a snapshot,
+  // every night (Cursus docs/API-KEYSTONE.md: « un instantané chaque nuit pour rattraper un envoi perdu »).
+  | 'cursus-tasks'
   ;
 
 export interface JobSchedule {
@@ -54,8 +57,15 @@ export interface JobSchedule {
    * 'reminders': a reminder job — once a day at the reminders hour (Europe/Paris) instead of every `everyMs`; a worker started
    * after that hour runs the day's missed run at once (after `firstDelayMs`) unless it already ran that day.
    */
-  daily?: 'reminders';
+  daily?: 'reminders' | 'night';
 }
+
+/**
+ * R-180: hour of the night jobs (`daily: 'night'`), Europe/Paris — the Cursus task snapshot, sent before anyone opens a
+ * timesheet and after the day's schedule edits. A constant (no setting): the job runs once a day, a missed night runs at the
+ * worker's next start.
+ */
+export const NIGHT_JOBS_AT = '02:00';
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
@@ -84,6 +94,9 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
   // ── Delivery 9 · R-084: one notice per activity without any declared resource (no assignment, no owner), and (owner, 18 Oct
   // 2026) one per activity with an owner but no assignment starting within 15 days; a reminder job.
   { name: 'undeclared-resource-alerts', everyMs: 24 * HOUR, leaseMs: 15 * MIN, firstDelayMs: 55_000, daily: 'reminders' },
+  // ── Delivery 9 · R-180: the Cursus task snapshot, once a night at NIGHT_JOBS_AT (a retryable failure is sent again by
+  // "cursus-outbox"); with the mock connector it records what would be sent.
+  { name: 'cursus-tasks', everyMs: 24 * HOUR, leaseMs: 15 * MIN, firstDelayMs: 60_000, daily: 'night' },
 ];
 
 export const JOB_NAMES: readonly JobName[] = JOB_SCHEDULES.map((j) => j.name);

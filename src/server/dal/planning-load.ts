@@ -47,11 +47,13 @@ async function capacities(weeks: readonly string[]): Promise<Record<string, numb
   return personWeekCapacities(rows, weeks, new Set(holidays.map((h) => h.date)));
 }
 
-async function calendarsOf(codes: readonly string[]) {
+/** Working calendars of each project (by code), Settings holidays applied. Also read by the Cursus task push (R-180). */
+export async function calendarsOf(codes: readonly string[]) {
   return new Map(await Promise.all([...new Set(codes)].map(async (c) => [c, await loadWorkCalendars(c)] as const)));
 }
 
-const calendarFor = (own: Record<string, WorkCalendar>, activityCalendar: string | null, projectCalendar: string | null): WorkCalendar =>
+/** An activity's working calendar: its own, else its project's, else the default project calendar. */
+export const calendarFor = (own: Record<string, WorkCalendar>, activityCalendar: string | null, projectCalendar: string | null): WorkCalendar =>
   (activityCalendar && own[activityCalendar]) || own[projectCalendarCode({ calendar: projectCalendar })] || own[DEFAULT_PROJECT_CALENDAR];
 
 /** Activities dated across [from, to] (every project) with their assignments, in the shape of the load rules. */

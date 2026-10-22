@@ -2,7 +2,7 @@
 // and the orphan-file prune remove.
 import { describe, expect, it } from 'vitest';
 import {
-  DEFAULT_REMINDERS_AT, JOB_NAMES, JOB_SCHEDULES, ORPHAN_FILE_GRACE_MS, dailyDelayMs, dailySlotOn, isJobName, minGapMs, nextDailySlot, orphanFilesToPrune,
+  DEFAULT_REMINDERS_AT, JOB_NAMES, NIGHT_JOBS_AT, JOB_SCHEDULES, ORPHAN_FILE_GRACE_MS, dailyDelayMs, dailySlotOn, isJobName, minGapMs, nextDailySlot, orphanFilesToPrune,
   parseTimeOfDay, passedDailySlot, trashEntriesToPurge,
 } from './jobs';
 
@@ -24,7 +24,11 @@ describe('jobs and schedules', () => {
       ['site-prerequisite-alerts', 1440, 15],
       // Delivery 9 (R-084, owner answer 17 Oct 2026, third round, B): activities without any declared resource, daily.
       ['undeclared-resource-alerts', 1440, 15],
+      // Delivery 9 (R-180): Keystone's planned tasks sent to Cursus as one snapshot, once a night.
+      ['cursus-tasks', 1440, 15],
     ]);
+    expect(JOB_SCHEDULES.filter((j) => j.daily === 'night').map((j) => j.name)).toEqual(['cursus-tasks']);
+    expect(NIGHT_JOBS_AT).toBe('02:00');
     // Owner's answer of 17 Oct 2026 (R-121): the jobs that send reminders to people run in the morning; technical jobs keep
     // their intervals.
     expect(JOB_SCHEDULES.filter((j) => j.daily === 'reminders').map((j) => j.name)).toEqual(['site-prerequisite-alerts', 'undeclared-resource-alerts']);

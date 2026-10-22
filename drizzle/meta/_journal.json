@@ -253,6 +253,13 @@
       "when": 1792315023459,
       "tag": "0035_share",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1792701579008,
+      "tag": "0036_cursus_task_pushes",
+      "breakpoints": true
     }
   ]
 }
