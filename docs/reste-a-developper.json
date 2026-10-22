@@ -98,6 +98,10 @@
   {
    "date": "2026-10-22",
    "text": "Contrat Cursus : Keystone accepte le format réel des événements de Cursus (adresse /api/cursus/v1/evenements, jeton Bearer, donnees, absence.annulee, accusé), appelle les routes /v1 de Cursus, et la capacité de chacun tient compte de ses absences (R-029, R-031, R-084)."
+  },
+  {
+   "date": "2026-10-22",
+   "text": "Demandes d’Arche (application CAPEX) rattachées aux lots R-185 à R-194, et demandes de Crucible (moyens d’essais R&D) inscrites (R-195 à R-197) ; les dépôts frères restent des sources d’information, Keystone n’y écrit pas."
   }
  ],
  "items": [
@@ -5352,7 +5356,7 @@
    ],
    "progress": {
     "state": "a_faire",
-    "note": "Consigné le 15 oct. 2026 à la demande du responsable produit ; à cadrer avant la livraison 9. 22 oct. 2026 : prérequis du lien avec l’application CAPEX (un besoin de plusieurs machines = un projet EPC2i à plusieurs équipements, recommandé)."
+    "note": "Consigné le 15 oct. 2026 à la demande du responsable produit ; à cadrer avant la livraison 9. 22 oct. 2026 : prérequis du lien avec l’application CAPEX (un besoin de plusieurs machines = un projet EPC2i à plusieurs équipements, recommandé). Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-10 — un besoin de plusieurs machines doit pouvoir créer un projet EPC2i à plusieurs équipements ou en ajouter à un projet existant."
    }
   },
   {
@@ -5376,7 +5380,7 @@
    ],
    "progress": {
     "state": "a_faire",
-    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire."
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-01 — pub_catalogue_machines (fiches publiées, versions, options, capacité nominale, prix indicatif, délai type, statut)."
    }
   },
   {
@@ -5400,7 +5404,7 @@
    ],
    "progress": {
     "state": "a_faire",
-    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire."
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-02 — connecteur capex (lire arche.pub_capex et arche.pub_besoins_machines, liens profonds <ARCHE_URL>/capex/<code>), corbeille « Besoins des filiales », pub_reponses_besoins ; K-10 — à la commande, créer le projet EPC2i ou ajouter des équipements à un projet existant, code publié dans pub_reponses_besoins.projet_code."
    }
   },
   {
@@ -5424,7 +5428,7 @@
    ],
    "progress": {
     "state": "a_faire",
-    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire."
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-03 — classe d’estimation E50 / E30 / E10 et fourchette sur les réponses et les offres ; offre ferme = E10."
    }
   },
   {
@@ -5447,7 +5451,7 @@
    ],
    "progress": {
     "state": "a_faire",
-    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire."
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-04 — pub_jalons_projets, pub_avancement_projets (côté vente, sans coût ni marge), pub_avenants, pub_reserves ; K-06 — pub_livrables : type, accepte_le, maj_le en fin de vue ; K-11 — index sur maj_le des vues lues (lecture incrémentale)."
    }
   },
   {
@@ -5470,7 +5474,7 @@
    ],
    "progress": {
     "state": "a_faire",
-    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire."
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-05 — pub_projets : capex_code et besoin_ref en fin de vue ; client interne = filiale."
    }
   },
   {
@@ -5541,7 +5545,7 @@
    ],
    "progress": {
     "state": "a_faire",
-    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire."
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-07 — pub_parc_machines : type_machine_code, livree_le, maj_le en fin de vue ; K-09 — lire arche.pub_rampup."
    }
   },
   {
@@ -5567,7 +5571,75 @@
    ],
    "progress": {
     "state": "a_faire",
-    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire."
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-12 — Arche consommera @epc2i/socle à la place de ses copies."
+   }
+  },
+  {
+   "id": "R-195",
+   "verdict": "ajout_critique",
+   "title": "Vue pub_jalons des échéances des projets (pour Crucible)",
+   "description": "Crucible (K-2) lit les échéances des projets pour anticiper les besoins d’essais : vue pub_jalons (projet_code, jalon_id, nom, mois_reference, mois_prevu, statut, activite_code, date_activite_fin = fin au plus tôt de l’activité liée si datée, maj_le). La lecture de pub_projets par crucible_app (K-1) est un droit à accorder dans Matrix (partage/90-droits.sql), pas un changement de Keystone. Proche de pub_jalons_projets demandée par Arche (R-189) : une seule vue pour les deux lecteurs si les colonnes se rejoignent.",
+   "category": "integrations",
+   "kind": "integration",
+   "priority": "a_decider",
+   "status": "non_commence",
+   "waiting_on": "Validation du responsable produit ; contrat commun avec R-189",
+   "effort": "M",
+   "sources": [
+    "Crucible (application de planification des moyens d’essais R&D), docs/DEMANDES-KEYSTONE.md, 22 oct. 2026"
+   ],
+   "evidence": [
+    "drizzle/0035_share.sql (vues pub_ existantes)",
+    "src/server/db/schema (jalons des projets)"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 22 oct. 2026 (demande de Crucible) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-196",
+   "verdict": "ajout_critique",
+   "title": "Catégorie « R&D » des projets lisible dans pub_projets (pour Crucible)",
+   "description": "Crucible (K-3) filtre les projets R&D : si les projets R&D sont des projets internes de Keystone, une nature ou une étiquette « R&D » lisible dans pub_projets (colonne en fin de vue, ex. categorie). Le type de machine « R&D » existe déjà ; à décider : type de machine, nature du projet ou étiquette.",
+   "category": "integrations",
+   "kind": "integration",
+   "priority": "a_decider",
+   "status": "non_commence",
+   "waiting_on": "Décision : comment reconnaître un projet R&D",
+   "effort": "S",
+   "sources": [
+    "Crucible (application de planification des moyens d’essais R&D), docs/DEMANDES-KEYSTONE.md, 22 oct. 2026"
+   ],
+   "evidence": [
+    "drizzle/0035_share.sql (pub_projets)",
+    "src/server/db/schema/portfolio.ts (projects.kind, machine_type_code)"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 22 oct. 2026 (demande de Crucible) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-197",
+   "verdict": "ajout_critique",
+   "title": "Afficher les essais planifiés de Crucible dans le planning d’un projet (facultatif)",
+   "description": "Crucible (K-4, facultatif) publie crucible.pub_reservations : Keystone pourrait les lire et les afficher dans le planning d’un projet (visibilité côté projet), en miroir lecture seule avec liens profonds vers Crucible.",
+   "category": "integrations",
+   "kind": "integration",
+   "priority": "plus_tard",
+   "status": "non_commence",
+   "waiting_on": "Crucible : vue pub_reservations publiée ; validation du responsable produit",
+   "effort": "M",
+   "sources": [
+    "Crucible (application de planification des moyens d’essais R&D), docs/DEMANDES-KEYSTONE.md, 22 oct. 2026"
+   ],
+   "evidence": [
+    "src/server/integrations/ (modèle des connecteurs)"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 22 oct. 2026 (demande de Crucible) ; à valider avant de construire."
    }
   }
  ]
