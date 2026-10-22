@@ -206,18 +206,18 @@ describe('Leave & working calendar', () => {
     // the seed); R-173: no reason in any text (Leave / Absence only).
     expect(x).toContain('Cursus — None received yet');
     expect(x).not.toMatch(/sick|Sick|Training|Lucca/);
-    expect(x).toContain('Team availability 85% Next 8 weeks · 35 h basis');
-    expect(x).toContain('Leave days 43 Approved in Cursus');
+    // R-084 (absences), demo leave shifted (owner 22 Oct 2026): on these 8 weeks Hélène Sauvage's 2 sick days, Léa Marchand's and Julien Wagner's RTT — 97 %, 4 days
+    // (85 %, 43 days with the prototype's LEAVE; the full weeks of CP from 23 Nov).
+    expect(x).toContain('Team availability 97% Next 8 weeks · 35 h basis');
+    expect(x).toContain('Leave days 4 Approved in Cursus');
     expect(x).toContain('Public holidays 1 11 Nov · France');
     expect(x).toContain('Weeks under 60% team capacity 0 Capacity feeds the allocation heatmap');
     expect(x).toContain('Person Sep 28 Oct 5 Oct 12 Oct 19 Oct 26 Nov 2 Nov 9 Nov 16 Leave Avail.');
     expect(x).toContain('Public holidays 11 Nov');
-    expect(x).toContain('Amélie Ollivier Site lead 35 h 35 h Leave 0 h Leave 0 h 35 h 35 h Hol. 28 h 35 h 10 d 73%');
-    expect(x).toContain('Pauline Noguès');
-    expect(x).toContain('Absence 14 h');
-    expect(x).toContain('Absence 21 h');
-    expect(x).toContain('Fabien Bertrand');
-    expect(x).toContain('Leave 0 h Leave 0 h 10 d 75%');
+    expect(x).toContain('Amélie Ollivier Site lead 35 h 35 h 35 h 35 h 35 h 35 h Hol. 28 h 35 h 0 d 98%');
+    expect(x).toContain('Julien Wagner Structural engineer 35 h 35 h 35 h 35 h 35 h 35 h Leave 21 h 35 h 1 d 95%');
+    expect(x).toContain('Léa Marchand Cost controller 35 h Leave 28 h 35 h 35 h 35 h 35 h Hol. 28 h 35 h 1 d 95%');
+    expect(x).toContain('Hélène Sauvage QA / QC Absence 21 h 35 h 35 h 35 h 35 h 35 h Hol. 28 h 35 h 2 d 93%');
     expect(x).toContain('Leave · paid leave or RTT Absence · any other absence Hol. · public holiday');
     expect(x).toContain('Received from Cursus · 35 h week · 7 h per leave day · public holidays removed');
     expect(x).toContain('Leave is requested and approved in Cursus');
@@ -226,14 +226,15 @@ describe('Leave & working calendar', () => {
   it('FR: week labels "28 sept.", leave codes, day unit', () => {
     const x = text(html(h(LeaveView, { data: leave, t: tOf('fr') }), 'fr'));
     expect(x).toContain('Personne 28 sept. 5 oct. 12 oct. 19 oct. 26 oct. 2 nov. 9 nov. 16 nov. Congés Dispo.');
-    expect(x).toContain('Disponibilité de l’équipe 85%');
+    expect(x).toContain('Disponibilité de l’équipe 97%'); // R-084 (absences), demo leave shifted (owner 22 Oct 2026) (85 % with the prototype's LEAVE)
     expect(x).toContain('Jours fériés 1 11 nov. · France');
     // NEW-CURSUS-4 / R-173: Congés / Absence, never « Maladie » or « Formation ».
     expect(x).toContain('Absence 21 h');
-    expect(x).toContain('Absence 14 h');
-    expect(x).toContain('Congés 0 h');
+    // R-084 (absences), demo leave shifted (owner 22 Oct 2026): no full week of leave on these weeks (Pauline Noguès's 3 days of
+    // absence, « Congés 0 h » and Amélie Ollivier's « 10 j 73% » with the prototype's LEAVE).
+    expect(x).toContain('Congés 28 h');
     expect(x).toContain('Férié 28 h');
-    expect(x).toContain('10 j 73%');
+    expect(x).toContain('2 j 93%');
     expect(x).toContain('Congés · congés payés ou RTT Absence · toute autre absence Férié · jour férié');
     expect(x).toContain('Cursus — Aucune reçue pour l’instant');
     expect(x).not.toMatch(/Maladie|maladie|Formation|Lucca/);

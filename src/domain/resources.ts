@@ -98,15 +98,17 @@ export const OTHER_DEPARTMENT = 'Other';
  * team belongs to, a crew without a department).
  */
 export function projectDepartmentDemand(
-  people: { department: string | null | undefined; avgPct: number }[], hoursPerPerson = HOURS_PER_PERSON_WINDOW,
+  people: { department: string | null | undefined; avgPct: number; hoursH?: number; capacityH?: number }[], hoursPerPerson = HOURS_PER_PERSON_WINDOW,
   trades: readonly { trade: string; kind: 'department' | 'resource' | 'other'; hours: number }[] = [],
 ): CapacityRow[] {
   const m = new Map<string, CapacityRow>();
   for (const p of people) {
     const d = p.department || OTHER_DEPARTMENT;
     const row = m.get(d) ?? { name: d, capacityH: 0, demandH: 0 };
-    row.capacityH += hoursPerPerson;
-    row.demandH += Math.round(p.avgPct * (hoursPerPerson / 100));
+    // R-084 (absences): with the person's hours and capacity over the weeks shown (40 h a week less their days off), the bar
+    // reads them; else the % of the 40 h week (the rule of a load from another source).
+    row.capacityH += p.capacityH ?? hoursPerPerson;
+    row.demandH += Math.round(p.hoursH ?? p.avgPct * (hoursPerPerson / 100));
     m.set(d, row);
   }
   for (const t of trades) {

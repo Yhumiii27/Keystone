@@ -42,6 +42,7 @@ describe('portfolio DAL', () => {
       detail: 'Critical path −27 d · forecast finish 14 Jan 2027 (baseline 18 Dec 2026) · 2 milestones late: Structure topped out, Cranes operational.',
     });
     expect(ov.alerts[5].detail).toBe('Forecast €1.40M vs budget €1.35M (+€46k) · CPI 0.97.');
+    // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 3 people, weeks 42–44 (6 people, weeks 40 and 42–46 with the prototype's LEAVE).
     expect(ov.alerts[6]).toMatchObject({ title: '3 people over 110%', detail: 'Weeks 42–44 · Amélie Ollivier, Julien Wagner, Pauline Noguès.' });
     expect(ov.alerts[7]).toMatchObject({ title: '1 approval waiting more than 5 days', detail: 'Oldest: INV-HC-7781 · Halvorsen Cranes · €1,286,400 · since 10 Sep 2026 (15 d).' });
     const fr = await getPortfolioOverview(null, 'fr');

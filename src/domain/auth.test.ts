@@ -134,9 +134,12 @@ describe('titles and paths', () => {
       expect(isPublicPath(p), p).toBe(false);
   });
 
-  it('R-029 (NEW-CURSUS-7): the Cursus events endpoint is public (its own key authenticates the call) — that exact path only', () => {
+  it('R-029 (NEW-CURSUS-7): the Cursus events endpoint is public (its own key authenticates the call) — those exact paths only', () => {
+    // Cursus's address (Cursus docs/API-KEYSTONE.md) and Keystone's earlier alias.
+    expect(isPublicPath('/api/cursus/v1/evenements')).toBe(true);
     expect(isPublicPath('/api/integrations/cursus/events')).toBe(true);
-    for (const p of ['/api/integrations/cursus/events/x', '/api/integrations/cursus', '/api/integrations/cursus/eventsx', '/api/integrations/vigie/events', '/API/integrations/cursus/events'])
+    for (const p of ['/api/integrations/cursus/events/x', '/api/integrations/cursus', '/api/integrations/cursus/eventsx', '/api/integrations/vigie/events', '/API/integrations/cursus/events',
+      '/api/cursus/v1/evenements/x', '/api/cursus/v1', '/api/cursus/v1/evenementsx', '/api/cursus/v2/evenements'])
       expect(isPublicPath(p), p).toBe(false);
   });
 });
