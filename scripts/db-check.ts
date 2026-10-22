@@ -1,6 +1,10 @@
 // End-to-end database check: opens a PGlite in a temporary directory, applies ./drizzle, seeds from the
 // prototype data set, prints row counts and verifies golden values through the DAL.
 //   npx tsx --conditions=react-server scripts/db-check.ts
+// With --postgres, the same checks run on the PostgreSQL server of DATABASE_URL (the shared EPC2I server as keystone_app,
+// schema `keystone`): `npm run db:migrate` logic first (migrations, demo seed), then the checks — which WRITE (projects,
+// requests, orders…): only on a fresh, disposable database (CI, a test cluster), never on a server whose data is kept.
+//   DATABASE_URL=postgres://keystone_app:…@host:5432/epc2i npx tsx --conditions=react-server scripts/db-check.ts --postgres
 // R-013: the golden values are the demo data set's at its date (the real clock is the default since 17 Oct 2026).
 process.env.KEYSTONE_CLOCK = '2026-09-25';
 import fs from 'node:fs';
@@ -176,12 +180,30 @@ function diff(a: unknown, b: unknown, p = ''): string | null {
   return `${p}: ${JSON.stringify(a)?.slice(0, 200)} ≠ ${JSON.stringify(b)?.slice(0, 200)}`;
 }
 
-async function main() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'keystone-db-check-'));
+/** The database under check: a new PGlite (default), or the server of DATABASE_URL (--postgres), migrated and seeded. */
+async function openChecked(): Promise<{ db: Awaited<ReturnType<typeof openDatabase>>; close: () => Promise<void> }> {
   const t0 = Date.now();
+  if (process.argv.includes('--postgres')) {
+    const url = process.env.DATABASE_URL?.trim();
+    if (!url) throw new Error('--postgres needs DATABASE_URL');
+    const { migrateAndSeedPostgres, openPostgres } = await import('@/server/db/postgres');
+    const { redactUrl } = await import('@/server/config');
+    const h = await openPostgres({ url, poolMax: 8, applicationName: 'keystone-db-check' });
+    const r = await migrateAndSeedPostgres(h, 'demo');
+    console.log(`PostgreSQL ${redactUrl(url)}: ${r.applied} migrations applied, ${r.seeded ? 'seeded' : 'already seeded'} (${Date.now() - t0} ms)`);
+    return { db: h.db, close: () => h.close() };
+  }
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'keystone-db-check-'));
   const db = await openDatabase(path.join(dir, 'pg'));
+  console.log(`Database ${dir}/pg migrated and seeded in ${Date.now() - t0} ms`);
+  return { db, close: async () => fs.rmSync(dir, { recursive: true, force: true }) };
+}
+
+async function main() {
+  const opened = await openChecked();
+  const db = opened.db;
   setDb(db);
-  console.log(`Database ${dir}/pg migrated and seeded in ${Date.now() - t0} ms\n\nRow counts`);
+  console.log('\nRow counts');
 
   const counts: Record<string, number> = {};
   for (const t of Object.values(schema)) {
@@ -209,6 +231,19 @@ async function main() {
     }
   }
   check('audit_entries refuses UPDATE, DELETE and TRUNCATE', refused === 3 && (await listAudit()).length === 8, refused);
+
+  // Share views of the EPC2I data sharing convention (migration 0035_share, Matrix partage/30-keystone.sql).
+  console.log('\nShare views (pub_)');
+  const views = await db.execute(sql`select table_name as v from information_schema.views where table_schema = current_schema() and table_name like 'pub\_%' order by 1`);
+  const viewNames = (views.rows as { v: string }[]).map((r) => r.v);
+  check('12 pub_ views', viewNames.length === 12, viewNames);
+  for (const v of viewNames) {
+    const r = await db.execute(sql`select count(*)::int as n from ${sql.identifier(v)}`);
+    console.log(`  ${v.padEnd(34)} ${String((r.rows[0] as { n: number }).n).padStart(5)}`);
+  }
+  const share = (await db.execute(sql`select (select count(*)::int from pub_projets) as projets, (select count(*)::int from projects) as projects,
+    (select count(*)::int from countries where iso2 is null) as no_iso2, (select count(*)::int from pub_clients) as clients`)).rows[0] as { projets: number; projects: number; no_iso2: number; clients: number };
+  check('pub_projets lists every project, every seeded country has its ISO code', share.projets === share.projects && share.no_iso2 === 0 && share.clients === counts.clients, share);
 
   console.log('\nDelivery 3 tables (golden row counts)');
   for (const [table, n] of Object.entries(D3_COUNTS)) check(`${table} = ${n}`, counts[table] === n, counts[table]);
@@ -430,7 +465,7 @@ async function main() {
   await delivery5Writes();
   await chapter4Writes();
 
-  fs.rmSync(dir, { recursive: true, force: true });
+  await opened.close();
   console.log(failures ? `\n${failures} check(s) FAILED` : '\nAll checks passed');
   process.exit(failures ? 1 : 0);
 }

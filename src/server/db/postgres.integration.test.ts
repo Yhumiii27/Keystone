@@ -3,8 +3,10 @@
 // otherwise (the default test run needs no server and never reaches the network).
 // - `npm run db:migrate` logic: migrations under the advisory lock, the explicit seed choice, idempotent re-run;
 // - driver parity: the DAL reads the same values from PostgreSQL (node-postgres) as from PGlite;
-// - concurrent writes on separate connections: business numbers stay unique (SERIALIZABLE + retry), the S-3 rule holds.
+// - concurrent writes on separate connections: business numbers stay unique (SERIALIZABLE + retry), the S-3 rule holds;
+// - shared-server layout (M-01): tables, journal and pub_ views in the schema `keystone`, nothing in `public`.
 import { randomBytes } from 'node:crypto';
+import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { getCostControl } from '@/server/dal/cost';
 import { getChangeControl } from '@/server/dal/changes';
@@ -14,7 +16,7 @@ import { getStageHistory } from '@/server/dal/lifecycle';
 import { listMeetings } from '@/server/dal/meetings';
 import { getPlanData } from '@/server/dal/plan';
 import { getPortfolioOverview } from '@/server/dal/portfolio';
-import { getProjectData, listProjects } from '@/server/dal/projects';
+import { createProject, getProjectData, listProjects } from '@/server/dal/projects';
 import { listPurchaseOrders } from '@/server/dal/purchasing';
 import { getResourcePool } from '@/server/dal/resources';
 import { createRisk, getRiskRegister } from '@/server/dal/risks';
@@ -41,9 +43,9 @@ function urlOf(name: string): string {
   return u.toString();
 }
 
-async function admin(sqlText: string): Promise<void> {
+async function admin(sqlText: string, database?: string): Promise<void> {
   const { default: pg } = await import('pg');
-  const c = new pg.Client({ connectionString: ADMIN_URL });
+  const c = new pg.Client({ connectionString: database ? urlOf(database) : ADMIN_URL });
   await c.connect();
   try {
     await c.query(sqlText);
@@ -62,6 +64,8 @@ describe.skipIf(!ADMIN_URL)('PostgreSQL server (KEYSTONE_TEST_DATABASE_URL)', ()
 
   beforeAll(async () => {
     await admin(`create database ${name}`);
+    // The `keystone` schema, as the shared server's base layer creates it (Keystone never creates a schema).
+    await admin('create schema keystone', name);
     pg = await openPostgres({ url: urlOf(name), poolMax: 8 });
     lite = await openDatabase();
   }, 120_000);
@@ -80,6 +84,20 @@ describe.skipIf(!ADMIN_URL)('PostgreSQL server (KEYSTONE_TEST_DATABASE_URL)', ()
     expect(await migrateAndSeedPostgres(pg, null)).toEqual({ applied: 0, seeded: false });
     expect(await migrateAndSeedPostgres(pg, 'production')).toEqual({ applied: 0, seeded: false });
   }, 120_000);
+
+  it('shared-server layout: tables, journal and share views in "keystone", nothing in "public"', async () => {
+    const { rows } = await pg.pool.query<{ schema: string; kind: string; n: number }>(`select n.nspname as schema, c.relkind::text as kind, count(*)::int as n
+      from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname in ('public', 'keystone', 'drizzle') and c.relkind in ('r', 'v')
+      group by 1, 2 order by 1, 2`);
+    expect(rows.filter((r) => r.schema !== 'keystone')).toEqual([]);
+    const tables = rows.find((r) => r.kind === 'r')?.n ?? 0;
+    expect(tables).toBeGreaterThan(200);
+    expect(rows.find((r) => r.kind === 'v')?.n).toBe(12);
+    const journal = await pg.pool.query<{ n: number }>('select count(*)::int as n from keystone.__drizzle_migrations');
+    expect(journal.rows[0].n).toBeGreaterThan(30);
+    const counts = await pg.pool.query<{ v: number; t: number }>('select (select count(*)::int from pub_projets) as v, (select count(*)::int from projects) as t');
+    expect(counts.rows[0].v).toBe(counts.rows[0].t);
+  });
 
   it('two db:migrate at the same time: the advisory lock serialises them', async () => {
     const other = await openPostgres({ url: urlOf(name), poolMax: 2 });
@@ -129,6 +147,33 @@ describe.skipIf(!ADMIN_URL)('PostgreSQL server (KEYSTONE_TEST_DATABASE_URL)', ()
     const todos = await Promise.all(Array.from({ length: 6 }, (_, i) => addActivityTodo('HLT-026', 'A1250', { title: `To-do ${i}` }, 'System')));
     expect(new Set(todos).size).toBe(6);
   }, 120_000);
+
+  it('concurrent project creations get distinct numbers and analytic codes (inside the write transaction, behind the write lock)', async () => {
+    setDb(pg.db);
+    const codes = await Promise.all(Array.from({ length: 10 }, (_, i) => createProject({
+      name: `Concurrent project ${i}`, client: 'Logistics BU', das: '2', machineType: 'EMP', currency: 'EUR', templateCode: 'EMP',
+      categories: [{ name: 'Études', type: 'labor', budget: 100 }], contingencyPct: 5, calendar: 'standard_5x8_workshop',
+    })));
+    expect(new Set(codes).size).toBe(10);
+    const { rows } = await pg.pool.query<{ number: string; analytic_code: string }>('select number, analytic_code from projects where code = any($1)', [codes]);
+    expect(new Set(rows.map((r) => r.number)).size).toBe(10);
+    expect(new Set(rows.map((r) => r.analytic_code)).size).toBe(10);
+  }, 120_000);
+
+  it('write lock: one transaction at a time; a transaction opened inside another one does not wait for its caller', async () => {
+    const order: string[] = [];
+    const slow = pg.db.transaction(async (tx) => {
+      order.push('first:start');
+      await tx.execute(sql`select pg_sleep(0.3)`);
+      order.push('first:end');
+    });
+    await new Promise((r) => setTimeout(r, 50));
+    const second = pg.db.transaction(async () => void order.push('second'));
+    const nested = pg.db.transaction(async () => pg.db.transaction(async () => 'nested'));
+    await Promise.all([slow, second]);
+    expect(order.slice(0, 2)).toEqual(['first:start', 'first:end']);
+    expect(await nested).toBe('nested');
+  }, 60_000);
 
   it('S-3 under real concurrency: simultaneous snapshots at BL0 create BL1 once, the others are refused', async () => {
     setDb(pg.db);

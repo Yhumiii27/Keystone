@@ -80,6 +80,10 @@
    "text": "Réponses du 18 oct. : équipes externes exclues de la charge, alerte J-15 sur activité sans affectation, affectations nominatives dans les plannings de démonstration ; anciens risques de prérequis laissés ouverts."
   },
   {
+   "date": "2026-10-18",
+   "text": "Serveur PostgreSQL commun EPC2I (étape 3, décision M-01) : sur PostgreSQL, tables, vues pub_ et journal des migrations dans le schéma keystone (rôle keystone_app), migrations publiées inchangées (« \"public\". » remplacé par « \"keystone\". » à l’application, verrou hashtext('keystone.migrations')), verrou d’écriture des transactions, numéro et code analytique d’un nouveau projet calculés dans la transaction, sauvegarde limitée au schéma keystone ; migrations 0034_share_prerequisites et 0035_share (12 vues pub_ du partage). PGlite inchangé."
+  },
+  {
    "date": "2026-10-19",
    "text": "Correctif de déploiement (Coolify, mono-conteneur PGlite) : le script d’entrée de l’image rend /data à l’utilisateur node quand le volume a été écrit en root par l’image de la PR #1 (« PGlite failed to initialize properly ») ; curl gardé pour le contrôle de santé de Coolify."
   }
@@ -138,7 +142,8 @@
    ],
    "progress": {
     "state": "fait",
-    "delivery": "Livraison 7"
+    "delivery": "Livraison 7",
+    "note": "Livraison 7 : pilote node-postgres, db:migrate au déploiement. 18 oct. 2026 : serveur commun EPC2I (schéma keystone, rôle keystone_app, docs/EXPLOITATION.md § 4.1)."
    }
   },
   {

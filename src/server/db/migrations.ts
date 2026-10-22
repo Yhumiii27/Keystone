@@ -3,18 +3,17 @@ import 'server-only';
 // - on PGlite, when the database is opened (src/server/db/open.ts) — one process owns the data directory;
 // - on PostgreSQL, by `npm run db:migrate` at deploy time (scripts/db-migrate.ts), never by the application: several server
 //   instances share the database. The application checks at start-up that none is pending (src/server/db/client.ts) and
-//   GET /api/health reports it.
+//   GET /api/health reports it. The server has its own migrator (applyServerMigrations: schema `keystone`, see
+//   ./server-schema.ts); PGlite keeps Drizzle's (tables in `public`, journal in `drizzle`).
 import path from 'node:path';
 import { sql } from 'drizzle-orm';
 import { readMigrationFiles, type MigrationMeta } from 'drizzle-orm/migrator';
+import { SERVER_SCHEMA, journalSchemaOf, serverStatement } from './server-schema';
 import { sqlStateOf } from './transactions';
 import type { DB } from './types';
 
 /** ./drizzle of the working directory (the project folder for `next start`, scripts and tests). */
 export const MIGRATIONS_FOLDER = () => path.join(process.cwd(), 'drizzle');
-
-/** Session-level advisory lock held by `npm run db:migrate` while it migrates and seeds (two deploys never interleave). */
-export const MIGRATION_LOCK_KEY = 727_154_007;
 
 const journals = new Map<string, MigrationMeta[]>();
 
@@ -35,13 +34,13 @@ export interface PendingMigration {
 }
 
 /**
- * Migrations of `folder` not applied to the database yet — drizzle applies every migration newer than the last one it recorded
- * in drizzle.__drizzle_migrations (none recorded: all are pending).
+ * Migrations of `folder` not applied to the database yet — every migration newer than the last one recorded in the journal
+ * (none recorded: all are pending): drizzle.__drizzle_migrations on PGlite, keystone.__drizzle_migrations on a server.
  */
 export async function pendingMigrations(db: DB, folder = MIGRATIONS_FOLDER()): Promise<PendingMigration[]> {
   let last: number | null = null;
   try {
-    const r = await db.execute(sql`select max(created_at)::text as m from drizzle.__drizzle_migrations`);
+    const r = await db.execute(sql`select max(created_at)::text as m from ${sql.identifier(journalSchemaOf(db))}.${sql.identifier('__drizzle_migrations')}`);
     const m = (r.rows[0] as { m: string | null } | undefined)?.m;
     last = m == null ? null : Number(m);
   } catch (e) {
@@ -61,4 +60,56 @@ export class PendingMigrationsError extends Error {
     this.name = 'PendingMigrationsError';
     this.pending = pending;
   }
+}
+
+/** The part of a node-postgres client the server migrator uses (one connection: the one holding the migration lock). */
+export interface MigrationClient {
+  query<R extends Record<string, unknown> = Record<string, unknown>>(text: string, values?: unknown[]): Promise<{ rows: R[] }>;
+}
+
+/** The server database cannot take Keystone's migrations (no `keystone` schema, or tables of the former layout in `public`). */
+export class ServerSchemaError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ServerSchemaError';
+  }
+}
+
+const JOURNAL = `"${SERVER_SCHEMA}"."__drizzle_migrations"`;
+
+/**
+ * Server migrator (owner's decisions of 18 Oct 2026, ./server-schema.ts): applies the migrations of `folder` newer than the last
+ * one in keystone.__drizzle_migrations, in one transaction, each statement with `"public".` replaced by `"keystone".`, and
+ * records them in the journal (same table, columns and ordering rule as Drizzle's migrator, which cannot be used: it runs
+ * CREATE SCHEMA first, refused to keystone_app). Never creates a schema. The caller holds the migration lock on `client`
+ * (withMigrationLock) — taken before the journal is created or read. Returns the number of migrations applied.
+ */
+export async function applyServerMigrations(client: MigrationClient, folder = MIGRATIONS_FOLDER()): Promise<number> {
+  const { rows: [layout] } = await client.query<{ schema: boolean; legacy: boolean }>(
+    `select exists (select from pg_namespace where nspname = $1) as schema,
+            exists (select from pg_class c join pg_namespace n on n.oid = c.relnamespace
+                    where n.nspname = 'public' and c.relname = 'projects' and c.relkind = 'r') as legacy`,
+    [SERVER_SCHEMA],
+  );
+  if (!layout?.schema)
+    throw new ServerSchemaError(`The database has no "${SERVER_SCHEMA}" schema: apply the shared server's base layer (Matrix, infra/postgres/init) or have an administrator run "create schema ${SERVER_SCHEMA} authorization <Keystone's role>"`);
+  if (layout.legacy)
+    throw new ServerSchemaError(`The database holds Keystone tables in "public" (layout before the shared server): Keystone now uses the "${SERVER_SCHEMA}" schema — start from an empty schema (docs/EXPLOITATION.md)`);
+  await client.query(`create table if not exists ${JOURNAL} (id serial primary key, hash text not null, created_at bigint)`);
+  const { rows } = await client.query<{ created_at: string | number | null }>(`select created_at from ${JOURNAL} order by created_at desc limit 1`);
+  const last = rows[0]?.created_at == null ? null : Number(rows[0].created_at);
+  const todo = migrationFiles(folder).filter((m) => last == null || last < m.folderMillis);
+  if (!todo.length) return 0;
+  await client.query('begin');
+  try {
+    for (const m of todo) {
+      for (const statement of m.sql) if (statement.trim()) await client.query(serverStatement(statement));
+      await client.query(`insert into ${JOURNAL} (hash, created_at) values ($1, $2)`, [m.hash, m.folderMillis]);
+    }
+    await client.query('commit');
+  } catch (e) {
+    await client.query('rollback').catch(() => null);
+    throw e;
+  }
+  return todo.length;
 }

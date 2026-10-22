@@ -52,7 +52,11 @@ une ligne de journal qui nomme la variable.
 
 - **Base PostgreSQL :** définir `DATABASE_URL`. Les migrations et le premier remplissage se font au déploiement avec
   `npm run db:migrate`, avant de démarrer la nouvelle version. Le serveur refuse une base en retard de migration.
-  Sans `DATABASE_URL`, la base PGlite locale est utilisée comme aujourd'hui.
+  Sur le serveur commun EPC2I (décision M-01), Keystone se connecte en `keystone_app` à la base `epc2i` : ses tables, ses vues
+  `pub_` et le journal des migrations sont dans le schéma `keystone`, créé par le socle de Matrix (les migrations publiées ne
+  changent pas : le migrateur remplace `"public".` par `"keystone".` à l'application). Mise en service :
+  [`docs/EXPLOITATION.md`](docs/EXPLOITATION.md) § 4.1. Sans `DATABASE_URL`, la base PGlite locale est utilisée comme
+  aujourd'hui (tables dans `public`).
 - **Données d'une nouvelle base :** `KEYSTONE_SEED=demo` (par défaut) charge le jeu du prototype.
   `KEYSTONE_SEED=production` ne charge que les référentiels (étapes, calendriers, listes des Paramètres, types de
   documents et de machine, départements et zones), sans projet ni personne. Une base existante garde son jeu de données.
