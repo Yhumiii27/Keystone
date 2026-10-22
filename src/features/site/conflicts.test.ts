@@ -72,9 +72,10 @@ describe('R-119 · arbitrate a site-team conflict, 9 personas', () => {
     expect(await arbitrateConflictAction(HLT, await keyOf('Hélène Sauvage', 'doc'), { comment: 'Badge requested, arrives 25 Nov' })).toEqual({ toast: 'Conflict arbitrated · Hélène Sauvage' });
     const s = (await getSite(HLT))!;
     // R-084: 7 conflicts with the named demo assignments (no load conflict for Amélie Ollivier any more), 3 arbitrated (5 on the seeded rows).
-    // R-084 (absences): + the load conflicts of Amélie Ollivier's and Thomas Kerbrat's leave weeks (4 open before).
-    expect(s.collisions.filter((c) => !c.resolved).length).toBe(6);
-    expect(s.go.conditions.find((c) => c.key === 'collisions')!.sub).toBe('6 collisions');
+    // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 4 open — no load conflict in a leave week any more (6 with the prototype's LEAVE: Amélie Ollivier's and
+    // Thomas Kerbrat's leave weeks).
+    expect(s.collisions.filter((c) => !c.resolved).length).toBe(4);
+    expect(s.go.conditions.find((c) => c.key === 'collisions')!.sub).toBe('4 collisions');
     // Julien still has no open conflict: no icon; Hélène neither.
     expect(s.rotation.filter((r) => r.hasCollision).map((r) => r.person)).toEqual(['Amélie Ollivier', 'Thomas Kerbrat', 'Pauline Noguès']);
   });

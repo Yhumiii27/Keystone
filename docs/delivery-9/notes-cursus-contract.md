@@ -44,30 +44,46 @@ off, overlapping rows counted once) — `weekCapacityH`, `personWeekCapacities`,
 - Not changed: the departments' stored capacity (Resources "Capacity vs demand", `department_capacities`), Prioritisation's
   capacity model, team utilisation's rule (mean of the weekly %, the prototype's).
 
-### Values that moved on the demo data set (Fri 25 Sep 2026) — the seeded leave (prototype LEAVE) now lowers capacity
+### Values on the demo data set (Fri 25 Sep 2026) — the capacity change, then the demo leave shifted (owner 22 Oct 2026)
 
-Seeded leave in the windows: Amélie Ollivier CP weeks of 12 and 19 Oct; Pauline Noguès 3 training days (28 Sep) and CP (2 Nov);
-Thomas Kerbrat CP 26 Oct and 2 Nov; Léa Marchand RTT (5 Oct); Hélène Sauvage 2 sick days (19 Oct); Julien Wagner RTT (9 Nov);
-Fabien Bertrand CP 9 and 16 Nov (11 Nov a holiday).
+The prototype's seeded leave (LEAVE) was never meant to meet the named demo assignments: once leave lowered capacity, six
+people went above 110 % (a CP week with 52 h assigned read 231 %). **Owner's decision (22 Oct 2026), option 1: shift the demo
+leave** — not the assignments, not the rule. `src/server/db/seed/demo-leave.ts` (`DEMO_LEAVE`) keeps the same people, types and
+days on other weeks, chosen against the assigned hours per person-week: a full week of leave on a week with no hours assigned,
+a day or two on a light week (at most 100 % left), never on a public holidays week; the prototype's `LEAVE` stays the golden
+reference of the pure tests (`src/domain/hr.test.ts`, `resources.test.ts`).
 
-| Where | Before | After |
+| Person | Prototype LEAVE (assigned hours that week) | Demo leave (assigned hours) |
 |---|---|---|
-| Pool loads, window 21 Sep – 9 Nov | Amélie 106·100·100·131·106·106·106·85 · Pauline 69·79·…·102·105 · Thomas …·75·56·20 · Léa …·71·… · Hélène …·76·… · Julien …·88·65 · Fabien …·49·35 | Amélie 106·100·100·**231·206**·106·106·85 · Pauline 69·**197**·…·**202**·105 · Thomas …·**175·156**·20 · Léa …·**89**·… · Hélène …·**127**·… · Julien …·88·**81** · Fabien …·49·**175** |
-| Resources (portfolio) KPIs | 83 % (84 % current window) · 3 people · peak weeks 42–44 | **98 %** (**97 %**) · **6 people** · peak weeks **40, 42–47** (**40, 42–46**) |
-| Over-allocation alert (Home director, Portfolio) | "3 people over 110%" · Weeks 42–44 | "**6 people over 110%**" · Weeks **40, 42–46** · … and 3 more |
-| Home (head of engineering) | Team utilization 84 % · 3 people · Julien Wagner 102 % | **97 %** · **6 people** · **104 %** |
-| Project resources HLT-026 | 83 % · 3 people · 34 h unmet · bars Site ops 521/640, Eng 320/320, MEP 354/320, C&P 720/960, Quality 240/320 | **98 %** · **6 people** · **147 h** · **523/480, 319/312, 353/256, 720/872, 240/304** |
-| Project resources NDC-031 / RCF-019 | 81 % · 1 person · 0 h / 6 h unmet | **96 % · 2 people · 57 h** / **144 h** |
-| Project resources week view (12 Oct, HLT-026) | Σ capacity 40 h × team | Amélie Ollivier on leave: 40 h × (team − 1) |
-| What-if HLT-026 | peak 131 % (Amélie, 12 Oct) · over 110 % [1,0,2,3,3,3,3,1] · scenario A 17 levers, B 6 · "Protect people" 15 · most people over 100 % weeks 42–45 · NDC-031 11 levers | peak **231 %** · **[1,1,2,3,4,4,4,2]** · A **18**, B **5** · **16** · weeks **43–45** · NDC-031 **13** levers; drafted requests 17 → 18 (scenario A) |
-| Site HLT-026 conflicts | 7 | **9** (load conflicts of Amélie Ollivier, week of 19 Oct 206 %, and Thomas Kerbrat, 26 Oct 175 % / 2 Nov 156 % — both also have their leave conflict) |
-| Unchanged | departments' capacity vs demand, Prioritisation, Capacity what-if WSA-044 (239 h), unmet demand of the portfolio (80 h / 102 h) | |
+| Amélie Ollivier | CP 12 and 19 Oct (53 h, 43 h) | CP 7 and 14 Dec (0 h) |
+| Thomas Kerbrat | CP 26 Oct and 2 Nov (30 h, 23 h) | CP 23 and 30 Nov (0 h) |
+| Pauline Noguès | 3 training days 28 Sep (32 h) · CP 2 Nov (41 h) | 3 training days 11 Jan 2027 · CP 4 Jan 2027 (0 h) |
+| Fabien Bertrand | CP 9 Nov (14 h; Wed 11 Nov a holiday) and 16 Nov (18 h) | CP 4 and 11 Jan 2027 (0 h) |
+| Léa Marchand | RTT 5 Oct (29 h) and 16 Nov (33 h) | RTT 5 Oct (kept, 89 %) and 23 Nov (6 h) |
+| Hélène Sauvage | 2 sick days 19 Oct (31 h) | 2 sick days 28 Sep (18 h, 73 %) |
+| Julien Wagner | RTT 9 Nov (26 h) | kept (81 %; the site sheet's leave conflict) |
 
-Golden tests updated with a comment citing "R-084 (absences)"; `scripts/db-check.ts` expectations moved accordingly.
+Older demo databases: a one-time backfill at the next open (`seedIfEmpty`, `shiftDemoLeave`), only while the database's seeded
+leave (rows without a Cursus key) is still exactly the prototype's — Cursus's absences and an edited seed are never touched;
+never on a production database (it has no seeded leave). Test: `src/server/db/seed/demo-leave.test.ts`.
 
-**To discuss with the owner:** the prototype's seeded leave was never meant to meet the seeded assignments; the demo now shows six
-people over 110 % (three before) and a 231 % week. Options: reschedule the seeded leave or the demo assignments, or reword the
-utilisation KPI as Σ hours ÷ Σ capacity. A leave week of a person who is also on site shows both a "Leave" and a "Load" conflict.
+| Where | Before the capacity change | Capacity change, prototype LEAVE | Demo leave shifted |
+|---|---|---|---|
+| Pool loads, window 21 Sep – 9 Nov | Amélie 106·100·100·131·106·106·106·85 · Pauline 69·79·…·102·105 · Thomas …·75·56·20 · Léa …·71·… · Hélène 44·44·… · Julien …·88·65 · Fabien …·49·35 | Amélie …·231·206·… · Pauline 69·197·…·202·105 · Thomas …·175·156·20 · Léa …·89·… · Hélène …·127·… · Julien …·88·81 · Fabien …·49·175 | Amélie 106·100·100·131·106·106·106·85 · Pauline 69·79·…·102·105 · Thomas …·75·56·20 · Léa …·**89**·… · Hélène 44·**73**·… · Julien …·88·**81** · Fabien …·49·35 |
+| Resources (portfolio) KPIs | 83 % (84 % current window) · 3 people · peak weeks 42–44 | 98 % (97 %) · 6 people · weeks 40, 42–47 (40, 42–46) | **84 %** (**85 %**) · **3 people** · weeks **42–44** |
+| Over-allocation alert (Home director, Portfolio) | "3 people over 110%" · Weeks 42–44 | "6 people over 110%" · Weeks 40, 42–46 · … and 3 more | **"3 people over 110%" · Weeks 42–44** |
+| Home (head of engineering) | Team utilization 84 % · 3 people · Julien Wagner 102 % | 97 % · 6 people · 104 % | **85 %** · **3 people** · 104 % |
+| Project resources HLT-026 | 83 % · 3 people · 34 h unmet · bars Site ops 521/640, Eng 320/320, MEP 354/320, C&P 720/960, Quality 240/320 | 98 % · 6 people · 147 h · 523/480, 319/312, 353/256, 720/872, 240/304 | **84 %** · **3 people** · **41 h** · **521/640, 319/312, 354/320, 719/952, 240/304**; suggestion A1260 peak +33 pts (+21) |
+| Project resources NDC-031 / RCF-019 | 81 % · 1 person · 0 h / 6 h unmet | 96 % · 2 people · 57 h / 144 h | **81 % · 1 person · 0 h** (bars 314/320, 719/952) / **6 h** (326/320, 314/320, 240/304) |
+| Project resources week view (12 Oct, HLT-026) | Σ capacity 40 h × team | Amélie Ollivier on leave: 40 h × (team − 1) | **40 h × team** |
+| What-if HLT-026 | peak 131 % (Amélie, 12 Oct) · over 110 % [1,0,2,3,3,3,3,1] · A 17 levers, B 6 · "Protect people" 15 · weeks 42–45 · NDC-031 11 levers | peak 231 % · [1,1,2,3,4,4,4,2] · A 18, B 5 · 16 · weeks 43–45 · 13 | **as before the capacity change** (drafted requests 17) |
+| Site HLT-026 conflicts | 7 | 9 (load conflicts of Amélie Ollivier and Thomas Kerbrat in their leave weeks) | **7** — the leave conflicts of Amélie Ollivier (7 → 18 Dec), Thomas Kerbrat (23 Nov → 4 Dec) and Julien Wagner (9 Nov); no one both on leave and overloaded the same week |
+| Leave & calendar, 8 weeks from 28 Sep | 85 % availability · 43 leave days | (unchanged) | **97 % · 4 days** (Hélène 28 Sep, Léa 5 Oct, Julien 9 Nov); the 43 days over 28 Sep 2026 – 15 Jan 2027 |
+| My work, Hélène Sauvage · RQ-042 impact | load next 2 weeks 46 % · "Hélène at 44% w/c 28 Sep → 64%" | (unchanged) | **61 %** · **"73% → 93%"** (her 2 sick days, 24 h capacity) |
+| Unchanged | departments' capacity vs demand, Prioritisation, Capacity what-if WSA-044 (239 h), unmet demand of the portfolio (80 h / 102 h) | | |
+
+Golden tests and `scripts/db-check.ts` expectations updated with a comment citing "R-084 (absences), demo leave shifted (owner
+22 Oct 2026)". A leave week of a person who is also on site still shows a "Leave" conflict (the absence during the mission).
 
 ## 3. Outbound calls (Cursus API v1)
 

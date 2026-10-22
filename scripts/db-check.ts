@@ -27,6 +27,7 @@ import { countUnreadNotifications, listActivity, listAudit } from '@/server/dal/
 import { approveResourceRequest, createResourceRequest, getDepartmentApprovals, listResourceRequests } from '@/server/dal/requests';
 import { getResourcePool, getWhatIf } from '@/server/dal/resources';
 import { listUnassignedActivities, listUndeclaredActivities } from '@/server/dal/planning-load';
+import { DEMO_LEAVE } from '@/server/db/seed/demo-leave';
 import { createRisk, getRiskRegister, listRisks } from '@/server/dal/risks';
 import { getTask, listTasks } from '@/server/dal/tasks';
 import { getTrends } from '@/server/dal/trends';
@@ -381,16 +382,17 @@ async function main() {
   // seeded in `allocations`, no longer read). Owner answer 18 Oct 2026 (fourth round): 61 named demo assignments
   // (src/server/db/seed/demo-assignments.ts) fitted to PEOPLE — 4 A1250_RES rows + 61 = 65; on the prototype's weeks 83 %
   // utilisation and 3 people above 110 % in weeks 42–44 (Julien Wagner 100 · 106 · 125 · 125 · 108 · 88 · 65 · 81). R-084
-  // (absences): each week on the person's capacity, 40 h less 8 h per seeded leave day — 98 %, 6 people above 110 %, Julien
-  // Wagner 81 % in the week of his RTT (9 Nov).
+  // (absences): each week on the person's capacity, 40 h less 8 h per seeded leave day. R-084 (absences), demo leave shifted (owner 22 Oct 2026)
+  // (src/server/db/seed/demo-leave.ts): 84 %, the prototype's 3 people above 110 % (98 % and 6 with the prototype's LEAVE),
+  // Julien Wagner 81 % in the week of his RTT (9 Nov).
   const PROTO_WEEKS = ['2026-09-28', '2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02', '2026-11-09', '2026-11-16'];
   const pool = await getResourcePool(PROTO_WEEKS);
   check('PEOPLE reproduced (pool order, job titles); loads from the schedules (R-084)',
     same(pool.people.map((p) => [p.name, p.jobTitle]), (PROTO.PEOPLE as [string, string][]).map(([n, j]) => [n, j]))
       && same(pool.people.find((p) => p.name === 'Julien Wagner')?.loads, [100, 106, 125, 125, 108, 88, 81, 81])
-      && same(pool.people.find((p) => p.name === 'Amélie Ollivier')?.capacityH, [40, 40, 0, 0, 40, 40, 40, 40])
-      && Math.round(pool.people.reduce((a, p) => a + p.avg, 0) / pool.people.length) === 98
-      && same(pool.people.filter((p) => p.max > 110).map((p) => p.name), ['Amélie Ollivier', 'Julien Wagner', 'Pauline Noguès', 'Thomas Kerbrat', 'Hélène Sauvage', 'Fabien Bertrand']));
+      && same(pool.people.find((p) => p.name === 'Amélie Ollivier')?.capacityH, [40, 40, 40, 40, 40, 40, 40, 40])
+      && Math.round(pool.people.reduce((a, p) => a + p.avg, 0) / pool.people.length) === 84
+      && same(pool.people.filter((p) => p.max > 110).map((p) => p.name), ['Amélie Ollivier', 'Julien Wagner', 'Pauline Noguès']));
   check('activity_assignments = 65 (A1250_RES 4 + 61 named demo assignments)', counts.activity_assignments === 65, counts.activity_assignments);
   // Owner answer 18 Oct 2026 (J-15 alert): HLT-026 A1410 is left owner-only on purpose; no activity without any declared resource.
   check('without an assignment at J-15: HLT-026 A1410; undeclared: none',
@@ -418,8 +420,10 @@ async function main() {
   const lc = await getLeaveCalendar('FR', PROTO_WEEKS);
   // NEW-CURSUS-4 (R-031, R-173): the prototype's CP / RTT weeks are Leave, its Sick / Training weeks Absence (no reason kept).
   const simpleLeave: Record<string, string> = { CP: 'Leave', RTT: 'Leave', Sick: 'Absence', Training: 'Absence' };
-  const protoLeave = Object.fromEntries(Object.entries(PROTO.LEAVE as Record<string, Record<string, string>>).map(([n, ws]) => [n, Object.fromEntries(Object.entries(ws).map(([i, l]) => [i, simpleLeave[l]]))]));
-  check('LEAVE and HOLIDAYS reproduced', same(Object.fromEntries(lc.people.map((p) => [p.name, Object.fromEntries(p.weeks.flatMap((w, i) => (w.typeLabel ? [[String(i), w.typeLabel]] : [])))])), protoLeave)
+  // R-084 (absences), demo leave shifted (owner 22 Oct 2026): the seeded leave is DEMO_LEAVE (the prototype's, on other weeks);
+  // on the prototype's 8 weeks: Hélène Sauvage 28 Sep, Léa Marchand 5 Oct, Julien Wagner 9 Nov.
+  const protoLeave = Object.fromEntries(Object.entries(DEMO_LEAVE).map(([n, ws]) => [n, Object.fromEntries(Object.entries(ws).filter(([i]) => +i < PROTO_WEEKS.length).map(([i, l]) => [i, simpleLeave[l]]))]));
+  check('demo LEAVE and HOLIDAYS reproduced', same(Object.fromEntries(lc.people.map((p) => [p.name, Object.fromEntries(p.weeks.flatMap((w, i) => (w.typeLabel ? [[String(i), w.typeLabel]] : [])))])), protoLeave)
     && same(Object.fromEntries(lc.holidays.map((h) => [h.weekIndex, h.label])), PROTO.HOLIDAYS));
   const hr = await getHoursReconciliation('HLT-026');
   check('HOURS reproduced', same(hr && { imported: hr.importedText, code: hr.analyticCode, lines: hr.lines.map((l) => [l.person, l.wbsLabel, l.plannedH, l.declaredH]), unassigned: hr.unassigned.map((u) => [u.person, u.hours, u.reason]) }, PROTO.HOURS['HLT-026']));
@@ -697,13 +701,13 @@ async function delivery5Reads() {
       claims.filter((c) => c.coverage === 'chargeable').reduce((a, c) => a + c.costKeur, 0), claims.filter((c) => c.ecoNumber).length], [5, 2, 4, '2026-10-06', 34, 6, 1]));
   const site = (await getSite('HLT-026'))!;
   // D-6b 'a' (R-119): the conflicts are computed from the rotation plan, the pool, Cursus and the absences — 7 (the prototype's 4;
-  // R-084 + named demo assignments: Julien Wagner's load conflict — 8 with the seeded allocation rows). R-084 (absences): 9 — the
-  // load conflicts of Amélie Ollivier's and Thomas Kerbrat's leave weeks.
-  check('site HLT-026: NO GO (5 conditions open) · prerequisites 4 / 6 · Cursus 3 / 5 (1 reserve, mock) · equipment 6 / 8 · 9 conflicts · budget 98.3 k€ (11.3 committed) · 2 permits pending',
+  // R-084 + named demo assignments: Julien Wagner's load conflict — 8 with the seeded allocation rows). R-084 (absences): 9 with the
+  // prototype's LEAVE (load conflicts in Amélie Ollivier's and Thomas Kerbrat's leave weeks); R-084 (absences), demo leave shifted (owner 22 Oct 2026): 7.
+  check('site HLT-026: NO GO (5 conditions open) · prerequisites 4 / 6 · Cursus 3 / 5 (1 reserve, mock) · equipment 6 / 8 · 7 conflicts · budget 98.3 k€ (11.3 committed) · 2 permits pending',
     getCursusConnector().mode === 'mock' && same([site.go.ok, site.go.conditions.filter((c) => !c.ok).length, site.prerequisites.filter((p) => p.status !== 'pending').length,
       site.cursus.people.filter((p) => p.verdict !== 'no_go').length, site.cursus.people.filter((p) => p.verdict === 'go_with_reserve').length,
       site.equipment.filter((e) => e.status === 'confirmed').length, site.collisions.length, Math.round(site.missionCosts.reduce((a, m) => a + m.budgetKeur, 0) * 10) / 10,
-      Math.round(site.missionCosts.reduce((a, m) => a + m.actualKeur, 0) * 10) / 10, site.hse.filter((h) => h.status === 'pending').length], [false, 5, 4, 3, 1, 6, 9, 98.3, 11.3, 2]));
+      Math.round(site.missionCosts.reduce((a, m) => a + m.actualKeur, 0) * 10) / 10, site.hse.filter((h) => h.status === 'pending').length], [false, 5, 4, 3, 1, 6, 7, 98.3, 11.3, 2]));
   check('no site sheet, commissioning, ITP, REX, register or P&ID on NDC-031 / EWA-051', (await getSite('NDC-031')) === null && (await getCommissioning('EWA-051')) === null
     && (await getItpPlan('NDC-031')) === null && (await getRex('EWA-051')).lessons.length === 0 && (await getEngineeringRegister('NDC-031')) === null && (await getPidValidation('EWA-051')) === null);
   const cp = await getClientPortal('HLT-026');

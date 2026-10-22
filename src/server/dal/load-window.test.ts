@@ -176,12 +176,13 @@ describe('week view and 8-week pages (owner answers 17 Oct 2026)', () => {
       ['2026-11-09', null], ['2026-11-10', null], ['2026-11-11', 'Armistice'], ['2026-11-12', null], ['2026-11-13', null],
     ]);
     const off = w.people.filter((p) => p.days.some((k) => k === 'leave' || k === 'absence')).map((p) => [p.name, p.days.join(' '), p.daysOff, p.availH]);
-    // Fabien Bertrand's seeded week counts 5 leave days on the 8-week grid (the prototype's LEAVE_DAYS); day by day the
-    // Armistice is a holiday, not a day of leave: 4 days (available hours unchanged, 0 h).
-    expect(off).toEqual([['Julien Wagner', 'leave worked holiday worked worked', 1, 21], ['Fabien Bertrand', 'leave leave holiday leave leave', 4, 0]]);
+    // R-084 (absences), demo leave shifted (owner 22 Oct 2026): Julien Wagner's RTT only (Fabien Bertrand's CP of that week — 4 days, the Armistice a holiday — moved to January).
+    expect(off).toEqual([['Julien Wagner', 'leave worked holiday worked worked', 1, 21]]);
     expect(w.people.find((p) => p.name === 'Damien Roux')).toMatchObject({ days: ['worked', 'worked', 'holiday', 'worked', 'worked'], daysOff: 0, availH: 28 });
     const sep = await getLeaveWeek('FR', '2026-09-28');
-    expect(sep.people.find((p) => p.name === 'Pauline Noguès')).toMatchObject({ days: ['absence', 'absence', 'absence', 'worked', 'worked'], daysOff: 3, availH: 14 });
+    // R-084 (absences), demo leave shifted (owner 22 Oct 2026): Hélène Sauvage's 2 sick days on 28 Sep; Pauline Noguès's 3 training days in the week of 11 Jan 2027.
+    expect(sep.people.find((p) => p.name === 'Hélène Sauvage')).toMatchObject({ days: ['absence', 'absence', 'worked', 'worked', 'worked'], daysOff: 2, availH: 21 });
+    expect((await getLeaveWeek('FR', '2027-01-11')).people.find((p) => p.name === 'Pauline Noguès')).toMatchObject({ days: ['absence', 'absence', 'absence', 'worked', 'worked'], daysOff: 3, availH: 14 });
     expect((await getLeaveWeek('FR', '2027-03-01')).people.every((p) => p.daysOff === 0 && p.availH === 35)).toBe(true);
   });
 
@@ -232,8 +233,9 @@ describe('week view and 8-week pages (owner answers 17 Oct 2026)', () => {
     expect(v.weeks).toEqual(['Oct 12']);
     expect(v.kpis[2].sub).toBe('Week shown, by department');
     expect(v.rolesSub).toBe('Hours by role, week shown');
-    // R-084 (absences): Amélie Ollivier is on leave all that week (capacity 0 h): her bar brings no capacity (40 h a person else).
-    expect(v.roles.reduce((a, r) => a + r.capacityH, 0)).toBe(40 * (v.people.length - 1));
+    // R-084 (absences): a person on leave all the week brings no capacity; R-084 (absences), demo leave shifted (owner 22 Oct 2026): nobody of the team on leave that week
+    // (Amélie Ollivier's CP of 12 Oct with the prototype's LEAVE).
+    expect(v.roles.reduce((a, r) => a + r.capacityH, 0)).toBe(40 * v.people.length);
   }, 30_000);
 
   it('the exports follow the view: one week (with hours and hours above capacity), Leave day by day', async () => {

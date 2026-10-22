@@ -81,22 +81,24 @@ describe('getPlanningLoad on the demo data set', () => {
 
   it('the pool, the departments, the project demand and the capacity model read the same source', async () => {
     const pool = await getResourcePool(WINDOW);
-    // R-084 (absences): each week against the person's capacity — 40 h less 8 h per day of the seeded leave (the prototype's
-    // LEAVE: Amélie Ollivier CP weeks 12 and 19 Oct, Pauline Noguès 3 training days 28 Sep and CP 2 Nov, Thomas Kerbrat CP 26 Oct
-    // and 2 Nov, Léa Marchand RTT 5 Oct, Hélène Sauvage 2 sick days 19 Oct, Julien Wagner RTT and Fabien Bertrand CP 9 Nov — Wed
-    // 11 Nov a holiday). Before: Amélie 131 · 106, Pauline 79 · 102, Thomas 75 · 56, Léa 71, Hélène 76, Julien 65, Fabien 35.
-    // A week entirely off with hours assigned reads 100 % + the hours' share of 40 h (Amélie 52 h → 231 %).
+    // R-084 (absences): each week against the person's capacity — 40 h less 8 h per day of the seeded leave. R-084 (absences), demo
+    // leave shifted (owner 22 Oct 2026, src/server/db/seed/demo-leave.ts): in this window only Hélène Sauvage's 2 sick days (28 Sep,
+    // 18 h on 24 h: 44 → 73 %), Léa Marchand's RTT (5 Oct, 71 → 89 %) and Julien Wagner's RTT (9 Nov, Wed 11 Nov a holiday: 65 →
+    // 81 %); the full weeks of CP fall on weeks without assigned hours (23 Nov – 15 Jan). The prototype's LEAVE (Amélie Ollivier
+    // CP 12 and 19 Oct…) read 231 % and six people above 110 %.
     expect(pool.people.map((p) => [p.name, p.loads])).toEqual([
-      ['Amélie Ollivier', [106, 100, 100, 231, 206, 106, 106, 85]],
+      ['Amélie Ollivier', [106, 100, 100, 131, 106, 106, 106, 85]],
       ['Julien Wagner', [100, 100, 106, 125, 125, 108, 88, 81]],
-      ['Pauline Noguès', [69, 197, 108, 81, 113, 113, 202, 105]],
-      ['Thomas Kerbrat', [56, 56, 88, 110, 75, 175, 156, 20]],
+      ['Pauline Noguès', [69, 79, 108, 81, 113, 113, 102, 105]],
+      ['Thomas Kerbrat', [56, 56, 88, 110, 75, 75, 56, 20]],
       ['Léa Marchand', [69, 73, 89, 75, 75, 75, 81, 65]],
       ['Damien Roux', [88, 99, 86, 96, 90, 81, 94, 66]],
-      ['Hélène Sauvage', [44, 44, 48, 64, 127, 90, 101, 76]],
-      ['Fabien Bertrand', [100, 99, 95, 81, 56, 56, 49, 175]],
+      ['Hélène Sauvage', [44, 73, 48, 64, 76, 90, 101, 76]],
+      ['Fabien Bertrand', [100, 99, 95, 81, 56, 56, 49, 35]],
     ]);
-    expect(pool.people.find((p) => p.name === 'Amélie Ollivier')!.capacityH).toEqual([40, 40, 40, 0, 0, 40, 40, 40]);
+    expect(pool.people.find((p) => p.name === 'Hélène Sauvage')!.capacityH).toEqual([40, 24, 40, 40, 40, 40, 40, 40]);
+    expect(pool.people.find((p) => p.name === 'Amélie Ollivier')!.capacityH).toEqual([40, 40, 40, 40, 40, 40, 40, 40]);
+    expect((await getResourcePool(['2026-12-07', '2026-12-14'])).people.find((p) => p.name === 'Amélie Ollivier')).toMatchObject({ capacityH: [0, 0], loads: [0, 0] });
     expect(pool.people.find((p) => p.name === 'Damien Roux')!.capacityH).toEqual([40, 40, 40, 40, 40, 40, 40, 40]);
     expect(pool.people.find((p) => p.name === 'Julien Wagner')!.hours).toEqual([40, 40, 42.5, 50, 50, 43, 35, 26]);
     const depts = await listDepartments(WINDOW);
@@ -114,7 +116,8 @@ describe('getPlanningLoad on the demo data set', () => {
       ['Engineering', 327], ['Site operations', 551], ['MEP', 358], ['Controls & planning', 742], ['Quality', 217],
     ]);
     // "Load next 2 wks": the weeks of 28 Sep and 5 Oct.
-    expect([await loadNextWeeks('Julien Wagner'), await loadNextWeeks('Hélène Sauvage'), await loadNextWeeks('Marie Lefebvre')]).toEqual([103, 46, null]);
+    // R-084 (absences), demo leave shifted (owner 22 Oct 2026): Hélène Sauvage's 2 sick days in the week of 28 Sep — 73 · 48 → 61 %.
+    expect([await loadNextWeeks('Julien Wagner'), await loadNextWeeks('Hélène Sauvage'), await loadNextWeeks('Marie Lefebvre')]).toEqual([103, 61, null]);
   });
 });
 

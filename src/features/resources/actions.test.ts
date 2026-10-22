@@ -36,17 +36,17 @@ const RELIEF = 'extra_resource:A1250:julien-wagner';
 const OVERTIME = 'overtime:A1250:steel-erection-crew';
 const CREW = 'extra_resource:A1250:steel-erection-crew';
 /** Scenario A ('contractor', 'overtime'): every derived contractor and overtime lever of HLT-026. */
-// R-084 (absences): the seeded leave weeks put more people above 100 % — one lever more in A (17 before), Amélie Ollivier's
-// relief on A1520 moves from scenario B's levers to "Protect people".
-const A_LEVERS = 18;
+// R-084 (absences), demo leave shifted (owner 22 Oct 2026): 17 — the prototype's LEAVE put more people above 100 % (18, Amélie Ollivier's relief on A1520 moving from
+// scenario B's levers to "Protect people").
+const A_LEVERS = 17;
 /** Scenario B ('delay', 'move'): the derived shifts and internal colleagues. */
 /** "Protect people" auto-level on HLT-026: the reliefs (contractor or colleague) and the shifts of the overloaded people. */
 const PROTECT = [
   RELIEF, 'extra_resource:A1260:julien-wagner', 'extra_resource:A1320:amelie-ollivier', 'extra_resource:A1320:julien-wagner', 'extra_resource:A1320:thomas-kerbrat',
   'shift:A1320', 'extra_resource:A1330:julien-wagner', 'extra_resource:A1330:thomas-kerbrat', 'extra_resource:A1330:helene-sauvage', 'shift:A1330',
-  'extra_resource:A1420:pauline-nogues', 'extra_resource:A1430:pauline-nogues', 'extra_resource:A1510:amelie-ollivier', 'extra_resource:A1510:thomas-kerbrat', 'extra_resource:A1520:amelie-ollivier', 'shift:A1520',
+  'extra_resource:A1420:pauline-nogues', 'extra_resource:A1430:pauline-nogues', 'extra_resource:A1510:amelie-ollivier', 'extra_resource:A1510:thomas-kerbrat', 'shift:A1520',
 ];
-const B_LEVERS = ['shift:A1320', 'extra_resource:A1330:helene-sauvage', 'shift:A1330', 'extra_resource:A1430:helene-sauvage', 'shift:A1520'];
+const B_LEVERS = ['shift:A1320', 'extra_resource:A1330:helene-sauvage', 'shift:A1330', 'extra_resource:A1430:helene-sauvage', 'extra_resource:A1520:amelie-ollivier', 'shift:A1520'];
 
 beforeAll(async () => {
   setDb(await openDatabase());

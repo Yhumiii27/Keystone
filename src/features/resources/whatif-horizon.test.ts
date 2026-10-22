@@ -65,7 +65,7 @@ const DATE = [OVERTIME, CREW, 'overtime:A1260:thomas-kerbrat', 'extra_resource:A
 const PROTECT = [
   RELIEF, 'extra_resource:A1260:julien-wagner', 'extra_resource:A1320:amelie-ollivier', 'extra_resource:A1320:julien-wagner', 'extra_resource:A1320:thomas-kerbrat',
   'shift:A1320', 'extra_resource:A1330:julien-wagner', 'extra_resource:A1330:thomas-kerbrat', 'extra_resource:A1330:helene-sauvage', 'shift:A1330',
-  'extra_resource:A1420:pauline-nogues', 'extra_resource:A1430:pauline-nogues', 'extra_resource:A1510:amelie-ollivier', 'extra_resource:A1510:thomas-kerbrat', 'extra_resource:A1520:amelie-ollivier', 'shift:A1520', // R-084 (absences): + A1520 relief
+  'extra_resource:A1420:pauline-nogues', 'extra_resource:A1430:pauline-nogues', 'extra_resource:A1510:amelie-ollivier', 'extra_resource:A1510:thomas-kerbrat', 'shift:A1520', // R-084 (absences), demo leave shifted (owner 22 Oct 2026): no A1520 relief (added with the prototype's LEAVE)
 ];
 
 beforeAll(async () => {
@@ -81,13 +81,13 @@ describe('what-if horizon navigation (owner answers 17 Oct 2026)', () => {
     expect([def.props.data!.horizon, def.props.data!.weekStarts[0], def.props.canEdit, def.props.readOnlyReason]).toEqual(['2026-09-21', '2026-09-21', true, null]);
     // R-084 (owner answer 17 Oct 2026, third round): the loads are the schedules' — with the named demo assignments (owner
     // answer 18 Oct 2026) the HLT-026 team above 100 % week by week. The seeded allocation rows gave [0, 0, 1, 2, 3, 2, 0, 1].
-    // R-084 (absences): the seeded leave weeks lower capacity ([1, 0, 2, 3, 3, 3, 3, 1] before).
-    expect(def.props.data!.overByWeek).toEqual([1, 1, 2, 3, 4, 4, 4, 2]);
+    // R-084 (absences), demo leave shifted (owner 22 Oct 2026): [1, 0, 2, 3, 3, 3, 3, 1] again ([1, 1, 2, 3, 4, 4, 4, 2] with the prototype's LEAVE).
+    expect(def.props.data!.overByWeek).toEqual([1, 0, 2, 3, 3, 3, 3, 1]);
     // The prototype's horizon (`?week=2026-09-28`) shifts the same profile by one week (its golden [0, 1, 2, 3, 2, 0, 1, 0] read
     // the seeded allocation rows, no longer read — R-084).
     const proto = (await page({ project: 'HLT-026', week: '2026-09-28' })).body;
     expect([proto.props.data!.horizon, proto.props.data!.weekStarts]).toEqual(['2026-09-28', PROTO_WEEKS]);
-    expect(proto.props.data!.overByWeek).toEqual([1, 2, 3, 4, 4, 4, 2, 2]); // R-084 (absences): [0, 2, 3, 3, 3, 3, 1, 0] before
+    expect(proto.props.data!.overByWeek).toEqual([0, 2, 3, 3, 3, 3, 1, 0]); // R-084 (absences), demo leave shifted (owner 22 Oct 2026) ([1, 2, 3, 4, 4, 4, 2, 2] with the prototype's LEAVE)
     expect((await page({ project: 'HLT-026', week: 'soon' })).body.props.data!.horizon).toBe('2026-09-21');
     const out = html(proto);
     for (const s of [

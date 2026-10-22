@@ -12,6 +12,7 @@ import {
 } from '../schema';
 import type { DB, Tx } from '../types';
 import { must, newId, personId, type SeedCtx } from './context';
+import { DEMO_LEAVE, leaveSeedRows } from './demo-leave';
 
 /** Monday of the first week of the 8-week resource window (w/c 28 Sep 2026; `weeks` 5182). */
 export const RESOURCE_WINDOW_START = '2026-09-28';
@@ -113,18 +114,12 @@ export async function seedResources(tx: Tx, ctx: SeedCtx): Promise<void> {
   );
 
   // Leave (leave types and public holidays are reference data). NEW-CURSUS-4: the prototype's CP / RTT weeks are Leave,
-  // its Sick / Training weeks Absence; their working days are kept (availability and KPIs unchanged).
-  const leaveDays = PROTO.LEAVE_DAYS as Record<string, number>;
-  const leaveRows = Object.entries(PROTO.LEAVE as Record<string, Record<string, string>>).flatMap(([name, byWeek]) =>
-    Object.entries(byWeek).map(([week, label]) => {
-      const weekStart = resourceWeekStart(+week);
-      const days = leaveDays[label];
-      return {
-        id: newId(), personId: personId(ctx, name), leaveType: leaveTypeOfNature(label), weekStart, startDate: weekStart,
-        endDate: addDaysIso(weekStart, days - 1), days,
-      };
-    }),
-  );
+  // its Sick / Training weeks Absence; their working days are kept. R-084 (absences), owner 22 Oct 2026: demo leave shifted off
+  // the assignments — the same leave on other weeks (./demo-leave.ts), the prototype's LEAVE staying the golden reference.
+  const leaveRows = leaveSeedRows(DEMO_LEAVE).map((r) => ({
+    id: newId(), personId: personId(ctx, r.name), leaveType: leaveTypeOfNature(r.label), weekStart: r.weekStart, startDate: r.startDate,
+    endDate: r.endDate, days: r.days,
+  }));
   await tx.insert(leaveEntries).values(leaveRows);
 
   // Lucca hours (HLT-026, September 2026).

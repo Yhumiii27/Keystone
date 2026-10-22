@@ -50,26 +50,23 @@ const CONFLICTS = {
   en: [
     // R-084: the loads come from the schedules — with the named demo assignments (owner answer 18 Oct 2026) Julien Wagner is
     // at 125 % in the week of 19 Oct; Amélie Ollivier at 106 % (120 % on the seeded allocation rows), no load conflict.
-    // R-084 (absences): a leave week lowers the capacity — Amélie Ollivier (CP, 52 h assigned in the week of 19 Oct: 206 %) and
-    // Thomas Kerbrat (CP 26 Oct → 6 Nov) get a load conflict too.
-    ['Amélie Ollivier', 'Load', 'Load above 110 % · week of 19 Oct: 206 %', 'Level the load in What-if or move the work', '/resources/what-if'],
-    ['Amélie Ollivier', 'Leave', 'Leave 12 Oct → 23 Oct · during the mission', 'Move the mission or plan a replacement during the absence', '/resources/leave'],
+    // R-084 (absences), demo leave shifted (owner 22 Oct 2026): Amélie Ollivier's CP 7 → 18 Dec and Thomas Kerbrat's 23 Nov →
+    // 4 Dec, weeks without assigned hours, still during their missions — no load conflict in a leave week (with the prototype's
+    // LEAVE, 12 → 23 Oct and 26 Oct → 6 Nov: 206 % and 175 % / 156 %, two load conflicts more).
+    ['Amélie Ollivier', 'Leave', 'Leave 7 Dec → 18 Dec · during the mission', 'Move the mission or plan a replacement during the absence', '/resources/leave'],
     ['Julien Wagner', 'Load', 'Load above 110 % · week of 19 Oct: 125 %', 'Level the load in What-if or move the work', '/resources/what-if'],
     ['Julien Wagner', 'Leave', 'Leave 9 Nov · during the mission', 'Move the mission or plan a replacement during the absence', '/resources/leave'],
-    ['Thomas Kerbrat', 'Load', 'Load above 110 % · week of 26 Oct: 175 %, week of 2 Nov: 156 %', 'Level the load in What-if or move the work', '/resources/what-if'],
     ['Thomas Kerbrat', 'Document', 'Clearance pending · Badge ISPS pending · arrival 26 Oct', 'Chase the missing clearance in Cursus before arrival', '/projects/HLT-026/site#cursus'],
-    ['Thomas Kerbrat', 'Leave', 'Leave 26 Oct → 6 Nov · during the mission', 'Move the mission or plan a replacement during the absence', '/resources/leave'],
+    ['Thomas Kerbrat', 'Leave', 'Leave 23 Nov → 4 Dec · during the mission', 'Move the mission or plan a replacement during the absence', '/resources/leave'],
     ['Pauline Noguès', 'Certificate', 'Clearance expiring · HT B2V expires 30 Nov 2026 · mission until 18 Dec', 'Renew the clearance before the end of the mission', '/resources/skills'],
     ['Hélène Sauvage', 'Document', 'Clearance missing · Badge ISPS missing · arrival 30 Nov', 'Chase the missing clearance in Cursus before arrival', '/projects/HLT-026/site#cursus'],
   ],
   fr: [
-    ['Amélie Ollivier', 'Charge', 'Charge au-delà de 110 % · semaine du 19 oct. : 206 %', 'Lisser la charge dans What-if ou déplacer le travail'],
-    ['Amélie Ollivier', 'Congés', 'Congés 12 oct. → 23 oct. · pendant la mission', 'Décaler la mission ou prévoir un remplaçant pendant l’absence'],
+    ['Amélie Ollivier', 'Congés', 'Congés 7 déc. → 18 déc. · pendant la mission', 'Décaler la mission ou prévoir un remplaçant pendant l’absence'],
     ['Julien Wagner', 'Charge', 'Charge au-delà de 110 % · semaine du 19 oct. : 125 %', 'Lisser la charge dans What-if ou déplacer le travail'],
     ['Julien Wagner', 'Congés', 'Congés 9 nov. · pendant la mission', 'Décaler la mission ou prévoir un remplaçant pendant l’absence'],
-    ['Thomas Kerbrat', 'Charge', 'Charge au-delà de 110 % · semaine du 26 oct. : 175 %, semaine du 2 nov. : 156 %', 'Lisser la charge dans What-if ou déplacer le travail'],
     ['Thomas Kerbrat', 'Document', 'Habilitation en attente · Badge ISPS en attente · arrivée 26 oct.', 'Relancer l’habilitation manquante dans Cursus avant l’arrivée'],
-    ['Thomas Kerbrat', 'Congés', 'Congés 26 oct. → 6 nov. · pendant la mission', 'Décaler la mission ou prévoir un remplaçant pendant l’absence'],
+    ['Thomas Kerbrat', 'Congés', 'Congés 23 nov. → 4 déc. · pendant la mission', 'Décaler la mission ou prévoir un remplaçant pendant l’absence'],
     ['Pauline Noguès', 'Habilitation', 'Habilitation qui expire · HT B2V expire le 30 nov. 2026 · mission jusqu’au 18 déc.', 'Renouveler l’habilitation avant la fin de la mission'],
     ['Hélène Sauvage', 'Document', 'Habilitation manquante · Badge ISPS manquant · arrivée 30 nov.', 'Relancer l’habilitation manquante dans Cursus avant l’arrivée'],
   ],
@@ -101,10 +98,10 @@ describe('Site view model vs the prototype (EN and FR)', () => {
       const r = v.ready!;
       // D-6b 'a' (R-119): 7 computed conflicts (the prototype's 4 authored ones; R-084 + demo assignments of 18 Oct 2026: one load conflict — the loads come from
       // the schedules — 8 with the seeded allocation rows).
-      expect(r.kpis).toEqual(kpis(g.kpis).map(computed(4, '9'))); // R-084 (absences): 7 before
+      expect(r.kpis).toEqual(kpis(g.kpis).map(computed(4, '7'))); // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 7 (9 with the prototype's LEAVE)
       expect([r.go.tag, r.go.tagClass]).toEqual([g.goLabel, 'tag tag-accent']);
       expect(r.go.items.map((i) => ({ label: i.label, ok: i.ok, sub: i.sub, icon: i.ok ? 'ph ph-check-circle' : 'ph ph-warning-circle', color: i.color }))).toEqual(
-        g.goItems.map((i: any) => (i.sub === '4 collisions' ? { ...i, sub: '9 collisions' } : i)), // R-084 + demo assignments (8 on the seeded rows); R-084 (absences): 7 before
+        g.goItems.map((i: any) => (i.sub === '4 collisions' ? { ...i, sub: '7 collisions' } : i)), // R-084 + demo assignments (8 on the seeded rows); R-084 (absences), demo leave shifted (owner 22 Oct 2026): 7 (9 with the prototype's LEAVE)
       );
       // D-3 'a' / R-028 (R-118): the sheet also shows its Cursus site — not created yet (Cursus has no site-creation endpoint).
       expect(r.meta.map((m) => [m.k, m.v])).toEqual([...g.meta, lang === 'fr' ? ['Chantier Cursus', 'Pas encore créé'] : ['Cursus site', 'Not created yet']]);
@@ -130,14 +127,14 @@ describe('Site view model vs the prototype (EN and FR)', () => {
       const premium = { en: 'Saturday / Sunday rates · rate grid', fr: 'Taux samedi / dimanche · grille de taux' }[lang];
       // D-6b 'a' (R-119): "Collisions open" counts the 7 computed conflicts (8 on the seeded rows, R-084 + demo assignments); Amélie Ollivier gets
       // the icon too (her leave).
-      // R-084 (absences): 9 conflicts (two load conflicts in leave weeks; 7 before).
-      expect(t.kpis).toEqual(kpis(g.teamKpis).map(computed(1, '179')).map(computed(2, '9')).map((k: any, i: number) => (i === 4 ? { ...k, sub: premium } : k)));
+      // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 7 conflicts (9 with the prototype's LEAVE: two load conflicts in leave weeks).
+      expect(t.kpis).toEqual(kpis(g.teamKpis).map(computed(1, '179')).map(computed(2, '7')).map((k: any, i: number) => (i === 4 ? { ...k, sub: premium } : k)));
       expect(t.rotation.map((r) => ({
         who: r.who, role: r.role, from: r.from, to: r.to, lodging: r.lodging, travel: r.travel, rot: r.rot, collideIcon: r.collision ? 'ph ph-warning' : 'ph ph-check',
         collideColor: 'var(--color-accent-300)',
       }))).toEqual(g.rotation.map((r: any) => (r.who === 'Amélie Ollivier' ? { ...r, collideIcon: 'ph ph-warning' } : r)));
       expect(t.collisions.map((c) => [c.who, c.kind, c.what, c.fix])).toEqual(CONFLICTS[lang].map((x) => x.slice(0, 4)));
-      expect(t.collisions.map((c) => c.tagClass)).toEqual(['tag tag-accent', 'tag tag-outline', 'tag tag-accent', 'tag tag-outline', 'tag tag-accent', 'tag tag-outline', 'tag tag-outline', 'tag tag-outline', 'tag tag-outline']);
+      expect(t.collisions.map((c) => c.tagClass)).toEqual(['tag tag-outline', 'tag tag-accent', 'tag tag-outline', 'tag tag-outline', 'tag tag-outline', 'tag tag-outline', 'tag tag-outline']);
       expect(t.collisions.map((c) => c.href)).toEqual(CONFLICTS.en.map((x) => x[4]));
       // No arbiter given: nobody may arbitrate; nothing is arbitrated on the seed.
       expect([t.collisions.some((c) => c.canArbitrate), t.arbitrated, t.noCollision]).toEqual([false, [], null]);
@@ -268,7 +265,7 @@ describe('Site static render', () => {
     // + demo assignments of 18 Oct 2026: Julien Wagner's load conflict — 8 with the seeded allocation rows).
     expect(out.match(/aria-label="Collision"/g)).toHaveLength(5);
     expect(out.match(/aria-label="No collision"/g)).toHaveLength(1);
-    expect(out.match(/>Resolve</g)).toHaveLength(9); // R-084 (absences): 7 before
+    expect(out.match(/>Resolve</g)).toHaveLength(7); // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 7 (9 with the prototype's LEAVE)
     expect(out).not.toContain('Lucca');
     expect(out).toContain('Same person on two sites · overload · leave and absences · clearance expiring · badge missing');
     expect(out).toContain('--w:34%');
