@@ -1,6 +1,6 @@
 {
  "generated": "2026-10-10",
- "updated": "2026-10-19",
+ "updated": "2026-10-22",
  "branch": "main-2a2fep",
  "history": [
   {
@@ -86,6 +86,14 @@
   {
    "date": "2026-10-19",
    "text": "Correctif de déploiement (Coolify, mono-conteneur PGlite) : le script d’entrée de l’image rend /data à l’utilisateur node quand le volume a été écrit en root par l’image de la PR #1 (« PGlite failed to initialize properly ») ; curl gardé pour le contrôle de santé de Coolify."
+  },
+  {
+   "date": "2026-10-22",
+   "text": "DIG-PRODI : le niveau CAPEX devient une application dédiée (données communes sur le serveur PostgreSQL EPC2I, échanges par vues pub_) ; changements de Keystone consignés (R-186 à R-194, R-185 prérequis) ; prompt de démarrage de l’application CAPEX dans docs/dig-prodi/."
+  },
+  {
+   "date": "2026-10-22",
+   "text": "CI économe en minutes GitHub Actions (quota du compte gratuit épuisé) : rien pour un changement de documentation seule, vérifications rapides seulement après fusion dans main, audit des dépendances quand elles changent et chaque semaine ; budget Actions plafonné à régler par le responsable produit."
   }
  ],
  "items": [
@@ -5340,7 +5348,222 @@
    ],
    "progress": {
     "state": "a_faire",
-    "note": "Consigné le 15 oct. 2026 à la demande du responsable produit ; à cadrer avant la livraison 9."
+    "note": "Consigné le 15 oct. 2026 à la demande du responsable produit ; à cadrer avant la livraison 9. 22 oct. 2026 : prérequis du lien avec l’application CAPEX (un besoin de plusieurs machines = un projet EPC2i à plusieurs équipements, recommandé)."
+   }
+  },
+  {
+   "id": "R-186",
+   "verdict": "ajout_critique",
+   "title": "Catalogue machines publié aux filiales (vue pub_catalogue_machines)",
+   "description": "Les types de machine deviennent des fiches catalogue (variantes, options, capacité nominale, prix catalogue indicatif, délai type, budget de référence, statut publié / retiré), lues par l’application CAPEX dans la vue pub_catalogue_machines. Le configurateur (règles d’options, chiffrage automatique) reste une option à valider.",
+   "category": "projets_cycle_de_vie_modeles",
+   "kind": "fonction_manquante",
+   "priority": "a_decider",
+   "status": "non_commence",
+   "waiting_on": "R-053 (standard par type de machine) et validation du responsable produit",
+   "effort": "L",
+   "sources": [
+    "Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0)",
+    "docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md"
+   ],
+   "evidence": [
+    "src/features/admin/mtype-editor.tsx (types de machine)",
+    "src/server/db/schema (machine_types, machine_type_cost_categories)"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-187",
+   "verdict": "ajout_critique",
+   "title": "Besoins machines des filiales : connecteur capex, réponse chiffrée, création du projet à la commande",
+   "description": "Connecteur capex (miroir de pub_capex et pub_besoins_machines, liens profonds, simulation) ; corbeille « Besoins des filiales » ; qualification, réponse chiffrée avec classe d’estimation, devis puis offre (Codex) ; création du projet EPC2i au G2 du CAPEX avec la référence du CAPEX et du besoin ; vue pub_reponses_besoins. Rejoint la proposition P6 (offres et chiffrage).",
+   "category": "integrations",
+   "kind": "integration",
+   "priority": "a_decider",
+   "status": "non_commence",
+   "waiting_on": "R-185, R-186, R-188 et l’application CAPEX",
+   "effort": "L",
+   "sources": [
+    "Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0)",
+    "docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md"
+   ],
+   "evidence": [
+    "src/server/integrations/ (modèle des connecteurs)",
+    "src/domain/project-template.ts (assistant de création)"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-188",
+   "verdict": "ajout_critique",
+   "title": "Classe d’estimation des budgets et des offres (±50 % / ±30 % / +10 −5 %)",
+   "description": "Chaque version de budget et chaque offre porte une classe d’estimation, la fourchette est affichée, un indicateur « écart d’incertitude » est au tableau de bord ; une offre ferme exige la classe +10/−5 %.",
+   "category": "couts_contrat_finance",
+   "kind": "fonction_manquante",
+   "priority": "a_decider",
+   "status": "non_commence",
+   "waiting_on": "Validation du responsable produit",
+   "effort": "M",
+   "sources": [
+    "Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0)",
+    "docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md"
+   ],
+   "evidence": [
+    "src/domain/baseline-policy.ts",
+    "src/domain/cost-control.ts"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-189",
+   "verdict": "ajout_critique",
+   "title": "Vues de suivi pour le CAPEX : jalons, avancement côté vente, avenants, réserves",
+   "description": "Vues pub_jalons_projets (commande, FAT, expédition, arrivée site, SAT, PV, fin de garantie), pub_avancement_projets (avancement physique, SPI, fin prévue, contrat + avenants et facturé côté vente — aucun coût interne ni marge, P-05), pub_avenants, pub_reserves ; contrats documentés avec Matrix.",
+   "category": "integrations",
+   "kind": "integration",
+   "priority": "a_decider",
+   "status": "non_commence",
+   "waiting_on": "Réponse P-05 (données financières visibles par la filiale)",
+   "effort": "M",
+   "sources": [
+    "Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0)",
+    "docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md"
+   ],
+   "evidence": [
+    "drizzle/0035_share.sql (vues pub_ existantes)"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-190",
+   "verdict": "ajout_critique",
+   "title": "Filiale = client interne ; projet rattaché à son CAPEX",
+   "description": "Un client peut être une filiale du groupe (organisation interne) ; un projet porte la référence de son CAPEX et de son besoin ; les filiales suivent leurs projets dans l’application CAPEX, pas dans le portail client (réservé aux clients externes, R-179).",
+   "category": "droits_acces",
+   "kind": "fonction_manquante",
+   "priority": "a_decider",
+   "status": "non_commence",
+   "waiting_on": "R-187",
+   "effort": "S",
+   "sources": [
+    "Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0)",
+    "docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md"
+   ],
+   "evidence": [
+    "src/server/db/schema/portfolio.ts (clients, projects)"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-191",
+   "verdict": "ajout_critique",
+   "title": "Part EPC2i du pack ingénierie et son % de complétude (vue pub_pack_ingenierie)",
+   "description": "Types de livrable layout / plan de masse machine, schéma électrique et bilan de puissance, analyse fonctionnelle ; liste type pondérée par type de machine ; % de complétude au tableau de bord ingénierie ; vue pub_pack_ingenierie pour le Dossier Investissement du CAPEX (cible > 80 %).",
+   "category": "ingenierie_plm",
+   "kind": "fonction_manquante",
+   "priority": "a_decider",
+   "status": "non_commence",
+   "waiting_on": "Liste type du pack ingénierie (CDC, point C-9)",
+   "effort": "M",
+   "sources": [
+    "Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0)",
+    "docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md"
+   ],
+   "evidence": [
+    "src/domain/engineering.ts",
+    "src/domain/documents.ts"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-192",
+   "verdict": "ajout_critique",
+   "title": "Sécurité machine : HazOp / AMDEC, ATEX, condition PSSR avant mise en service",
+   "description": "HazOp / AMDEC machine, zonage ATEX machine et condition « PSSR obtenu » avant la mise en service avec produit, lus dans Vigie (miroir) et bloquants dans Keystone.",
+   "category": "qualite_chantier_mes",
+   "kind": "integration",
+   "priority": "a_decider",
+   "status": "non_commence",
+   "waiting_on": "Vigie : porte-t-il HazID / HazOp / AMDEC / PSSR ?",
+   "effort": "M",
+   "sources": [
+    "Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0)",
+    "docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md"
+   ],
+   "evidence": [
+    "src/domain/itpcom.ts (mise en service)",
+    "src/domain/site.ts (Go chantier)"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-193",
+   "verdict": "ajout_critique",
+   "title": "Retour de montée en puissance au parc installé (vue pub_rampup)",
+   "description": "Le parc installé affiche la capacité nominale atteinte et le TRS / OEE et les rebuts de réception lus dans la vue pub_rampup de l’application CAPEX (REX machine).",
+   "category": "sav_parc_installe",
+   "kind": "integration",
+   "priority": "plus_tard",
+   "status": "non_commence",
+   "waiting_on": "Application CAPEX",
+   "effort": "S",
+   "sources": [
+    "Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0)",
+    "docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md"
+   ],
+   "evidence": [
+    "src/domain/aftersales.ts"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-194",
+   "verdict": "ajout_critique",
+   "title": "Socle partagé @epc2i/socle (Keystone et application CAPEX)",
+   "description": "Extraire de Keystone la coquille, le design Nocturne, l’infrastructure i18n, l’authentification Entra, la piste d’audit, le moteur de validations, les tâches planifiées, la configuration, les journaux et la santé, l’exploitation, en un paquet versionné consommé par Keystone et par l’application CAPEX ; aucun changement de comportement dans Keystone. L’application CAPEX démarre avec une copie du socle, remplacée par le paquet.",
+   "category": "dette_technique",
+   "kind": "dette_technique",
+   "priority": "plus_tard",
+   "status": "non_commence",
+   "waiting_on": "MVP de l’application CAPEX stabilisé",
+   "effort": "L",
+   "sources": [
+    "Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0)",
+    "docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md"
+   ],
+   "evidence": [
+    "src/components/ds",
+    "src/server/auth",
+    "src/server/jobs",
+    "src/i18n"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire."
    }
   }
  ]

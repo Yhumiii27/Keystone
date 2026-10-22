@@ -1,14 +1,24 @@
 # Dependency audit (R-174, docs/SECURITY.md): fails on a HIGH or CRITICAL advisory in the production dependencies, reports
-# the moderate ones. A light workflow of its own — on pull requests, pushes to main and once a week — so the weekly check
+# the moderate ones. A light workflow of its own — on pull requests and pushes to main that change the dependencies, and once a week — so the weekly check
 # does not run the 45-minute CI (end-to-end tests) and spend the private repository's Actions minutes.
 # A new advisory can turn this red on an unrelated pull request: triage it as docs/SECURITY.md says (update, override, or a
 # dated risk acceptance), never by removing the check.
 name: Dependency audit
 
 on:
+  # Only when the dependencies change (Actions minutes, 22 Oct 2026); a new advisory on unchanged dependencies is caught
+  # by the weekly run.
   pull_request:
+    paths:
+      - package.json
+      - package-lock.json
+      - .github/workflows/audit.yml
   push:
     branches: [main]
+    paths:
+      - package.json
+      - package-lock.json
+      - .github/workflows/audit.yml
   schedule:
     - cron: "17 5 * * 1"
   workflow_dispatch:
