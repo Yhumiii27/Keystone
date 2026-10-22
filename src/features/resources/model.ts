@@ -27,10 +27,12 @@ export interface ResourcePerson {
   jobTitle: string | null;
   /** EN source department name. */
   department: string | null;
-  /** % of the 40 h week per window week (R-084: the hours the schedules assign the person). */
+  /** % of the weekly capacity per window week (R-084: the hours the schedules assign the person; 40 h less the days off). */
   loads: number[];
   /** Hours the schedules assign per window week (week view: the hours column); absent = from the load %. */
   hours?: number[];
+  /** R-084 (absences): capacity per week (40 h less the days off); absent = 40 h. */
+  capacityH?: number[];
 }
 
 export interface ResourcesInput {
@@ -209,12 +211,21 @@ function shortDateText(iso: string, lang: Lang): string {
 /** `?person=` link of the heatmap person cell (prototype `setState({screen:'mywork', person})`). */
 export const myWorkHref = (name: string) => `${screenHref('mywork')}?person=${encodeURIComponent(name)}`;
 
+/**
+ * R-084 (absences): a person with days off in the weeks shown brings their reduced capacity to the Project resources bars, and
+ * their hours (not the % of a smaller capacity read on 40 h); everyone else keeps the prototype's rule (avg % × 40 h a week).
+ */
+function absenceHours(p: Pick<ResourcePerson, 'hours' | 'capacityH'>): { hoursH?: number; capacityH?: number } {
+  if (!p.capacityH || !p.hours || !p.capacityH.some((c) => c < HOURS_PER_PERSON_WEEK)) return {};
+  return { hoursH: p.hours.reduce((a, h) => a + h, 0), capacityH: p.capacityH.reduce((a, c) => a + c, 0) };
+}
+
 export function resourcesView(input: ResourcesInput, t: T, lang: Lang): ResourcesView {
   const isProject = input.scope === 'project';
   const isWeek = input.view === 'week';
   const people = input.people.map((p) => ({ ...p, load: personLoad(p.loads) }));
   const roles: CapacityRow[] = isProject
-    ? projectDepartmentDemand(people.map((p) => ({ department: p.department, avgPct: p.load.avgPct })), isWeek ? HOURS_PER_PERSON_WEEK : undefined, input.projectTrades ?? [])
+    ? projectDepartmentDemand(people.map((p) => ({ department: p.department, avgPct: p.load.avgPct, ...absenceHours(p) })), isWeek ? HOURS_PER_PERSON_WEEK : undefined, input.projectTrades ?? [])
     : input.departments;
   const unnamed = unnamedDemand(roles);
   const roleName = (r: CapacityRow) => (r.kind === 'resource' ? dataText(r.name, lang) : t(r.name));
@@ -257,7 +268,7 @@ export function resourcesView(input: ResourcesInput, t: T, lang: Lang): Resource
   const hText = (v: number) => `${fr ? String(v).replace('.', ',') : v} h`;
   const weekRows: WeekRowView[] | null = isWeek
     ? people.map((p) => {
-        const w = weekLoad(p.loads[0] ?? 0, input.weekSplit?.[p.name] ?? [], p.hours?.[0]);
+        const w = weekLoad(p.loads[0] ?? 0, input.weekSplit?.[p.name] ?? [], p.hours?.[0], p.capacityH?.[0]);
         return {
           name: p.name, role: p.jobTitle ? t(p.jobTitle) : '', initials: p.initials, href: hrefOf(p.name), cell: { v: w.pct, ...shade(w.pct) },
           hoursText: `${hText(w.hours)} / ${hText(w.capacityH)}`, overText: w.overH > 0 ? `+${hText(w.overH)}` : '', overAllocated: w.overAllocated, projectsText: weekSplitText(w, lang),

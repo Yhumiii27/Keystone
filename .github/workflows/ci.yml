@@ -4,12 +4,31 @@
 # keys are not set here, so the mock connectors and the local transcript analyser run. A second job builds the deployment
 # image (Dockerfile, R-003) and starts it; a third one migrates and checks Keystone on a PostgreSQL 16 shaped like the shared
 # EPC2I server; the dependency audit runs in its own light workflow (audit.yml, R-174).
+# Actions minutes (owner, 22 Oct 2026: the free plan's monthly quota ran out): a change to documentation only (docs/,
+# design/, .artifacts/, Markdown files) runs nothing — except docs/EXPLOITATION.md, which a unit test reads (jobs runbook).
+# A push to main (the merge of a pull request that passed everything) runs the fast checks only: install, route types,
+# typecheck, lint, unit tests — they catch two merged pull requests that break each other. "Run workflow" (manual) runs all.
 name: CI
 
 on:
   pull_request:
+    paths:
+      - '**'
+      - '!docs/**'
+      - '!design/**'
+      - '!.artifacts/**'
+      - '!**/*.md'
+      - 'docs/EXPLOITATION.md'
   push:
     branches: [main]
+    paths:
+      - '**'
+      - '!docs/**'
+      - '!design/**'
+      - '!.artifacts/**'
+      - '!**/*.md'
+      - 'docs/EXPLOITATION.md'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -49,19 +68,23 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      # From here on: pull requests and manual runs only (a push to main stops after the unit tests).
       - name: Build
+        if: github.event_name != 'push'
         run: npm run build
         env:
           KEYSTONE_DATA_DIR: ${{ runner.temp }}/keystone-build-data
 
       - name: Playwright browser
+        if: github.event_name != 'push'
         run: npx playwright install --with-deps chromium
 
       - name: End-to-end tests
+        if: github.event_name != 'push'
         run: npm run test:e2e
 
       - name: End-to-end report
-        if: failure()
+        if: failure() && github.event_name != 'push'
         uses: actions/upload-artifact@v4
         with:
           name: e2e-report
@@ -75,6 +98,7 @@ jobs:
   # page. Nothing is pushed to a registry.
   image:
     name: Container image (build, start, health)
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -121,6 +145,7 @@ jobs:
   # to do), scripts/db-check.ts --postgres, and the opt-in PostgreSQL tests (fresh databases created as the superuser).
   postgres:
     name: PostgreSQL 16 (shared server layout)
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:

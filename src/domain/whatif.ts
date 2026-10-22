@@ -95,6 +95,11 @@ export interface WhatIfPerson {
   department: string | null;
   /** Load % per horizon week. */
   loads: number[];
+  /**
+   * R-084 (absences): the person's capacity per horizon week (40 h less their days off); absent = the 40 h week. A lever's hours
+   * move the load % on that capacity.
+   */
+  capacityH?: number[];
   /** R-083: the person's grid rate at the horizon start (a helper colleague is valued with it); null / absent when not valued. */
   rateEur?: number | null;
 }
@@ -515,7 +520,9 @@ export function evaluateScenario(model: WhatIfModel, enabled: Iterable<string>):
     if (lv && rb && rs) costDelta += costOf(scenEntries, rs.remaining, ctx.rates.overtimeFactor) - costOf(basePlan.entries, rb.remaining, ctx.rates.overtimeFactor);
   }
 
-  const loadsAfter = ctx.people.map((p) => ({ p, loads: p.loads.map((v, w) => v + ((delta.get(p.name)?.[w] ?? 0) / R.weekHours) * 100) }));
+  // R-084 (absences): a lever's hours count on the person's capacity that week (the 40 h week when not known or entirely off).
+  const capOf = (p: WhatIfPerson, w: number) => (p.capacityH?.[w] ?? 0) > 0 ? p.capacityH![w] : R.weekHours;
+  const loadsAfter = ctx.people.map((p) => ({ p, loads: p.loads.map((v, w) => v + ((delta.get(p.name)?.[w] ?? 0) / capOf(p, w)) * 100) }));
   const bars = ctx.weeks.map((_, w) => Math.round(Math.max(0, ...loadsAfter.map((x) => x.loads[w] ?? 0))));
   const overByWeek = ctx.weeks.map((_, w) => loadsAfter.filter((x) => (x.loads[w] ?? 0) > R.overloadPct + EPS).length);
   const overWeeks = (rows: { loads: number[] }[]) => rows.reduce((a, x) => a + x.loads.filter((v) => v > R.overloadPct + EPS).length, 0);

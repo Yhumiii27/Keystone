@@ -110,13 +110,14 @@ export interface WeekLoad {
 /**
  * Load of a person for the week shown set against the hours the schedules assign per project. R-084 (owner answer 17 Oct 2026,
  * third round): the load IS the schedules' hours (`hours`, from `getPlanningLoad`), so the split covers it exactly; without
- * `hours`, the hours of the % (the rule of a weekly total from another source).
+ * `hours`, the hours of the % (the rule of a weekly total from another source). R-084 (absences): `capacityH` = the person's
+ * capacity that week (40 h less their days off; default 40 h) — the hours above it are "above capacity".
  */
-export function weekLoad(pct: number, projects: readonly WeekProjectHours[], hours: number = hoursOfLoad(pct)): WeekLoad {
+export function weekLoad(pct: number, projects: readonly WeekProjectHours[], hours: number = hoursOfLoad(pct), capacityH: number = HOURS_PER_PERSON_WEEK): WeekLoad {
   const split = projects.filter((p) => p.hours > 0).map((p) => ({ code: p.code, hours: round1(p.hours) })).sort((a, b) => b.hours - a.hours || a.code.localeCompare(b.code));
   const assignedH = round1(split.reduce((a, p) => a + p.hours, 0));
   return {
-    pct, hours, capacityH: HOURS_PER_PERSON_WEEK, overH: Math.max(0, round1(hours - HOURS_PER_PERSON_WEEK)), overAllocated: pct > OVER_ALLOCATED_PCT,
+    pct, hours, capacityH, overH: Math.max(0, round1(hours - capacityH)), overAllocated: pct > OVER_ALLOCATED_PCT,
     band: loadBand(pct), projects: split, assignedH,
     notAssignedH: split.length ? Math.max(0, round1(hours - assignedH)) : 0, beyondH: Math.max(0, round1(assignedH - hours)),
   };

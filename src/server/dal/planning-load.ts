@@ -6,18 +6,21 @@ import 'server-only';
 // conflicts, the capacity what-if of Prioritisation, the exports. The `allocations` table is no longer read for load.
 // Also: the activities that need work and declare no resource at all (owner answer B: an alert), and — owner answers 18 Oct 2026,
 // fourth round — those with no assignment that start within 15 days (J-15 alert); external crews are left out of the load.
+// R-084 (absences): each person's weekly capacity — 40 h less their absence days (`leave_entries`, every source: Cursus and
+// the seeded rows; Settings public holidays never count as a day off) — rule `personWeekCapacities`.
 import { cache } from 'react';
 import { and, asc, eq, gte, inArray, isNotNull, lte } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { addCalendarDays, type WorkCalendar } from '@/domain/calendar';
 import { DEFAULT_PROJECT_CALENDAR, projectCalendarCode } from '@/domain/ch4-defaults';
 import {
-  planningLoad, unassignedActivitiesAt, undeclaredActivities, type PlanActivity, type PlanAssignment, type PlanningLoad,
+  personWeekCapacities, planningLoad, unassignedActivitiesAt, undeclaredActivities, type PlanActivity, type PlanAssignment, type PlanningLoad,
 } from '@/domain/planning-load';
 import { WHATIF_RULES } from '@/domain/whatif';
 import { getDb } from '@/server/db/client';
-import { activities, activityAssignments, departments, persons, projects, rateRoles } from '@/server/db/schema';
+import { activities, activityAssignments, departments, leaveEntries, persons, projects, rateRoles } from '@/server/db/schema';
 import { loadWorkCalendars } from './calendars';
+import { settingsHolidayRows } from './settings-lists';
 
 /** Name of a person as the pool names them (full name, else short name). */
 const poolName = (p: { full: string | null; short: string }) => p.full ?? p.short;
@@ -25,6 +28,23 @@ const poolName = (p: { full: string | null; short: string }) => p.full ?? p.shor
 export interface PlanningLoadData extends PlanningLoad {
   /** Person key (id) → name as the pool shows it. */
   names: Record<string, string>;
+  /**
+   * R-084 (absences): capacity per week (hours) of the persons (by id) with an absence in the weeks — 40 h less 8 h per day off;
+   * everyone else has 40 h a week (`capacityOf`).
+   */
+  capacity: Record<string, number[]>;
+}
+
+/** R-084 (absences): the persons' capacities over `weeks` from the leave calendar (every source) and the Settings holidays. */
+async function capacities(weeks: readonly string[]): Promise<Record<string, number[]>> {
+  const db = await getDb();
+  const friday = addCalendarDays(weeks[weeks.length - 1], 4);
+  const [rows, holidays] = await Promise.all([
+    db.select({ person: leaveEntries.personId, type: leaveEntries.leaveType, start: leaveEntries.startDate, end: leaveEntries.endDate })
+      .from(leaveEntries).where(and(lte(leaveEntries.startDate, friday), gte(leaveEntries.endDate, weeks[0]))),
+    settingsHolidayRows(db),
+  ]);
+  return personWeekCapacities(rows, weeks, new Set(holidays.map((h) => h.date)));
 }
 
 async function calendarsOf(codes: readonly string[]) {
@@ -87,14 +107,15 @@ async function planFacts(from: string, to: string): Promise<{ acts: PlanActivity
 /** Memoised per request on the weeks asked (several readers of one page share it). */
 const loadOf = cache(async (key: string): Promise<PlanningLoadData> => {
   const weeks = key ? key.split(',') : [];
-  if (!weeks.length) return { weeks: [], people: {}, personProjects: {}, trades: [], names: {} };
-  const { acts, asg, names } = await planFacts(weeks[0], addCalendarDays(weeks[weeks.length - 1], 6));
-  return { ...planningLoad(acts, asg, weeks, WHATIF_RULES.ownerHoursPerDay), names };
+  if (!weeks.length) return { weeks: [], people: {}, personProjects: {}, trades: [], names: {}, capacity: {} };
+  const [{ acts, asg, names }, capacity] = await Promise.all([planFacts(weeks[0], addCalendarDays(weeks[weeks.length - 1], 6)), capacities(weeks)]);
+  return { ...planningLoad(acts, asg, weeks, WHATIF_RULES.ownerHoursPerDay), names, capacity };
 });
 
 /**
  * Hours per week over `weeks` (ISO Mondays): of every named person (by person id; `names` gives their pool name) and of every
- * trade (unnamed assignments and owner-only activities), from every project's schedule.
+ * trade (unnamed assignments and owner-only activities), from every project's schedule; with the persons' weekly capacities
+ * reduced by their absences (`capacity`, R-084).
  */
 export async function getPlanningLoad(weeks: readonly string[]): Promise<PlanningLoadData> {
   return loadOf(weeks.join(','));

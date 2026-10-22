@@ -419,6 +419,15 @@ export async function replaceCursusAbsence(q: DB | Tx, a: CursusAbsence): Promis
   return weeks.length;
 }
 
+/**
+ * Removes an absence Cursus cancelled (`absence.annulee`, R-031): the rows of its key (source "cursus"). Runs in the caller's
+ * transaction (the event inbox's). Returns the weeks removed.
+ */
+export async function removeCursusAbsence(q: DB | Tx, key: string): Promise<number> {
+  const gone = await q.delete(leaveEntries).where(and(eq(leaveEntries.externalId, key), eq(leaveEntries.source, 'cursus'))).returning({ id: leaveEntries.id });
+  return gone.length;
+}
+
 // ── Hours (Lucca reconciliation) ───────────────────────────────────────────────────────────────────────
 
 export interface HoursLineRow {

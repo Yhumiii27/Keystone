@@ -3,8 +3,9 @@
 // PEOPLE, REQUESTS, TODOS…, NOTIFS, ACTIVITY, AUDIT) and the KPI figures quoted by the screen specs.
 import { beforeAll, describe, expect, it } from 'vitest';
 import { setDb } from '@/server/db/client';
-import { dayOffsetOfIso, dowOfIso, isoOfDayOffset, riskCategory, riskResponse, riskStatus, stepDecision } from '@/server/db/codes';
+import { addDaysIso, dayOffsetOfIso, dowOfIso, isoOfDayOffset, riskCategory, riskResponse, riskStatus, stepDecision } from '@/server/db/codes';
 import { openDatabase } from '@/server/db/open';
+import { DEMO_LEAVE } from '@/server/db/seed/demo-leave';
 import { PROTO } from '@/server/prototype';
 import { getChangeControl } from './changes';
 import { getContingency } from './contingency';
@@ -145,11 +146,17 @@ describe('resources (06 §1, 05 §4)', () => {
     // demo data set names the eight people of the pool since the owner's answer of 18 Oct 2026 (src/server/db/seed/demo-assignments.ts,
     // fitted to PEOPLE): 83 % utilisation and 3 people above 110 % again.
     expect(pool.people.map((p) => [p.name, p.loads.join(',')])).toEqual([
-      ['Amélie Ollivier', '100,100,131,106,106,106,85,81'], ['Julien Wagner', '100,106,125,125,108,88,65,81'], ['Pauline Noguès', '79,108,81,113,113,102,105,81'],
-      ['Thomas Kerbrat', '56,88,110,75,75,56,20,10'], ['Léa Marchand', '73,71,75,75,75,81,65,81'], ['Damien Roux', '99,86,96,90,81,94,66,75'],
-      ['Hélène Sauvage', '44,48,64,76,90,101,76,100'], ['Fabien Bertrand', '99,95,81,56,56,49,35,44'],
+      // R-084 (absences): each week on the person's capacity, 40 h less 8 h per seeded leave day. R-084 (absences), demo leave
+      // shifted (owner 22 Oct 2026, src/server/db/seed/demo-leave.ts): on these weeks only Hélène Sauvage's 2 sick days (28 Sep:
+      // 44 → 73), Léa Marchand's RTT (5 Oct: 71 → 89) and Julien Wagner's RTT (9 Nov: 65 → 81) — the prototype's LEAVE read
+      // Amélie 231,206 · Pauline 197,202 · Thomas 175,156 · Fabien 175,144.
+      ['Amélie Ollivier', '100,100,131,106,106,106,85,81'], ['Julien Wagner', '100,106,125,125,108,88,81,81'], ['Pauline Noguès', '79,108,81,113,113,102,105,81'],
+      ['Thomas Kerbrat', '56,88,110,75,75,56,20,10'], ['Léa Marchand', '73,89,75,75,75,81,65,81'], ['Damien Roux', '99,86,96,90,81,94,66,75'],
+      ['Hélène Sauvage', '73,48,64,76,90,101,76,100'], ['Fabien Bertrand', '99,95,81,56,56,49,35,44'],
     ]);
-    expect(Math.round(pool.people.reduce((a, p) => a + p.avg, 0) / pool.people.length)).toBe(83);
+    // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 84 % and the prototype's three people above 110 % (98 % and six
+    // people with the prototype's LEAVE; 83 % without any leave).
+    expect(Math.round(pool.people.reduce((a, p) => a + p.avg, 0) / pool.people.length)).toBe(84);
     expect(pool.people.filter((p) => p.max > 110).map((p) => p.name)).toEqual(['Amélie Ollivier', 'Julien Wagner', 'Pauline Noguès']);
   });
 
@@ -179,18 +186,21 @@ describe('resources (06 §1, 05 §4)', () => {
     // schedules' — Julien Wagner is above 100 % again: relief lever.
     expect(w.levers).toHaveLength(23);
     expect(w.levers.slice(0, 3).map((l) => l.code)).toEqual(['extra_resource:A1250:julien-wagner', 'overtime:A1250:steel-erection-crew', 'extra_resource:A1250:steel-erection-crew']);
+    // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 15 people levers again (16 with the prototype's LEAVE).
     expect([w.autoLevers.date.length, w.autoLevers.budget.length, w.autoLevers.people.length]).toEqual([6, 7, 15]);
-    expect(w.scenarios.map((s) => [s.name, s.priority, Object.keys(s.levers).filter((k) => s.levers[k]).length])).toEqual([['A', 'date', 17], ['B', 'people', 6]]);
+    expect(w.scenarios.map((s) => [s.name, s.priority, Object.keys(s.levers).filter((k) => s.levers[k]).length])).toEqual([['A', 'date', 17], ['B', 'people', 6]]); // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 17 / 6 again (18 / 5 with the prototype's LEAVE)
     // R-085 (R-7 a): the horizon is the current load window, 21 Sep – 9 Nov 2026 on the demo date (was the seeded 28 Sep –
     // 16 Nov). R-084 + named demo assignments: peak 131 % (Amélie Ollivier, week of 12 Oct; 130 % on 12 Oct and
     // [0, 0, 1, 2, 3, 2, 0, 1] on the seeded rows).
     expect(w.weeks.map((x) => x.start)).toEqual(['2026-09-21', '2026-09-28', '2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02', '2026-11-09']);
     expect([w.forecastFinish, w.floatDays, w.baselineFinish, w.peak, w.overByWeek]).toEqual([
+      // R-084 (absences), demo leave shifted (owner 22 Oct 2026): no leave on a loaded week — 131 % and [1, 0, 2, 3, 3, 3, 3, 1]
+      // again (231 % and [1, 1, 2, 3, 4, 4, 4, 2] with the prototype's LEAVE: Amélie Ollivier's CP week of 12 Oct).
       '2027-01-14', -27, '2026-12-18', { pct: 131, person: 'Amélie Ollivier', weekStart: '2026-10-12' }, [1, 0, 2, 3, 3, 3, 3, 1],
     ]);
     // S-7: any project with a plan has a what-if (NDC-031: 11 levers relieving its people since the named demo assignments); a
     // project without activities has none.
-    expect((await getWhatIf('NDC-031'))?.levers).toHaveLength(11);
+    expect((await getWhatIf('NDC-031'))?.levers).toHaveLength(11); // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 11 again (13 with the prototype's LEAVE)
     expect(await getWhatIf('EWA-051')).toBeNull();
   });
 });
@@ -292,7 +302,7 @@ describe('HR (06 §2–5)', () => {
     expect(experts.filter((e) => e < 2).length).toBe(8);
   });
 
-  it('leave calendar: LEAVE, LEAVE_DAYS, HOLIDAYS; 43 leave days, 85 % availability', async () => {
+  it('leave calendar: the demo LEAVE (shifted), LEAVE_DAYS, HOLIDAYS; 4 leave days, 97 % availability', async () => {
     // The prototype's weeks, explicitly (R-084: without weeks, the current window — it was the seeded allocation weeks).
     const lc = await getLeaveCalendar('FR', PROTO_WEEKS);
     // NEW-CURSUS-4 (R-031, R-173): two simple types instead of LEAVE_DAYS' CP / RTT / Sick / Training; the prototype's weeks
@@ -301,12 +311,20 @@ describe('HR (06 §2–5)', () => {
     expect(lc.leaveTypes.map((t) => [t.code, t.label, t.days])).toEqual([['leave', 'Leave', 5], ['absence', 'Absence', 5]]);
     expect(Object.fromEntries(lc.holidays.map((h) => [h.weekIndex, h.label]))).toEqual(P.HOLIDAYS);
     expect(Object.fromEntries(lc.people.map((p) => [p.name, Object.fromEntries(p.weeks.flatMap((w, i) => (w.typeLabel ? [[String(i), w.typeLabel]] : [])))])))
-      .toEqual(Object.fromEntries(Object.entries(P.LEAVE as Record<string, Record<string, string>>).map(([n, ws]) => [n, Object.fromEntries(Object.entries(ws).map(([i, l]) => [i, SIMPLE[l]]))])));
+      // R-084 (absences), demo leave shifted (owner 22 Oct 2026): the seeded leave is DEMO_LEAVE — the prototype's LEAVE on weeks
+      // with little or no assigned work; on these 8 weeks Hélène Sauvage 28 Sep, Léa Marchand 5 Oct, Julien Wagner 9 Nov (the
+      // full weeks of CP from 23 Nov).
+      .toEqual(Object.fromEntries(Object.entries(DEMO_LEAVE).map(([n, ws]) => [n, Object.fromEntries(Object.entries(ws).filter(([i]) => +i < PROTO_WEEKS.length).map(([i, l]) => [i, SIMPLE[l]]))])));
     expect(lc.lastAbsenceReceivedAt).toBeNull();
     const avail = lc.people.map((p) => Math.round((p.weeks.reduce((a, w) => a + Math.max(0, 5 - w.days - w.holidays) * 7, 0) / (lc.weeks.length * 35)) * 100));
-    expect(avail).toEqual([73, 95, 78, 73, 93, 98, 93, 75]);
-    expect(lc.people.reduce((a, p) => a + p.weeks.reduce((b, w) => b + w.days, 0), 0)).toBe(43);
-    expect(Math.round(avail.reduce((a, b) => a + b, 0) / avail.length)).toBe(85);
+    // R-084 (absences), demo leave shifted (owner 22 Oct 2026): [73, 95, 78, 73, 93, 98, 93, 75], 43 days and 85 % with the
+    // prototype's LEAVE on these weeks.
+    expect(avail).toEqual([98, 95, 98, 98, 95, 98, 93, 98]);
+    expect(lc.people.reduce((a, p) => a + p.weeks.reduce((b, w) => b + w.days, 0), 0)).toBe(4);
+    expect(Math.round(avail.reduce((a, b) => a + b, 0) / avail.length)).toBe(97);
+    // The whole demo leave (43 days, as the prototype's) on the weeks of 28 Sep 2026 – 11 Jan 2027.
+    const all = await getLeaveCalendar('FR', Array.from({ length: 16 }, (_, i) => addDaysIso(PROTO_WEEKS[0], 7 * i)));
+    expect(all.people.reduce((a, p) => a + p.weeks.reduce((b, w) => b + w.days, 0), 0)).toBe(43);
     expect((await listPublicHolidays()).map((h) => h.label)).toEqual(P.SETTINGS0.holidays);
   });
 

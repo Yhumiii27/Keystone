@@ -17,6 +17,7 @@ import { seedContract } from './contract';
 import { seedCost } from './cost';
 import { seedCursus } from './cursus';
 import { demoAssignmentsToBackfill, seedDemoAssignments } from './demo-assignments';
+import { demoLeaveToShift, shiftDemoLeave } from './demo-leave';
 import { seedDocuments } from './documents';
 import { seedEngineering } from './engineering';
 import { seedExecution } from './execution';
@@ -154,6 +155,11 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
     // its schedules name at most the prototype's one person).
     if (await demoAssignmentsToBackfill(db)) {
       await db.transaction(async (tx) => { await seedDemoAssignments(tx); }).catch((e) => logError('Delivery 9 demo assignments backfill', e, { component: 'seed' }));
+    }
+    // R-084 (absences), owner 22 Oct 2026: demo leave shifted off the assignments (./demo-leave.ts) — once, while the database's
+    // seeded leave is still exactly the prototype's.
+    if (await demoLeaveToShift(db)) {
+      await db.transaction(async (tx) => { await shiftDemoLeave(tx); }).catch((e) => logError('Delivery 9 demo leave shift', e, { component: 'seed' }));
     }
     // ── Delivery 8 · demo backfills · connectors ──
     // Databases seeded before delivery 7 adopt their (demo) record.

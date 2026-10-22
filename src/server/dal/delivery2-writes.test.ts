@@ -224,7 +224,7 @@ describe('HR and what-if', () => {
     await createScenario('HLT-026', { name: 'C', basis: 'Baseline BL1', horizonMonths: 6, hypotheses: 'No overtime' });
     const w = (await getWhatIf('HLT-026'))!;
     const on = (n: string) => Object.entries(w.scenarios.find((s) => s.name === n)!.levers).filter(([, v]) => v).map(([k]) => k);
-    expect(on('A')).toHaveLength(16);
+    expect(on('A')).toHaveLength(16); // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 16 (17 with the prototype's LEAVE)
     expect(on('A')).not.toContain('extra_resource:A1250:steel-erection-crew');
     expect(on('A')).toContain('overtime:A1250:steel-erection-crew');
     // "Protect budget" on HLT-026: the levers that save money or cost nothing (shifts, an internal colleague, overtime that

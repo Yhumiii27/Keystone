@@ -331,7 +331,7 @@ describe('site — readiness, mobilisation, execution (10 §3)', () => {
     // D-6b 'a' (R-119): the conflicts are computed — 7 on the seed (the prototype's 4 authored collisions). R-084: the loads come
     // from the schedules — with the named demo assignments (18 Oct 2026) Julien Wagner's load conflict (8 with the seeded rows).
     expect(s.go.conditions.map((c) => ({ label: c.label, ok: c.ok, sub: c.sub }))).toEqual(
-      g.goItems.map((i: { sub: string }) => (i.sub === '4 collisions' ? { ...i, sub: '7 collisions' } : i)),
+      g.goItems.map((i: { sub: string }) => (i.sub === '4 collisions' ? { ...i, sub: '7 collisions' } : i)), // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 7 (9 with the prototype's LEAVE)
     );
     expect(s.go.ok ? 'GO' : 'NO GO').toBe(g.goLabel);
     expect([
@@ -354,7 +354,7 @@ describe('site — readiness, mobilisation, execution (10 §3)', () => {
       [`${s.cursus.people.filter((p) => p.verdict !== 'no_go').length} / ${s.cursus.people.length}`, `${s.cursus.people.filter((p) => p.verdict === 'go_with_reserve').length} with reserve · approvals only`],
       [`${s.equipment.filter((e) => e.status === 'confirmed').length} / ${s.equipment.length}`, `${s.equipment.filter((e) => e.source === 'shipped').length} shipped · ${s.equipment.filter((e) => e.source !== 'shipped').length} local / client`],
       [s.collisions.length, 'Load · leave · certificates · badges'],
-    ]).toEqual(kv(g.kpis).map((x: unknown[], i: number) => (i === 4 ? [7, x[1]] : x)));
+    ]).toEqual(kv(g.kpis).map((x: unknown[], i: number) => (i === 4 ? [7, x[1]] : x))); // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 7 (9 with the prototype's LEAVE)
     expect(s.cursus.verdict).toBe('no_go');
     expect(s.cursus.openUrl).toBe('http://localhost:5173/chantiers');
   });
@@ -369,6 +369,7 @@ describe('site — readiness, mobilisation, execution (10 §3)', () => {
     // R-084: the loads come from the schedules — with the named demo assignments (18 Oct 2026) Julien Wagner is above 110 % in
     // the week of 19 Oct (125 %), Amélie Ollivier no longer (106 %; both were on the seeded allocation rows).
     expect(s.collisions.map((c) => [c.person, c.kindLabel, c.department, c.resolved])).toEqual([
+      // R-084 (absences), demo leave shifted (owner 22 Oct 2026): no load conflict in a leave week (Amélie Ollivier's and Thomas Kerbrat's with the prototype's LEAVE).
       ['Amélie Ollivier', 'Leave', 'Site operations', false],
       ['Julien Wagner', 'Load', 'Engineering', false], ['Julien Wagner', 'Leave', 'Engineering', false], ['Thomas Kerbrat', 'Document', 'Site operations', false], ['Thomas Kerbrat', 'Leave', 'Site operations', false],
       ['Pauline Noguès', 'Certificate', 'MEP', false], ['Hélène Sauvage', 'Document', 'Quality', false],
@@ -383,7 +384,7 @@ describe('site — readiness, mobilisation, execution (10 §3)', () => {
     // A-12 (chapter 4): "Man-days planned" = Σ rotation crew × working days on the project calendar — 179, not the literal 168.
     // D-6b 'a' (R-119): 7 computed conflicts open (the prototype's 4; 8 with the seeded allocation rows — R-084 + named demo
     // assignments).
-    ]).toEqual(kv(g.teamKpis).map((x: any[], i: number) => (i === 1 ? ['179', x[1]] : i === 2 ? [7, x[1]] : x)));
+    ]).toEqual(kv(g.teamKpis).map((x: any[], i: number) => (i === 1 ? ['179', x[1]] : i === 2 ? [7, x[1]] : x))); // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 7 (9 with the prototype's LEAVE)
   });
 
   it('HLT-026: daily reports (newest first), site punch list, HSE register (Vigie) and the Execution KPIs', async () => {

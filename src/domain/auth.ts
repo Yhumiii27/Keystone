@@ -262,8 +262,11 @@ export const AUTH_PATHS = {
 
 /** Health probe(s), reachable without a session (load balancer, monitoring). */
 export const HEALTH_PATHS = ['/api/health'] as const;
-/** R-029 (NEW-CURSUS-7): endpoints another application calls with its own key (no session): Cursus's events. */
-export const INBOUND_API_PATHS = ['/api/integrations/cursus/events'] as const;
+/**
+ * R-029 (NEW-CURSUS-7): endpoints another application calls with its own key (no session): Cursus's events — the address of
+ * Cursus's contract and Keystone's earlier alias.
+ */
+export const INBOUND_API_PATHS = ['/api/cursus/v1/evenements', '/api/integrations/cursus/events'] as const;
 
 const STATIC_FILE_RE = /\.(?:ico|png|jpe?g|gif|svg|webp|avif|woff2?|ttf|otf|css|js|map|txt|webmanifest)$/i;
 

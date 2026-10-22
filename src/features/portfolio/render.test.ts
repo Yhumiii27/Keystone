@@ -31,7 +31,7 @@ describe('portfolio screens render', () => {
       'Projets actifs', '6 projets · exercice 2026', 'Dépensé vs acquis', 'Écart',
       '#026 · Extension du terminal Harbor Line', 'R. Aubert · échéance déc. 2026', 'Hors trajectoire', '5,37 M€', '−566 k€',
       'Budget dépensé', 'Travail acquis', 'Points d’attention', 'Extension du terminal Harbor Line — hors trajectoire',
-      'Prévision 1,40 M€ pour un budget de 1,35 M€ (+46 k€) · CPI 0,97.', '3 personnes au-delà de 110 %',
+      'Prévision 1,40 M€ pour un budget de 1,35 M€ (+46 k€) · CPI 0,97.', '3 personnes au-delà de 110 %', // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 3 (6 with the prototype's LEAVE)
       'Ouvrir le planning', 'Ouvrir le budget', 'Rééquilibrer', 'Ouvrir mes approbations',
     ])
       expect(txt).toContain(s);

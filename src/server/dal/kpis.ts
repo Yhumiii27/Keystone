@@ -13,7 +13,7 @@ import {
 } from '@/domain/kpis';
 import { clientDecisionCount } from '@/domain/meetings';
 import { weekStartsFrom } from '@/domain/load-window';
-import { loadPctOfHours, sumHours } from '@/domain/planning-load';
+import { capacityOf, loadPctOfHours, sumHours } from '@/domain/planning-load';
 import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { addDaysIso, parisInstant } from '@/server/db/codes';
@@ -212,7 +212,8 @@ export async function loggedThisWeek(personName: string, asOf?: string): Promise
 
 /**
  * "Load next 2 wks" of a person: mean of their weekly loads of the n weeks after `asOf` (default: the business date); null outside
- * the pool. R-084: the loads of the schedules (`getPlanningLoad`, % of the 40 h week) — no longer the seeded allocation rows.
+ * the pool. R-084: the loads of the schedules (`getPlanningLoad`, % of the 40 h week less the person's absence days) — no
+ * longer the seeded allocation rows.
  */
 export async function loadNextWeeks(personName: string, asOf?: string, n = 2): Promise<number | null> {
   const db = await getDb();
@@ -222,7 +223,8 @@ export async function loadNextWeeks(personName: string, asOf?: string, n = 2): P
   // The weeks starting after `asOf`: from the Monday after it (the rule of `nextWeeksLoad`: a week starting on `asOf` is not "next").
   const weeks = weekStartsFrom(addDaysIso(weekMondayOf(day), 7), n);
   const load = await getPlanningLoad(weeks);
-  return nextWeeksLoad(weeks, (load.people[p.id] ?? weeks.map(() => 0)).map((h) => loadPctOfHours(h)), day, n);
+  const cap = capacityOf(load.capacity, p.id, weeks.length);
+  return nextWeeksLoad(weeks, (load.people[p.id] ?? weeks.map(() => 0)).map((h, i) => loadPctOfHours(h, cap[i])), day, n);
 }
 
 // ── Activity & integrations (10 OQ4) ─────────────────────────────────────────────────────────────────────────────────
