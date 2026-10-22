@@ -21,6 +21,8 @@ Keystone PM is EPC2i's project and portfolio management tool. It is a Next.js 16
   - Answers marked "À discuter" or "Autre réponse" carry notes. Several wait for data the owner will provide: machine-type standards, purchasing procedure, Sage extracts, the RACI matrix.
 - **Multi-equipment projects (owner's note, 15 Oct 2026; R-185, `docs/BACKLOG.md` §1 ter).** A project can supply several machines of different types and quantities (e.g. one EMP and several MEMU). Today a project has one machine type (creation template, ITP plan, reference budget). Frame the project approach with the owner before building it, and do not add new features that assume one machine type per project.
 
+- **CAPEX application (owner, 22 Oct 2026; `docs/dig-prodi/`).** The subsidiaries' plant CAPEX (DIG-PRODI method: 4 phases, gates G1/G2/G3, living dossiers) is a separate sibling app, not Keystone. Data are shared through the EPC2I PostgreSQL server (one schema per tool, `pub_` views); Keystone owns the machine catalogue, the answers to machine needs and the EPC2i projects, and publishes progress views for the CAPEX app. Keystone-side work: R-185 to R-194 (`docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md`). Do not build CAPEX-level features (subsidiary profiles, DIG-PRODI gates) in Keystone.
+
 ## Rules from the product owner
 
 - **Language.** Reply to the user in French. Code, identifiers and commit messages stay in English. UI strings are English source strings translated through `src/i18n`; French is the default language.
@@ -36,6 +38,7 @@ Keystone PM is EPC2i's project and portfolio management tool. It is a Next.js 16
 | Vigie | ECOs, project NCRs (8D, action plans), site HSE |
 | Cursus | People's site clearances and Go/No-Go; timesheets (hours are no longer in Lucca) |
 | Codex | Documents (Keystone keeps the index and links) |
+| CAPEX app (name to choose) | Subsidiaries' CAPEX, DIG-PRODI phases and gates, living dossiers, machine needs (demand side), ramp-up |
 | Keystone | Deliverables and client PV acceptance, ITP and punch list, site readiness and daily reports, commissioning, lessons learned (REX), installed base and claims, client portal, administration |
 
 - **Connectors.** Each connector lives in `src/server/integrations/<app>/`. It has a read-only mirror, an outbox ("pending sync"), deep links, and a mock until the real API exists.

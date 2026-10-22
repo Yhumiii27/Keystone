@@ -1,5 +1,10 @@
 # DIG-PRODI v4.0 — analyse, comparaison avec Keystone et modifications proposées
 
+> **Mise à jour du 22 oct. 2026 — décision du responsable produit : le niveau CAPEX devient une application dédiée.** La
+> répartition, les échanges et les changements de Keystone sont dans [`ARCHITECTURE-CAPEX-KEYSTONE.md`](ARCHITECTURE-CAPEX-KEYSTONE.md)
+> (R-185 à R-194) ; les lots D-1, D-2, D-4, D-5, D-6 (BP), D-9, D-10 et D-12 ci-dessous passent dans l’application CAPEX
+> ([`PROMPT-APP-CAPEX.md`](PROMPT-APP-CAPEX.md)). Le reste de ce document est l’analyse d’origine.
+
 > 21 oct. 2026. Source : [`CDC-DIG-PRODI-v4.0-draft.md`](CDC-DIG-PRODI-v4.0-draft.md) (brouillon reçu du responsable
 > produit) et l’état de Keystone sur `main` (livraisons 1 à 8, livraison 9 en cours). **Rien n’est construit** : chaque
 > lot ci-dessous attend la validation du responsable produit (règle « pas de nouvel outil sans accord »). Les preuves de

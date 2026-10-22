@@ -107,6 +107,11 @@ par un CAPEX ouvert par la filiale, qui ouvre un besoin machine chez EPC2i, idé
 **Analyse et lots proposés D-1 à D-12** : `docs/dig-prodi/ANALYSE-DIG-PRODI.md` (§6 : décisions à prendre). Rien n’est
 construit avant validation ; le cadrage multi-équipements (§1 ter) est à trancher dans le lot D-3.
 
+**Décision (2026-10-22, responsable produit).** Le CAPEX est une **application dédiée** (données communes sur le serveur
+PostgreSQL EPC2I, un schéma par outil, échanges par vues `pub_`) ; Keystone reste l’outil de l’ingénierie process et
+équipements. Répartition et lots Keystone R-185 à R-194 : `docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md` ; prompt de
+démarrage de l’application : `docs/dig-prodi/PROMPT-APP-CAPEX.md`.
+
 ## 2. Proposés — à valider
 
 | # | Outil | Pourquoi (contexte Keystone) | Portée indicative |
