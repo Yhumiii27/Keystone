@@ -63,7 +63,7 @@ export default async function ProjectResourcesPage({
       weekSplit,
       people: pool.people
         .filter((m) => members.has(m.name))
-        .map((m) => ({ name: m.name, initials: m.initials, jobTitle: m.jobTitle, department: m.department, loads: m.loads, hours: m.hours })),
+        .map((m) => ({ name: m.name, initials: m.initials, jobTitle: m.jobTitle, department: m.department, loads: m.loads, hours: m.hours, capacityH: m.capacityH })),
       departments: [],
       // R-084 (owner answers 17 Oct 2026, third round): the project's work no named person carries, by trade; the activities
       // that declare no resource at all.

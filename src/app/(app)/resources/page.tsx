@@ -45,7 +45,7 @@ export default async function ResourcesPage({ searchParams }: { searchParams: Pr
       windowIsCurrent: win.isCurrent,
       view: win.view,
       weekSplit,
-      people: pool.people.map((p) => ({ name: p.name, initials: p.initials, jobTitle: p.jobTitle, department: p.department, loads: p.loads, hours: p.hours })),
+      people: pool.people.map((p) => ({ name: p.name, initials: p.initials, jobTitle: p.jobTitle, department: p.department, loads: p.loads, hours: p.hours, capacityH: p.capacityH })),
       // R-084: capacity vs demand over the window shown — demand from the schedules (named people + work counted by trade).
       departments,
       labor: labor.projects.length ? { budget: labor.budget, actual: labor.actual } : null,

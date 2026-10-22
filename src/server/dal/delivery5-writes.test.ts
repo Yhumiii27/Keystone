@@ -5,7 +5,8 @@
 // (inputs, checks, outputs, releases, import), P&ID mapping, machine types, Settings, connectors, and the Delivery 5
 // backfill of a database seeded before migration 0004. Each write appends an audit row with the viewer.
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
+import { cursusRequests } from '@/server/db/schema';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { seedIfEmpty } from '@/server/db/seed';
@@ -13,7 +14,7 @@ import { prototypeNcrSnapshot, type ProtoNcrRow } from '@/server/integrations/vi
 import { upsertNcrMirror } from '@/server/integrations/vigie/quality-mirror';
 import { httpQualityConnector, mockQualityConnector, resetVigieQualityRefreshThrottle, getVigieQualityConnector } from '@/server/integrations/vigie/quality-connector';
 import { vigieCoactivityUrl, vigieHseListUrl, vigieHseUrl, vigieNcrListUrl, vigieNcrUrl, vigieReportNcrUrl } from '@/server/integrations/vigie/links';
-import { getCursusConnector, httpCursusConnector, recordsOfPayload, resetCursusRefreshThrottle } from '@/server/integrations/cursus/connector';
+import { cursusRequestId, getCursusConnector, httpCursusConnector, recordsOfPayload, resetCursusRefreshThrottle } from '@/server/integrations/cursus/connector';
 import { cursusChantierUrl } from '@/server/integrations/cursus/links';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
 import { raiseClientIssue, getClientPortal } from './client';
@@ -264,7 +265,8 @@ describe('site — readiness, daily reports, Cursus', () => {
     // HSE: the HTTP refresh above left Vigie's single signed prevention plan in the mirror — no permit pending.
     // D-6b 'a' (R-119): 7 conflicts computed from the rotation plan (the prototype's 4 authored collisions; R-084 + named demo
     // assignments: Julien Wagner's load conflict — 8 with the seeded allocation rows).
-    expect(s.go.conditions.map((c) => c.sub)).toEqual(['1 pending', '2 NO GO', '1 unconfirmed', '7 collisions', 'Ready']);
+    // R-084 (absences): + 2 load conflicts in leave weeks (Amélie Ollivier, Thomas Kerbrat) — 7 before.
+    expect(s.go.conditions.map((c) => c.sub)).toEqual(['1 pending', '2 NO GO', '1 unconfirmed', '9 collisions', 'Ready']);
     await expect(advancePrerequisite('NDC-031', 0, 'confirmed', 'abc', A.pm)).rejects.toThrow(/no site sheet/);
   });
 
@@ -290,7 +292,7 @@ describe('site — readiness, daily reports, Cursus', () => {
     expect(cursusChantierUrl('K-2614')).toBe('http://localhost:5173/chantiers?chantier=K-2614');
   });
 
-  it('Cursus (HTTP, CURSUS_API_URL): go-no-go per Cursus’s contract (X-Api-Key, matricules), travel request to POST /demandes', async () => {
+  it('Cursus (HTTP, CURSUS_API_URL): go-no-go per Cursus’s contract v1 (X-Api-Key, matricules), travel request to POST /v1/demandes', async () => {
     const db = await getDb();
     await db.execute(sql`update site_sheets set cursus_chantier_id = 'K-2614'`);
     await db.execute(sql`update cursus_clearances set matricule = 'EMP-0018' where person_name = 'Thomas Kerbrat'`);
@@ -302,15 +304,18 @@ describe('site — readiness, daily reports, Cursus', () => {
       if (url.endsWith('/go-no-go')) {
         return new Response(JSON.stringify({
           chantier: 'K-2614', evalue_le: '2026-10-08T07:00:00+02:00', statut: 'NO_GO',
-          ressources: [{ matricule: 'EMP-0018', statut: 'NO_GO', motifs: [{ code: 'HABILITATION', libelle: 'Habilitation requise en attente' }] }, { matricule: 'EMP-0006', statut: 'GO', motifs: [] }],
+          ressources: [{ matricule: 'EMP-0018', statut: 'NO_GO', motifs: [{ code: 'HABILITATION', niveau: 'NO_GO', libelle: 'Habilitation requise en attente' }] }, { matricule: 'EMP-0006', statut: 'GO', motifs: [] }],
         }), { status: 200 });
       }
-      if (url.endsWith('/demandes')) return new Response(JSON.stringify({ id: 42, statut: 'en_attente_rh' }), { status: 201 });
+      if (url.endsWith('/v1/demandes')) {
+        const sent = JSON.parse(String(init?.body)) as { reference: string; matricule: string; chantier: string; destination: string; depart: string; retour: string };
+        return new Response(JSON.stringify({ resultat: 'cree', demande: { id: 42, ...sent, statut: 'en_attente_rh', recue: '2026-10-08', decidee: null } }), { status: 201 });
+      }
       return new Response('{}', { status: 404 });
     }));
     expect(getCursusConnector().mode).toBe('http');
     const g = await httpCursusConnector.getGoNoGo(HLT);
-    expect(calls[0]).toMatchObject({ url: 'http://cursus.test/api/integrations/keystone/chantiers/K-2614/go-no-go', key: 'demo-keystone' });
+    expect(calls[0]).toMatchObject({ url: 'http://cursus.test/api/integrations/keystone/v1/chantiers/K-2614/go-no-go', key: 'demo-keystone' });
     expect(g.people.map((p) => [p.personName, p.matricule, p.verdict, p.clearance, p.clearanceNote])).toEqual([
       ['Thomas Kerbrat', 'EMP-0018', 'no_go', 'missing', 'Habilitation requise en attente'], ['EMP-0006', 'EMP-0006', 'go', 'ok', ''],
     ]);
@@ -320,11 +325,28 @@ describe('site — readiness, daily reports, Cursus', () => {
     expect(calls.filter((c) => c.url.endsWith('/go-no-go')).length).toBe(1);
     const r = await httpCursusConnector.requestTravel(HLT, { personName: 'Thomas Kerbrat', destination: 'fr', depart: '2026-10-26', retour: '2026-11-27' }, A.pm);
     expect(r).toMatchObject({ kind: 'travel_request', syncStatus: 'sent' });
-    expect(JSON.parse(calls.at(-1)!.body!)).toEqual({ matricule: 'EMP-0018', chantier: 'K-2614', destination: 'FR', depart: '2026-10-26', retour: '2026-11-27' });
+    // v1: the request's Keystone id is its unique `reference` (a retry is recognised by Cursus).
+    expect(calls.at(-1)!.url).toBe('http://cursus.test/api/integrations/keystone/v1/demandes');
+    expect(JSON.parse(calls.at(-1)!.body!)).toEqual({ reference: r.id, matricule: 'EMP-0018', chantier: 'K-2614', destination: 'FR', depart: '2026-10-26', retour: '2026-11-27' });
+    expect((await db.select({ ref: cursusRequests.cursusRef }).from(cursusRequests).where(eq(cursusRequests.id, r.id)))[0].ref).toBe('42');
+    // A retry Cursus already received: 409 DEMANDE_EN_DOUBLE with the request it recorded — delivered, not failed.
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: 'Demande déjà reçue sous cette référence', code: 'DEMANDE_EN_DOUBLE', details: [], demande: { id: 43 } }), { status: 409 })));
+    const again = await httpCursusConnector.requestTravel(HLT, { personName: 'Thomas Kerbrat', destination: 'FR', depart: '2026-11-02', retour: '2026-11-06' }, A.pm);
+    expect(again.syncStatus).toBe('sent');
+    expect((await db.select({ ref: cursusRequests.cursusRef }).from(cursusRequests).where(eq(cursusRequests.id, again.id)))[0].ref).toBe('43');
+    // Any other refusal fails the delivery with Cursus's code (kept for the outbox).
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: 'Données invalides : retour', code: 'VALIDATION' }), { status: 400 })));
+    const refused = await httpCursusConnector.requestTravel(HLT, { personName: 'Thomas Kerbrat', destination: 'FR', depart: '2026-11-09', retour: '2026-11-13' }, A.pm);
+    expect(refused.syncStatus).toBe('failed');
+    expect((await db.select({ e: cursusRequests.lastError }).from(cursusRequests).where(eq(cursusRequests.id, refused.id)))[0].e).toBe('Cursus POST /api/integrations/keystone/v1/demandes → 400 VALIDATION');
+    expect([cursusRequestId({ resultat: 'cree', demande: { id: 7 } }), cursusRequestId({ id: 8, statut: 'en_attente_rh' }), cursusRequestId({}), cursusRequestId(null)]).toEqual(['7', '8', null, null]);
     await expect(httpCursusConnector.requestTravel(HLT, { personName: 'Thomas Kerbrat', destination: 'FR', depart: '2026-11-27', retour: '2026-10-26' }, A.pm)).rejects.toThrow(/before departure/);
     // Payload mapping: a reserve on a certification → expiring; travel formalities → visa / vaccinations pending.
     expect(recordsOfPayload(HLT, { chantier: 'K', evalue_le: 'x', statut: 'GO_RESERVE', ressources: [{ matricule: 'M', statut: 'GO_RESERVE', motifs: ['CERTIFICATION', 'FORMALITES_VOYAGE'] }] }, new Map())[0])
       .toMatchObject({ clearance: 'expiring', visa: 'pending', vaccination: 'pending', verdict: 'go_with_reserve', clearanceNote: 'CERTIFICATION · FORMALITES_VOYAGE' });
+    // v1 reasons are { code, niveau } (a label in the detailed sharing only): the note falls back on the code.
+    expect(recordsOfPayload(HLT, { chantier: 'K', evalue_le: 'x', statut: 'GO_RESERVE', ressources: [{ matricule: 'M', statut: 'GO_RESERVE', motifs: [{ code: 'DEPLACEMENT', niveau: 'GO_RESERVE' }] }] }, new Map())[0])
+      .toMatchObject({ visa: 'pending', clearance: 'ok', clearanceNote: 'DEPLACEMENT' });
   });
 });
 

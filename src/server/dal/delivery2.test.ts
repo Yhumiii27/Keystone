@@ -145,12 +145,16 @@ describe('resources (06 §1, 05 §4)', () => {
     // demo data set names the eight people of the pool since the owner's answer of 18 Oct 2026 (src/server/db/seed/demo-assignments.ts,
     // fitted to PEOPLE): 83 % utilisation and 3 people above 110 % again.
     expect(pool.people.map((p) => [p.name, p.loads.join(',')])).toEqual([
-      ['Amélie Ollivier', '100,100,131,106,106,106,85,81'], ['Julien Wagner', '100,106,125,125,108,88,65,81'], ['Pauline Noguès', '79,108,81,113,113,102,105,81'],
-      ['Thomas Kerbrat', '56,88,110,75,75,56,20,10'], ['Léa Marchand', '73,71,75,75,75,81,65,81'], ['Damien Roux', '99,86,96,90,81,94,66,75'],
-      ['Hélène Sauvage', '44,48,64,76,90,101,76,100'], ['Fabien Bertrand', '99,95,81,56,56,49,35,44'],
+      // R-084 (absences): each week on the person's capacity, 40 h less 8 h per seeded leave day (a week entirely off with hours
+      // assigned: 100 % + their share of 40 h). Before: Amélie 131,106 · Julien 65 · Pauline 79,102 · Thomas 75,56 · Léa 71,81 ·
+      // Hélène 76 · Fabien 35,44.
+      ['Amélie Ollivier', '100,100,231,206,106,106,85,81'], ['Julien Wagner', '100,106,125,125,108,88,81,81'], ['Pauline Noguès', '197,108,81,113,113,202,105,81'],
+      ['Thomas Kerbrat', '56,88,110,75,175,156,20,10'], ['Léa Marchand', '73,89,75,75,75,81,65,102'], ['Damien Roux', '99,86,96,90,81,94,66,75'],
+      ['Hélène Sauvage', '44,48,64,127,90,101,76,100'], ['Fabien Bertrand', '99,95,81,56,56,49,175,144'],
     ]);
-    expect(Math.round(pool.people.reduce((a, p) => a + p.avg, 0) / pool.people.length)).toBe(83);
-    expect(pool.people.filter((p) => p.max > 110).map((p) => p.name)).toEqual(['Amélie Ollivier', 'Julien Wagner', 'Pauline Noguès']);
+    // R-084 (absences): the leave weeks raise the mean (83 % before) and put three more people above 110 % (their leave weeks).
+    expect(Math.round(pool.people.reduce((a, p) => a + p.avg, 0) / pool.people.length)).toBe(98);
+    expect(pool.people.filter((p) => p.max > 110).map((p) => p.name)).toEqual(['Amélie Ollivier', 'Julien Wagner', 'Pauline Noguès', 'Thomas Kerbrat', 'Hélène Sauvage', 'Fabien Bertrand']);
   });
 
   it('departments with heads and ROLES capacity; project teams; labour cost', async () => {
@@ -179,18 +183,21 @@ describe('resources (06 §1, 05 §4)', () => {
     // schedules' — Julien Wagner is above 100 % again: relief lever.
     expect(w.levers).toHaveLength(23);
     expect(w.levers.slice(0, 3).map((l) => l.code)).toEqual(['extra_resource:A1250:julien-wagner', 'overtime:A1250:steel-erection-crew', 'extra_resource:A1250:steel-erection-crew']);
-    expect([w.autoLevers.date.length, w.autoLevers.budget.length, w.autoLevers.people.length]).toEqual([6, 7, 15]);
-    expect(w.scenarios.map((s) => [s.name, s.priority, Object.keys(s.levers).filter((k) => s.levers[k]).length])).toEqual([['A', 'date', 17], ['B', 'people', 6]]);
+    // R-084 (absences): one more people lever (15 before), the leave weeks putting more people above 100 %.
+    expect([w.autoLevers.date.length, w.autoLevers.budget.length, w.autoLevers.people.length]).toEqual([6, 7, 16]);
+    expect(w.scenarios.map((s) => [s.name, s.priority, Object.keys(s.levers).filter((k) => s.levers[k]).length])).toEqual([['A', 'date', 18], ['B', 'people', 5]]); // R-084 (absences): 17 / 6 before
     // R-085 (R-7 a): the horizon is the current load window, 21 Sep – 9 Nov 2026 on the demo date (was the seeded 28 Sep –
     // 16 Nov). R-084 + named demo assignments: peak 131 % (Amélie Ollivier, week of 12 Oct; 130 % on 12 Oct and
     // [0, 0, 1, 2, 3, 2, 0, 1] on the seeded rows).
     expect(w.weeks.map((x) => x.start)).toEqual(['2026-09-21', '2026-09-28', '2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02', '2026-11-09']);
     expect([w.forecastFinish, w.floatDays, w.baselineFinish, w.peak, w.overByWeek]).toEqual([
-      '2027-01-14', -27, '2026-12-18', { pct: 131, person: 'Amélie Ollivier', weekStart: '2026-10-12' }, [1, 0, 2, 3, 3, 3, 3, 1],
+      // R-084 (absences): Amélie Ollivier's CP week of 12 Oct (capacity 0, 52 h assigned) → 231 % (131 % before); people above
+      // 110 % per week [1, 0, 2, 3, 3, 3, 3, 1] before.
+      '2027-01-14', -27, '2026-12-18', { pct: 231, person: 'Amélie Ollivier', weekStart: '2026-10-12' }, [1, 1, 2, 3, 4, 4, 4, 2],
     ]);
     // S-7: any project with a plan has a what-if (NDC-031: 11 levers relieving its people since the named demo assignments); a
     // project without activities has none.
-    expect((await getWhatIf('NDC-031'))?.levers).toHaveLength(11);
+    expect((await getWhatIf('NDC-031'))?.levers).toHaveLength(13); // R-084 (absences): 11 before (leave weeks over 100 %)
     expect(await getWhatIf('EWA-051')).toBeNull();
   });
 });

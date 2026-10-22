@@ -63,8 +63,10 @@ describe('proxy', () => {
     useEntra();
     const post = (path: string, key?: string) => req(path, { method: 'POST', headers: { 'content-type': 'application/json', ...(key ? { 'x-api-key': key } : {}) } });
     expect(passes(await proxy(post('/api/integrations/cursus/events')))).toBe(true);
-    // Only that exact path: its neighbours keep the session check.
+    expect(passes(await proxy(post('/api/cursus/v1/evenements')))).toBe(true);
+    // Only those exact paths: their neighbours keep the session check.
     expect((await proxy(post('/api/integrations/cursus/events/replay'))).status).toBe(401);
+    expect((await proxy(post('/api/cursus/v1/evenements/x'))).status).toBe(401);
     expect((await proxy(post('/api/integrations/cursus'))).status).toBe(401);
     // The route itself refuses a call without the key, or with the outbound Cursus key (a separate secret).
     const { handleCursusEvent } = await import('@/server/integrations/cursus/events');
@@ -72,6 +74,8 @@ describe('proxy', () => {
     const call = (key?: string) => handleCursusEvent(new Request(`${ORIGIN}/api/integrations/cursus/events`, { method: 'POST', headers: key ? { 'x-api-key': key } : {}, body }));
     expect((await call()).status).toBe(401);
     expect((await call('demo-keystone')).status).toBe(401);
+    const bearer = (token: string) => handleCursusEvent(new Request(`${ORIGIN}/api/cursus/v1/evenements`, { method: 'POST', headers: { authorization: `Bearer ${token}` }, body }));
+    expect((await bearer('demo-keystone')).status).toBe(401);
   });
 
   it('fails closed when misconfigured', async () => {

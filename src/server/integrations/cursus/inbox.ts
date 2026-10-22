@@ -2,11 +2,16 @@ import 'server-only';
 // Inbox of the events Cursus pushes (R-029, NEW-CURSUS-7 "a"; table cursus_events). One transaction per received event:
 // - a known event id is a duplicate: nothing changes, the caller answers 200 { duplicate: true };
 // - an event with a replacement key replaces the previous event of that key (hours of a person's week, an absence), unless the
-//   stored one is newer (emitted later): the late one is kept as "ignored";
+//   stored one is newer (emitted later): the late one is kept as "ignored". An absence's validation and its cancellation share
+//   the key (Cursus's absence id): Keystone applies an event only when it is newer than the last one applied for that object
+//   (Cursus API-KEYSTONE.md « Ordre » — the HR department can resend an old failed event after newer ones);
 // - the dispatch runs in the same transaction for what lives in Keystone's database:
 //     heures.validees  stored, never applied (the Cursus timesheet link awaits the owner, R-030);
 //     absence.validee  written to the leave calendar when the matricule names a person (persons.matricule, R-027, else the
-//                      Cursus mirror's person), else "unresolved" — kept for replay (R-031);
+//                      Cursus mirror's person), else "unresolved" — kept for replay (R-031); a correction (same Cursus absence
+//                      id, new dates) replaces the weeks written before;
+//     absence.annulee  the absence's weeks are removed from the leave calendar (by its key, whoever carries them); when none
+//                      were there and no person carries the matricule, "unresolved" — kept for replay like a validation;
 //     verdict.modifie  the Keystone project whose site sheet carries that Cursus site; refreshed after the commit in HTTP
 //                      mode (./events.ts), recorded only with the mock; "unresolved" when no site sheet carries it;
 //     demande.decision stored only; unknown types "ignored";
@@ -14,13 +19,13 @@ import 'server-only';
 //   sends is about people (R-173).
 // Unresolved events are replayed after a staff-directory import (R-027) and can be replayed by IT (replayUnresolvedCursusEvents).
 import { and, asc, desc, eq, inArray, lt, sql } from 'drizzle-orm';
-import { cursusEventsCutoff, type CursusEvent } from '@/domain/cursus-events';
+import { cursusEventsCutoff, sameObjectTypes, type CursusEvent } from '@/domain/cursus-events';
 import { getDb } from '@/server/db/client';
 import type { CursusEventStatus } from '@/server/db/codes';
 import { writeAudit } from '@/server/db/helpers';
 import { cursusClearances, cursusEvents, persons, projects, siteSheets } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
-import { replaceCursusAbsence } from '@/server/dal/hr';
+import { removeCursusAbsence, replaceCursusAbsence } from '@/server/dal/hr';
 import { cursusConnectorMode } from './connection';
 
 type Q = DB | Tx;
@@ -57,6 +62,15 @@ async function dispatch(q: Q, e: { type: string; data: Record<string, unknown>; 
       const weeks = await replaceCursusAbsence(q, { personId, type: d.type, start: d.start, end: d.end, key: e.replaceKey! });
       return { status: 'received', note: `Leave calendar · ${weeks} week${weeks === 1 ? '' : 's'}`, refreshProject: null };
     }
+    case 'absence.annulee': {
+      const d = e.data as { matricule: string };
+      // By its key (Cursus's absence id): the weeks go whoever carries them (the matricule may have changed since, Cursus's
+      // switch to payroll matricules).
+      const removed = await removeCursusAbsence(q, e.replaceKey!);
+      if (removed) return { status: 'received', note: `Leave calendar · ${removed} week${removed === 1 ? '' : 's'} removed`, refreshProject: null };
+      if (!(await personOfMatricule(q, d.matricule))) return { status: 'unresolved', note: 'No Keystone person carries this matricule yet', refreshProject: null };
+      return { status: 'received', note: 'Leave calendar · nothing to remove', refreshProject: null };
+    }
     case 'verdict.modifie': {
       const chantier = String(e.data.chantier ?? '');
       const [site] = await q.select({ code: projects.code }).from(siteSheets).innerJoin(projects, eq(projects.id, siteSheets.projectId))
@@ -81,7 +95,7 @@ export async function receiveCursusEvent(ev: CursusEvent, now: Date = new Date()
     let superseded = false;
     if (ev.replaceKey) {
       const previous = await tx.select({ id: cursusEvents.id, emittedAt: cursusEvents.emittedAt }).from(cursusEvents)
-        .where(and(eq(cursusEvents.type, ev.type), eq(cursusEvents.replaceKey, ev.replaceKey), sql`${cursusEvents.status} <> 'ignored'`));
+        .where(and(inArray(cursusEvents.type, sameObjectTypes(ev.type)), eq(cursusEvents.replaceKey, ev.replaceKey), sql`${cursusEvents.status} <> 'ignored'`));
       superseded = previous.some((p) => p.emittedAt.getTime() > ev.emittedAt.getTime());
       if (!superseded && previous.length) await tx.delete(cursusEvents).where(inArray(cursusEvents.id, previous.map((p) => p.id)));
     }
@@ -115,7 +129,7 @@ export async function markCursusEventError(eventId: string, note: string): Promi
 export async function replayUnresolvedCursusEvents(): Promise<{ received: number; unresolved: number; error: number }> {
   const db = await getDb();
   const rows = await db.select().from(cursusEvents)
-    .where(and(inArray(cursusEvents.status, ['unresolved', 'error']), inArray(cursusEvents.type, ['absence.validee', 'verdict.modifie'])))
+    .where(and(inArray(cursusEvents.status, ['unresolved', 'error']), inArray(cursusEvents.type, ['absence.validee', 'absence.annulee', 'verdict.modifie'])))
     .orderBy(asc(cursusEvents.emittedAt));
   const out = { received: 0, unresolved: 0, error: 0 };
   for (const r of rows) {

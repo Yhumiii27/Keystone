@@ -28,9 +28,15 @@
 //     "undeclared" alert above) and start within UNASSIGNED_ALERT_DAYS of the business date (already started included).
 // (3) « Le service et les niveaux de compétences de la matrice de compétences sont suffisants » — the trade stays the department;
 //     no assignment carries a required skill, so the competence levels cannot refine it yet (notes-planning-load.md §5).
+//
+// R-084 (absences): a person's weekly capacity is the 40 h week less 8 h (40 h ÷ 5) per day of absence that week — the days
+// the Leave week view counts off (`leaveWeekDays`: Leave or Absence on a weekday that is not a public holiday), from every
+// `leave_entries` row (absences received from Cursus, R-031, and the seeded ones). Nothing else changes the capacity (no
+// contractual hours are known: part time is not represented). `personWeekCapacities`, `loadPctOfHours`.
 // Pure; golden values in planning-load.test.ts.
 import { addCalendarDays, type IsoDate, type WorkCalendar } from './calendar';
-import { HOURS_PER_PERSON_WEEK, assignmentHoursInWeek } from './load-week';
+import { HOURS_PER_PERSON_WEEK, assignmentHoursInWeek, leaveWeekDays, type LeaveSpan } from './load-week';
+import { workingDaysOf } from './load-window';
 import { OTHER_DEPARTMENT } from './resources';
 
 /** A schedule activity as the load rules read it. */
@@ -194,8 +200,52 @@ export function planningLoad(
   return { weeks: [...weeks], people, personProjects, trades: [...trades.values()] };
 }
 
-/** Load % of a week's hours on the weekly capacity (40 h), rounded: 40 h → 100 %, 52 h → 130 %. */
-export const loadPctOfHours = (hours: number, capacityH = HOURS_PER_PERSON_WEEK): number => (capacityH > 0 ? Math.round((hours / capacityH) * 100) : 0);
+/**
+ * Load % of a week's hours on the person's capacity that week (40 h, less their absence days — `personWeekCapacities`), rounded:
+ * 40 h → 100 %, 52 h → 130 %; 32 h on a week with one day off (32 h) → 100 %. A week entirely off (capacity 0): nothing assigned
+ * → 0 %; hours assigned are all beyond capacity → 100 % plus their share of the 40 h week (8 h → 120 %, 40 h → 200 %), the
+ * limit of the rule (hours + hours off) ÷ 40 h, so the week stays over-allocated rather than dividing by zero.
+ */
+export const loadPctOfHours = (hours: number, capacityH = HOURS_PER_PERSON_WEEK): number => {
+  if (capacityH > 0) return Math.round((hours / capacityH) * 100);
+  return hours > 0 ? 100 + Math.round((hours / HOURS_PER_PERSON_WEEK) * 100) : 0;
+};
+
+/** Working days of the 40 h week (Monday to Friday). */
+export const WORKING_DAYS_PER_WEEK = 5;
+/** Capacity a day of absence takes off the week (40 h ÷ 5 = 8 h). */
+export const HOURS_PER_ABSENCE_DAY = HOURS_PER_PERSON_WEEK / WORKING_DAYS_PER_WEEK;
+
+/**
+ * R-084 (absences): a person's capacity in the week starting `weekStart` (Monday): 40 h less 8 h per day off — the days
+ * `leaveWeekDays` counts as Leave or Absence on Monday–Friday (a public holiday is never a day off, overlapping absences count a
+ * day once).
+ */
+export function weekCapacityH(spans: readonly LeaveSpan[], weekStart: IsoDate, holidays: ReadonlySet<string>): number {
+  const { daysOff } = leaveWeekDays(spans, workingDaysOf(weekStart), holidays);
+  return round1(Math.max(0, HOURS_PER_PERSON_WEEK - daysOff * HOURS_PER_ABSENCE_DAY));
+}
+
+/**
+ * R-084 (absences): capacity per week (hours) of every person who has an absence in `weeks`, by person key; a person left out
+ * has the full 40 h every week (`capacityOf`).
+ */
+export function personWeekCapacities(
+  leave: readonly (LeaveSpan & { person: string })[], weeks: readonly IsoDate[], holidays: ReadonlySet<string>,
+): Record<string, number[]> {
+  const byPerson = new Map<string, LeaveSpan[]>();
+  for (const l of leave) byPerson.set(l.person, [...(byPerson.get(l.person) ?? []), l]);
+  const out: Record<string, number[]> = {};
+  for (const [person, spans] of byPerson) {
+    const caps = weeks.map((w) => weekCapacityH(spans, w, holidays));
+    if (caps.some((c) => c < HOURS_PER_PERSON_WEEK)) out[person] = caps;
+  }
+  return out;
+}
+
+/** A person's capacity per week: theirs when they have an absence in the weeks, else 40 h each week. */
+export const capacityOf = (capacity: Readonly<Record<string, number[]>>, person: string, weeks: number): number[] =>
+  capacity[person] ?? Array.from({ length: weeks }, () => HOURS_PER_PERSON_WEEK);
 
 /**
  * Activities that need work and declare no resource at all — no assignment and no owner (owner answer B: « si pas de

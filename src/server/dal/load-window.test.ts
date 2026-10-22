@@ -83,9 +83,11 @@ describe('loads over any window (R-085)', () => {
     // R-084 (owner answer 17 Oct 2026, third round): the hours the schedules assign — Julien Wagner on HLT-026 A1250 (40 h/wk
     // until Fri 9 Oct) and, since the named demo assignments (owner answer 18 Oct 2026), on A1260 / A1320 / A1330, RCF-019 A2440
     // and MSR-012 A6540 — no longer the seeded allocation rows ([0, 90, 100, 130, 125, 110, 100, 80], avg 91.875, max 130).
-    expect(julien.loads).toEqual([100, 100, 106, 125, 125, 108, 88, 65]);
+    // R-084 (absences): his seeded RTT day in the week of 9 Nov leaves 32 h — 26 h is 81 % (65 % of the 40 h week before).
+    expect(julien.loads).toEqual([100, 100, 106, 125, 125, 108, 88, 81]);
     expect(julien.hours).toEqual([40, 40, 42.5, 50, 50, 43, 35, 26]);
-    expect([julien.avg, julien.max]).toEqual([102.125, 125]);
+    expect(julien.capacityH).toEqual([40, 40, 40, 40, 40, 40, 40, 32]);
+    expect([julien.avg, julien.max]).toEqual([104.125, 125]);
     // The eight people of the pool are named on the demo schedules.
     expect(pool.people.filter((p) => p.max > 0)).toHaveLength(8);
   });
@@ -94,7 +96,7 @@ describe('loads over any window (R-085)', () => {
     const all = await getResourcePool();
     expect(all).toEqual(await getResourcePool((await getLoadWindow()).weeks));
     expect(all.weeks.map((w) => w.start)).toEqual(['2026-09-21', ...PROTO_WEEKS.slice(0, 7)]);
-    expect((await getResourcePool(PROTO_WEEKS)).people.find((p) => p.name === 'Julien Wagner')!.loads).toEqual([100, 106, 125, 125, 108, 88, 65, 81]);
+    expect((await getResourcePool(PROTO_WEEKS)).people.find((p) => p.name === 'Julien Wagner')!.loads).toEqual([100, 106, 125, 125, 108, 88, 81, 81]); // R-084 (absences): RTT 9 Nov (65 % before)
   });
 
   it('a window without allocations: the pool with zero loads; the project team follows the window', async () => {
@@ -105,7 +107,8 @@ describe('loads over any window (R-085)', () => {
     expect(pool.people.every((p) => p.loads.length === 8 && p.loads.every((l) => l === 0) && p.avg === 0 && p.max === 0)).toBe(true);
     expect((await getProjectTeam('HLT-026', later)).every((p) => p.loads.every((l) => l === 0))).toBe(true);
     // R-084: the schedule's hours (the seeded rows gave [90, 100, 130, 125, 110, 100, 80, 60]).
-    expect((await getProjectTeam('HLT-026', PROTO_WEEKS)).find((p) => p.name === 'Julien Wagner')!.loads).toEqual([100, 106, 125, 125, 108, 88, 65, 81]);
+    // R-084 (absences): his RTT day of 9 Nov lowers that week's capacity to 32 h (65 % → 81 %).
+    expect((await getProjectTeam('HLT-026', PROTO_WEEKS)).find((p) => p.name === 'Julien Wagner')!.loads).toEqual([100, 106, 125, 125, 108, 88, 81, 81]);
     expect(await getResourcePool([])).toEqual({ weeks: [], people: expect.any(Array) });
   });
 });
@@ -229,7 +232,8 @@ describe('week view and 8-week pages (owner answers 17 Oct 2026)', () => {
     expect(v.weeks).toEqual(['Oct 12']);
     expect(v.kpis[2].sub).toBe('Week shown, by department');
     expect(v.rolesSub).toBe('Hours by role, week shown');
-    expect(v.roles.reduce((a, r) => a + r.capacityH, 0)).toBe(40 * v.people.length);
+    // R-084 (absences): Amélie Ollivier is on leave all that week (capacity 0 h): her bar brings no capacity (40 h a person else).
+    expect(v.roles.reduce((a, r) => a + r.capacityH, 0)).toBe(40 * (v.people.length - 1));
   }, 30_000);
 
   it('the exports follow the view: one week (with hours and hours above capacity), Leave day by day', async () => {

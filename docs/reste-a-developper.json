@@ -94,6 +94,10 @@
   {
    "date": "2026-10-22",
    "text": "CI économe en minutes GitHub Actions (quota du compte gratuit épuisé) : rien pour un changement de documentation seule, vérifications rapides seulement après fusion dans main, audit des dépendances quand elles changent et chaque semaine ; budget Actions plafonné à régler par le responsable produit."
+  },
+  {
+   "date": "2026-10-22",
+   "text": "Contrat Cursus : Keystone accepte le format réel des événements de Cursus (adresse /api/cursus/v1/evenements, jeton Bearer, donnees, absence.annulee, accusé), appelle les routes /v1 de Cursus, et la capacité de chacun tient compte de ses absences (R-029, R-031, R-084)."
   }
  ],
  "items": [
@@ -907,8 +911,8 @@
    ],
    "progress": {
     "state": "fait",
-    "delivery": "Livraison 8",
-    "note": "Livraison 8 : point d’entrée POST /api/integrations/cursus/events (clé dédiée CURSUS_EVENTS_KEY, idempotent, purge planifiée)."
+    "delivery": "Livraison 9",
+    "note": "Livraison 8 : point d’entrée (clé dédiée CURSUS_EVENTS_KEY, idempotent, purge planifiée). Livraison 9, lot « cursus-contract » (docs/delivery-9/notes-cursus-contract.md) : aligné sur le contrat de Cursus (qui fait foi) — adresse POST /api/cursus/v1/evenements (l’ancienne reste servie), jeton Authorization: Bearer, enveloppe donnees, accusé de réception « accuse », decision de demande.decision ; appels sortants sur les routes /v1 de Cursus (reference des demandes, 409 DEMANDE_EN_DOUBLE)."
    }
   },
   {
@@ -970,8 +974,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8",
-    "note": "Livraison 8 : absences reçues de Cursus en deux types simples (Congé, Absence), « Sync Lucca » retiré ; l’envoi réel par Cursus reste à brancher."
+    "delivery": "Livraison 9",
+    "note": "Livraison 8 : absences reçues de Cursus en deux types simples (Congé, Absence), « Sync Lucca » retiré. Livraison 9, lot « cursus-contract » : format réel de Cursus accepté (absence, du, au ; sans nature = Absence ; demi-journée = journée entière), une correction remplace les semaines, absence.annulee retire les semaines ; les absences réduisent la capacité dans la charge et le what-if. Reste : conflits avec la rotation chantier à revoir avec les absences Cursus, demandes à Cursus (vue pub_absences, matricule de sorties.ts)."
    }
   },
   {
@@ -2512,7 +2516,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "Livraison 9",
-    "note": "Lot « planning-load » (docs/delivery-9/notes-planning-load.md) : la charge vient des affectations des plannings (une seule source, getPlanningLoad) ; le travail non affecté à une personne compte par métier (service) ; alerte du matin au CP pour une activité sans ressource déclarée. Reste la partie capacité (horaire contractuel, absences Cursus). Quatrième tour (18 oct.) : équipes externes hors du plan de charge ; alerte du matin au CP à J-15 pour une activité sans affectation ; plannings de démonstration enrichis d’affectations nominatives (occupation 84 %, 3 personnes surchargées). Les niveaux de compétence attendent les besoins par activité."
+    "note": "Lot « planning-load » (docs/delivery-9/notes-planning-load.md) : la charge vient des affectations des plannings (une seule source, getPlanningLoad) ; le travail non affecté à une personne compte par métier (service) ; alerte du matin au CP pour une activité sans ressource déclarée. Reste la partie capacité (horaire contractuel, absences Cursus). Quatrième tour (18 oct.) : équipes externes hors du plan de charge ; alerte du matin au CP à J-15 pour une activité sans affectation ; plannings de démonstration enrichis d’affectations nominatives (occupation 84 %, 3 personnes surchargées). Les niveaux de compétence attendent les besoins par activité. Lot « cursus-contract » (docs/delivery-9/notes-cursus-contract.md) : capacité hebdomadaire = 40 h moins 8 h par jour d’absence (leave_entries, toutes sources ; fériés exclus, règle de la vue semaine) dans la charge, la vue semaine, les barres de Ressources projet et le what-if. Reste : horaire contractuel (non exposé par Cursus), capacité des services, règle du taux d’occupation à valider avec le responsable produit (congés semés du prototype : 6 personnes au-delà de 110 % au lieu de 3)."
    }
   },
   {

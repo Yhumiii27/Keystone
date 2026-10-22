@@ -47,12 +47,13 @@ describe('portfolio alerts (R-130)', () => {
   });
 
   it('R-084: the over-allocation alert reads the schedules\' loads over the 8 weeks from the data date', async () => {
-    // The named demo assignments (owner answer 18 Oct 2026, src/server/db/seed/demo-assignments.ts).
+    // The named demo assignments (owner answer 18 Oct 2026, src/server/db/seed/demo-assignments.ts). R-084 (absences): the seeded
+    // leave weeks lower those people's capacity — 3 people, weeks 42–44 before.
     const people = (await getPortfolioAlerts('en')).find((a) => a.key === 'people')!;
     expect(people).toMatchObject({
-      kind: 'over_allocation', title: '3 people over 110%', detail: 'Weeks 42–44 · Amélie Ollivier, Julien Wagner, Pauline Noguès.', target: { screen: 'resources' },
+      kind: 'over_allocation', title: '6 people over 110%', detail: 'Weeks 40, 42–46 · Amélie Ollivier, Julien Wagner, Pauline Noguès and 3 more.', target: { screen: 'resources' },
     });
-    // From a data date after those weeks: nobody.
-    expect((await getPortfolioAlerts('en', '2026-11-02')).some((a) => a.key === 'people')).toBe(false);
+    // From a data date after those weeks (Fabien Bertrand's CP of 9 and 16 Nov included): nobody.
+    expect((await getPortfolioAlerts('en', '2026-11-23')).some((a) => a.key === 'people')).toBe(false);
   });
 });

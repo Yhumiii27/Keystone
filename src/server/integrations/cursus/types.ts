@@ -4,14 +4,15 @@ import type { DirectoryEntry } from '@/domain/directory';
 import type { CursusClearance, CursusRequestKind, CursusSyncStatus, CursusVaccination, CursusVerdict, CursusVisa } from '@/server/db/codes';
 
 /**
- * Cursus's answer to GET /api/integrations/keystone/chantiers/:id/go-no-go (Cursus shared/domain.ts `keystonePayload`):
- * matricules and reason codes only; reason labels when Cursus shares the detailed mode.
+ * Cursus's answer to GET /api/integrations/keystone/v1/chantiers/:id/go-no-go (Cursus docs/API-KEYSTONE.md « Verdict Go / No
+ * Go »): matricules and reason codes only — each reason `{ code, niveau }`, with a `libelle` when Cursus shares the detailed
+ * mode. A bare code string is the deprecated route's shape (still read).
  */
 export interface CursusGoNoGoPayload {
   chantier: string;
   evalue_le: string;
   statut: 'GO' | 'GO_RESERVE' | 'NO_GO';
-  ressources: { matricule: string; statut: 'GO' | 'GO_RESERVE' | 'NO_GO'; motifs: (string | { code: string; libelle: string })[] }[];
+  ressources: { matricule: string; statut: 'GO' | 'GO_RESERVE' | 'NO_GO'; motifs: (string | { code: string; niveau?: 'GO_RESERVE' | 'NO_GO'; libelle?: string })[] }[];
 }
 
 /** One person's approvals as the mirror stores them (SITE_DOCS shape, no personal data). */
@@ -90,7 +91,7 @@ export interface CursusConnector {
   sync(projectCode: string): Promise<{ received: number; delivered: number; failed: number; pending: number }>;
   /** "Remind in Cursus" on a person whose verdict is not GO (one reminder per person). */
   remind(projectCode: string, personName: string, actor: CursusActor): Promise<CursusRequestReceipt>;
-  /** Travel request for a person of the site (Cursus POST /api/integrations/keystone/demandes). */
+  /** Travel request for a person of the site (Cursus POST /api/integrations/keystone/v1/demandes). */
   requestTravel(projectCode: string, input: CursusTravelRequestInput, actor: CursusActor): Promise<CursusRequestReceipt>;
   /** R-027: Cursus's staff directory; null when Cursus is not connected (the mock has no directory). */
   listDirectory(): Promise<CursusDirectoryPayload | null>;
