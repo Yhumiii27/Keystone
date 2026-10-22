@@ -85,7 +85,7 @@ jobs:
 
       - name: End-to-end report
         if: failure() && github.event_name != 'push'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-report
           path: |
