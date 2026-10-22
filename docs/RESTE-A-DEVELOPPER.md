@@ -938,6 +938,7 @@ Proposition : version tablette des écrans Chantier, Réserves et Livraisons ave
 
 ## 3. Mises à jour
 
+- 2026-10-22 — CI économe en minutes GitHub Actions (quota du compte gratuit épuisé) : rien pour un changement de documentation seule, vérifications rapides seulement après fusion dans main, audit des dépendances quand elles changent et chaque semaine ; budget Actions plafonné à régler par le responsable produit.
 - 2026-10-22 — DIG-PRODI : le niveau CAPEX devient une application dédiée (données communes sur le serveur PostgreSQL EPC2I, échanges par vues pub_) ; changements de Keystone consignés (R-186 à R-194, R-185 prérequis) ; prompt de démarrage de l’application CAPEX dans docs/dig-prodi/.
 - 2026-10-19 — Correctif de déploiement (Coolify, mono-conteneur PGlite) : le script d’entrée de l’image rend /data à l’utilisateur node quand le volume a été écrit en root par l’image de la PR #1 (« PGlite failed to initialize properly ») ; curl gardé pour le contrôle de santé de Coolify.
 - 2026-10-18 — Serveur PostgreSQL commun EPC2I (étape 3, décision M-01) : sur PostgreSQL, tables, vues pub_ et journal des migrations dans le schéma keystone (rôle keystone_app), migrations publiées inchangées (« "public". » remplacé par « "keystone". » à l’application, verrou hashtext('keystone.migrations')), verrou d’écriture des transactions, numéro et code analytique d’un nouveau projet calculés dans la transaction, sauvegarde limitée au schéma keystone ; migrations 0034_share_prerequisites et 0035_share (12 vues pub_ du partage). PGlite inchangé.

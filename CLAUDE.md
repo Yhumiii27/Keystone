@@ -76,6 +76,7 @@ npm run test:e2e      # Playwright on a production build (.next-ci), free port, 
 
 - **Configuration:** every environment variable is in `.env.example`, validated by `src/server/config/parse.ts` (R-007). PostgreSQL with `DATABASE_URL` (`npm run db:migrate` at deploy), else PGlite; `KEYSTONE_SEED=production` for reference data only; scheduled jobs with `npm run worker` or `KEYSTONE_JOBS=inprocess`.
 
+- **CI and Actions minutes (owner, 22 Oct 2026):** a change to documentation only (`docs/`, `design/`, `.artifacts/`, Markdown; `docs/EXPLOITATION.md` excepted) runs no CI; a push to `main` runs the fast checks only (typecheck, lint, unit tests); pull requests and "Run workflow" run everything. The dependency audit runs when `package.json` / `package-lock.json` change and weekly. Keep it so: the private repository's Actions minutes are counted.
 - **Production build:** `npm run build`. To keep the regular `.next` untouched, build with `KEYSTONE_DIST_DIR=.next-ci` and point `KEYSTONE_DATA_DIR` at a temporary directory.
 - **Meeting analysis by Claude:** only active when `ANTHROPIC_API_KEY` is set. Otherwise a local rule-based analyser runs.
 - **On the user's Mac only:**
