@@ -210,7 +210,8 @@ describe('outbox redelivery', () => {
     await db.update(cursusRequests).set({ matricule: 'EMP-0018' }).where(eq(cursusRequests.id, r.id));
     await db.execute(sql`update site_sheets set cursus_chantier_id = 'K-2614'`);
     expect(await run('cursus-outbox')).toEqual({ summary: `Cursus · 1 delivered · 0 failed · ${reminders} pending`, counts: { delivered: 1, failed: 0, pending: reminders }, warn: false });
-    expect(bodies.at(-1)).toEqual({ matricule: 'EMP-0018', chantier: 'K-2614', destination: 'FR', depart: '2026-10-26', retour: '2026-11-27' });
+    // Cursus API v1: Keystone's request id is the request's unique `reference`.
+    expect(bodies.at(-1)).toEqual({ reference: r.id, matricule: 'EMP-0018', chantier: 'K-2614', destination: 'FR', depart: '2026-10-26', retour: '2026-11-27' });
     expect(await run('cursus-outbox')).toMatchObject({ counts: { delivered: 0, failed: 0, pending: reminders } });
   });
 });

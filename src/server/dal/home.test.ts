@@ -158,6 +158,7 @@ const DEPTHEAD_A12: Record<Lang, [Kpi, Kpi]> = {
   // — with the named demo assignments (owner answer 18 Oct 2026) 3 people above 110 % in weeks 42–44 as on the seeded rows;
   // Controls & planning is the largest unmet demand (102 h; 280 h · Mostly engineering on the stored ROLES). External crews are
   // out of the load (18 Oct).
+  // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 3 people, weeks 42–44 (6 people, weeks 40 and 42–46 with the prototype's LEAVE).
   en: [['Over-allocated', '3 people', 'Peak weeks 42–44', true], ['Unmet demand', '102 h', 'Mostly controls & planning', true]],
   fr: [['Surchargés', '3 personnes', 'Pointe semaines 42–44', true], ['Demande non couverte', '102 h', 'Surtout contrôle et planification', true]],
 };
@@ -167,8 +168,10 @@ const DEPTHEAD_A12: Record<Lang, [Kpi, Kpi]> = {
  * assignments of 18 Oct 2026 (the seeded rows gave 83 % and 99 %).
  */
 const DEPTHEAD_R084: Record<Lang, { util: Kpi; julien: string; julienTag: string }> = {
-  en: { util: ['Team utilization', '84%', 'Target 85–95%', false], julien: '102%', julienTag: 'tag tag-accent' },
-  fr: { util: ['Taux d’occupation', '84%', 'Cible 85–95 %', false], julien: '102%', julienTag: 'tag tag-accent' },
+  // R-084 (absences): the leave weeks on a reduced capacity — R-084 (absences), demo leave shifted (owner 22 Oct 2026): 85 % (97 % with the prototype's LEAVE, 84 % without any
+  // leave); Julien Wagner 104 % with his RTT of 9 Nov (102 % without it).
+  en: { util: ['Team utilization', '85%', 'Target 85–95%', false], julien: '104%', julienTag: 'tag tag-accent' },
+  fr: { util: ['Taux d’occupation', '85%', 'Cible 85–95 %', false], julien: '104%', julienTag: 'tag tag-accent' },
 };
 
 /**
@@ -209,7 +212,8 @@ const DIRECTOR_D7: Record<Lang, Pick<Golden, 'kpis' | 'lr'>> = {
       ['Marseille Metro Signage Rollout — critical path slip', 'Critical path −9 d · forecast finish 9 Nov 2026 (baseline 1 Nov 2026).', '', ''],
       ['Northgate Data Center Retrofit — critical path slip', 'Critical path −4 d · forecast finish 5 Apr 2027 (baseline 1 Apr 2027).', '', ''],
       ['Clinique Pasteur Lyon Fit-out — cost overrun', 'Forecast €1.40M vs budget €1.35M (+€46k) · CPI 0.97.', '', ''],
-      // R-084 + named demo assignments (owner answer 18 Oct 2026): the over-allocation alert as on the seeded rows.
+      // R-084 + named demo assignments (owner answer 18 Oct 2026); R-084 (absences), demo leave shifted (owner 22 Oct 2026): the over-allocation alert as on the seeded
+      // rows (6 people, weeks 40 and 42–46 with the prototype's LEAVE).
       ['3 people over 110%', 'Weeks 42–44 · Amélie Ollivier, Julien Wagner, Pauline Noguès.', '', ''],
       ['1 approval waiting more than 5 days', 'Oldest: INV-HC-7781 · Halvorsen Cranes · €1,286,400 · since 10 Sep 2026 (15 d).', '', ''],
     ],
@@ -320,7 +324,7 @@ describe('Home view', () => {
       ['Forecast (EAC)', '€1.91M', '+€192k vs budget', true],
       ['Cost perf. (CPI)', '1.10', 'Earned per $1 spent', false],
     ]);
-    expect(afr.lr.map((r) => r[0])).toEqual(['Northgate Data Center Retrofit — critical path slip', '3 people over 110%', '1 approval waiting more than 5 days']);
+    expect(afr.lr.map((r) => r[0])).toEqual(['Northgate Data Center Retrofit — critical path slip', '3 people over 110%', '1 approval waiting more than 5 days']); // R-084 (absences), demo leave shifted (owner 22 Oct 2026)
   });
 
   it('PM home follows the current project (NDC-031)', async () => {

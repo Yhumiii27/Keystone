@@ -68,7 +68,9 @@ describe('Resources page', () => {
     // above 110 % in weeks 42–44, as on the seeded allocations. The bars: each department's people's assigned hours + the work
     // no named person carries counted by trade (HLT-026 A1410, owner only, 2 h/d); external crews are out of the load plan
     // (18 Oct): 80 h unmet, Controls & planning (280 h "Mostly engineering" on the stored ROLES totals).
-    expect(v.kpis.map((k) => k.value)).toEqual(['83%', '3 people', '80 h', '€2.51M', '4']);
+    // R-084 (absences): each week on the person's capacity. R-084 (absences), demo leave shifted (owner 22 Oct 2026): 84 % and 3 people, peak weeks 42–44 (98 %, 6 people,
+    // weeks 40 and 42–47 with the prototype's LEAVE; 83 % without any leave).
+    expect(v.kpis.map((k) => k.value)).toEqual(['84%', '3 people', '80 h', '€2.51M', '4']);
     expect(v.kpis.map((k) => k.sub).slice(0, 3)).toEqual(['Target 85–95%', 'Peak weeks 42–44', 'Mostly controls & planning']);
     expect(v.kpis[3].sub).toBe('70% of labor budget · All zones');
     expect(v.roles.map((r) => [r.name, r.text])).toEqual([
@@ -115,7 +117,7 @@ describe('Resources page', () => {
       'Allocation — 8 weeks', 'Sep 28 – Nov 16, 2026', 'href="/resources?week=2026-10-05"',
       '% of available hours per person', 'Under', 'Over', 'Person', 'Avg', 'Sep 28', 'Nov 16', 'Open their work',
       // R-084: the loads of the schedules (named demo assignments, 18 Oct 2026); the bars follow the window shown.
-      'href="/my/tasks?person=Julien%20Wagner"', '>125<', '>131<',
+      'href="/my/tasks?person=Julien%20Wagner"', '>125<', '>131<', // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 131 again (231 with the prototype's LEAVE)
       'Capacity vs demand', 'Hours by role, 8 weeks', 'Tick marks available capacity', '319 / 960 h', '720 / 640 h',
       'Of which 50 h not assigned to a person, counted by trade', 'Suggested rebalancing', '>Apply<',
       // R-3 / S-7: the suggestions are the portfolio's what-if levers (the prototype's three static sentences are gone), ranked:
@@ -143,11 +145,12 @@ describe('R-085 (R-7 a): load window of Resources and Project resources', () => 
     expect(v.weeks).toEqual(['Sep 21', 'Sep 28', 'Oct 5', 'Oct 12', 'Oct 19', 'Oct 26', 'Nov 2', 'Nov 9']);
     // R-084: Julien Wagner's hours on the schedules (A1250 40 h/wk until Fri 9 Oct, then the named demo assignments of 18 Oct 2026)
     // — the seeded rows gave [0, 90, 100, 130, 125, 110, 100, 80].
-    expect(v.people.find((p) => p.name === 'Julien Wagner')!.cells.map((c) => c.v)).toEqual([100, 100, 106, 125, 125, 108, 88, 65]);
+    expect(v.people.find((p) => p.name === 'Julien Wagner')!.cells.map((c) => c.v)).toEqual([100, 100, 106, 125, 125, 108, 88, 81]); // R-084 (absences): RTT 9 Nov (65 without it), kept by the demo leave shift
     // Team utilisation 84 % (75 % on the seeded rows), 3 people above 110 % in weeks 42–44 (as on the seeded rows); unmet demand
     // 102 h, Controls & planning (280 h "Mostly engineering" on the stored ROLES) — external crews are out of the load (18 Oct).
     expect(v.kpis.map((k) => [k.value, k.sub])).toEqual([
-      ['84%', 'Target 85–95%'], ['3 people', 'Peak weeks 42–44'], ['102 h', 'Mostly controls & planning'], ['€2.51M', '70% of labor budget · All zones'], ['4', 'Across all projects'],
+      // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 85 %, 3 people, weeks 42–44 (97 %, 6 people, weeks 40 and 42–46 with the prototype's LEAVE).
+      ['85%', 'Target 85–95%'], ['3 people', 'Peak weeks 42–44'], ['102 h', 'Mostly controls & planning'], ['€2.51M', '70% of labor budget · All zones'], ['4', 'Across all projects'],
     ]);
   });
 
@@ -195,9 +198,11 @@ describe('Project resources page', () => {
     // R-084: loads from the schedules — with the named demo assignments (18 Oct 2026) 83 % · 3 people · peak weeks 42–44 as on the
     // seeded rows; external crews are out of the load (18 Oct), the unmet demand is the team's Engineering and MEP excess (34 h).
     expect(v.kpis.map((k) => [k.label, k.value, k.sub])).toEqual([
-      ['Project team load', '83%', '8 people assigned'],
+      // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 84 %, 3 people, 41 h unmet — Hélène Sauvage's sick days and Julien Wagner's RTT in the weeks (98 %, 6 people,
+      // 147 h with the prototype's LEAVE; 83 %, 3 people, 34 h without any leave).
+      ['Project team load', '84%', '8 people assigned'],
       ['Over-allocated', '3 people', 'Peak weeks 42–44'],
-      ['Unmet demand', '34 h', '8 weeks, by department'], // R-085: not the current window
+      ['Unmet demand', '41 h', '8 weeks, by department'], // R-085: not the current window
       ['Labor cost to date', '€1.42M', '77% of labor budget'],
       ['Open requests', '4', 'Awaiting department approval'],
     ]);
@@ -205,10 +210,14 @@ describe('Project resources page', () => {
     expect(v.suggestions!.map((g) => [g.leverCode, g.impact, g.canApply])).toEqual([
       ['extra_resource:A1430:helene-sauvage', '+10 d · −€5k', true],
       ['overtime:A1430:helene-sauvage', '+10 d · −€5k', true],
-      ['extra_resource:A1260:thomas-kerbrat', '+10 d · +€1k · peak +33 pts', true],
+      ['extra_resource:A1260:thomas-kerbrat', '+10 d · +€1k · peak +33 pts', true], // R-084 (absences), demo leave shifted (owner 22 Oct 2026): +33 pts (+21 with the prototype's LEAVE)
     ]);
     expect(v.roles.map((r) => [r.name, r.text])).toEqual([
-      ['Site operations', '521 / 640 h'], ['Engineering', '320 / 320 h'], ['MEP', '354 / 320 h'], ['Controls & planning', '720 / 960 h'], ['Quality', '240 / 320 h'],
+      // R-084 (absences): a person with days off brings their reduced capacity and their hours. R-084 (absences), demo leave shifted (owner 22 Oct 2026): Julien Wagner's RTT
+      // (Engineering), Léa Marchand's RTT (Controls & planning) and Hélène Sauvage's sick days (Quality) in the weeks (523 / 480,
+      // 319 / 312, 353 / 256, 720 / 872, 240 / 304 h with the prototype's LEAVE; 521 / 640, 320 / 320, 354 / 320, 720 / 960,
+      // 240 / 320 h without any leave).
+      ['Site operations', '521 / 640 h'], ['Engineering', '319 / 312 h'], ['MEP', '354 / 320 h'], ['Controls & planning', '719 / 952 h'], ['Quality', '240 / 304 h'],
     ]);
     expect(v.rolesNote).toBe('Of which 40 h not assigned to a person, counted by trade');
     expect(v.undeclared).toEqual([]);
@@ -226,7 +235,10 @@ describe('Project resources page', () => {
     expect(v.people.map((p) => p.name)).toEqual(['Pauline Noguès', 'Léa Marchand', 'Damien Roux', 'Fabien Bertrand']);
     // R-084: the team's hours on every project's schedule (named demo assignments, 18 Oct 2026) — 314 / 320 h and 720 / 960 h,
     // 81 %, 1 person (Pauline Noguès, weeks 43–44) — 314 / 320 h and 717 / 960 h, 80 %, 1 person on the seeded rows.
-    expect(v.roles.map((r) => [r.name, r.text])).toEqual([['MEP', '314 / 320 h'], ['Controls & planning', '720 / 960 h']]);
+    // R-084 (absences): a person with days off brings their reduced capacity. R-084 (absences), demo leave shifted (owner 22 Oct 2026): only Léa Marchand's RTT of 5 Oct in the
+    // weeks — 314 / 320 h and 719 / 952 h, 81 %, 1 person, 0 h unmet (313 / 256 h, 720 / 872 h, 96 %, 2 people, 57 h with the
+    // prototype's LEAVE).
+    expect(v.roles.map((r) => [r.name, r.text])).toEqual([['MEP', '314 / 320 h'], ['Controls & planning', '719 / 952 h']]);
     expect(v.kpis.map((k) => k.value)).toEqual(['81%', '1 person', '0 h', '€340k', '0']);
     // The project's what-if levers now relieve its overloaded people.
     expect(v.suggestions!.map((g) => g.leverCode)).toEqual(['extra_resource:A3330:lea-marchand', 'extra_resource:A3420:fabien-bertrand', 'extra_resource:A3410:fabien-bertrand']);
@@ -235,8 +247,10 @@ describe('Project resources page', () => {
   it('RCF-019: the department bars from the schedules (R-084; 3 h unmet, Site operations 323 / 320 h on the seeded rows)', async () => {
     const v = (await presources('RCF-019', PROTO)).body.props.view!;
     // Named demo assignments (18 Oct 2026): 6 h unmet, Site operations 326 / 320 h.
+    // R-084 (absences): a person with days off brings their reduced capacity. R-084 (absences), demo leave shifted (owner 22 Oct 2026): 6 h unmet again (144 h with the
+    // prototype's LEAVE).
     expect(v.kpis[2].value).toBe('6 h');
-    expect(v.roles.map((r) => [r.name, r.text])).toEqual([['Site operations', '326 / 320 h'], ['MEP', '314 / 320 h'], ['Quality', '240 / 320 h']]);
+    expect(v.roles.map((r) => [r.name, r.text])).toEqual([['Site operations', '326 / 320 h'], ['MEP', '314 / 320 h'], ['Quality', '240 / 304 h']]); // Hélène Sauvage's sick days (28 Sep)
   });
 
   it('project without a team: empty heatmap, zero KPIs (never Harbor Line data)', async () => {
@@ -295,6 +309,8 @@ describe('What-if page', () => {
     expect(d.baseline).toEqual({ code: 'BL1', finish: '2026-12-18' });
     // R-084: the loads of the schedules with the named demo assignments (owner answer 18 Oct 2026): peak 131 % (Amélie Ollivier,
     // week of 12 Oct); the seeded rows gave a peak of 130 % in the week of 12 Oct and [0, 0, 1, 2, 3, 2, 0, 1].
+    // R-084 (absences): Amélie Ollivier's CP week (capacity 0, 52 h assigned) → 231 %; more people above 110 % in the leave weeks.
+    // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 131 % and [1, 0, 2, 3, 3, 3, 3, 1] again.
     expect(d.peak).toEqual({ pct: 131, person: 'Amélie Ollivier', weekStart: '2026-10-12' });
     expect(d.overByWeek).toEqual([1, 0, 2, 3, 3, 3, 3, 1]);
     // 23 levers derived from the HLT-026 assignments: A1250's three first (relief of Julien Wagner, the crew's overtime and unit).
@@ -307,11 +323,13 @@ describe('What-if page', () => {
     expect(d.levers.filter((l) => l.kind === 'shift').map((l) => l.code)).toEqual(['shift:A1320', 'shift:A1330', 'shift:A1520']);
     // The current plan rescheduled on a copy: finish 18 Jan 2027, float −19 working days (S-1, S-8).
     // R-085: the peak bars follow the horizon (21 Sep – 9 Nov). R-084: the schedules' loads (named demo assignments).
+    // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 131 peak, [106, 100, 108, 131, 125, 113, 106, 105] again (231, [106, 197, 108, 231, 206, 175, 202, 175] with the
+    // prototype's LEAVE).
     expect([d.current.finish, d.current.floatDays, d.current.peakPct, d.current.bars]).toEqual(['2027-01-18', -19, 131, [106, 100, 108, 131, 125, 113, 106, 105]]);
     // The seeded scenarios read as the derived levers of their kinds: A (contractor, overtime) 17, B (delay, move) the shifts and
     // the internal colleagues.
-    expect(d.scenarios.map((s) => [s.name, s.priority, s.selected, Object.keys(s.levers).filter((k) => s.levers[k]).length])).toEqual([['A', 'date', false, 17], ['B', 'people', false, 6]]);
-    expect([d.auto.date.length, d.auto.budget.length, d.auto.people.length]).toEqual([6, 7, 15]);
+    expect(d.scenarios.map((s) => [s.name, s.priority, s.selected, Object.keys(s.levers).filter((k) => s.levers[k]).length])).toEqual([['A', 'date', false, 17], ['B', 'people', false, 6]]); // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 17 / 6 (18 / 5 with the prototype's LEAVE)
+    expect([d.auto.date.length, d.auto.budget.length, d.auto.people.length]).toEqual([6, 7, 15]); // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 15 (16 with the prototype's LEAVE)
     expect(d.auto.people.slice(0, 2)).toEqual(['extra_resource:A1250:julien-wagner', 'extra_resource:A1260:julien-wagner']);
     expect(body.props.canEdit).toBe(true);
     const primary = header.props.primary as ReactElement<Props>;
@@ -322,6 +340,7 @@ describe('What-if page', () => {
     const out = html((await whatif()).body);
     for (const s of [
       // R-084: the schedules' loads (named demo assignments) — the peak in the week of 12 Oct, the most people above 100 % in weeks 42–45.
+      // R-084 (absences), demo leave shifted (owner 22 Oct 2026): weeks 42–45 again (43–45 with the prototype's LEAVE).
       'Baseline finish', '18 Dec 2026', 'BL1 · forecast 14 Jan 2027 · float −27 d', 'Amélie Ollivier · week of 12 Oct', 'Weeks 42–45', 'Scenario A', 'Scenario B',
       'Priority (set by the PM)', 'Protect date', 'Auto-level for this priority', 'Overtime A1250 · Steel erection crew 10 → 12 h/d', '+1 d · +€5k',
       'Contract structural engineer relieves Julien Wagner on A1250', 'Peak load by week', 'Current plan', '18 Jan 2027', '17 Dec 2026', '4 Jan 2027', '−19 days', '+0 days', '−9 days',
@@ -329,7 +348,7 @@ describe('What-if page', () => {
       'Rename scenario — Scenario A', 'Delete scenario — Scenario B',
     ])
       expect(out).toContain(s);
-    expect(out.match(/aria-pressed="true"/g)?.length).toBe(2 + 17 + 6); // selected priority × 2 + enabled levers of A × 17 and B × 6
+    expect(out.match(/aria-pressed="true"/g)?.length).toBe(2 + 17 + 6); // selected priority × 2 + enabled levers of A × 17 and B × 6 (R-084 (absences), demo leave shifted (owner 22 Oct 2026); 18 and 5 with the prototype's LEAVE)
   });
 
   it('renders in French', async () => {
@@ -355,7 +374,7 @@ describe('What-if page', () => {
   it('any project with a plan has a what-if (S-7); a project without activities shows an empty state', async () => {
     const ndc = (await whatif({ project: 'NDC-031' })).body.props.data!;
     // Named demo assignments (18 Oct 2026): NDC-031's levers relieve its overloaded people (11 derived; none before).
-    expect([ndc.projectCode, ndc.levers.length, ndc.scenarios, ndc.current.finish]).toEqual(['NDC-031', 11, [], '2027-04-09']);
+    expect([ndc.projectCode, ndc.levers.length, ndc.scenarios, ndc.current.finish]).toEqual(['NDC-031', 11, [], '2027-04-09']); // R-084 (absences), demo leave shifted (owner 22 Oct 2026): 11 (13 with the prototype's LEAVE)
     expect(html((await whatif({ project: 'NDC-031' })).body)).toContain('No scenario yet — create one with New scenario.');
     const { header, body } = await whatif({ project: 'EWA-051' });
     expect(header.props.primary).toBeUndefined();

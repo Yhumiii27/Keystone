@@ -8,21 +8,21 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-22 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 103 faits, 27 en cours, 64 à faire, sur 194 points.
+**Avancement** : 103 faits, 27 en cours, 67 à faire, sur 197 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
 | Bloquant production | 16 | ≈ 106 |
 | Prochaine étape | 23 | ≈ 188 |
-| À décider | 33 | ≈ 285 |
-| Plus tard | 19 | ≈ 70 |
-| **Total** | **91** | **≈ 648** |
+| À décider | 35 | ≈ 290 |
+| Plus tard | 20 | ≈ 74 |
+| **Total** | **94** | **≈ 657** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
-| Non commencé | 40 |
+| Non commencé | 43 |
 | Partiel | 11 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
@@ -31,7 +31,7 @@ L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il
 |---|---:|---:|---:|---:|---:|---:|
 | Plateforme et mise en production | 7 | 5 | 0 | 2 | 14 | 11 |
 | Authentification, utilisateurs et droits | 1 | 0 | 3 | 1 | 5 | 12 |
-| Intégrations avec les autres systèmes | 5 | 7 | 3 | 4 | 19 | 3 |
+| Intégrations avec les autres systèmes | 5 | 7 | 5 | 5 | 22 | 3 |
 | Projets, cycle de vie et modèles par type de machine | 0 | 1 | 4 | 1 | 6 | 3 |
 | Planning | 1 | 0 | 3 | 1 | 5 | 3 |
 | Coûts, contrat et finance | 0 | 2 | 3 | 0 | 5 | 12 |
@@ -108,6 +108,8 @@ Décisions à prendre et données à fournir avant de pouvoir développer. Les q
 - **R-190** Filiale = client interne ; projet rattaché à son CAPEX — R-187
 - **R-191** Part EPC2i du pack ingénierie et son % de complétude (vue pub_pack_ingenierie) — Liste type du pack ingénierie (CDC, point C-9)
 - **R-192** Sécurité machine : HazOp / AMDEC, ATEX, condition PSSR avant mise en service — Vigie : porte-t-il HazID / HazOp / AMDEC / PSSR ?
+- **R-195** Vue pub_jalons des échéances des projets (pour Crucible) — Validation du responsable produit ; contrat commun avec R-189
+- **R-196** Catégorie « R&D » des projets lisible dans pub_projets (pour Crucible) — Décision : comment reconnaître un projet R&D
 
 ### 1.3 Ce qui attend les autres applications
 
@@ -244,7 +246,7 @@ Le responsable produit a retenu « pas d'accès client au lancement » (I-2b) ; 
 
 **R-190 · Filiale = client interne ; projet rattaché à son CAPEX** — *À décider · non commencé · effort S*  
 Un client peut être une filiale du groupe (organisation interne) ; un projet porte la référence de son CAPEX et de son besoin ; les filiales suivent leurs projets dans l’application CAPEX, pas dans le portail client (réservé aux clients externes, R-179).  
-*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. · Attend : R-187 · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
+*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-05 — pub_projets : capex_code et besoin_ref en fin de vue ; client interne = filiale. · Attend : R-187 · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
 
 **R-051 · Ajouter la délégation des validations à un suppléant sur une période** — *Plus tard · non commencé · effort M*  
 L’approbateur déclare un suppléant et des dates ; pendant cette période, ses validations (documents, demandes, commandes, Mes validations) sont routées vers le suppléant, et les décisions sont tracées à son nom.  
@@ -298,7 +300,7 @@ Seuls l’organisateur et le CP du projet envoient le compte rendu ; les interne
 Chercher commandes, CR, NCR et risques sur tous les projets, chaque résultat ouvrant son projet, en filtrant les résultats selon les droits du lecteur (un client ne voit que ses projets). Aujourd’hui la recherche ignore l’utilisateur et limite ces objets au projet courant.  
 *Avancement : Livraison 8 : recherche globale sur tout le portefeuille (X-5), projet courant d’abord ; le client voit les demandes de modification de ses propres projets. · Sources : X-5, 01 OQ18, 00 §7.6, DELIVERY-1.md §4*
 
-### 2.3 Intégrations avec les autres systèmes (19 restants, 3 faits)
+### 2.3 Intégrations avec les autres systèmes (22 restants, 3 faits)
 
 **R-022 · Réconcilier les codes projet (#000, XXX000, Cursus, Vigie) dans la fiche projet** — *Bloquant production · attend le responsable produit · effort M*  
 La fiche projet doit porter et réconcilier le numéro ingénierie #000 (liste incrémentée) et le code analytique XXX000 créé dans Sage et donc imposé, au lieu de les générer. Elle doit aussi tenir la correspondance avec les identifiants Cursus (chantier K-26xx) et Vigie (K-2025-042), clé commune de tous les connecteurs.  
@@ -332,9 +334,9 @@ Le miroir en lecture et les outbox sont prêts en mode mock et http sur des endp
 Recevoir les heures validées détaillées par tâche Keystone, exposer à Cursus un point de lecture des tâches affectées à un matricule pour une semaine, imputer les heures par activité et tenir un total hors projet INT-* par personne et par semaine pour la charge. L’écran devient « Heures (Cursus) » (prévu contre réalisé, anomalies) et la saisie d’heures dans Keystone disparaît (C-2b). Le lien feuilles de temps Cursus est encore « à valider » (CLAUDE.md, BACKLOG).  
 *Attend : Validation du périmètre par le responsable produit (BACKLOG §1 bis) et évolution de Cursus pour envoyer l’identifiant de tâche Keystone · Sources : NEW-CURSUS-5, NEW-CURSUS-6, NEW-CURSUS-7, R-6a, C-2b, BACKLOG.md §1 bis, DELIVERY-6.md §9, 06 §5*
 
-**R-031 · Recevoir les absences de Cursus et débrancher Lucca** — *Prochaine étape · non commencé · effort M* · **en cours (Livraison 8)**  
+**R-031 · Recevoir les absences de Cursus et débrancher Lucca** — *Prochaine étape · non commencé · effort M* · **en cours (Livraison 9)**  
 Les absences validées (dates et type simple) doivent arriver de Cursus, alimenter l’écran Congés, réduire la disponibilité dans la charge et le what-if, et révéler les conflits avec la rotation chantier. Il faut aussi retirer Lucca partout : connecteur, libellés, accueil, notifications, journal d’activité.  
-*Avancement : Livraison 8 : absences reçues de Cursus en deux types simples (Congé, Absence), « Sync Lucca » retiré ; l’envoi réel par Cursus reste à brancher. · Attend : Envoi des événements absence.validee par Cursus · Sources : NEW-CURSUS-4, R-1, BACKLOG.md §1 bis, 00 §10 R-1, 11 §6.7, DELIVERY-2.md §5, §7*
+*Avancement : Livraison 8 : absences reçues de Cursus en deux types simples (Congé, Absence), « Sync Lucca » retiré. Livraison 9, lot « cursus-contract » : format réel de Cursus accepté (absence, du, au ; sans nature = Absence ; demi-journée = journée entière), une correction remplace les semaines, absence.annulee retire les semaines ; les absences réduisent la capacité dans la charge et le what-if. Reste : conflits avec la rotation chantier à revoir avec les absences Cursus, demandes à Cursus (vue pub_absences, matricule de sorties.ts). · Attend : Envoi des événements absence.validee par Cursus · Sources : NEW-CURSUS-4, R-1, BACKLOG.md §1 bis, 00 §10 R-1, 11 §6.7, DELIVERY-2.md §5, §7*
 
 **R-035 · Brancher SolidWorks PDM / 3DEXPERIENCE (plans, aperçus, « Ouvrir dans PDM »)** — *Prochaine étape · attend un système externe · effort L*  
 Synchroniser chaque heure les données des plans (numéro, titre, révision, état, article lié) et l’aperçu PDF des révisions diffusées, avec un vrai lien « Ouvrir dans PDM » depuis Plans et P&ID et les aperçus des feuilles P&ID (X-15). Aujourd’hui la synchro du coffre est simulée et recopie le volume précédent. Le périmètre dépend du référentiel articles (A-1b).  
@@ -354,11 +356,19 @@ Keystone créera le chantier Cursus (NEW-CURSUS-1), mais rien n'est décidé pou
 
 **R-187 · Besoins machines des filiales : connecteur capex, réponse chiffrée, création du projet à la commande** — *À décider · non commencé · effort L*  
 Connecteur capex (miroir de pub_capex et pub_besoins_machines, liens profonds, simulation) ; corbeille « Besoins des filiales » ; qualification, réponse chiffrée avec classe d’estimation, devis puis offre (Codex) ; création du projet EPC2i au G2 du CAPEX avec la référence du CAPEX et du besoin ; vue pub_reponses_besoins. Rejoint la proposition P6 (offres et chiffrage).  
-*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. · Attend : R-185, R-186, R-188 et l’application CAPEX · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
+*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-02 — connecteur capex (lire arche.pub_capex et arche.pub_besoins_machines, liens profonds <ARCHE_URL>/capex/<code>), corbeille « Besoins des filiales », pub_reponses_besoins ; K-10 — à la commande, créer le projet EPC2i ou ajouter des équipements à un projet existant, code publié dans pub_reponses_besoins.projet_code. · Attend : R-185, R-186, R-188 et l’application CAPEX · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
 
 **R-189 · Vues de suivi pour le CAPEX : jalons, avancement côté vente, avenants, réserves** — *À décider · non commencé · effort M*  
 Vues pub_jalons_projets (commande, FAT, expédition, arrivée site, SAT, PV, fin de garantie), pub_avancement_projets (avancement physique, SPI, fin prévue, contrat + avenants et facturé côté vente — aucun coût interne ni marge, P-05), pub_avenants, pub_reserves ; contrats documentés avec Matrix.  
-*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. · Attend : Réponse P-05 (données financières visibles par la filiale) · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
+*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-04 — pub_jalons_projets, pub_avancement_projets (côté vente, sans coût ni marge), pub_avenants, pub_reserves ; K-06 — pub_livrables : type, accepte_le, maj_le en fin de vue ; K-11 — index sur maj_le des vues lues (lecture incrémentale). · Attend : Réponse P-05 (données financières visibles par la filiale) · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
+
+**R-195 · Vue pub_jalons des échéances des projets (pour Crucible)** — *À décider · non commencé · effort M*  
+Crucible (K-2) lit les échéances des projets pour anticiper les besoins d’essais : vue pub_jalons (projet_code, jalon_id, nom, mois_reference, mois_prevu, statut, activite_code, date_activite_fin = fin au plus tôt de l’activité liée si datée, maj_le). La lecture de pub_projets par crucible_app (K-1) est un droit à accorder dans Matrix (partage/90-droits.sql), pas un changement de Keystone. Proche de pub_jalons_projets demandée par Arche (R-189) : une seule vue pour les deux lecteurs si les colonnes se rejoignent.  
+*Avancement : Consigné le 22 oct. 2026 (demande de Crucible) ; à valider avant de construire. · Attend : Validation du responsable produit ; contrat commun avec R-189 · Sources : Crucible (application de planification des moyens d’essais R&D), docs/DEMANDES-KEYSTONE.md, 22 oct. 2026*
+
+**R-196 · Catégorie « R&D » des projets lisible dans pub_projets (pour Crucible)** — *À décider · non commencé · effort S*  
+Crucible (K-3) filtre les projets R&D : si les projets R&D sont des projets internes de Keystone, une nature ou une étiquette « R&D » lisible dans pub_projets (colonne en fin de vue, ex. categorie). Le type de machine « R&D » existe déjà ; à décider : type de machine, nature du projet ou étiquette.  
+*Avancement : Consigné le 22 oct. 2026 (demande de Crucible) ; à valider avant de construire. · Attend : Décision : comment reconnaître un projet R&D · Sources : Crucible (application de planification des moyens d’essais R&D), docs/DEMANDES-KEYSTONE.md, 22 oct. 2026*
 
 **R-025 · Pré-remplir les signalements Vigie et filtrer ses listes par projet** — *Plus tard · attend un système externe · effort S* · **en cours (Livraison 8)**  
 Keystone envoie déjà projet, article, activité, titre et lieu au formulaire /signaler, mais Vigie ne lit que le lieu. Il reste à ajouter le filtre projet aux liens vers les listes Vigie, puis à valider de bout en bout quand Vigie aura évolué ; dépend de la correspondance des codes projet (R-022).  
@@ -376,6 +386,10 @@ L’évaluation des fournisseurs (ISO 9001 §8.4) est tenue dans Vigie. Keystone
 Faire arriver dans Keystone les réunions Outlook ou Teams portant le code projet ; Keystone y ajoute ordre du jour, compte rendu et actions, et met à jour les accusés de lecture des comptes rendus. « Synchronisé depuis Outlook » n’est aujourd’hui qu’un libellé. Les messages dans les canaux Teams ne sont pas retenus pour les notifications (X-6b : Keystone + e-mail) : la ligne de connecteur « Microsoft Teams » est à retirer ou à requalifier.  
 *Avancement : Livraison 8 : libellés Outlook / Teams fidèles et accusés de lecture dans Keystone ; la synchronisation Outlook attend l’accès Graph de la DSI. · Attend : Déclaration de Keystone dans Microsoft 365 et accès Graph par l’IT (I-3c) · Sources : S-11, I-3c, X-6b, I-3a, 05 OQ18, DELIVERY-3.md §3, §5*
 
+**R-197 · Afficher les essais planifiés de Crucible dans le planning d’un projet (facultatif)** — *Plus tard · non commencé · effort M*  
+Crucible (K-4, facultatif) publie crucible.pub_reservations : Keystone pourrait les lire et les afficher dans le planning d’un projet (visibilité côté projet), en miroir lecture seule avec liens profonds vers Crucible.  
+*Avancement : Consigné le 22 oct. 2026 (demande de Crucible) ; à valider avant de construire. · Attend : Crucible : vue pub_reservations publiée ; validation du responsable produit · Sources : Crucible (application de planification des moyens d’essais R&D), docs/DEMANDES-KEYSTONE.md, 22 oct. 2026*
+
 **~~R-021 · Afficher l’état réel des connecteurs non branchés~~** — *Bloquant production · non commencé · effort S* · **fait (Livraison 7)**  
 Codex, Lucca, Sage X3, SolidWorks PDM, MS Project, Outlook, Teams et SMTP affichent les statuts et volumes semés du prototype (« OK », « 412 records », « Token expires in 3 days », « 9 sent today ») et « Sync now » simule un passage (pour Codex, un comptage local). En production, ils doivent apparaître « Non connecté » (ou disparaître pour Lucca) tant que le vrai connecteur n’existe pas.  
 *Avancement : Livraison 7 : état réel de chaque connecteur ; « Ajouter un connecteur » retiré (R-020, D-7a). · Sources : A-15, D-7a, DELIVERY-5.md §6 Administration, DELIVERY-6.md §6*
@@ -384,9 +398,9 @@ Codex, Lucca, Sage X3, SolidWorks PDM, MS Project, Outlook, Teams et SMTP affich
 Le dialogue « Configurer » est déjà en lecture seule, mais « Ajouter un connecteur » écrit encore un connecteur depuis l’écran Intégrations, et rien ne permet à l’IT d’activer, désactiver ou régler un connecteur hors des variables d’environnement Vigie et Cursus. Retirer l’ajout dans l’interface et prévoir un fichier de configuration lu au démarrage ou un script d’administration.  
 *Sources : D-7a, 01 §5.9, docs/delivery-6/notes-admin-settings.md §2.1*
 
-**~~R-029 · Créer le point d’entrée des événements poussés par Cursus~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 8)**  
+**~~R-029 · Créer le point d’entrée des événements poussés par Cursus~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 9)**  
 Point d’entrée HTTP protégé par clé d’API pour heures.validees, absence.validee, demande.decision et verdict.modifie. Un renvoi remplace la semaine déjà reçue pour un même salarié sans doublon, chaque réception est tracée dans l’audit, et l’émetteur peut renvoyer en cas d’échec.  
-*Avancement : Livraison 8 : point d’entrée POST /api/integrations/cursus/events (clé dédiée CURSUS_EVENTS_KEY, idempotent, purge planifiée). · Attend : Contrat d’événements à définir avec Cursus (POST /events, jeton) · Sources : NEW-CURSUS-7, NEW-CURSUS-4, NEW-CURSUS-5, BACKLOG.md §1 bis*
+*Avancement : Livraison 8 : point d’entrée (clé dédiée CURSUS_EVENTS_KEY, idempotent, purge planifiée). Livraison 9, lot « cursus-contract » (docs/delivery-9/notes-cursus-contract.md) : aligné sur le contrat de Cursus (qui fait foi) — adresse POST /api/cursus/v1/evenements (l’ancienne reste servie), jeton Authorization: Bearer, enveloppe donnees, accusé de réception « accuse », decision de demande.decision ; appels sortants sur les routes /v1 de Cursus (reference des demandes, 409 DEMANDE_EN_DOUBLE). · Attend : Contrat d’événements à définir avec Cursus (POST /events, jeton) · Sources : NEW-CURSUS-7, NEW-CURSUS-4, NEW-CURSUS-5, BACKLOG.md §1 bis*
 
 ### 2.4 Projets, cycle de vie et modèles par type de machine (6 restants, 3 faits)
 
@@ -404,11 +418,11 @@ Réponse « À discuter » sans note. Les champs influence, intérêt et attitud
 
 **R-185 · Projets multi-équipements (ex. une EMP et plusieurs MEMU) : adapter l’approche projet** — *À décider · non commencé · effort XL*  
 Un projet peut fournir plusieurs équipements, de types différents et en plusieurs exemplaires (par exemple une EMP et plusieurs MEMU). Aujourd’hui un projet porte un seul type de machine : le modèle de création (phases, catégories de coûts, systèmes ITP), le plan ITP unique du projet, le budget de référence (références REX) et l’affichage du projet en dépendent ; la mise en service et la nomenclature ne savent pas à quel équipement se rattache un système ou une ligne. Le parc installé, lui, enregistre déjà une machine par équipement livré, avec son propre type. L’approche projet doit pouvoir s’adapter : équipements du projet (type, quantité), lots / systèmes, ITP, mise en service, nomenclature et coûts par équipement, livraison et parc installé par exemplaire. À cadrer avec le responsable produit avant de construire ; toute nouvelle fonction ne doit plus supposer « un seul type de machine par projet ».  
-*Avancement : Consigné le 15 oct. 2026 à la demande du responsable produit ; à cadrer avant la livraison 9. 22 oct. 2026 : prérequis du lien avec l’application CAPEX (un besoin de plusieurs machines = un projet EPC2i à plusieurs équipements, recommandé). · Attend : Cadrage avec le responsable produit (structure d’un projet multi-équipements) · Sources : Responsable produit, 15 oct. 2026 (note pour les futurs développements)*
+*Avancement : Consigné le 15 oct. 2026 à la demande du responsable produit ; à cadrer avant la livraison 9. 22 oct. 2026 : prérequis du lien avec l’application CAPEX (un besoin de plusieurs machines = un projet EPC2i à plusieurs équipements, recommandé). Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-10 — un besoin de plusieurs machines doit pouvoir créer un projet EPC2i à plusieurs équipements ou en ajouter à un projet existant. · Attend : Cadrage avec le responsable produit (structure d’un projet multi-équipements) · Sources : Responsable produit, 15 oct. 2026 (note pour les futurs développements)*
 
 **R-186 · Catalogue machines publié aux filiales (vue pub_catalogue_machines)** — *À décider · non commencé · effort L*  
 Les types de machine deviennent des fiches catalogue (variantes, options, capacité nominale, prix catalogue indicatif, délai type, budget de référence, statut publié / retiré), lues par l’application CAPEX dans la vue pub_catalogue_machines. Le configurateur (règles d’options, chiffrage automatique) reste une option à valider.  
-*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. · Attend : R-053 (standard par type de machine) et validation du responsable produit · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
+*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-01 — pub_catalogue_machines (fiches publiées, versions, options, capacité nominale, prix indicatif, délai type, statut). · Attend : R-053 (standard par type de machine) et validation du responsable produit · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
 
 **R-058 · Intégrer la matrice RACI d’entreprise, par rôle et non modifiable** — *Plus tard · attend le responsable produit · effort M*  
 S-13b : la matrice RACI fournie par le responsable produit sera fixe et organisée par rôle, et Keystone doit permettre d’affecter chaque rôle à une personne de l’équipe projet. Aujourd’hui la RACI est stockée par projet, en lecture seule, avec des colonnes en texte libre. Seul HLT-026 en a une (semée depuis le prototype), et un projet créé par l’assistant n’en a aucune. La RACI-B des livrables qualité est un objet distinct, hors du périmètre de la réponse.  
@@ -480,7 +494,7 @@ Keystone émet lui-même les factures client avec sa propre numérotation (INV-2
 
 **R-188 · Classe d’estimation des budgets et des offres (±50 % / ±30 % / +10 −5 %)** — *À décider · non commencé · effort M*  
 Chaque version de budget et chaque offre porte une classe d’estimation, la fourchette est affichée, un indicateur « écart d’incertitude » est au tableau de bord ; une offre ferme exige la classe +10/−5 %.  
-*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. · Attend : Validation du responsable produit · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
+*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-03 — classe d’estimation E50 / E30 / E10 et fourchette sur les réponses et les offres ; offre ferme = E10. · Attend : Validation du responsable produit · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
 
 **~~R-075 · Gérer plusieurs devises avec consolidation en euros~~** — *Bloquant production · non commencé · effort L* · **fait (Livraison 7)**  
 Chaque contrat, commande et facture garde sa devise ; budget, trésorerie et finance du portefeuille sont consolidés en euros au taux budgétaire fixé pour chaque projet. Aujourd’hui seul le symbole change et tous les montants sont en k€.  
@@ -538,7 +552,7 @@ Grille de taux par rôle (taux de base × coefficients) avec date d’effet et h
 
 **R-084 · Calculer la capacité et la charge réelles avec une source unique** — *Prochaine étape · partiel · effort L* · **en cours (Livraison 9)**  
 Capacité = horaire contractuel de chacun (35 h par défaut, temps partiels respectés) − absences validées − fériés ; charge = affectations du planning et demandes approuvées ; même règle dans Ressources, Congés, what-if et Priorisation, le ratio par M€ ne servant qu’aux propositions sans planning. Aujourd’hui seul l’écran Congés déduit congés et fériés (sur 35 h fixes) ; les autres comptent 40 h fixes, lisent des pourcentages de charge semés et des capacités de service statiques, et Priorisation (pool × 40 h) diffère de Ressources (department_capacities).  
-*Avancement : Lot « planning-load » (docs/delivery-9/notes-planning-load.md) : la charge vient des affectations des plannings (une seule source, getPlanningLoad) ; le travail non affecté à une personne compte par métier (service) ; alerte du matin au CP pour une activité sans ressource déclarée. Reste la partie capacité (horaire contractuel, absences Cursus). Quatrième tour (18 oct.) : équipes externes hors du plan de charge ; alerte du matin au CP à J-15 pour une activité sans affectation ; plannings de démonstration enrichis d’affectations nominatives (occupation 84 %, 3 personnes surchargées). Les niveaux de compétence attendent les besoins par activité. · Attend : Absences Cursus (R-031) et source de l’horaire contractuel ; confirmation de la source de capacité (DELIVERY-6 §8 A-12) · Sources : R-1, L-5b, A-12, 06 OQ3, 03 OQ9, 11 §7 #16, DELIVERY-2.md §6, DELIVERY-3.md §5, DELIVERY-6.md §8 A-12*
+*Avancement : Lot « planning-load » (docs/delivery-9/notes-planning-load.md) : la charge vient des affectations des plannings (une seule source, getPlanningLoad) ; le travail non affecté à une personne compte par métier (service) ; alerte du matin au CP pour une activité sans ressource déclarée. Reste la partie capacité (horaire contractuel, absences Cursus). Quatrième tour (18 oct.) : équipes externes hors du plan de charge ; alerte du matin au CP à J-15 pour une activité sans affectation ; plannings de démonstration enrichis d’affectations nominatives (occupation 84 %, 3 personnes surchargées). Les niveaux de compétence attendent les besoins par activité. Lot « cursus-contract » (docs/delivery-9/notes-cursus-contract.md) : capacité hebdomadaire = 40 h moins 8 h par jour d’absence (leave_entries, toutes sources ; fériés exclus, règle de la vue semaine) dans la charge, la vue semaine, les barres de Ressources projet et le what-if. Reste : horaire contractuel (non exposé par Cursus), capacité des services, règle du taux d’occupation. Décision du 22 oct. (option 1) : congés de démonstration déplacés hors des affectations (src/server/db/seed/demo-leave.ts) — de nouveau 3 personnes au-delà de 110 %, occupation 84 %. · Attend : Absences Cursus (R-031) et source de l’horaire contractuel ; confirmation de la source de capacité (DELIVERY-6 §8 A-12) · Sources : R-1, L-5b, A-12, 06 OQ3, 03 OQ9, 11 §7 #16, DELIVERY-2.md §6, DELIVERY-3.md §5, DELIVERY-6.md §8 A-12*
 
 **R-091 · Préciser les règles des scénarios what-if et des brouillons** — *À décider · attend le responsable produit · effort M*  
 À trancher : ignorer un levier déjà demandé depuis une suggestion ou un autre scénario, approbation formelle d’un scénario, scénarios basés sur une référence, horizon au-delà de 8 semaines ; pour les brouillons, visibilité par le CP, demandeur à l’envoi, envoi par les achats, filtre « Brouillons ».  
@@ -796,7 +810,7 @@ La justification obligatoire, déjà enregistrée, doit s’afficher dans la fic
 
 **R-193 · Retour de montée en puissance au parc installé (vue pub_rampup)** — *Plus tard · non commencé · effort S*  
 Le parc installé affiche la capacité nominale atteinte et le TRS / OEE et les rebuts de réception lus dans la vue pub_rampup de l’application CAPEX (REX machine).  
-*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. · Attend : Application CAPEX · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
+*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-07 — pub_parc_machines : type_machine_code, livree_le, maj_le en fin de vue ; K-09 — lire arche.pub_rampup. · Attend : Application CAPEX · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
 
 **~~R-143 · Suivre les réclamations sous garantie de bout en bout~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 7)**  
 Donner aux réclamations une fiche détaillée où le SAV fait avancer les statuts (Ouverte → Diagnostiquée → Intervention planifiée → Clôturée), décide de la prise en charge (garantie, extension, facturable) et saisit le diagnostic, la prochaine étape et le coût (aujourd’hui figé à 0). Il crée et clôt aussi les interventions (Planifiée → Réalisée) et rattache un ECO de conception : il en ouvre un dans Vigie via vigieNewEcoUrl prérempli, ou saisit un ECO existant. L’affichage de l’étiquette ECO existe déjà, mais seule la création d’une réclamation est réelle. Aucun persona « responsable SAV » n’existe : il faut rattacher ce pilotage aux rôles qui modifient déjà l’écran (directeur, chef de projet, qualité, achats) ou au responsable de la réclamation.  
@@ -884,7 +898,7 @@ La table import_jobs existe désormais : faire passer l’import P&ID par une Im
 
 **R-194 · Socle partagé @epc2i/socle (Keystone et application CAPEX)** — *Plus tard · non commencé · effort L*  
 Extraire de Keystone la coquille, le design Nocturne, l’infrastructure i18n, l’authentification Entra, la piste d’audit, le moteur de validations, les tâches planifiées, la configuration, les journaux et la santé, l’exploitation, en un paquet versionné consommé par Keystone et par l’application CAPEX ; aucun changement de comportement dans Keystone. L’application CAPEX démarre avec une copie du socle, remplacée par le paquet.  
-*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. · Attend : MVP de l’application CAPEX stabilisé · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
+*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-12 — Arche consommera @epc2i/socle à la place de ses copies. · Attend : MVP de l’application CAPEX stabilisé · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
 
 **~~R-170 · Supprimer les lectures des données du prototype à l’exécution~~** — *Bloquant production · partiel · effort S* · **fait (Livraison 7)**  
 Plusieurs écrans lisent encore les constantes PROTO alors que la base contient les données. Le sélecteur de projet de l’en-tête lit le code analytique, le DAS et le type dans PROTO, et reste vide pour tout projet créé par l’assistant. Les zones et leurs responsables (noms fictifs du prototype) aussi, alors que la table zones a manager_person_id. La remise à zéro des Paramètres (listes et emplacements) passe par le module de seed, et l’index DEFS du modèle d’un projet n’est pas stocké. En production, ces lectures affichent des données fictives ou vides : à solder avant la mise en service (A-15 « Données réelles seulement »). Le snapshot PROTO.STOCK0 du mock X3 reste, jusqu’au vrai connecteur X3.  
@@ -938,6 +952,9 @@ Proposition : version tablette des écrans Chantier, Réserves et Livraisons ave
 
 ## 3. Mises à jour
 
+- 2026-10-22 — Congés de démonstration déplacés hors des affectations (décision du responsable produit, option 1) : mêmes personnes, mêmes jours et types, sur des semaines sans charge ou peu chargées ; la démonstration retrouve 3 personnes au-delà de 110 % (semaines 42–44), une occupation de 84 % et 7 conflits sur le chantier HLT-026 ; une base de démonstration existante est corrigée une fois à l’ouverture (R-084).
+- 2026-10-22 — Demandes d’Arche (application CAPEX) rattachées aux lots R-185 à R-194, et demandes de Crucible (moyens d’essais R&D) inscrites (R-195 à R-197) ; les dépôts frères restent des sources d’information, Keystone n’y écrit pas.
+- 2026-10-22 — Contrat Cursus : Keystone accepte le format réel des événements de Cursus (adresse /api/cursus/v1/evenements, jeton Bearer, donnees, absence.annulee, accusé), appelle les routes /v1 de Cursus, et la capacité de chacun tient compte de ses absences (R-029, R-031, R-084).
 - 2026-10-22 — CI économe en minutes GitHub Actions (quota du compte gratuit épuisé) : rien pour un changement de documentation seule, vérifications rapides seulement après fusion dans main, audit des dépendances quand elles changent et chaque semaine ; budget Actions plafonné à régler par le responsable produit.
 - 2026-10-22 — DIG-PRODI : le niveau CAPEX devient une application dédiée (données communes sur le serveur PostgreSQL EPC2I, échanges par vues pub_) ; changements de Keystone consignés (R-186 à R-194, R-185 prérequis) ; prompt de démarrage de l’application CAPEX dans docs/dig-prodi/.
 - 2026-10-19 — Correctif de déploiement (Coolify, mono-conteneur PGlite) : le script d’entrée de l’image rend /data à l’utilisateur node quand le volume a été écrit en root par l’image de la PR #1 (« PGlite failed to initialize properly ») ; curl gardé pour le contrôle de santé de Coolify.

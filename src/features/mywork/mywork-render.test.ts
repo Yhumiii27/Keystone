@@ -68,7 +68,8 @@ describe('My work render', () => {
       'Échéance aujourd’hui', 'ven. 25 sept.', 'En retard', 'Nouvelle date ou relance nécessaire', 'Semaine prochaine', '28 sept. – 2 oct.',
       // A-12 (chapter 4, 10 OQ18): this week's time entries (23 Sep 2.5 h + 24 Sep 3.5 h), not every hour of the tasks started.
       // R-084: "Load next 2 wks" from the schedules — the named demo assignments (18 Oct 2026): 46 % (45 % on the seeded rows).
-      'Saisi cette semaine', '6.0 h', 'sur 40 h · 15 %', 'Charge 2 prochaines sem.', '46%', 'Dans la capacité',
+      // R-084 (absences), demo leave shifted (owner 22 Oct 2026): her 2 sick days in the week of 28 Sep (18 h on 24 h) — 61 %.
+      'Saisi cette semaine', '6.0 h', 'sur 40 h · 15 %', 'Charge 2 prochaines sem.', '61%', 'Dans la capacité',
       'Aujourd’hui', '2 tâches', '1 tâche', 'Plus tard', 'Terminées récemment', 'Survey verticality', '#QA', '#Site', '2/4', '6/8 h',
       'En retard · mer. 23 sept.', 'jeu. 1 oct.', 'Terminé', 'Saisir du temps',
     ])

@@ -188,7 +188,7 @@ describe('runDirectoryImport (switch, connector, mode) and the job', () => {
     );
     const first = await syncConnector('Cursus', DIRECTOR);
     // The directory is imported first, then the sites are refreshed (those without a Cursus site fail as before).
-    expect(calls.slice(0, 2)).toEqual([`${CURSUS}/api/integrations/keystone/annuaire`, `${CURSUS}/api/integrations/keystone/chantiers/K-2614/go-no-go`]);
+    expect(calls.slice(0, 2)).toEqual([`${CURSUS}/api/integrations/keystone/annuaire`, `${CURSUS}/api/integrations/keystone/v1/chantiers/K-2614/go-no-go`]);
     expect(first.simulated).toBe(false);
     const hugo = (await personBy(eq(persons.matricule, 'EMP-0777')))!;
     expect([hugo.fullName, hugo.shortName]).toEqual(['Hugo Lambert', 'H. Lambert']);

@@ -45,7 +45,7 @@ function loadSheet(ctx: ExportContext, name: string, weeks: ResourceWeek[], peop
     ...weeks.map((w, i) => col(`w${i}`, `${t('Week of')} ${w.start}`, 'percent', 12)),
     ...(one ? [col('hours', t('Hours'), 'number', 8), col('over', t('Above capacity'), 'number', 10), col('projects', t('By project'), 'text', 36)] : [col('avg', t('Average'), 'percent'), col('max', t('Peak'), 'percent')]),
   ], people.map((p) => {
-    const w = one ? weekLoad(p.loads[0] ?? 0, split?.[p.name] ?? []) : null;
+    const w = one ? weekLoad(p.loads[0] ?? 0, split?.[p.name] ?? [], p.hours[0], p.capacityH[0]) : null;
     return {
       name: p.name, job: p.jobTitle ? t(p.jobTitle) : '', department: p.department ? t(p.department) : '', ...Object.fromEntries(p.loads.map((l, i) => [`w${i}`, l / 100])),
       ...(w ? { hours: w.hours, over: w.overH, projects: weekSplitText(w, ctx.lang) } : { avg: p.avg / 100, max: p.max / 100 }),

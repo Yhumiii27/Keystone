@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { builtinCalendars } from './calendar';
 import {
-  UNASSIGNED_ALERT_DAYS, isExternalLabour, isInternalLabour, isLabour, isMilestone, loadPctOfHours, needsWork, planningLoad, sumHours, tradeOfAssignment, tradeOfOwner,
+  HOURS_PER_ABSENCE_DAY, UNASSIGNED_ALERT_DAYS, capacityOf, isExternalLabour, personWeekCapacities, weekCapacityH, isInternalLabour, isLabour, isMilestone, loadPctOfHours, needsWork, planningLoad, sumHours, tradeOfAssignment, tradeOfOwner,
   unassignedActivitiesAt, undeclaredActivities, type PlanActivity, type PlanAssignment,
 } from './planning-load';
 
@@ -32,8 +32,40 @@ describe('rules', () => {
   });
 
   it('load % on the 40 h week, rounded', () => {
-    expect([loadPctOfHours(40), loadPctOfHours(52), loadPctOfHours(18), loadPctOfHours(0), loadPctOfHours(10, 0)]).toEqual([100, 130, 45, 0, 0]);
+    // R-084 (absences): a week entirely off (capacity 0) with hours assigned stays over-allocated — 100 % + the hours' share of
+    // 40 h (10 h → 125 %; it was 0 % before the capacity followed the absences); nothing assigned → 0 %.
+    expect([loadPctOfHours(40), loadPctOfHours(52), loadPctOfHours(18), loadPctOfHours(0), loadPctOfHours(10, 0), loadPctOfHours(0, 0), loadPctOfHours(32, 32)]).toEqual([100, 130, 45, 0, 125, 0, 100]);
     expect(sumHours([40, 40.1, 0.2])).toBe(80.3);
+  });
+});
+
+describe('R-084 (absences): weekly capacity less the days off', () => {
+  // Week of Mon 9 Nov 2026: Wed 11 Nov is a public holiday (Armistice).
+  const HOL = new Set(['2026-11-11']);
+  it('40 h less 8 h per day of leave or absence on Monday–Friday; a holiday or a weekend day is never a day off', () => {
+    expect(HOURS_PER_ABSENCE_DAY).toBe(8);
+    expect(weekCapacityH([], '2026-11-09', HOL)).toBe(40);
+    expect(weekCapacityH([{ type: 'leave', start: '2026-11-09', end: '2026-11-09' }], '2026-11-09', HOL)).toBe(32);
+    // Mon–Fri off with the holiday inside: 4 days off (the week view's `leaveWeekDays`), 8 h left.
+    expect(weekCapacityH([{ type: 'absence', start: '2026-11-09', end: '2026-11-13' }], '2026-11-09', HOL)).toBe(8);
+    expect(weekCapacityH([{ type: 'absence', start: '2026-11-16', end: '2026-11-20' }], '2026-11-16', HOL)).toBe(0);
+    // Overlapping rows count a day once; the weekend adds nothing.
+    expect(weekCapacityH([{ type: 'leave', start: '2026-11-16', end: '2026-11-17' }, { type: 'absence', start: '2026-11-17', end: '2026-11-22' }], '2026-11-16', HOL)).toBe(0);
+    expect(weekCapacityH([{ type: 'leave', start: '2026-11-14', end: '2026-11-15' }], '2026-11-09', HOL)).toBe(40);
+  });
+
+  it('per person over the weeks; only the persons with an absence are listed (`capacityOf` gives 40 h otherwise)', () => {
+    const weeks = ['2026-11-02', '2026-11-09', '2026-11-16'];
+    const caps = personWeekCapacities([
+      { person: 'jw', type: 'leave', start: '2026-11-05', end: '2026-11-10' },
+      { person: 'ao', type: 'absence', start: '2026-12-01', end: '2026-12-04' },
+    ], weeks, HOL);
+    // Week of 2 Nov: Thu–Fri off (24 h); week of 9 Nov: Mon–Tue off (24 h; Wed 11 is the holiday, outside the leave).
+    expect(caps).toEqual({ jw: [24, 24, 40] });
+    expect(capacityOf(caps, 'jw', 3)).toEqual([24, 24, 40]);
+    expect(capacityOf(caps, 'ao', 3)).toEqual([40, 40, 40]);
+    // The load % follows: 24 h on a week with two days off is full, not 60 %.
+    expect([loadPctOfHours(24, caps.jw[1]), loadPctOfHours(24)]).toEqual([100, 60]);
   });
 });
 

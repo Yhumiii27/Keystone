@@ -194,7 +194,7 @@ describe('Approvals model', () => {
       ['Léa Marchand', '69%', '73%', '—'], ['Damien Roux', '88%', '99%', '—'], ['Fabien Bertrand', '100%', '99%', '+4 h'], // R-084 + named demo assignments
     ]);
     const q = approvalsModel((await getApprovalsScreenData('Quality'))!, EN, 'en', HEAD);
-    expect(q.queue.map((x) => [x.id, x.impact, x.impactColor])).toEqual([['RQ-042', 'Hélène at 44% w/c 28 Sep → 64% with this request', 'var(--color-neutral-400)']]); // R-084 + named demo assignments (40 → 60 % on the seeded rows)
+    expect(q.queue.map((x) => [x.id, x.impact, x.impactColor])).toEqual([['RQ-042', 'Hélène at 73% w/c 28 Sep → 93% with this request', 'var(--color-neutral-400)']]); // R-084 + named demo assignments (40 → 60 % on the seeded rows); R-084 (absences), demo leave shifted (owner 22 Oct 2026): her 2 sick days that week, 24 h capacity (44 → 64 % on 40 h)
     expect(q.decided.map((r) => [r.id, r.response])).toEqual([['RQ-036', 'Approved · Gabriel Comte · Mon 21 Sep']]);
   });
 
