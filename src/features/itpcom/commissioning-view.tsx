@@ -1,10 +1,10 @@
 // Commissioning & handover dossier screen body (docs/spec/07 §2.6, template 910–920): KPI row, the commissioning grid —
 // one row per system, a status cell per step (Mechanical completion → Handover; done / in progress / blocked / planned
 // with its date or blocking reference) and the open category-A punch items of the system — and the handover dossier
-// with its Codex record buttons. Without a commissioning plan: the empty panel. "Plan SAT" is the header's primary
-// action. Server Component.
+// with its Codex record buttons; R-185: the grid grouped by equipment line when the project has several. Without a
+// commissioning plan: the empty panel. "Plan SAT" is the header's primary action. Server Component.
 import { Check, CircleDashed, CircleHalf, LockSimple } from '@phosphor-icons/react/dist/ssr';
-import type { CSSProperties } from 'react';
+import { Fragment, type CSSProperties } from 'react';
 import { EmptyState } from '@/components/app/EmptyState';
 import { KpiGrid, KpiTile } from '@/components/app/Kpi';
 import { SectionCard, Stack } from '@/components/app/SectionCard';
@@ -51,27 +51,39 @@ export function CommissioningBody({ view, t }: CommissioningBodyProps) {
               {view.blockingLabel}
             </div>
           </div>
-          {view.rows.map((r) => (
-            <div key={r.system} className={s.gridRow} role="row">
-              <div className={s.sys} role="rowheader">
-                {r.system}
-              </div>
-              {r.cells.map((c, i) => {
-                const I = ICON[c.icon];
-                return (
-                  <div key={i} className={s.cell} style={{ background: c.bg, border: c.border, color: c.color } as CSSProperties} role="cell" title={c.title}>
-                    <I className={s.cellIcon} aria-hidden />
-                    <span className={s.cellText}>
-                      <span>{c.status}</span>
-                      <span className={s.cellSub}>{c.date}</span>
-                    </span>
+          {view.groups.map((g) => (
+            <Fragment key={g.label ?? ''}>
+              {g.label && (
+                <div className={s.gridGroup} role="row">
+                  <div role="rowheader" className={s.groupHead}>
+                    <span>{g.label}</span>
+                    <span className={s.groupRule} aria-hidden />
                   </div>
-                );
-              })}
-              <div className={s.punchA} role="cell">
-                {r.blockingA}
-              </div>
-            </div>
+                </div>
+              )}
+              {g.rows.map((r) => (
+                <div key={r.system} className={s.gridRow} role="row">
+                  <div className={s.sys} role="rowheader">
+                    {r.system}
+                  </div>
+                  {r.cells.map((c, i) => {
+                    const I = ICON[c.icon];
+                    return (
+                      <div key={i} className={s.cell} style={{ background: c.bg, border: c.border, color: c.color } as CSSProperties} role="cell" title={c.title}>
+                        <I className={s.cellIcon} aria-hidden />
+                        <span className={s.cellText}>
+                          <span>{c.status}</span>
+                          <span className={s.cellSub}>{c.date}</span>
+                        </span>
+                      </div>
+                    );
+                  })}
+                  <div className={s.punchA} role="cell">
+                    {r.blockingA}
+                  </div>
+                </div>
+              ))}
+            </Fragment>
           ))}
         </div>
       </SectionCard>

@@ -9,9 +9,12 @@
 // Close on every item. All hidden when the screen is outside the viewer's workspace or the project is read-only for them,
 // and refused server-side. Projects without a plan or punch items show the empty states (the sidebar badge, open
 // category-A items of every origin, is the shell's). The client sees the list without NCR numbers and without the photos
-// of the items raised on site (P-10b, X-15).
+// of the items raised on site (P-10b, X-15). R-185 (choice 4): with more than one equipment line, `?equipment=EQ-02` picks the
+// line whose plan is shown (default the main line; "Add inspection" adds to it) and, on the punch list, filters the items
+// (`all` default, a line or `common`); "Add punch item" then asks for the line.
 import type { ReactNode } from 'react';
 import { PageHeader } from '@/components/app/shell/page-header';
+import { equipmentFilterOf, lineOfRef, showsEquipment } from '@/domain/equipment-scope';
 import { canRecordItpResult, punchOriginFilterOf } from '@/domain/itpcom';
 import { ItpFormButton } from '@/features/itpcom/add-buttons';
 import { inspectionFormDef, localizeForm, punchFormDef } from '@/features/itpcom/forms';
@@ -19,6 +22,8 @@ import { ItpBody } from '@/features/itpcom/itp-view';
 import { photoViews } from '@/features/photos/model';
 import { itpScreenView, itpViewOf } from '@/features/itpcom/model';
 import { getItpPlan, listItpSystems, listPunchItems, projectMachineTypeLabel } from '@/server/dal/itp';
+import { listProjectEquipments } from '@/server/dal/project-equipment';
+import { equipmentLotLabel } from '@/domain/project-equipment';
 import { listProjectPhotos } from '@/server/dal/photos';
 import { teamOwnerOptions } from '@/server/dal/team';
 import { getProjectContext } from '@/server/project-context';
@@ -35,24 +40,39 @@ export default async function ItpPage({ params, searchParams }: { params: Promis
   const projectCode = ctx.project.code;
   const view = itpViewOf(first(sp.view));
   const origin = punchOriginFilterOf(first(sp.origin));
-  const [{ t, lang }, plan, punch, machineType, today] = await Promise.all([
+  // R-185: the project's equipment lines; the line whose plan is shown, the punch list's equipment filter.
+  const lines = (await listProjectEquipments(projectCode)).map((l) => ({ ...l, label: equipmentLotLabel(l) }));
+  const multi = showsEquipment(lines);
+  const line = multi ? lineOfRef(lines, first(sp.equipment)) ?? lineOfRef(lines) : null;
+  const filter = multi ? equipmentFilterOf(sp.equipment, lines.map((l) => l.ref)) : 'all';
+  const [{ t, lang }, plan, punch, projectType, today] = await Promise.all([
     getI18n(),
-    getItpPlan(projectCode),
+    getItpPlan(projectCode, line?.ref),
     listPunchItems(projectCode),
     projectMachineTypeLabel(projectCode),
     businessToday(),
   ]);
+  const machineType = line ? line.typeLabel : projectType;
   const canEdit = ctx.canEdit('itp');
   const internal = ctx.viewer.role !== 'client';
 
   let primary: ReactNode;
   if (canEdit) {
     const context = projectLabelText(ctx.project, lang);
+    const equipmentForm = multi
+      ? { options: lines.map((l) => ({ value: l.ref, label: l.label })), defaultValue: filter !== 'all' ? filter : undefined }
+      : undefined;
     primary =
       view === 'plan' ? (
-        <ItpFormButton kind="inspection" code={projectCode} label={t('Add inspection')} context={context} form={localizeForm(inspectionFormDef(await listItpSystems(projectCode)), t, lang)} />
+        <ItpFormButton
+          kind="inspection" code={projectCode} label={t('Add inspection')} context={line ? `${context} · ${line.label}` : context}
+          form={localizeForm(inspectionFormDef(await listItpSystems(projectCode, line?.ref)), t, lang)} equipment={line?.ref}
+        />
       ) : (
-        <ItpFormButton kind="punch" code={projectCode} label={t('Add punch item')} context={context} form={localizeForm(punchFormDef(await teamOwnerOptions(projectCode), { internal }), t, lang)} />
+        <ItpFormButton
+          kind="punch" code={projectCode} label={t('Add punch item')} context={context}
+          form={localizeForm(punchFormDef(await teamOwnerOptions(projectCode), { internal, equipment: equipmentForm }), t, lang)}
+        />
       );
   }
 
@@ -77,6 +97,7 @@ export default async function ItpPage({ params, searchParams }: { params: Promis
           {
             code: projectCode, view, plan, punch, origin, machineType, today,
             viewer: { canRecord: canEdit && canRecordItpResult(ctx.viewer.role), internal, name: ctx.viewer.name },
+            equipment: { lines, selected: line?.ref ?? null, filter },
           },
           t, lang,
         )}

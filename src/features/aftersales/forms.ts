@@ -115,13 +115,20 @@ export function interventionDoneFormDef(parts: readonly string[], today: string)
  * "Register delivered machines" of one project (R-144) — number of machines · name · site · delivered · warranty end. Defaults:
  * the project's assembly roots, its machine type and name, its site, the business date and the contract's warranty.
  */
-export function registerMachinesFormDef(d: { project: string; count: number; name: string; site: string; delivered: string; warrantyEnd: string }): FormDef {
+export function registerMachinesFormDef(d: {
+  project: string; count: number; name: string; site: string; delivered: string; warrantyEnd: string;
+  /** R-185 part 2: the project's equipment lines when it has several (the machines take the chosen line's type); absent otherwise. */
+  equipments?: readonly { ref: string; label: string }[];
+}): FormDef {
   return {
     title: 'Register delivered machines',
     kind: 'create',
     submit: 'Register machines',
     fields: [
       { id: 'project', label: 'Project', type: 'select', options: [d.project] },
+      ...(d.equipments && d.equipments.length > 1
+        ? [{ id: 'equipment', label: 'Equipment', type: 'select' as const, options: d.equipments.map((e) => ({ value: e.ref, label: e.label })), defaultValue: d.equipments[0].ref }]
+        : []),
       { id: 'count', label: 'Number of machines', type: 'number', defaultValue: String(d.count) },
       { id: 'name', label: 'Machine', type: 'text', required: true, defaultValue: d.name },
       { id: 'site', label: 'Site', type: 'text', defaultValue: d.site },

@@ -70,8 +70,9 @@ describe('wizard with several equipment lines (R-185)', () => {
     expect(acts.map((a) => (a.eq ? byId.get(a.eq) : null))).toEqual([null, 'EQ-01', 'EQ-01', 'EQ-01', 'EQ-02', 'EQ-02', 'EQ-02', null, null]);
     // The two lines run in parallel after the common studies.
     expect(acts[1].start).toBe(acts[4].start);
-    // ITP: the main type's plan (one plan per line comes with R-185 part 2).
-    expect(await db.select({ mt: itpPlans.machineTypeCode }).from(itpPlans).where(eq(itpPlans.projectId, p.id))).toEqual([{ mt: 'EMP' }]);
+    // ITP (R-185 part 2, choice 4): one plan per line — the main line's from the template, EQ-02's from MEMU.
+    const plans = await db.select({ mt: itpPlans.machineTypeCode, eq: itpPlans.equipmentId }).from(itpPlans).where(eq(itpPlans.projectId, p.id));
+    expect(plans.map((x) => [x.eq ? byId.get(x.eq) : null, x.mt]).sort()).toEqual([['EQ-01', 'EMP'], ['EQ-02', 'MEMU']]);
   });
 
   it('without lines: one line of the main type, the plan before R-185', async () => {

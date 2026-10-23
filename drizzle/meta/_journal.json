@@ -302,6 +302,20 @@
       "when": 1792756034627,
       "tag": "0042_project_equipments_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1792760653670,
+      "tag": "0043_itp_plans_per_equipment",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1792760661112,
+      "tag": "0044_equipment_links_backfill",
+      "breakpoints": true
     }
   ]
 }

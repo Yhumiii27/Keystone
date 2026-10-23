@@ -12,8 +12,8 @@ import { addInspectionAction, addPunchItemAction, planSatAction } from './action
 
 type Kind = 'inspection' | 'punch' | 'sat';
 
-const submit = (kind: Kind, code: string, values: FormValues): Promise<FormDialogResult> =>
-  kind === 'inspection' ? addInspectionAction(code, values) : kind === 'punch' ? addPunchItemAction(code, values) : planSatAction(code, values);
+const submit = (kind: Kind, code: string, values: FormValues, equipment?: string): Promise<FormDialogResult> =>
+  kind === 'inspection' ? addInspectionAction(code, values, equipment) : kind === 'punch' ? addPunchItemAction(code, values) : planSatAction(code, values);
 
 export interface ItpFormButtonProps {
   kind: Kind;
@@ -24,16 +24,18 @@ export interface ItpFormButtonProps {
   context: string;
   /** Translated form definition. */
   form: FormDef;
+  /** R-185: the equipment line whose plan "Add inspection" adds to ("EQ-02"); absent = the main line. */
+  equipment?: string;
 }
 
-export function ItpFormButton({ kind, code, label, context, form }: ItpFormButtonProps) {
+export function ItpFormButton({ kind, code, label, context, form, equipment }: ItpFormButtonProps) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <Button variant="primary" icon={Plus} onClick={() => setOpen(true)}>
         {label}
       </Button>
-      <FormDialog {...form} open={open} onClose={() => setOpen(false)} context={context} onSubmit={(values) => submit(kind, code, values)} />
+      <FormDialog {...form} open={open} onClose={() => setOpen(false)} context={context} onSubmit={(values) => submit(kind, code, values, equipment)} />
     </>
   );
 }

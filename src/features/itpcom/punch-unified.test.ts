@@ -164,9 +164,11 @@ describe('R-117 · the screen and the export', () => {
       return (await readXlsx((await runExport(ctx, 'xlsx')).body))[0];
     };
     const internal = await sheetOf('quality');
-    expect(internal.rows[0]).toEqual(['Item', 'Description', 'Origin', 'System / location', 'Category', 'Raised by', 'NCR', 'Owner', 'Due', 'Status']);
-    expect(internal.rows.find((r) => r[0] === 'P-06')!.slice(0, 3)).toEqual(['P-06', 'Massif poste 7 — reprise implantation tiges', 'Site']);
-    expect(internal.rows.find((r) => r[0] === 'P-06')![6]).toBe('NCR-029');
+    // R-185 part 2: Harbor Line has two equipment lines — an Equipment column after the origin.
+    expect(internal.rows[0]).toEqual(['Item', 'Description', 'Origin', 'Equipment', 'System / location', 'Category', 'Raised by', 'NCR', 'Owner', 'Due', 'Status']);
+    expect(internal.rows.find((r) => r[0] === 'P-06')!.slice(0, 4)).toEqual(['P-06', 'Massif poste 7 — reprise implantation tiges', 'Site', 'Common']);
+    expect(internal.rows.find((r) => r[0] === 'P-09')![3]).toBe('EQ-02');
+    expect(internal.rows.find((r) => r[0] === 'P-06')![7]).toBe('NCR-029');
     const client = await sheetOf('client');
     expect(client.rows[0]).not.toContain('NCR');
     expect(client.rows.flat().join(' ')).not.toContain('NCR-031');

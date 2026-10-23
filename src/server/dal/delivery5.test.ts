@@ -171,7 +171,9 @@ describe('quality — NCRs (Vigie mirror) and deliverables (07 §2.3)', () => {
 describe('inspection & test plan, punch lists (07 §2.4)', () => {
   it.each(DATA)('%s: groups, punch rows and KPIs reproduce itpBySys / punchRows / itpKpis', async (code) => {
     const g = G.itp[code];
-    const [plan, punch] = await Promise.all([getItpPlan(code), listPunchItems(code, 'itp')]);
+    // R-185 part 2: getItpPlan is the main line's plan (the prototype's); Harbor Line's EQ-02 item (P-09, demo data added with
+    // the per-line plans) is not in the prototype's list.
+    const [plan, punch] = await Promise.all([getItpPlan(code), listPunchItems(code, 'itp').then((l) => l.filter((p) => p.equipmentRef !== 'EQ-02'))]);
     const rows = plan?.inspections ?? [];
     expect((plan?.systems ?? []).map((sys) => {
       const r = rows.filter((x) => x.system === sys);
@@ -200,6 +202,8 @@ describe('inspection & test plan, punch lists (07 §2.4)', () => {
     expect(all.map((p) => [p.number, p.origin, p.category, p.ownerParty])).toEqual([
       ['P-01', 'itp', 'A', 'keystone'], ['P-02', 'itp', 'B', 'keystone'], ['P-03', 'itp', 'C', 'keystone'], ['P-04', 'itp', 'B', 'keystone'], ['P-05', 'itp', 'C', 'keystone'],
       ['P-06', 'site', 'B', 'client'], ['P-07', 'site', 'B', 'keystone'], ['P-08', 'site', 'B', 'client'],
+      // R-185 part 2: Harbor Line's EQ-02 (3 × MEMU) demo item, after the prototype's.
+      ['P-09', 'itp', 'C', 'keystone'],
     ]);
     expect(await openPunchAByProject()).toEqual({});
   });
@@ -209,7 +213,10 @@ describe('inspection & test plan, punch lists (07 §2.4)', () => {
 
 describe('commissioning & handover dossier (07 §2.6)', () => {
   it('HLT-026: grid, Blocking A, dossier and KPIs reproduce cmRows / cmDossier / cmKpis', async () => {
-    const c = (await getCommissioning('HLT-026'))!;
+    const all = (await getCommissioning('HLT-026'))!;
+    // R-185 part 2: the prototype's grid is the main line's (EQ-01); EQ-02's demo system comes after it.
+    expect(all.systems.map((s) => s.equipmentRef)).toEqual(['EQ-01', 'EQ-01', 'EQ-01', 'EQ-01', 'EQ-01', 'EQ-01', 'EQ-02']);
+    const c = { ...all, systems: all.systems.filter((s) => s.equipmentRef === 'EQ-01') };
     expect(c.steps.map((s) => s.label)).toEqual(G.commissioning.cols);
     expect(c.systems.map((s) => ({ sys: s.name, punchA: s.blockingA, cells: s.cells.map((x) => [x.statusLabel, x.blockingRef ?? (x.dateOn ? d(x.dateOn) : '')]) }))).toEqual(G.commissioning.rows);
     expect(c.dossier.map((x) => ({ item: x.item, type: x.documentType, doc: x.documentRef ?? '', status: x.statusLabel }))).toEqual(G.commissioning.dossier);
@@ -396,7 +403,8 @@ describe('site — readiness, mobilisation, execution (10 §3)', () => {
     expect(s.hse.map((h) => h.kind)).toEqual(['prevention_plan', 'induction', 'permit', 'permit', 'register']);
     // A-6 'a' (R-117): getSite returns the project's single punch list; the prototype's figure is that of its items raised on
     // site (the screen's "Punch list open" tile counts the whole list: 6 — src/features/site/render.test.ts).
-    expect(s.punch.map((p) => p.origin)).toEqual(['itp', 'itp', 'itp', 'itp', 'itp', 'site', 'site', 'site']);
+    // R-185 part 2: + Harbor Line's EQ-02 demo item (P-09, raised by inspection).
+    expect(s.punch.map((p) => p.origin)).toEqual(['itp', 'itp', 'itp', 'itp', 'itp', 'site', 'site', 'site', 'itp']);
     const open = s.punch.filter((p) => p.origin === 'site' && p.status === 'open');
     expect([
       [`${s.sheet.doneDays} / ${s.sheet.planDays} d`, 'Daily reports feed the data date'], [s.dailyReports.length, 'Mobile · hours, %, photos, weather'],

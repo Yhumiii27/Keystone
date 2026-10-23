@@ -214,6 +214,8 @@ export interface RegisterMachinesValues {
   site: string;
   deliveredOn: string;
   warrantyEndOn: string;
+  /** R-185 part 2: the equipment line delivered ("EQ-02"); null = the project's main line. Checked against the project's lines by the caller. */
+  equipment: string | null;
 }
 
 /**
@@ -238,7 +240,8 @@ export function parseRegisterMachines(values: Record<string, string | undefined>
   const warrantyEndOn = w ? parseDateInput(w, yearOfIso(today)) : null;
   if (!warrantyEndOn) return { ok: false, error: 'Enter the warranty end as a date, e.g. 29 Sep 2028' };
   if (warrantyEndOn <= deliveredOn) return { ok: false, error: 'Warranty end is before delivery' };
-  return { ok: true, value: { projectCode, count, name, site, deliveredOn, warrantyEndOn } };
+  const equipment = text(values.equipment) || null;
+  return { ok: true, value: { projectCode, count, name, site, deliveredOn, warrantyEndOn, equipment } };
 }
 
 /**

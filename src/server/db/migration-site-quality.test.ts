@@ -35,7 +35,9 @@ describe('NNNN_punch_unified_renumber (R-117, custom, before the unique-key swap
   }, 60_000);
 
   it('a database with the two registers: Site items renumbered after the ITP items, categories and parties backfilled, then the swap', async () => {
-    // The state before delivery 8: the per-register key, the Site items numbered P-01…P-03, no category, ITP items without party.
+    // The state before delivery 8: the per-register key, the Site items numbered P-01…P-03, no category, ITP items without party
+    // — and none of Harbor Line's EQ-02 demo data (R-185 part 2: its item P-09).
+    await db.execute(sql.raw(`DELETE FROM punch_items WHERE number = 'P-09'`));
     await db.execute(sql.raw('ALTER TABLE punch_items DROP CONSTRAINT punch_items_project_id_number_unique'));
     await db.execute(sql.raw('ALTER TABLE punch_items ADD CONSTRAINT punch_items_project_id_register_number_unique UNIQUE("project_id","register","number")'));
     await db.execute(sql.raw(`UPDATE punch_items SET number = 'P-0' || (position - 4)::text, position = position - 5, category = NULL WHERE register = 'site'`));
@@ -94,6 +96,8 @@ describe('NNNN_itp_plan_systems_backfill (R-057, custom, after the generated tab
       WHERE pr.code = '${code}' ORDER BY s.position`)).map((r) => r.name);
 
   it('a plan without frozen systems gets its type’s systems of the day, once; a type without systems gives AUTRE’s', async () => {
+    // R-185 part 2: a database of before delivery 8 has one plan per project — Harbor Line's EQ-02 (MEMU) demo plan did not exist.
+    await db.execute(sql.raw(`DELETE FROM itp_plans WHERE machine_type_code = 'MEMU'`));
     // The seed froze HLT-026's EMP template; a database seeded before delivery 8 has no rows.
     expect(await frozen('HLT-026')).toEqual(['Structure', 'Hoist mechanisms', 'Travel (gantry)', 'Electrical HV/LV', 'Automation & safety', 'Anti-collision']);
     await db.execute(sql.raw('DELETE FROM itp_plan_systems'));

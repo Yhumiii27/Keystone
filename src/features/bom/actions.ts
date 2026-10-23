@@ -8,7 +8,9 @@ import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import { screenHref } from '@/config/screens';
 import { parseNewBomLine } from '@/domain/bom';
-import { addBomLine, getProjectBom, listBomActivityOptions } from '@/server/dal/bom';
+import { equipmentChoiceOf } from '@/domain/equipment-scope';
+import { addBomLine, getProjectBom, listBomActivityOptions, setBomLineEquipment } from '@/server/dal/bom';
+import { listProjectEquipments } from '@/server/dal/project-equipment';
 import { listParts } from '@/server/dal/parts';
 import { getProject } from '@/server/dal/projects';
 import { getProjectContext } from '@/server/project-context';
@@ -41,12 +43,38 @@ export async function addBomArticleAction(code: unknown, values: unknown): Promi
     activities: activities.map((a) => a.code),
   });
   if (!parsed.ok) return { error: await tr(parsed.error) };
+  // R-185: the equipment line of the article (offered when the project has more than one line; else common).
+  const equipment = equipmentChoiceOf(strings(values).equipment, (await listProjectEquipments(project.code)).map((l) => l.ref));
+  if (!equipment.ok) return { error: await tr(equipment.error) };
   try {
-    await addBomLine(project.code, parsed.value, ctx.viewer.name);
+    await addBomLine(project.code, { ...parsed.value, equipment: equipment.value }, ctx.viewer.name);
   } catch {
     return { error: await tr('The change could not be saved') };
   }
   revalidatePath(`/projects/${project.code}`, 'layout');
   revalidatePath(screenHref('plm'));
   return { toast: await tr(BOM_RESULT) };
+}
+
+/**
+ * R-185 part 2: the equipment line of a BOM line, changed on the flat list — a line of the project ("EQ-02") or "common". Same
+ * rights as "Add article" (the BOM screen editable for the viewer on this project); toast "Equipment saved".
+ */
+export async function setBomLineEquipmentAction(code: unknown, ref: unknown, equipment: unknown): Promise<{ toast: string } | { error: string }> {
+  if (typeof code !== 'string' || !code || typeof ref !== 'string' || !ref || typeof equipment !== 'string') return { error: await tr('Invalid request') };
+  const project = await getProject(code);
+  if (!project) return { error: await tr('Unknown project') };
+  const ctx = await getProjectContext(project.code, 'bom');
+  if (!ctx.canEdit('bom')) return { error: await tr('This project BOM is read-only for you') };
+  const choice = equipmentChoiceOf(equipment, (await listProjectEquipments(project.code)).map((l) => l.ref));
+  if (!choice.ok) return { error: await tr(choice.error) };
+  const bom = await getProjectBom(project.code);
+  if (!bom?.lines.some((l) => l.ref === ref)) return { error: await tr('Unknown article') };
+  try {
+    await setBomLineEquipment(project.code, ref, choice.value, ctx.viewer.name);
+  } catch {
+    return { error: await tr('The change could not be saved') };
+  }
+  revalidatePath(`/projects/${project.code}`, 'layout');
+  return { toast: await tr('Equipment saved') };
 }

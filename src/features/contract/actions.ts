@@ -372,7 +372,7 @@ async function equipmentEditable(code: unknown): Promise<{ code: string; actor: 
 const EQUIPMENT_ERRORS = [
   'Choose the machine type among the proposed types', 'The equipment label is too long', 'The target capacity is a positive number', 'The capacity unit is too long',
   'Enter the unit of the target capacity', 'Invalid options', 'Too many or too long options', 'The machine need follows the CAPEX application’s format (CPX-SAI-2026-01/B01)',
-  'A project keeps at least one equipment line', 'Unknown equipment line',
+  'A project keeps at least one equipment line', 'Unknown equipment line', 'This equipment line has inspections in its inspection plan',
 ];
 const equipmentError = (e: unknown) => {
   const m = e instanceof Error ? e.message : '';
@@ -415,7 +415,10 @@ export async function updateEquipmentAction(code: string, ref: string, line: Equ
   return { ok: true };
 }
 
-/** R-185: removes an equipment line (never the last one); its planning lots stay, common to the project. */
+/**
+ * R-185: removes an equipment line (never the last one, nor one whose ITP plan has inspections — part 2); its planning lots,
+ * punch items, commissioning systems, BOM lines and machines stay, common to the project.
+ */
 export async function removeEquipmentAction(code: string, ref: string): Promise<ContractEditResult> {
   const ok = await equipmentEditable(code);
   if ('error' in ok) return ok;

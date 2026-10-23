@@ -41,7 +41,7 @@ export function deliveredView(
             label, ariaLabel: `${label} · ${c.projectCode}`,
             form: localizeForm(registerMachinesFormDef({
               project: c.projectCode, count: c.defaultCount, name: c.defaultName, site: c.site, delivered: displayOfIso(opts.today),
-              warrantyEnd: displayOfIso(warrantyEndOf(opts.today, c.warrantyMonths)),
+              warrantyEnd: displayOfIso(warrantyEndOf(opts.today, c.warrantyMonths)), equipments: c.equipments,
             }), t, lang),
           }
         : null,

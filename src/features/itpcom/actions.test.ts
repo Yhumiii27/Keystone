@@ -69,7 +69,8 @@ describe('ITP · commissioning Server Functions', () => {
       expect(await advancePunchItemAction('HLT-026', 'P-02', 'open')).toEqual({ error: 'The change could not be saved' });
       expect(await planSatAction('HLT-026', { date: '10 Dec 2026' })).toEqual({ error: 'The change could not be saved' });
     }
-    expect((await listPunchItems('HLT-026', 'itp')).length).toBe(5);
+    // R-185 part 2: the prototype's 5 items raised by inspection + Harbor Line's EQ-02 demo item (P-09).
+    expect((await listPunchItems('HLT-026', 'itp')).length).toBe(6);
     expect((await punch('P-02'))!.status).toBe('open');
   });
 
@@ -109,7 +110,8 @@ describe('ITP · commissioning Server Functions', () => {
     expect(await punch('P-10')).toMatchObject({ description: 'Missing bolt — post 3', location: 'Structure · Bay 2', category: 'A', source: 'sat', sourceText: 'SAT', owner: 'J. Wagner', dueOn: '2026-10-09', status: 'open' });
     expect(await openPunchAByProject()).toEqual({ 'HLT-026': 1 });
     const c = (await getCommissioning('HLT-026'))!;
-    expect(c.systems.map((s) => s.blockingA)).toEqual([1, 0, 0, 0, 0, 0]);
+    // R-185 part 2: + the system of EQ-02 (MEMU modules M1–M3): the new item's location (Structure) is not its.
+    expect(c.systems.map((s) => s.blockingA)).toEqual([1, 0, 0, 0, 0, 0, 0]);
 
     expect(await advancePunchItemAction('HLT-026', 'P-10', 'open')).toEqual({ ok: true });
     expect((await punch('P-10'))!.status).toBe('in_progress');

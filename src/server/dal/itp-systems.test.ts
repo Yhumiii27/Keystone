@@ -36,7 +36,8 @@ describe('R-057 · ITP systems frozen in the project (E-9 a)', () => {
     expect(await addItpInspection('HLT-026', { name: 'Gantry rail alignment', system: 'Travel (gantry)', pointType: 'witness', stage: 'site' }, DIRECTOR)).toBe('I-20');
     await expect(addItpInspection('HLT-026', { name: 'x', system: 'Lightning protection', pointType: 'hold', stage: 'site' }, DIRECTOR)).rejects.toThrow(/Unknown system/);
     // HLT-026 has a commissioning plan: Plan SAT lists its systems (unchanged); a project without one lists its ITP systems.
-    expect(await listSatSystems('HLT-026')).toEqual(EMP);
+    // R-185 part 2: + the system of its EQ-02 demo line.
+    expect(await listSatSystems('HLT-026')).toEqual([...EMP, 'MEMU modules M1–M3']);
   });
 
   it('a project without a plan freezes the list of the moment at its first inspection; later edits leave it alone', async () => {

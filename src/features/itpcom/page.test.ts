@@ -71,7 +71,8 @@ describe('/projects/[code]/itp', () => {
     expect(Object.keys(p)).toEqual(['PageHeader', 'ItpBody']);
     expect(p.PageHeader.props).toMatchObject({ screen: 'itp', projectCode: 'HLT-026' });
     const primary = p.PageHeader.props.primary as El;
-    expect(primary.props).toMatchObject({ kind: 'inspection', code: 'HLT-026', label: 'Add inspection', context: '#026 · Harbor Line Terminal Expansion' });
+    // R-185 part 2: Harbor Line has two equipment lines — "Add inspection" names the line whose plan is shown (the main one).
+    expect(primary.props).toMatchObject({ kind: 'inspection', code: 'HLT-026', label: 'Add inspection', context: '#026 · Harbor Line Terminal Expansion · EQ-01 · EMP', equipment: 'EQ-01' });
     expect((primary.props.form as any).fields[1].options.map((o: any) => o.value)).toEqual(G.forms.en.itp.fields[1].options);
     const body = p.ItpBody.props as { view: ItpScreenView; canEdit: boolean };
     expect([body.view.view, !!body.view.plan, body.view.punch, body.canEdit]).toEqual(['plan', true, null, true]);
@@ -88,7 +89,18 @@ describe('/projects/[code]/itp', () => {
       { value: '', label: '—' }, ...G.forms.fr.punch.fields.find((f: any) => f.id === 'owner').options, 'Antoine Girard', 'Gabriel Comte',
     ]);
     // A-6 'a' (R-117): one punch list per project — the 5 items raised by inspections and the 3 raised on site (P-06…P-08).
-    expect((p.ItpBody.props.view as ItpScreenView).punch!.rows.map((r) => r.number)).toEqual(['P-01', 'P-02', 'P-03', 'P-04', 'P-05', 'P-06', 'P-07', 'P-08']);
+    // R-185 part 2: + Harbor Line's EQ-02 demo item (P-09); the form asks for the equipment line.
+    expect((p.ItpBody.props.view as ItpScreenView).punch!.rows.map((r) => r.number)).toEqual(['P-01', 'P-02', 'P-03', 'P-04', 'P-05', 'P-06', 'P-07', 'P-08', 'P-09']);
+    expect((primary.props.form as any).fields.find((f: any) => f.id === 'equipment').options.map((o: any) => o.value)).toEqual(['common', 'EQ-01', 'EQ-02']);
+    // ?equipment=EQ-02 on the punch list: EQ-02's items, the form's default line.
+    const eq2 = await itp({ view: 'punch', equipment: 'EQ-02' });
+    expect((eq2.ItpBody.props.view as ItpScreenView).punch!.rows.map((r) => r.number)).toEqual(['P-09']);
+    expect(((eq2.PageHeader.props.primary as El).props.form as any).fields.find((f: any) => f.id === 'equipment').defaultValue).toBe('EQ-02');
+    // ?equipment=EQ-02 on the plan: EQ-02's plan, "Add inspection" on it with its MEMU systems.
+    const plan2 = await itp({ equipment: 'EQ-02' });
+    expect((plan2.ItpBody.props.view as ItpScreenView).plan!.title).toBe('Plan d’inspection et d’essais · EQ-02 · 3 × MEMU');
+    expect((plan2.PageHeader.props.primary as El).props).toMatchObject({ equipment: 'EQ-02' });
+    expect(((plan2.PageHeader.props.primary as El).props.form as any).fields[1].options.map((o: any) => o.value)).toEqual(['Structure', 'Hoist', 'Travel', 'Electrical', 'Automation']);
     expect(((await itp({ view: 'gantt' })).ItpBody.props.view as ItpScreenView).view).toBe('plan');
   });
 
@@ -127,7 +139,9 @@ describe('/projects/[code]/commissioning', () => {
     expect(primary.props).toMatchObject({ kind: 'sat', code: 'HLT-026', label: 'Plan SAT' });
     const form = primary.props.form as any;
     expect([form.kind, form.fields.map((f: any) => f.defaultValue ?? f.options?.[0]?.value)]).toEqual(['run', G.forms.en.commissioning.fields.map((f: any) => f.value)]);
-    expect((p.CommissioningBody.props.view as CommissioningScreenView).rows.length).toBe(6);
+    // R-185 part 2: + EQ-02's system; the grid grouped by line.
+    expect((p.CommissioningBody.props.view as CommissioningScreenView).rows.length).toBe(7);
+    expect((p.CommissioningBody.props.view as CommissioningScreenView).groups.map((g) => [g.label, g.rows.length])).toEqual([['EQ-01 · EMP', 6], ['EQ-02 · 3 × MEMU', 1]]);
   });
 
   it.each(['HLT-026', 'NDC-031'])('%s: primary per persona (prototype hasPrimary)', async (code) => {

@@ -4,6 +4,7 @@
 // owner options are the project TEAM (full names). `localizeForm` translates a definition on the server — FormDialog
 // then renders it as is.
 import type { FormDef, FormOption } from '@/components/app/form-def';
+import { COMMON_EQUIPMENT } from '@/domain/equipment-scope';
 import { ITP_POINT_TYPES, ITP_STAGES, NO_OWNER, PUNCH_CATEGORIES, PUNCH_ORIGINS, PUNCH_OWNER_PARTIES, PUNCH_SOURCES, witnessFieldOf } from '@/domain/itpcom';
 import type { Lang, T } from '@/i18n/translate';
 import {
@@ -42,7 +43,10 @@ export function inspectionFormDef(systems: readonly string[]): FormDef {
  * (Inspection / Site), responsible party (Keystone / Client) and, for internal viewers, Vigie's NCR number (P-10b: never the
  * client's). The owner may be "—" (no person: the party owns the item); the first TEAM name stays the default.
  */
-export function punchFormDef(team: readonly string[], opts: { internal?: boolean } = {}): FormDef {
+export function punchFormDef(
+  team: readonly string[],
+  opts: { internal?: boolean; equipment?: { options: readonly { value: string; label: string }[]; defaultValue?: string } } = {},
+): FormDef {
   const internal = opts.internal ?? true;
   return {
     title: 'Add punch item',
@@ -58,6 +62,14 @@ export function punchFormDef(team: readonly string[], opts: { internal?: boolean
       { id: 'origin', label: 'Origin', type: 'select', options: PUNCH_ORIGINS.map((c) => ({ value: c, label: punchOrigin.label(c) })) },
       { id: 'party', label: 'Owner party', type: 'select', options: PUNCH_OWNER_PARTIES.map((c) => ({ value: c, label: punchOwnerParty.label(c) })) },
       ...(internal ? [{ id: 'ncr', label: 'NCR (Vigie)', type: 'text' as const, placeholder: 'e.g. NCR-029' }] : []),
+      // R-185: the equipment line of the item, only when the project has more than one ("Common to the project" first).
+      ...(opts.equipment
+        ? [{
+            id: 'equipment', label: 'Equipment', type: 'select' as const,
+            options: [{ value: COMMON_EQUIPMENT, label: 'Common to the project' }, ...opts.equipment.options],
+            defaultValue: opts.equipment.defaultValue ?? COMMON_EQUIPMENT,
+          }]
+        : []),
     ],
   };
 }
@@ -133,6 +145,8 @@ export function localizeForm(def: FormDef, t: T, lang: Lang): FormDef {
     const value = typeof o === 'string' ? o : o.value;
     const label = typeof o === 'string' ? o : o.label;
     if (CODE_SELECTS.has(id)) return { value, label: t(label) };
+    // R-185: the equipment lines are shown as their reference and type ("EQ-02 · 3 × MEMU"); only "Common to the project" is translated.
+    if (id === 'equipment') return { value, label: value === COMMON_EQUIPMENT ? t(label) : label };
     if (SYSTEM_SELECTS.has(id)) return { value, label: dataT(label, lang) };
     return o;
   };

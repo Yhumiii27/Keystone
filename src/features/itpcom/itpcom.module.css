@@ -41,3 +41,7 @@
 
 /* dossier: document type 12px neutral-400 tabular */
 .docType { font-size: 12px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+
+/* R-185: equipment line header of the commissioning grid (the plan's system header look, across every column) */
+.gridGroup { display: contents; }
+.gridGroup > * { grid-column: 1 / -1; }

@@ -2,15 +2,20 @@ import 'server-only';
 // Commissioning & handover dossier DAL (docs/spec/07 §2.6). Keystone owns it. The grid (system × step) and the
 // dossier are read-only in the prototype (OPEN QUESTION Q-5); "Plan SAT" is recorded (sat_plans) and dates the
 // system's SAT step. "Blocking A" per system = open category-A punch items whose location starts with the system's
-// first word (`cmRows` 4973) — R-117 (A-6 'a'): items of every origin (one punch list per project).
+// first word (`cmRows` 4973) — R-117 (A-6 'a'): items of every origin (one punch list per project). R-185 part 2: a system
+// belongs to an equipment line of the project or is common (`equipment_id` null); "Blocking A" of a line's system leaves out
+// the items of the other lines; the screen groups the systems by line when the project has more than one. The SAT is a step of
+// each system: per equipment line through its systems, or global through a common system — the project manager's choice is
+// which systems the plan has (no separate setting).
 import { and, asc, eq, inArray } from 'drizzle-orm';
+import { sameEquipment } from '@/domain/equipment-scope';
 import { getDb } from '@/server/db/client';
 import {
   HANDOVER_STATUS_TAG, commissioningCellStatus, commissioningStep, displayOfIso, handoverItemStatus,
   type CommissioningCellStatus, type CommissioningStep, type HandoverItemStatus,
 } from '@/server/db/codes';
-import { commissioningSteps, commissioningSystems, documents, handoverItems, punchItems, satPlans } from '@/server/db/schema';
-import { listItpSystems, templateSystemsOf } from './itp';
+import { commissioningSteps, commissioningSystems, documents, handoverItems, projectEquipments, punchItems, satPlans } from '@/server/db/schema';
+import { listProjectTemplateSystems, planLinesOf, templateSystemsOf } from './itp';
 import { isIsoDate, projectOf, requireWorkspace, trace, whoIs, type Actor } from './ops-common';
 
 export type { Actor };
@@ -29,8 +34,10 @@ export interface CommissioningCell {
 export interface CommissioningSystemRow {
   name: string;
   cells: CommissioningCell[];
-  /** Open category-A punch items of the system, every origin (R-117). */
+  /** Open category-A punch items of the system, every origin (R-117); R-185: those of its line or common. */
   blockingA: number;
+  /** R-185: the system's equipment line ("EQ-02"); null = common to the project. */
+  equipmentRef?: string | null;
 }
 
 export interface HandoverItemRow {
@@ -61,32 +68,39 @@ export interface Commissioning {
   systems: CommissioningSystemRow[];
   dossier: HandoverItemRow[];
   satPlans: SatPlanRow[];
+  /** R-185: the project's equipment lines, main first ("EQ-02 · 3 × MEMU"): the grid's groups when there are several. */
+  equipment?: { ref: string; label: string; position: number }[];
 }
 
 /** Commissioning grid and handover dossier of a project; null when it has no commissioning plan. */
 export async function getCommissioning(projectCode: string): Promise<Commissioning | null> {
   const db = await getDb();
   const p = await projectOf(db, projectCode);
-  const systems = await db.select().from(commissioningSystems).where(eq(commissioningSystems.projectId, p.id)).orderBy(asc(commissioningSystems.position));
+  const systems = await db.select({ s: commissioningSystems, eq: projectEquipments.ref }).from(commissioningSystems)
+    .leftJoin(projectEquipments, eq(projectEquipments.id, commissioningSystems.equipmentId))
+    .where(eq(commissioningSystems.projectId, p.id)).orderBy(asc(commissioningSystems.position));
   if (!systems.length) return null;
-  const [cells, dossier, punch, sats] = await Promise.all([
-    db.select().from(commissioningSteps).where(inArray(commissioningSteps.systemId, systems.map((s) => s.id))).orderBy(asc(commissioningSteps.position)),
+  const [cells, dossier, punch, sats, lines] = await Promise.all([
+    db.select().from(commissioningSteps).where(inArray(commissioningSteps.systemId, systems.map((s) => s.s.id))).orderBy(asc(commissioningSteps.position)),
     db.select({ h: handoverItems, doc: documents.number }).from(handoverItems).leftJoin(documents, eq(documents.id, handoverItems.documentId))
       .where(eq(handoverItems.projectId, p.id)).orderBy(asc(handoverItems.position)),
-    db.select({ location: punchItems.location, status: punchItems.status }).from(punchItems)
+    db.select({ location: punchItems.location, status: punchItems.status, eq: projectEquipments.ref }).from(punchItems)
+      .leftJoin(projectEquipments, eq(projectEquipments.id, punchItems.equipmentId))
       .where(and(eq(punchItems.projectId, p.id), eq(punchItems.category, 'A'))),
     db.select().from(satPlans).where(eq(satPlans.projectId, p.id)).orderBy(asc(satPlans.createdAt)),
+    planLinesOf(db, p.id),
   ]);
   const openA = punch.filter((x) => x.status !== 'closed');
   return {
     projectCode,
     steps: commissioningStep.codes.map((step) => ({ step, label: commissioningStep.label(step) })),
-    systems: systems.map((s) => ({
+    systems: systems.map(({ s, eq: equipmentRef }) => ({
       name: s.name,
       cells: cells.filter((c) => c.systemId === s.id).map((c) => ({
         step: c.step, stepLabel: commissioningStep.label(c.step), status: c.status, statusLabel: commissioningCellStatus.label(c.status), dateOn: c.dateOn, blockingRef: c.blockingRef,
       })),
-      blockingA: openA.filter((x) => x.location.startsWith(s.name.split(' ')[0])).length,
+      blockingA: openA.filter((x) => x.location.startsWith(s.name.split(' ')[0]) && sameEquipment(x.eq, equipmentRef)).length,
+      equipmentRef: equipmentRef ?? null,
     })),
     dossier: dossier.map(({ h, doc }) => ({
       item: h.item, documentType: h.documentTypeCode, documentRef: h.documentRef, documentInCodex: !!doc, status: h.status, statusLabel: handoverItemStatus.label(h.status),
@@ -95,6 +109,7 @@ export async function getCommissioning(projectCode: string): Promise<Commissioni
     satPlans: sats.map((x) => ({
       system: x.systemName, plannedOn: x.plannedOn, clientWitnesses: x.clientWitnesses, prerequisites: x.prerequisites, plannedBy: x.plannedByName, createdAt: x.createdAt.toISOString(),
     })),
+    equipment: lines.map((l) => ({ ref: l.ref, label: l.label, position: l.position })),
   };
 }
 
@@ -152,8 +167,11 @@ export async function listCommissioningSystems(projectCode: string): Promise<str
   return (await getCommissioning(projectCode))?.systems.map((s) => s.name) ?? [];
 }
 
-/** Systems of the "Plan SAT" select: the commissioning plan's, else the project's inspection template (`ITPSYS`). */
+/**
+ * Systems of the "Plan SAT" select: the commissioning plan's, else the project's inspection templates (`ITPSYS`; R-185: every
+ * equipment line's, each name once).
+ */
 export async function listSatSystems(projectCode: string): Promise<string[]> {
   const own = await listCommissioningSystems(projectCode);
-  return own.length ? own : listItpSystems(projectCode);
+  return own.length ? own : listProjectTemplateSystems(projectCode);
 }

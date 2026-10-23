@@ -14,7 +14,8 @@ import { changesT } from '@/features/changes/i18n';
 import { getChangeControl } from '@/server/dal/changes';
 import { getContract } from '@/server/dal/contract';
 import { getBaselineRegister } from '@/server/dal/changes-baselines';
-import { getItpPlan, listPunchItems } from '@/server/dal/itp';
+import { getItpPlans, listPunchItems } from '@/server/dal/itp';
+import { listProjectEquipments } from '@/server/dal/project-equipment';
 import { getQualityScreen } from '@/server/dal/quality-screen';
 import { getRiskScreen } from '@/server/dal/risks-screen';
 import { changeStatus, deliverableStatus, ncrSeverity, stepDecision } from '@/server/db/codes';
@@ -191,27 +192,32 @@ async function pvDocument(ctx: ExportContext): Promise<PdfDocument | null> {
 // ── ITP ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
 async function itpWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   if (!ctx.project) return null;
-  const [plan, all] = await Promise.all([getItpPlan(ctx.project.code), listPunchItems(ctx.project.code)]);
+  // R-185 (choice 4): every equipment line's plan, with an Equipment column when the project has more than one line.
+  const [plans, all, lines] = await Promise.all([getItpPlans(ctx.project.code), listPunchItems(ctx.project.code), listProjectEquipments(ctx.project.code)]);
+  const plan = plans[0] ?? null;
   if (!plan && !all.length) return null;
   const { t } = ctx;
+  const multi = lines.length > 1;
+  const eqCol = multi ? [col('equipment', t('Equipment'), 'text', 10)] : [];
   const origin = punchOriginFilterOf(param(ctx, 'origin'));
   const punch = filterPunchByOrigin(all, origin);
   // P-10b: the client never gets Vigie's NCR numbers (the screen hides the column too).
   const internal = ctx.viewer.role !== 'client';
   const inspections = sheet(t('Inspection & test plan'), [
-    col('number', t('Inspection'), 'text', 8), col('system', t('System'), 'text', 24), col('name', t('Inspection'), 'text', 40), col('point', t('Point type'), 'text', 12),
+    col('number', t('Inspection'), 'text', 8), ...eqCol, col('system', t('System'), 'text', 24), col('name', t('Inspection'), 'text', 40), col('point', t('Point type'), 'text', 12),
     col('stage', t('Stage'), 'text', 14), col('reference', t('Reference'), 'text', 18), col('planned', t('Planned on'), 'date'), col('result', t('Result'), 'text', 12),
     col('record', t('Record'), 'text', 16), col('custom', t('Added'), 'boolean'),
-  ], (plan?.inspections ?? []).map((i) => ({
-    number: i.number, system: dataText(i.system, ctx.lang), name: dataText(i.name, ctx.lang), point: t(i.pointTypeLabel), stage: t(i.stageLabel), reference: i.reference, planned: i.plannedOn, result: t(i.resultLabel),
+  ], plans.flatMap((pl) => pl.inspections.map((i) => ({ i, eq: pl.equipment?.ref ?? '' }))).map(({ i, eq }) => ({
+    number: i.number, ...(multi ? { equipment: eq } : {}), system: dataText(i.system, ctx.lang), name: dataText(i.name, ctx.lang), point: t(i.pointTypeLabel), stage: t(i.stageLabel), reference: i.reference, planned: i.plannedOn, result: t(i.resultLabel),
     record: i.recordRef ?? '', custom: i.isCustom,
   })));
   const punchList = sheet(t('Punch list'), [
-    col('number', t('Item'), 'text', 8), col('description', t('Description'), 'text', 44), col('origin', t('Origin'), 'text', 12), col('location', t('System / location'), 'text', 22),
+    col('number', t('Item'), 'text', 8), col('description', t('Description'), 'text', 44), col('origin', t('Origin'), 'text', 12), ...eqCol,
+    col('location', t('System / location'), 'text', 22),
     col('category', t('Category'), 'text', 8), col('source', t('Raised by'), 'text', 18), ...(internal ? [col('ncr', 'NCR', 'text', 9)] : []), col('owner', t('Owner'), 'text', 16),
     col('due', t('Due'), 'date'), col('status', t('Status'), 'text', 12),
   ], punch.map((p) => ({
-    number: p.number, description: dataText(p.description, ctx.lang), origin: t(p.originLabel), location: dataText(p.location, ctx.lang), category: p.categoryLabel ? t(p.categoryLabel) : '',
+    number: p.number, description: dataText(p.description, ctx.lang), origin: t(p.originLabel), ...(multi ? { equipment: p.equipmentRef ?? t('Common') } : {}), location: dataText(p.location, ctx.lang), category: p.categoryLabel ? t(p.categoryLabel) : '',
     source: p.sourceText ? t(p.sourceText) : '', ...(internal ? { ncr: p.ncrNumber ?? '' } : {}), owner: p.ownerName ? dataText(p.ownerName, ctx.lang) : p.owner ? t(p.owner) : '',
     due: p.dueOn, status: t(p.statusLabel),
   })));
