@@ -122,6 +122,10 @@
   {
    "date": "2026-10-23",
    "text": "Parc installé et lecture incrémentale pour Arche (R-193, demandes K-07 et K-11) : pub_parc_machines publie en fin de vue le type de machine, la date de livraison et la date de dernière modification (déplacée aussi quand une intervention change la configuration) ; index sur la date de modification des livrables et des réserves, atteints à travers les vues ; copie des vues à rafraîchir dans Matrix."
+  },
+  {
+   "date": "2026-10-23",
+   "text": "AC-4 et AC-5 tranchés par le responsable produit (catalogue machines dans Keystone ; projet à plusieurs équipements) ; cadrage R-185 / R-186 rédigé, 5 choix à valider. Demande déposée chez Matrix (REQUESTS.md, PR Matrix #22) pour recopier les nouvelles vues de partage dans 30-keystone.sql."
   }
  ],
  "items": [
@@ -5363,7 +5367,7 @@
    "kind": "fonction_manquante",
    "priority": "a_decider",
    "status": "non_commence",
-   "waiting_on": "Cadrage avec le responsable produit (structure d’un projet multi-équipements)",
+   "waiting_on": "Validation des choix du cadrage docs/delivery-9/cadrage-r185-r186.md",
    "effort": "XL",
    "sources": [
     "Responsable produit, 15 oct. 2026 (note pour les futurs développements)"
@@ -5378,7 +5382,7 @@
    ],
    "progress": {
     "state": "a_faire",
-    "note": "Consigné le 15 oct. 2026 à la demande du responsable produit ; à cadrer avant la livraison 9. 22 oct. 2026 : prérequis du lien avec l’application CAPEX (un besoin de plusieurs machines = un projet EPC2i à plusieurs équipements, recommandé). Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-10 — un besoin de plusieurs machines doit pouvoir créer un projet EPC2i à plusieurs équipements ou en ajouter à un projet existant."
+    "note": "Consigné le 15 oct. 2026 à la demande du responsable produit ; à cadrer avant la livraison 9. 22 oct. 2026 : prérequis du lien avec l’application CAPEX (un besoin de plusieurs machines = un projet EPC2i à plusieurs équipements, recommandé). Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-10 — un besoin de plusieurs machines doit pouvoir créer un projet EPC2i à plusieurs équipements ou en ajouter à un projet existant. 23 oct. 2026 : AC-5 tranché (oui) — un besoin de plusieurs machines = un projet EPC2i à plusieurs équipements ; cadrage proposé dans docs/delivery-9/cadrage-r185-r186.md, 5 choix à valider avant de construire."
    }
   },
   {
@@ -5390,7 +5394,7 @@
    "kind": "fonction_manquante",
    "priority": "a_decider",
    "status": "non_commence",
-   "waiting_on": "R-053 (standard par type de machine) et validation du responsable produit",
+   "waiting_on": "Validation des choix du cadrage docs/delivery-9/cadrage-r185-r186.md",
    "effort": "L",
    "sources": [
     "Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0)",
@@ -5402,7 +5406,7 @@
    ],
    "progress": {
     "state": "a_faire",
-    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-01 — pub_catalogue_machines (fiches publiées, versions, options, capacité nominale, prix indicatif, délai type, statut)."
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-01 — pub_catalogue_machines (fiches publiées, versions, options, capacité nominale, prix indicatif, délai type, statut). 23 oct. 2026 : AC-4 tranché (oui) — le catalogue machines est un module de Keystone, construit à partir des types de machine ; cadrage dans docs/delivery-9/cadrage-r185-r186.md."
    }
   },
   {
