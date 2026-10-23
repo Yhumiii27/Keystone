@@ -126,6 +126,10 @@
   {
    "date": "2026-10-23",
    "text": "AC-4 et AC-5 tranchés par le responsable produit (catalogue machines dans Keystone ; projet à plusieurs équipements) ; cadrage R-185 / R-186 rédigé, 5 choix à valider. Demande déposée chez Matrix (REQUESTS.md, PR Matrix #22) pour recopier les nouvelles vues de partage dans 30-keystone.sql."
+  },
+  {
+   "date": "2026-10-23",
+   "text": "R-185 partie 1 : projets à plusieurs équipements — lignes d’équipement, reprise des projets existants, carte Équipement, assistant à plusieurs lignes avec lots par équipement ; les 5 choix du cadrage validés par le responsable produit."
   }
  ],
  "items": [
@@ -5367,7 +5371,7 @@
    "kind": "fonction_manquante",
    "priority": "a_decider",
    "status": "non_commence",
-   "waiting_on": "Validation des choix du cadrage docs/delivery-9/cadrage-r185-r186.md",
+   "waiting_on": "",
    "effort": "XL",
    "sources": [
     "Responsable produit, 15 oct. 2026 (note pour les futurs développements)"
@@ -5381,8 +5385,9 @@
     "src/server/db/schema/aftersales.ts:12-18 machines : une machine par équipement livré, avec son propre type (déjà multi-équipements)"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": "Consigné le 15 oct. 2026 à la demande du responsable produit ; à cadrer avant la livraison 9. 22 oct. 2026 : prérequis du lien avec l’application CAPEX (un besoin de plusieurs machines = un projet EPC2i à plusieurs équipements, recommandé). Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-10 — un besoin de plusieurs machines doit pouvoir créer un projet EPC2i à plusieurs équipements ou en ajouter à un projet existant. 23 oct. 2026 : AC-5 tranché (oui) — un besoin de plusieurs machines = un projet EPC2i à plusieurs équipements ; cadrage proposé dans docs/delivery-9/cadrage-r185-r186.md, 5 choix à valider avant de construire."
+    "state": "en_cours",
+    "delivery": "9",
+    "note": "Consigné le 15 oct. 2026 à la demande du responsable produit ; à cadrer avant la livraison 9. 22 oct. 2026 : prérequis du lien avec l’application CAPEX (un besoin de plusieurs machines = un projet EPC2i à plusieurs équipements, recommandé). Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-10 — un besoin de plusieurs machines doit pouvoir créer un projet EPC2i à plusieurs équipements ou en ajouter à un projet existant. 23 oct. 2026 : AC-5 tranché (oui) — un besoin de plusieurs machines = un projet EPC2i à plusieurs équipements ; cadrage proposé dans docs/delivery-9/cadrage-r185-r186.md, 5 choix à valider avant de construire. 23 oct. 2026 : les 5 choix du cadrage validés par le responsable produit. Partie 1 faite (docs/delivery-9/notes-r185-equipments.md) : lignes d’équipement project_equipments (type × quantité, EQ-01…), reprise des projets existants (migrations 0041-0042), carte « Équipement » sur l’écran Contrat, résumé « 1 × EMP · 3 × MEMU » au registre, assistant à plusieurs lignes avec lots propres à chaque équipement (phases per_equipment), budget de référence = somme des types × quantité. Reste (partie 2) : un plan ITP par ligne, réserves, mise en service, nomenclature et parc installé rattachés à l’équipement."
    }
   },
   {
@@ -5394,7 +5399,7 @@
    "kind": "fonction_manquante",
    "priority": "a_decider",
    "status": "non_commence",
-   "waiting_on": "Validation des choix du cadrage docs/delivery-9/cadrage-r185-r186.md",
+   "waiting_on": "",
    "effort": "L",
    "sources": [
     "Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0)",

@@ -38,7 +38,8 @@ describe('ProjectsRegister render', () => {
     expect(html).toContain('#026 · Harbor Line Terminal Expansion');
     expect(html).toContain('href="/projects/HLT-026/plan"');
     expect(html).toContain('title="Open project · Plan — WBS"');
-    expect(html).toContain('HAV004 · DAS 2 · EMP');
+    // R-185: Harbor Line supplies its EMP and three MEMU (demo equipment lines; the prototype: "EMP").
+    expect(html).toContain('HAV004 · DAS 2 · 1 × EMP · 3 × MEMU');
     // Delivery 7 (R-073, C-2a): SPI / CPI computed from the activities and BL1 (were 0.90 / 0.91).
     expect(html).toContain('SPI 0.82 · CPI 0.89 · Structure topped out · Late · 27 d slip');
     expect(html).toMatch(/role="slider"[^>]*aria-valuemin="0"[^>]*aria-valuemax="13"[^>]*aria-valuenow="0"[^>]*aria-valuetext="All projects"/);

@@ -19,9 +19,10 @@ import {
   MilestoneEditError, addAmendment, addBond, addPaymentMilestone, getContract, issueInvoice, markInvoicePaid, releaseBond, removePaymentMilestone,
   sendAmendmentForSignature, signAmendment, updateContractSheet, updatePaymentMilestone, type ProjectContract,
 } from '@/server/dal/contract';
-import { canSetBudgetRate, canSetCapexLink } from '@/domain/rights';
+import { canSetBudgetRate, canSetCapexLink, canSetProjectEquipment } from '@/domain/rights';
 import { parseCapexLink } from '@/domain/capex-link';
 import { setCapexLink } from '@/server/dal/capex-link';
+import { addProjectEquipment, removeProjectEquipment, updateProjectEquipment } from '@/server/dal/project-equipment';
 import { setProjectBudgetRate } from '@/server/dal/currency';
 import { getProject } from '@/server/dal/projects';
 import { getProjectContext } from '@/server/project-context';
@@ -341,6 +342,88 @@ export async function setCapexLinkAction(code: string, capexCode: string, needRe
     await setCapexLink(project.code, parsed.value, { name: ctx.viewer.name, role: ctx.viewer.role });
   } catch {
     return { error: await tr('The change could not be saved') };
+  }
+  refresh();
+  return { ok: true };
+}
+
+/** Fields of an equipment line as the "Equipment" card sends them (strings; the DAL parses them again). */
+export interface EquipmentLineDraft {
+  machineTypeCode: string;
+  quantity: string;
+  label: string;
+  capacityValue: string;
+  capacityUnit: string;
+  /** Comma-separated. */
+  options: string;
+  besoinRef: string;
+}
+
+/** Checks the viewer may edit the project's equipment lines (R-185): the director and the leads, on a project they may edit. */
+async function equipmentEditable(code: unknown): Promise<{ code: string; actor: { name: string; role: string } } | { error: string }> {
+  if (typeof code !== 'string' || !code) return { error: await tr('Invalid request') };
+  const project = await getProject(code);
+  if (!project) return { error: await tr('Unknown project') };
+  const ctx = await getProjectContext(project.code, 'contract');
+  if (!canSetProjectEquipment(ctx.viewer.role, ctx.access) || !ctx.canEdit('contract')) return { error: await tr('Only the project’s leads and the director change its equipment') };
+  return { code: project.code, actor: { name: ctx.viewer.name, role: ctx.viewer.role } };
+}
+
+const EQUIPMENT_ERRORS = [
+  'Choose the machine type among the proposed types', 'The equipment label is too long', 'The target capacity is a positive number', 'The capacity unit is too long',
+  'Enter the unit of the target capacity', 'Invalid options', 'Too many or too long options', 'The machine need follows the CAPEX application’s format (CPX-SAI-2026-01/B01)',
+  'A project keeps at least one equipment line', 'Unknown equipment line',
+];
+const equipmentError = (e: unknown) => {
+  const m = e instanceof Error ? e.message : '';
+  return EQUIPMENT_ERRORS.includes(m) || /^The quantity is a whole number from 1 to \d+$/.test(m) || /^A project has at most \d+ equipment lines$/.test(m) ? m : 'The change could not be saved';
+};
+
+/** Only string fields of the card's draft reach the DAL. */
+const lineFields = (v: unknown) => {
+  const d = strings(v);
+  return {
+    machineTypeCode: d.machineTypeCode, quantity: d.quantity, label: d.label ?? '', capacityValue: d.capacityValue ?? '', capacityUnit: d.capacityUnit ?? '',
+    options: d.options ?? '', besoinRef: d.besoinRef ?? '',
+  };
+};
+
+/** R-185: adds an equipment line (type × quantity, optional label, capacity, options, machine need) to the project. */
+export async function addEquipmentAction(code: string, line: EquipmentLineDraft): Promise<ContractEditResult> {
+  const ok = await equipmentEditable(code);
+  if ('error' in ok) return ok;
+  try {
+    await addProjectEquipment(ok.code, lineFields(line), ok.actor);
+  } catch (e) {
+    return { error: await tr(equipmentError(e)) };
+  }
+  refresh();
+  return { ok: true };
+}
+
+/** R-185: edits an equipment line; the first line's type is the project's main type. */
+export async function updateEquipmentAction(code: string, ref: string, line: EquipmentLineDraft): Promise<ContractEditResult> {
+  const ok = await equipmentEditable(code);
+  if ('error' in ok) return ok;
+  if (typeof ref !== 'string' || !/^EQ-\d{2,}$/.test(ref)) return { error: await tr('Invalid request') };
+  try {
+    await updateProjectEquipment(ok.code, ref, lineFields(line), ok.actor);
+  } catch (e) {
+    return { error: await tr(equipmentError(e)) };
+  }
+  refresh();
+  return { ok: true };
+}
+
+/** R-185: removes an equipment line (never the last one); its planning lots stay, common to the project. */
+export async function removeEquipmentAction(code: string, ref: string): Promise<ContractEditResult> {
+  const ok = await equipmentEditable(code);
+  if ('error' in ok) return ok;
+  if (typeof ref !== 'string' || !/^EQ-\d{2,}$/.test(ref)) return { error: await tr('Invalid request') };
+  try {
+    await removeProjectEquipment(ok.code, ref, ok.actor);
+  } catch (e) {
+    return { error: await tr(equipmentError(e)) };
   }
   refresh();
   return { ok: true };

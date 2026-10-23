@@ -5,7 +5,7 @@
 // draw-downs — and the forecast consumption apart (A-8).
 import { ArrowRight, HourglassHigh } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
-import type { CSSProperties, ReactNode } from 'react';
+import { Fragment, type CSSProperties, type ReactNode } from 'react';
 import { CardGrid, EmptyState, LO, OK, ReconStep, SectionCard, statusTagClass } from '@/components/app';
 import { ButtonLink } from '@/components/ds/Button';
 import { CardTitle } from '@/components/ds/Card';
@@ -145,6 +145,22 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
                 </span>
                 <span className={s.refYear}>{r.year}</span>
               </div>
+            ))}
+            {/* R-185: the references of the project's other equipment types. */}
+            {rex?.others?.map((o) => (
+              <Fragment key={o.mt}>
+                <span className={s.kicker}>{`${t('Financial REX · same product category')} · ${t(o.mt)}`}</span>
+                {o.refs.length ? o.refs.map((r) => (
+                  <div key={`${o.mt}-${r.id}`} className={s.refRow}>
+                    <span className={s.refId}>{r.id}</span>
+                    <span className={s.refName}>
+                      <span>{dataText(r.name, lang)}</span>
+                      <span className={s.refPattern}>{t(r.pattern)}</span>
+                    </span>
+                    <span className={s.refYear}>{r.year}</span>
+                  </div>
+                )) : <span className={s.refPattern}>{t('No reference project')}</span>}
+              </Fragment>
             ))}
           </div>
           <div className={s.section}>

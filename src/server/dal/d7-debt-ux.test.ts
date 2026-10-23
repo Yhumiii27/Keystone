@@ -49,7 +49,8 @@ describe('R-170 — zones and their managers from the zones table', () => {
 describe('R-170 — header project switcher from the project record', () => {
   it('the seeded projects read as the prototype did; a wizard project shows its own codes', async () => {
     const hlt = (await getProject('HLT-026'))!;
-    expect(projectOptionSub(hlt)).toBe('HAV004 · DAS 2 · EMP · R. Aubert');
+    // R-185: the equipment lines in place of the machine type (Harbor Line: its EMP and three MEMU).
+    expect(projectOptionSub(hlt)).toBe('HAV004 · DAS 2 · 1 × EMP · 3 × MEMU · R. Aubert');
     expect(projectOptionHaystack(hlt, 'Extension du terminal Harbor Line')).toBe('hlt-026 harbor line terminal expansion #026 hav004 r. aubert port authority extension du terminal harbor line');
     expect(projectOptionSub((await getProject('EWA-051'))!)).toBe(' · DAS — ·  · S. Perrin');
     const setup = await getNewProjectSetup();

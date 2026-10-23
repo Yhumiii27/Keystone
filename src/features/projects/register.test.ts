@@ -89,7 +89,9 @@ function expectedRow(g: GRow, lang: Lang, en?: GRow): GRow {
   // prototype's segment translation of "#032 · ERP Migration — Phase 2" (which left it English).
   const at = (en ?? g).name.indexOf(' · ');
   const name = lang === 'fr' && en ? `${en.name.slice(0, at)} · ${dataText(en.name.slice(at + 3), 'fr')}` : g.name;
-  return { ...g, name, metaLine, msName, attention, ...D7_ROWS[lang][g.code] } as GRow;
+  // R-185: Harbor Line supplies its EMP and three MEMU (demo equipment lines) — its id line shows them (the prototype: "EMP").
+  const idLine = g.code === 'HLT-026' ? g.idLine.replace(/ · EMP$/, ' · 1 × EMP · 3 × MEMU') : g.idLine;
+  return { ...g, name, metaLine, msName, attention, idLine, ...D7_ROWS[lang][g.code] } as GRow;
 }
 
 describe('Projects register', () => {
@@ -125,8 +127,11 @@ describe('Projects register', () => {
 
     it('searches like the prototype (line 3933)', async () => {
       const m = await model(lang);
-      for (const [q, codes] of Object.entries(golden[lang].search)) {
+      for (const [q, golden_] of Object.entries(golden[lang].search)) {
+        let codes = golden_;
         const hits = m.rows.filter((r) => matchesQuery(r.search, q)).map((r) => r.code);
+        // R-185: a machine type also finds the projects with an equipment line of that type (Harbor Line's three MEMU).
+        if (q.toLowerCase() === 'memu') codes = ['HLT-026', ...codes];
         // EN: identical. FR: the prototype only searched the English names; the rebuild also matches the French ones.
         if (lang === 'en') expect(hits, q).toEqual(codes);
         else expect(hits, q).toEqual(expect.arrayContaining(codes));

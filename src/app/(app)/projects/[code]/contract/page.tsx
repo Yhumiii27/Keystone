@@ -5,7 +5,7 @@
 // Breadcrumb extra = the contract reference as stored (it follows sheet edits).
 // Delivery 7: amounts in the contract's currency and the project's "Currency & budget rate" (C-9, R-075 — set by the
 // portfolio director and, since R-044, Finance; also on a project without contract), the payment rule (R-076), the amendments' signature cycle and own
-// milestones, the guarantees' release (R-079).
+// milestones, the guarantees' release (R-079). Delivery 9 (R-185): the project's "Equipment" card (equipment lines).
 import { EmptyState } from '@/components/app/EmptyState';
 import { Stack } from '@/components/app/SectionCard';
 import { PageHeader } from '@/components/app/shell/page-header';
@@ -14,7 +14,10 @@ import { FormButton } from '@/features/contract/form-button';
 import {
   amendmentFormDef, bondFormDef, contractView, currencyView, editMilestoneFormDef, milestoneFormDef, releaseFormDef, signFormDef,
 } from '@/features/contract/model';
-import { canSetBudgetRate, canSetCapexLink } from '@/domain/rights';
+import { EquipmentCard } from '@/features/contract/equipment-card';
+import { canSetBudgetRate, canSetCapexLink, canSetProjectEquipment } from '@/domain/rights';
+import { listMachineTypeOptions } from '@/server/dal/mtypes';
+import { listProjectEquipments } from '@/server/dal/project-equipment';
 import { getCapexLink } from '@/server/dal/capex-link';
 import { getContract } from '@/server/dal/contract';
 import { getProjectFx } from '@/server/dal/currency';
@@ -26,11 +29,20 @@ export default async function ContractPage({ params }: { params: Promise<{ code:
   const { code } = await params;
   const ctx = await getProjectContext(code, 'contract');
   const projectCode = ctx.project.code;
-  const [{ t, lang }, contract, capexLink] = await Promise.all([getI18n(), getContract(projectCode), getCapexLink(projectCode)]);
+  const [{ t, lang }, contract, capexLink, equipment, types] = await Promise.all([
+    getI18n(), getContract(projectCode), getCapexLink(projectCode), listProjectEquipments(projectCode), listMachineTypeOptions(),
+  ]);
   // C-9: the portfolio director and Finance (R-044) set the project's currency and budget rate.
   const canSetRate = canSetBudgetRate(ctx.viewer.role) && ctx.canEdit('contract');
   // R-190: the director and the project's leads set its CAPEX link (also on a project without contract).
   const capexCard = <CapexLinkCard link={capexLink} code={projectCode} canEdit={canSetCapexLink(ctx.viewer.role, ctx.access) && ctx.canEdit('contract')} t={t} />;
+  // R-185: the project's equipment lines; the director and the project's leads edit them (also on a project without contract).
+  const equipmentCard = (
+    <EquipmentCard
+      lines={equipment} code={projectCode} canEdit={canSetProjectEquipment(ctx.viewer.role, ctx.access) && ctx.canEdit('contract')} types={types}
+      context={projectLabelText(ctx.project, lang)} t={t} lang={lang}
+    />
+  );
 
   if (!contract)
     return (
@@ -39,6 +51,7 @@ export default async function ContractPage({ params }: { params: Promise<{ code:
         <Stack>
           <EmptyState variant="boxed">{t('No contract registered for this project')}</EmptyState>
           <CurrencyCard fx={currencyView(await getProjectFx(projectCode), lang)} code={projectCode} canSetRate={canSetRate} t={t} />
+          {equipmentCard}
           {capexCard}
         </Stack>
       </>
@@ -63,7 +76,7 @@ export default async function ContractPage({ params }: { params: Promise<{ code:
   return (
     <>
       <PageHeader screen="contract" projectCode={projectCode} primary={primary} crumbExtra={contract.sheet.reference} />
-      <ContractScreen view={contractView(contract, t, lang)} code={projectCode} canEdit={canEdit} canSetRate={canSetRate} context={context} forms={forms} t={t} capexCard={capexCard} />
+      <ContractScreen view={contractView(contract, t, lang)} code={projectCode} canEdit={canEdit} canSetRate={canSetRate} context={context} forms={forms} t={t} capexCard={<>{equipmentCard}{capexCard}</>} />
     </>
   );
 }

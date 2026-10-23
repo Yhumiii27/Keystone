@@ -118,7 +118,8 @@ describe('export context and reference providers (seeded database)', () => {
     const lines = new TextDecoder().decode(all.body).replace(/^﻿/, '').trim().split('\r\n');
     expect(all.rowCount).toBe(17);
     expect(lines[0]).toBe('Code,Project,Stage,Project manager,Client,Analytic code,Machine type,Start date,Finish,Health,SPI,CPI,Next milestone,Attention');
-    expect(lines[1].startsWith('HLT-026,Harbor Line Terminal Expansion,Fabrication & Assemblage,R. Aubert,Port authority,HAV004,EMP,Jan 2026,Dec 2026,')).toBe(true);
+    // R-185: the machine type column gives the equipment lines (Harbor Line: its EMP and three MEMU).
+    expect(lines[1].startsWith('HLT-026,Harbor Line Terminal Expansion,Fabrication & Assemblage,R. Aubert,Port authority,HAV004,1 × EMP · 3 × MEMU,Jan 2026,Dec 2026,')).toBe(true);
     // P-1: the projects register is outside the client's workspace — refused (the provider still filters by organisation).
     await expect(ctxOf('projects', 'client', '')).rejects.toMatchObject({ status: 403 });
     const q = await runExport(await ctxOf('projects', 'director', 'q=harbor&view=budget'), 'xlsx');

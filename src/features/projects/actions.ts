@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import {
   CATEGORY_TYPES, CONTINGENCIES, DAS_LIST, WIZARD_CURRENCIES, effectiveDateError, isTransitionAllowed, moveError,
 } from '@/domain/lifecycle';
+import { MAX_EQUIPMENT_LINES, MAX_EQUIPMENT_QUANTITY } from '@/domain/project-equipment';
 import { WIZARD_CALENDAR_OPTIONS, WIZARD_REQUIRED, wizardSiteError, wizardWindowError } from '@/domain/project-template';
 import { costType, machineType, stage as stageCodec, type MachineTypeCode, type StageCode } from '@/server/db/codes';
 import { BL1_DELIVERABLE_MESSAGE, bl1TickRefused } from '@/domain/baseline-policy';
@@ -134,8 +135,12 @@ export interface NewProjectDraft {
   name: string;
   client: string;
   das: string;
-  /** Machine type label: EMP, MEMU, SPUR, AUTRE, R&D, or a custom type's code. */
+  /** Machine type label: EMP, MEMU, SPUR, AUTRE, R&D, or a custom type's code — the main type (first equipment line). */
   mt: string;
+  /**
+   * R-185: the equipment lines (type label × quantity), the first one of `mt`; absent → one line of `mt`, quantity 1.
+   */
+  lines?: { mt: string; qty: number }[];
   cur: string;
   /** 'blank' or the machine type label of the template. */
   template: string;
@@ -187,7 +192,23 @@ export async function createProjectAction(draft: NewProjectDraft): Promise<Creat
   const pm = draft?.pm == null ? setup.defaultManagerId : setup.managers.some((m) => m.id === draft.pm) ? draft.pm : undefined;
   if (pm === undefined || (WIZARD_REQUIRED.pm && !pm)) return { ok: false, error: 'Choose the project manager among the proposed people' };
   if (!das || !mt || !cur || cont == null || !cal || !template || !cats) return { ok: false, error: INVALID_SETUP };
-  const mtCode = (machineType.labels.includes(mt) ? machineType.code(mt) : mt) as MachineTypeCode;
+  const codeOf = (label: string) => (machineType.labels.includes(label) ? machineType.code(label) : label) as MachineTypeCode;
+  const mtCode = codeOf(mt);
+  // R-185: equipment lines — known active types, whole quantities, the first one of the main type.
+  const rawLines: unknown = draft?.lines;
+  let equipments: { machineType: MachineTypeCode; quantity: number }[] | undefined;
+  if (rawLines !== undefined && rawLines !== null) {
+    if (!Array.isArray(rawLines) || !rawLines.length || rawLines.length > MAX_EQUIPMENT_LINES) return { ok: false, error: INVALID_SETUP };
+    equipments = [];
+    for (const l of rawLines as { mt?: unknown; qty?: unknown }[]) {
+      if (typeof l?.mt !== 'string' || !setup.machineTypes.includes(l.mt)) return { ok: false, error: 'Choose the machine type among the proposed types' };
+      const qty = l.qty;
+      if (typeof qty !== 'number' || !Number.isInteger(qty) || qty < 1 || qty > MAX_EQUIPMENT_QUANTITY)
+        return { ok: false, error: `The quantity is a whole number from 1 to ${MAX_EQUIPMENT_QUANTITY}` };
+      equipments.push({ machineType: codeOf(l.mt), quantity: qty });
+    }
+    if (equipments[0].machineType !== mtCode) return { ok: false, error: INVALID_SETUP };
+  }
   const categories = [];
   for (const c of cats) {
     if (!(CATEGORY_TYPES as readonly string[]).includes(c?.type)) return { ok: false, error: INVALID_SETUP };
@@ -201,6 +222,7 @@ export async function createProjectAction(draft: NewProjectDraft): Promise<Creat
       client: str(draft?.client),
       das,
       machineType: mtCode,
+      equipments,
       currency: cur,
       templateCode: template === 'blank' ? 'blank' : mtCode,
       categories,

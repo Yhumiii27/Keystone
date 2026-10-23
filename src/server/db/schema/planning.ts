@@ -5,7 +5,7 @@ import { boolean, date, index, integer, jsonb, pgTable, text, timestamp, unique,
 import type { CalendarCode, ConstraintType, LinkType, MilestoneStatus, PipelineWindow } from '../codes';
 import { id, keur, months, num, timestamps } from './_common';
 import { departments, persons } from './organisation';
-import { projects } from './portfolio';
+import { projectEquipments, projects } from './portfolio';
 
 /**
  * WBS nodes: the project root ("1", level 0) and work packages ("1.1"…, level 1) — the summary rows of
@@ -35,6 +35,8 @@ export const wbsNodes = pgTable(
     /** Chapter 4 (S-9): UID of the summary task / WBS element in the imported MS Project or P6 file (update matching). */
     externalUid: text('external_uid'),
     ...timestamps,
+    /** R-185: the equipment line a work package specific to an equipment belongs to (wizard); null = common to the project. */
+    equipmentId: uuid('equipment_id').references(() => projectEquipments.id, { onDelete: 'set null' }),
   },
   (t) => [unique().on(t.projectId, t.code)],
 );
@@ -98,6 +100,8 @@ export const activities = pgTable(
     /** UID in the imported MS Project / P6 file (S-9 update matching). */
     externalUid: text('external_uid'),
     ...timestamps,
+    /** R-185: the equipment line of an activity of a lot specific to an equipment (wizard); null = common to the project. */
+    equipmentId: uuid('equipment_id').references(() => projectEquipments.id, { onDelete: 'set null' }),
   },
   (t) => [unique().on(t.projectId, t.code)],
 );

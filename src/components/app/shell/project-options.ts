@@ -3,10 +3,13 @@
 // constant PROJ_ID only knew its six projects, so a project created by the wizard showed " · DAS — ·  · S. Perrin".
 import type { ProjectRow } from '@/server/dal/projects';
 
-type OptionSource = Pick<ProjectRow, 'code' | 'name' | 'displayId' | 'analytic' | 'das' | 'machineType' | 'pm' | 'client'>;
+type OptionSource = Pick<ProjectRow, 'code' | 'name' | 'displayId' | 'analytic' | 'das' | 'machineType' | 'equipment' | 'pm' | 'client'>;
 
-/** "HAV004 · DAS 2 · EMP · R. Aubert": codes and a person's name, data shown as stored (never translated). */
-export const projectOptionSub = (p: OptionSource) => `${p.analytic ?? ''} · DAS ${p.das ?? '—'} · ${p.machineType ?? ''} · ${p.pm}`;
+/**
+ * "HAV004 · DAS 2 · EMP · R. Aubert": codes and a person's name, data shown as stored (never translated). R-185: the equipment
+ * lines in place of the machine type ("HAV004 · DAS 2 · 1 × EMP · 3 × MEMU · R. Aubert").
+ */
+export const projectOptionSub = (p: OptionSource) => `${p.analytic ?? ''} · DAS ${p.das ?? '—'} · ${p.equipment ?? p.machineType ?? ''} · ${p.pm}`;
 
 /**
  * Lower-cased search text of a switcher option: code, name, number, analytic code, PM and client (projMatch), plus the

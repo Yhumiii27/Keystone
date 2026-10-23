@@ -1,7 +1,7 @@
 // Portfolio and projects (docs/spec/11 §3.2): projects, sites, members, lifecycle reference (stages, gates,
 // transitions, stage deliverables), deliverable checks, stage history, machine types and project templates.
 import { sql } from 'drizzle-orm';
-import { boolean, check, date, doublePrecision, integer, pgTable, primaryKey, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { boolean, check, date, doublePrecision, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { CalendarCode, CostType, MachineTypeCode, StageCode, StageGroup, TransitionMode, ValidationStatus, ZoneCode } from '../codes';
 import { id, keur, months, num, timestamps } from './_common';
 import { clients, countries, persons, zones } from './organisation';
@@ -78,6 +78,12 @@ export const machineTypePhases = pgTable(
     machineTypeCode: text('machine_type_code').$type<MachineTypeCode>().notNull().references(() => machineTypes.code, { onDelete: 'cascade' }),
     position: integer('position').notNull(),
     name: text('name').notNull(),
+    /**
+     * R-185: a lot specific to an equipment (fabrication, assembly, workshop tests…) — the wizard generates it once per equipment
+     * line of the type; false = a phase common to the project (studies, purchasing, site…). Standard phases: PER_EQUIPMENT_PHASES
+     * (src/domain/project-equipment.ts), set by the seed and by migration 0042 on existing databases.
+     */
+    perEquipment: boolean('per_equipment').notNull().default(false),
   },
   (t) => [primaryKey({ columns: [t.machineTypeCode, t.position] })],
 );
@@ -227,6 +233,41 @@ export const projects = pgTable('projects', {
   check('projects_kind_check', sql`${t.kind} in ('client', 'internal')`),
   check('projects_capex_code_check', sql`${t.capexCode} ~ '^CPX-[A-Z]{3}-[0-9]{4}-[0-9]{2,}$'`),
   check('projects_besoin_ref_check', sql`${t.besoinRef} is null or (${t.capexCode} is not null and ${t.besoinRef} ~ '^CPX-[A-Z]{3}-[0-9]{4}-[0-9]{2,}/B[0-9]{2,}$' and starts_with(${t.besoinRef}, ${t.capexCode} || '/'))`),
+]);
+
+/**
+ * R-185 (AC-5, framing docs/delivery-9/cadrage-r185-r186.md, validated 23 Oct 2026): the equipment a project supplies — one line
+ * per machine type × quantity ("1 × EMP", "3 × MEMU"), numbered EQ-01, EQ-02… per project. The machines delivered (serial
+ * numbers) stay in the installed base (`machines`). The first line (lowest position) gives the project's main type,
+ * `projects.machine_type_code`, kept in sync by the DAL writers (src/server/dal/project-equipment.ts).
+ */
+export const projectEquipments = pgTable('project_equipments', {
+  id: id(),
+  projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  /** "EQ-01" — unique per project, never reused after a removal. */
+  ref: text('ref').notNull(),
+  machineTypeCode: text('machine_type_code').$type<MachineTypeCode>().notNull().references(() => machineTypes.code),
+  quantity: integer('quantity').notNull().default(1),
+  /** Free text typed by the PM ("Portique 40 t quai 4"); null = none. Shown as typed (dataText). */
+  label: text('label'),
+  /** Display order (0 = the main line). */
+  position: integer('position').notNull(),
+  /** Target capacity (value + unit, "40" "t"), optional. */
+  capacityValue: num('capacity_value'),
+  capacityUnit: text('capacity_unit'),
+  /** Options chosen for the line (typed text for now; catalogue option codes with R-186). */
+  options: jsonb('options').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  /** Arche machine need at the origin of the line ("CPX-SAI-2026-01/B01"); a cross-schema reference: text, no foreign key. */
+  besoinRef: text('besoin_ref'),
+  /** Catalogue version of the machine type chosen (R-186); null until the catalogue is versioned. */
+  catalogueVersion: integer('catalogue_version'),
+  ...timestamps,
+}, (t) => [
+  unique('project_equipments_project_ref_unique').on(t.projectId, t.ref),
+  check('project_equipments_ref_check', sql`${t.ref} ~ '^EQ-[0-9]{2,}$'`),
+  check('project_equipments_quantity_check', sql`${t.quantity} >= 1`),
+  check('project_equipments_besoin_ref_check', sql`${t.besoinRef} is null or ${t.besoinRef} ~ '^CPX-[A-Z]{3}-[0-9]{4}-[0-9]{2,}/B[0-9]{2,}$'`),
+  check('project_equipments_options_check', sql`jsonb_typeof(${t.options}) = 'array'`),
 ]);
 
 /** Project site (GEO 3169). Zone = zoneOverride ?? country zone. */

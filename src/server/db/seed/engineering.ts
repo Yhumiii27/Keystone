@@ -4,6 +4,7 @@
 // aggregate edited on the Machine types screen (NP_TEMPLATES phases / cost categories / description / calendar,
 // ITP_TEMPLATES systems). The prototype keys the register and the P&ID to HLT-026 (PID.code; ENG_* are Harbor Line's).
 import { eq } from 'drizzle-orm';
+import { isPerEquipmentPhase } from '@/domain/project-equipment';
 import { PROTO } from '@/server/prototype';
 import {
   bomScope, calendar, checkSeverity, checkStatus, costType, discipline, drawingState, isoOfDemoDate, machineType, outputState, pidTagKind,
@@ -89,7 +90,8 @@ export async function seedMachineTypeAggregate(tx: Tx): Promise<void> {
     const t = templates.find((x) => x.mt === mt) ?? {};
     await tx.update(machineTypes).set({ description: t.desc ?? '', calendar: calendar.code(t.cal ?? 'Standard 5d · 8h') }).where(eq(machineTypes.code, code));
     const phases = (t.phases ?? []) as string[];
-    if (phases.length) await tx.insert(machineTypePhases).values(phases.map((name, position) => ({ machineTypeCode: code, position, name })));
+    // R-185: the phases specific to an equipment (generated once per equipment line by the wizard).
+    if (phases.length) await tx.insert(machineTypePhases).values(phases.map((name, position) => ({ machineTypeCode: code, position, name, perEquipment: isPerEquipmentPhase(code, name) })));
     const cats = (t.cats ?? []) as [string, string, string][];
     if (cats.length)
       await tx.insert(machineTypeCostCategories).values(cats.map(([name, type, budget], position) => ({
