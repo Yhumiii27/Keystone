@@ -1,7 +1,7 @@
 // Quality — client deliverables register with RACI-B and client acceptance (PV de réception) (docs/spec/11 §3.7
 // Deliverable / DeliverableRaci; screens 07 §2.3.b, client portal 03 §8.4, My approvals "Deliverable acceptance").
 // Keystone owns the deliverables. Non-conformities (NCR, 8D) are owned by Vigie: see the read-only mirror in vigie.ts.
-import { date, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { date, index, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { DeliverableReviewDecision, DeliverableStatus, DeliverableType, RaciCode } from '../codes';
 import { id, timestamps } from './_common';
 import { documents } from './documents';
@@ -52,7 +52,9 @@ export const deliverables = pgTable(
     position: integer('position').notNull(),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.number)],
+  // K-11 (Arche, R-193): the incremental read of pub_livrables (`maj_le > …`, maj_le = updated_at) reaches this index through the
+  // security_barrier view (timestamptz comparisons are leakproof); docs/delivery-9/notes-share-views.md § 8.
+  (t) => [unique().on(t.projectId, t.number), index('deliverables_updated_at_idx').on(t.updatedAt)],
 );
 
 /** RACI-B of a deliverable: R produces, A signs off, C consulted, I informed, B backup (names as the register shows them). */

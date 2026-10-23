@@ -17,8 +17,9 @@
 ## 2. Échanges (contrats de vues `pub_`)
 
 Chaque flux est une vue `pub_` lue par l’autre application (colonnes jamais supprimées ni renommées ; nouvelle version
-`pub_<nom>_v2` si besoin ; nouvelles colonnes en fin de vue). Les lecteurs interrogent par date (`occurred_at` / `updated_at`
-indexés), comme les tâches planifiées de Keystone le font déjà pour Cursus.
+`pub_<nom>_v2` si besoin ; nouvelles colonnes en fin de vue). Les lecteurs interrogent par date (`maj_le`, comparée à une valeur
+`timestamptz`), comme les tâches planifiées de Keystone le font déjà pour Cursus ; la colonne source est indexée quand `maj_le` est
+une seule colonne d’une table qui grandit (livrables, réserves : K-11, 23 oct. 2026, [`notes-share-views.md`](../delivery-9/notes-share-views.md) § 8).
 
 | Sens | Vue | Contenu | Propriétaire |
 |---|---|---|---|
@@ -31,7 +32,7 @@ indexés), comme les tâches planifiées de Keystone le font déjà pour Cursus.
 | Keystone → CAPEX | `pub_avenants` (**publiée le 22 oct. 2026**) | avenants envoyés au client (brouillons exclus) : numéro, objet, montant, délai (jours de la demande de modification liée), statut proposé / signé / refusé, date de signature | Keystone (R-189) |
 | Keystone → CAPEX | `pub_reserves` (**publiée le 22 oct. 2026**), `pub_livrables` (existe ; **+ `type`, `accepte_le`, `maj_le` le 22 oct. 2026**) | réserves A/B/C ouvertes / levées ; livrables et PV d’acceptation | Keystone (R-189) |
 | Keystone → CAPEX | `pub_pack_ingenierie` (nouvelle) | part EPC2i du pack ingénierie : pièces attendues / validées par famille (P&ID, BOM, layout, électrique, analyses fonctionnelles), % pondéré | Keystone (R-191) |
-| Keystone → CAPEX | `pub_parc_machines` (existe) | machines livrées (numéro de série, type, site) | Keystone |
+| Keystone → CAPEX | `pub_parc_machines` (existe ; **+ `type_machine_code`, `livree_le`, `maj_le` le 23 oct. 2026**, K-07) | machines livrées (numéro, type, site, projet, date de livraison), une ligne par machine et article monté | Keystone (R-193) |
 | CAPEX → Keystone | `pub_rampup` | par machine du parc : capacité nominale atteinte, TRS / OEE et rebuts de réception, date « 30 jours continus » | CAPEX (lu par R-193) |
 | Vigie → les deux | (à définir avec Vigie) | études et actions HazID / HazOp / AMDEC / PSSR, état et retards | Vigie (R-192) |
 

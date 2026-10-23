@@ -385,6 +385,8 @@ export async function completeIntervention(number: string, input: InterventionDo
         const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${machinePartRevisions.position}), -1)::int` }).from(machinePartRevisions).where(eq(machinePartRevisions.machineId, i.machineId));
         await tx.insert(machinePartRevisions).values({ machineId: i.machineId, partRef, revision: revision!, position: pos + 1 });
       }
+      // The configuration is part of the machine record: its last change moves pub_parc_machines.maj_le (Arche K-07, R-193).
+      await tx.update(machines).set({ updatedAt: new Date() }).where(eq(machines.id, i.machineId));
       configChange = ` · ${partRef} ${old?.revision ?? '—'} → ${revision}`;
       await trace(tx, who, { objectRef: m.number, change: `configuration: ${partRef} ${old?.revision ?? '—'} → ${revision} · ${number}`, area: 'Installed base', entityType: 'machine', entityId: i.machineId });
     }
