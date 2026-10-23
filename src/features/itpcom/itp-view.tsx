@@ -4,8 +4,10 @@
 // Start / Close (client island, editors only; "No punch item yet" when the project has none). R-117 (A-6 'a'): the punch
 // list is the project's single list — an Origin filter (All / Inspection / Site), an Origin column, the NCR column for
 // internal viewers (P-10b), Start / Close on every item and `id="punch-P-01"` on each row (R-128's document relations
-// scroll to it). "Add inspection" / "Add punch item" is the header's primary action. Server Component.
-import { ArrowSquareOut, ClipboardText, Eye, FileText, Funnel, ListChecks, ShieldWarning } from '@phosphor-icons/react/dist/ssr';
+// scroll to it). R-185 (choice 4): with more than one equipment line, an Equipment selector picks the line whose plan is
+// shown (one plan per line) and, on the punch list, filters the items by line, with an Equipment column. "Add inspection" /
+// "Add punch item" is the header's primary action. Server Component.
+import { ArrowSquareOut, ClipboardText, Eye, FileText, Funnel, Gear, ListChecks, ShieldWarning } from '@phosphor-icons/react/dist/ssr';
 import { EmptyState } from '@/components/app/EmptyState';
 import { FilterBar, FilterLabel } from '@/components/app/Filter';
 import { KpiGrid, KpiTile } from '@/components/app/Kpi';
@@ -45,6 +47,13 @@ export function ItpBody({ code, view, canEdit, photos, t }: ItpBodyProps) {
         <Segmented wrap label={view.displayLabel} value={view.view} options={view.views.map((o) => ({ value: o.value, label: o.label, href: o.href, icon: VIEW_ICON[o.value] }))} />
       </FilterBar>
 
+      {view.equipment && (
+        <FilterBar>
+          <FilterLabel icon={Gear}>{view.equipment.label}</FilterLabel>
+          <Segmented wrap label={view.equipment.label} value={view.equipment.value} options={view.equipment.options.map((o) => ({ value: o.value, label: o.label, href: o.href }))} />
+        </FilterBar>
+      )}
+
       <KpiGrid>
         {view.kpis.map((k) => (
           <KpiTile key={k.label} label={k.label} value={k.value} sub={k.sub} color={k.color} />
@@ -72,7 +81,7 @@ export function ItpBody({ code, view, canEdit, photos, t }: ItpBodyProps) {
           {view.punch.empty ? (
             <EmptyState variant="boxed">{view.punch.empty}</EmptyState>
           ) : (
-            <PunchTable code={code} rows={view.punch.rows} ncr={view.punch.ncr} canEdit={canEdit} photos={photos} t={t} />
+            <PunchTable code={code} rows={view.punch.rows} ncr={view.punch.ncr} equipment={view.punch.equipment} canEdit={canEdit} photos={photos} t={t} />
           )}
         </SectionCard>
       )}
@@ -81,7 +90,7 @@ export function ItpBody({ code, view, canEdit, photos, t }: ItpBodyProps) {
 }
 
 /** Punch list table (12.5px); the unlabelled first column (P-01…) is named for screen readers. */
-function PunchTable({ code, rows, ncr, canEdit, photos, t }: { code: string; rows: PunchRowView[]; ncr: boolean; canEdit: boolean; photos?: ItpBodyProps['photos']; t: T }) {
+function PunchTable({ code, rows, ncr, equipment, canEdit, photos, t }: { code: string; rows: PunchRowView[]; ncr: boolean; equipment?: boolean; canEdit: boolean; photos?: ItpBodyProps['photos']; t: T }) {
   return (
     <Table size={12.5}>
       <thead>
@@ -89,6 +98,7 @@ function PunchTable({ code, rows, ncr, canEdit, photos, t }: { code: string; row
           <Th aria-label={t('Reference')} />
           <Th>{t('Item')}</Th>
           <Th>{t('Origin')}</Th>
+          {equipment && <Th>{t('Equipment')}</Th>}
           <Th>{t('System')}</Th>
           <Th>{t('Cat.')}</Th>
           <Th>{t('Raised by')}</Th>
@@ -196,6 +206,11 @@ function PunchRow({ code, row: p, ncr, canEdit, photos, t }: { code: string; row
       <Td tone="secondary" className={s.nowrap}>
         {p.origin}
       </Td>
+      {p.equipment !== null && (
+        <Td tone="secondary" className={s.nowrap}>
+          {p.equipment}
+        </Td>
+      )}
       <Td tone="secondary">{p.location}</Td>
       <Td>
         <span className={cx(p.categoryClass, s.small)}>{p.category}</span>

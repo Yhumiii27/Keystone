@@ -18,6 +18,7 @@ import { PART_STATUS_TAG, type PartStatus, type RevisionDiffKind, type WearSpare
 import type { BomScreenData } from '@/server/dal/bom-screen';
 import type { BomLine, BomTreeNode } from '@/server/dal/bom';
 import { VIGIE_LINK_ATTRS, vigieNewEcoUrl } from '@/server/integrations/vigie/links';
+import { COMMON_EQUIPMENT, equipmentFilterOf, filterByEquipment, showsEquipment } from '@/domain/equipment-scope';
 import { bomHref, type BomState, type BomView } from './links';
 import { PRICE_MASK } from '@/domain/rights';
 import {
@@ -114,6 +115,16 @@ export interface FlatRowView {
   restriction: string;
   restricted: boolean;
   alsoUsedIn: string;
+  /** R-185: the line's equipment — select value (a line's reference or 'common') and text; absent when the project has at most one line. */
+  equipment?: { value: string; label: string };
+}
+
+/** R-185: the flat list's equipment filter, column and (editors) per-line select — projects with more than one equipment line. */
+export interface FlatEquipmentView {
+  label: string;
+  options: LinkOption[];
+  /** Choices of the per-line select ("Common to the project", "EQ-02 · 3 × MEMU"…); null when the viewer may not edit the BOM. */
+  choices: { value: string; label: string }[] | null;
 }
 
 export interface FlatView {
@@ -135,20 +146,30 @@ export interface FlatView {
   rows: FlatRowView[];
   /** Empty-list message (project without a BOM, or no match). */
   empty: string | null;
+  /** R-185: null when the project has at most one equipment line (the list of before R-185). */
+  equipment?: FlatEquipmentView | null;
 }
 
 const SORT_LABEL: Record<BomSortKey, string> = { ref: 'Reference', name: 'Article', type: 'Type', total: 'Total', status: 'Status' };
 
 /** Flat list (1179–1209; `bomRows`, `bomFilterVals` 4206–4220). */
-export function flatView(code: string, state: BomState, lines: readonly BomLine[], t: T, lang: Lang, prices = true): FlatView {
+export function flatView(
+  code: string, state: BomState, lines: readonly BomLine[], t: T, lang: Lang, prices = true,
+  equipment?: { lines: readonly { ref: string; label: string; position: number }[]; canEdit: boolean },
+): FlatView {
   const eur = priceText(prices, lang);
   const types = bomTypeOptions(lines);
   const suppliers = bomSupplierOptions(lines);
   // A type or supplier the BOM does not have (stale link, other project) falls back to "All".
   const type = types.some((o) => o.value === state.type) ? state.type : null;
   const mfr = suppliers.some((o) => o.value === state.mfr) ? state.mfr : null;
-  const shown = sortBomLines(filterBomLines(lines, { q: state.q, type, mfr }), state.sort);
-  const keep = { ...state, type, mfr, part: null, node: null };
+  // R-185: the equipment filter (projects with more than one line; an unknown value falls back to every line).
+  const eqLines = equipment && showsEquipment(equipment.lines) ? equipment.lines : null;
+  const eqFilter = eqLines ? equipmentFilterOf(state.eq ?? null, eqLines.map((l) => l.ref)) : 'all';
+  const eq = eqFilter === 'all' ? null : eqFilter;
+  const byEquipment = eqLines ? filterByEquipment(lines.map((l) => ({ ...l, equipmentRef: l.equipmentRef ?? null })), eqFilter) : lines;
+  const shown = sortBomLines(filterBomLines(byEquipment, { q: state.q, type, mfr }), state.sort);
+  const keep = { ...state, type, mfr, eq, part: null, node: null };
   const typeOptions: LinkOption[] = [
     { value: '', label: t(`All types · ${lines.length}`), href: bomHref(code, { ...keep, type: null }), active: !type },
     ...types.map((o) => ({ value: o.value, label: t(`${o.label} · ${o.count}`), href: bomHref(code, { ...keep, type: o.value }), active: type === o.value })),
@@ -157,7 +178,8 @@ export function flatView(code: string, state: BomState, lines: readonly BomLine[
     { value: '', label: t(`All suppliers · ${lines.length}`), href: bomHref(code, { ...keep, mfr: null }), active: !mfr },
     ...suppliers.map((o) => ({ value: o.value, label: `${o.label} · ${o.count}`, href: bomHref(code, { ...keep, mfr: o.value }), active: mfr === o.value })),
   ];
-  const hasFilter = !!(state.q || type || mfr);
+  const hasFilter = !!(state.q || type || mfr || eq);
+  const eqText = (ref: string | null) => (ref ? ref : t('Common'));
   const headers = BOM_SORT_KEYS.map((key) => ({
     key, label: t(SORT_LABEL[key]), href: bomHref(code, { ...keep, sort: nextBomSort(state.sort, key) }),
     dir: state.sort.key === key ? state.sort.dir : null, ...(key === 'total' ? { align: 'right' as const } : {}),
@@ -183,6 +205,7 @@ export function flatView(code: string, state: BomState, lines: readonly BomLine[
     restriction: l.exportRestriction ? dataT(l.exportRestriction, lang) : '—',
     restricted: !!l.exportRestriction,
     alsoUsedIn: l.alsoUsedIn.join(', ') || '—',
+    ...(eqLines ? { equipment: { value: l.equipmentRef ?? COMMON_EQUIPMENT, label: eqText(l.equipmentRef ?? null) } } : {}),
   }));
   return {
     q: state.q,
@@ -191,7 +214,7 @@ export function flatView(code: string, state: BomState, lines: readonly BomLine[
     typeOptions,
     supplierLabel: t('Supplier'),
     supplierOptions,
-    clearHref: hasFilter ? bomHref(code, { ...keep, q: '', type: null, mfr: null }) : null,
+    clearHref: hasFilter ? bomHref(code, { ...keep, q: '', type: null, mfr: null, eq: null }) : null,
     clearLabel: t('Clear filters'),
     count: countText(shown.length, lines.length, t),
     title: bomTitleText(shown.length, t),
@@ -200,6 +223,19 @@ export function flatView(code: string, state: BomState, lines: readonly BomLine[
     labels: { makeBuy: t('Make / buy'), pu: 'PU/PR', qty: t('Qty'), price: t('Unit price'), restrictions: t('Restrictions'), alsoUsedIn: t('Also used in') },
     rows,
     empty: !lines.length ? t('No article is registered in this project’s BOM yet') : !rows.length ? t('No article matches') : null,
+    ...(eqLines
+      ? {
+          equipment: {
+            label: t('Equipment'),
+            options: [
+              { value: '', label: t('All equipment'), href: bomHref(code, { ...keep, eq: null }), active: !eq },
+              ...eqLines.map((l) => ({ value: l.ref, label: l.label, href: bomHref(code, { ...keep, eq: l.ref }), active: eq === l.ref })),
+              { value: COMMON_EQUIPMENT, label: t('Common to the project'), href: bomHref(code, { ...keep, eq: COMMON_EQUIPMENT }), active: eq === COMMON_EQUIPMENT },
+            ],
+            choices: equipment?.canEdit ? [{ value: COMMON_EQUIPMENT, label: t('Common to the project') }, ...eqLines.map((l) => ({ value: l.ref, label: l.label }))] : null,
+          },
+        }
+      : {}),
   };
 }
 
@@ -539,6 +575,8 @@ export interface BomViewOpts {
   canRaiseEco: boolean;
   /** Prices, costs and values shown (R-046, NEW-D2-1: director, PMs, procurement); masked otherwise. Default true. */
   prices?: boolean;
+  /** R-185: the project's equipment lines (main first): the flat list's equipment filter, column and select when there are several. */
+  equipment?: readonly { ref: string; label: string; position: number }[];
 }
 
 /** A price, or the mask for a viewer who may not see supplier prices (R-046). */
@@ -556,7 +594,7 @@ export function bomScreenView(code: string, state: BomState, data: BomScreenData
     views: viewSegView(code, state, t),
     // E-2a (R-103): the roll-ups use the BOM valuation (the prototype's template said "the last purchase price").
     note: t('Roll-ups use the ordered price, else the last purchase price, else the catalogue price'),
-    flat: v === 'flat' ? flatView(code, state, data.bom.lines, t, lang, prices) : null,
+    flat: v === 'flat' ? flatView(code, state, data.bom.lines, t, lang, prices, opts.equipment ? { lines: opts.equipment, canEdit: opts.canEdit } : undefined) : null,
     tree: v === 'tree' && data.assembly ? treeView(code, state, data.assembly.rows, t, lang, prices) : null,
     node: v === 'tree' && data.assembly ? nodeDrawerView(code, state, data.assembly, opts, t, lang) : null,
     used: v === 'used' && data.whereUsed ? whereUsedView(state, data.whereUsed, t, lang) : null,

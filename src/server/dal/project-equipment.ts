@@ -4,7 +4,12 @@ import 'server-only';
 // New project wizard (insertEquipmentLines) and by the project's leads on the Contract screen (add / edit / remove). Every
 // writer keeps projects.machine_type_code = the type of the first line (the "main type" the screens written before R-185
 // read). Rules: src/domain/project-equipment.ts. Permission checks belong to the calling Server Function.
+// R-185 part 2 (choice 4: one ITP plan per line): adding a line creates its plan (its type's ITP systems frozen); changing a
+// line's type rebuilds its plan while it has no inspection; removing a line is refused while its plan has inspections
+// (`equipmentRemovalBlocker`), else its plan goes with it and its punch items, commissioning systems, BOM lines and machines
+// become common to the project (foreign keys `set null`; the counts are in the audit row).
 import { and, asc, eq, inArray } from 'drizzle-orm';
+import { equipmentRemovalBlocker } from '@/domain/equipment-scope';
 import {
   MAX_EQUIPMENT_LINES, equipmentSummary, mainTypeOf, nextEquipmentRef, parseEquipmentLine, type EquipmentLineInput,
 } from '@/domain/project-equipment';
@@ -12,8 +17,9 @@ import { systemMessage } from '@/domain/system-messages';
 import { getDb } from '@/server/db/client';
 import { machineType, type MachineTypeCode } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
-import { activities, machineTypes, projectEquipments, projects, wbsNodes } from '@/server/db/schema';
+import { activities, commissioningSystems, machineTypes, machines, projectBomLines, projectEquipments, projects, punchItems, wbsNodes } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
+import { ensureEquipmentPlan, equipmentPlanInspections, rebuildEquipmentPlan } from './itp';
 import type { Actor } from './ops-common';
 
 type Q = DB | Tx;
@@ -152,6 +158,8 @@ export async function addProjectEquipment(projectCode: string, input: Record<str
       .values({ projectId: p.id, ref, position, ...v, machineTypeCode: v.machineTypeCode as MachineTypeCode })
       .returning({ id: projectEquipments.id });
     await syncMainType(tx, p.id);
+    // R-185 (choice 4): the line's inspection plan, its type's ITP systems of today frozen.
+    await ensureEquipmentPlan(tx, p.id, row.id);
     const who = await actorOf(tx, actor);
     const message = systemMessage('project.equipmentAdded', { ref, equipment: lineText({ ...v, typeLabel: types.label(v.machineTypeCode) }) });
     await writeAudit(tx, { ...who, objectRef: `${projectCode} · ${ref}`, message, area: 'Contract', entityType: 'project_equipment', entityId: row.id, projectId: p.id, after: plain({ ref, ...v }) });
@@ -179,6 +187,8 @@ export async function updateProjectEquipment(projectCode: string, ref: string, i
       .set({ ...v, machineTypeCode: v.machineTypeCode as MachineTypeCode, updatedAt: new Date() })
       .where(and(eq(projectEquipments.id, cur.id), eq(projectEquipments.projectId, p.id)));
     await syncMainType(tx, p.id);
+    // R-185: a new type rebuilds the line's plan while it has no inspection (else the plan keeps what was instantiated).
+    if (v.machineTypeCode !== cur.machineTypeCode) await rebuildEquipmentPlan(tx, cur.id, v.machineTypeCode);
     const who = await actorOf(tx, actor);
     const message = systemMessage('project.equipmentChanged', { ref, from: lineText(cur), to: lineText({ ...v, typeLabel: types.label(v.machineTypeCode) }) });
     await writeAudit(tx, { ...who, objectRef: `${projectCode} · ${ref}`, message, area: 'Contract', entityType: 'project_equipment', entityId: cur.id, projectId: p.id, before, after });
@@ -187,9 +197,10 @@ export async function updateProjectEquipment(projectCode: string, ref: string, i
 }
 
 /**
- * Removes a line. The last line of a project is kept (a project supplies at least one equipment once it has one). The planning
- * lots and activities of the line stay, common to the project (equipment_id set null by the foreign key). The next line becomes
- * the main one when the first is removed.
+ * Removes a line. The last line of a project is kept (a project supplies at least one equipment once it has one), and so is a
+ * line whose ITP plan has inspections (R-185 part 2). The planning lots and activities, punch items, commissioning systems, BOM
+ * lines and machines of the line stay, common to the project (equipment_id set null by the foreign keys); its plan without
+ * inspection goes with it. The next line becomes the main one when the first is removed.
  */
 export async function removeProjectEquipment(projectCode: string, ref: string, actor: Actor): Promise<void> {
   const db = await getDb();
@@ -200,9 +211,15 @@ export async function removeProjectEquipment(projectCode: string, ref: string, a
     const cur = lines.find((l) => l.ref === ref);
     if (!cur) throw new Error('Unknown equipment line');
     if (lines.length <= 1) throw new Error('A project keeps at least one equipment line');
-    const [lots, acts] = await Promise.all([
+    const blocker = equipmentRemovalBlocker({ inspections: await equipmentPlanInspections(tx, cur.id) });
+    if (blocker) throw new Error(blocker);
+    const [lots, acts, punch, systems, bom, fleet] = await Promise.all([
       tx.select({ id: wbsNodes.id }).from(wbsNodes).where(eq(wbsNodes.equipmentId, cur.id)),
       tx.select({ id: activities.id }).from(activities).where(eq(activities.equipmentId, cur.id)),
+      tx.select({ id: punchItems.id }).from(punchItems).where(eq(punchItems.equipmentId, cur.id)),
+      tx.select({ id: commissioningSystems.id }).from(commissioningSystems).where(eq(commissioningSystems.equipmentId, cur.id)),
+      tx.select({ id: projectBomLines.id }).from(projectBomLines).where(eq(projectBomLines.equipmentId, cur.id)),
+      tx.select({ id: machines.id }).from(machines).where(eq(machines.equipmentId, cur.id)),
     ]);
     await tx.delete(projectEquipments).where(eq(projectEquipments.id, cur.id));
     await syncMainType(tx, p.id);
@@ -210,7 +227,10 @@ export async function removeProjectEquipment(projectCode: string, ref: string, a
     const message = systemMessage('project.equipmentRemoved', { ref, equipment: lineText(cur) });
     await writeAudit(tx, {
       ...who, objectRef: `${projectCode} · ${ref}`, message, area: 'Contract', entityType: 'project_equipment', entityId: cur.id, projectId: p.id,
-      before: { ...plain(cur), workPackages: lots.length, activities: acts.length },
+      before: {
+        ...plain(cur), workPackages: lots.length, activities: acts.length, punchItems: punch.length, commissioningSystems: systems.length, bomLines: bom.length,
+        machines: fleet.length,
+      },
     });
     await recordActivity(tx, { ...who, message, kind: 'change', projectId: p.id });
   });

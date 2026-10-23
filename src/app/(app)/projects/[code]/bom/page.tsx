@@ -5,7 +5,8 @@
 // Primary action "Add article" (AF `bom`) for viewers who may edit the project BOM: hidden outside the workspace and on
 // a read-only project, and refused server-side (src/features/bom/actions.ts). "Raise ECO" opens Vigie (which owns the
 // ECOs) for viewers whose workspace has the ECO screen — the part drawer's rule; ECO tags open Keystone's ECO screen,
-// where progress is recorded and sent to Vigie.
+// where progress is recorded and sent to Vigie. R-185: with more than one equipment line, the flat list filters by line
+// (`?eq=`), shows each article's line (a select for BOM editors) and "Add article" asks for it.
 import { PageHeader } from '@/components/app/shell/page-header';
 import { AddArticleButton } from '@/features/bom/client-buttons';
 import { BomBody } from '@/features/bom/bom-view';
@@ -14,6 +15,8 @@ import { bomHref, parseBomState } from '@/features/bom/links';
 import { bomScreenView } from '@/features/bom/model';
 import { PartDrawer } from '@/features/plm/part-drawer';
 import { getBomActivityOptions, getBomScreen } from '@/server/dal/bom-screen';
+import { listProjectEquipments } from '@/server/dal/project-equipment';
+import { equipmentLotLabel } from '@/domain/project-equipment';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { canSeeSupplierPrices } from '@/domain/rights';
@@ -29,25 +32,27 @@ export default async function BomPage({ params, searchParams }: { params: Promis
   const canRaiseEco = !ctx.isOutside('eco');
   const state = parseBomState(sp);
 
-  const [{ t, lang }, data, activities] = await Promise.all([
+  const [{ t, lang }, data, activities, lines] = await Promise.all([
     getI18n(),
     getBomScreen(projectCode, { view: state.view, used: state.used, system: state.sys }),
     canEdit ? getBomActivityOptions(projectCode) : Promise.resolve(null),
+    listProjectEquipments(projectCode),
   ]);
+  const equipment = lines.map((l) => ({ ref: l.ref, label: equipmentLotLabel(l), position: l.position }));
 
   const primary =
     canEdit && activities ? (
       <AddArticleButton
         code={projectCode}
         context={projectLabelText(ctx.project, lang)}
-        form={localizeBomForm(bomFormDef(activities), t)}
+        form={localizeBomForm(bomFormDef(activities, equipment), t)}
       />
     ) : undefined;
 
   return (
     <>
       <PageHeader screen="bom" projectCode={projectCode} primary={primary} />
-      {data && <BomBody view={bomScreenView(projectCode, state, data, { canEdit, canRaiseEco, prices: canSeeSupplierPrices(ctx.viewer.role) }, t, lang)} canEdit={canEdit} />}
+      {data && <BomBody view={bomScreenView(projectCode, state, data, { canEdit, canRaiseEco, prices: canSeeSupplierPrices(ctx.viewer.role), equipment }, t, lang)} canEdit={canEdit} />}
       {state.part && <PartDrawer key={state.part} partRef={state.part} projectCode={projectCode} closeHref={bomHref(projectCode, { ...state, part: null })} />}
     </>
   );

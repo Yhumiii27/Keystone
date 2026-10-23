@@ -8,6 +8,7 @@ import {
   PUNCH_ORIGIN_FILTERS, blockingAOf, commissioningCellLook, filterPunchByOrigin, groupBySystem, inspectionLook, inspectionNcrTitle, itpDateText, openByCategoryText,
   punchLook, punchStep, resultLineText, summariseCommissioning, summariseItp, type PunchOriginFilter,
 } from '@/domain/itpcom';
+import { COMMON_EQUIPMENT, filterByEquipment, groupByEquipment, sameEquipment, showsEquipment, type EquipmentFilter } from '@/domain/equipment-scope';
 import { docHref, documentsHref } from '@/features/docs/links';
 import type { Lang, T } from '@/i18n/translate';
 import { screenHref } from '@/config/screens';
@@ -55,6 +56,23 @@ export const itpHref = (code: string, view: ItpViewKey = 'plan') => screenHref('
 
 /** The punch list filtered on an origin (R-117): `?view=punch&origin=itp|site` (every origin omitted). */
 export const punchListHref = (code: string, origin: PunchOriginFilter = 'all') => itpHref(code, 'punch') + (origin === 'all' ? '' : `&origin=${origin}`);
+
+/**
+ * R-185: the screen on an equipment line — the plan of a line (`?equipment=EQ-02`) or the punch list filtered on a line
+ * (`…&equipment=EQ-02|common`; 'all' / the main line's plan omitted), keeping the punch list's origin filter.
+ */
+export function itpEquipmentHref(code: string, view: ItpViewKey, equipment: EquipmentFilter | null, origin: PunchOriginFilter = 'all'): string {
+  const base = view === 'punch' ? punchListHref(code, origin) : itpHref(code, 'plan');
+  if (!equipment || equipment === 'all') return base;
+  return `${base}${base.includes('?') ? '&' : '?'}equipment=${encodeURIComponent(equipment)}`;
+}
+
+/** An equipment line as the ITP screen offers it (R-185): "EQ-02", "EQ-02 · 3 × MEMU". */
+export interface ItpEquipmentLine {
+  ref: string;
+  label: string;
+  position: number;
+}
 
 /** Id of a punch item's row (R-117 / R-128: a document relation "P-01" links to `…/itp?view=punch#punch-P-01`). */
 export const punchAnchorId = (number: string) => `punch-${number}`;
@@ -104,6 +122,8 @@ export interface PunchRowView {
   siteOrigin: boolean;
   /** Vigie's NCR number or '—'; null for the client (P-10b: the column is not shown). */
   ncr: string | null;
+  /** R-185: the item's equipment line ("EQ-02") or "Common"; null when the project has at most one line (no column). */
+  equipment: string | null;
   location: string;
   category: string;
   categoryClass: string;
@@ -122,6 +142,11 @@ export interface ItpScreenView {
   displayLabel: string;
   views: { value: ItpViewKey; label: string; href: string }[];
   kpis: KpiView[];
+  /**
+   * R-185 (choice 4): the equipment selector of the plan view (one plan per line) or the equipment filter of the punch list —
+   * null when the project has at most one line (the screen of before R-185).
+   */
+  equipment: { label: string; value: string; options: { value: string; label: string; href: string }[] } | null;
   /** Plan view: one group per template system with lines; `empty` = "No inspection plan…" when there is none. */
   plan: { title: string; groups: InspectionGroupView[]; empty: string | null } | null;
   /**
@@ -132,6 +157,8 @@ export interface ItpScreenView {
   punch: {
     title: string; subtitle: string; rows: PunchRowView[]; empty: string | null;
     origin: PunchOriginFilter; originLabel: string; origins: { value: PunchOriginFilter; label: string; href: string }[]; ncr: boolean;
+    /** R-185: the Equipment column is shown (the project has more than one line). */
+    equipment: boolean;
   } | null;
 }
 
@@ -160,9 +187,33 @@ export interface ItpScreenInput {
   today: string;
   /** Default: an internal reader who cannot record results. */
   viewer?: ItpViewer;
+  /**
+   * R-185: the project's equipment lines (main first), the line whose plan is shown (plan view) and the punch list's equipment
+   * filter (`?equipment=`). Absent / at most one line: the screen of before R-185.
+   */
+  equipment?: { lines: readonly ItpEquipmentLine[]; selected: string | null; filter?: EquipmentFilter };
 }
 
-export function itpScreenView({ code, view, plan, punch, origin = 'all', machineType, today, viewer = READER }: ItpScreenInput, t: T, lang: Lang): ItpScreenView {
+export function itpScreenView({ code, view, plan, punch, origin = 'all', machineType, today, viewer = READER, equipment }: ItpScreenInput, t: T, lang: Lang): ItpScreenView {
+  const lines = equipment?.lines ?? [];
+  const multi = showsEquipment(lines);
+  const filter: EquipmentFilter = equipment?.filter ?? 'all';
+  const lineLabel = (ref: string | null) => (ref ? lines.find((l) => l.ref === ref)?.ref ?? ref : t('Common'));
+  const equipmentView: ItpScreenView['equipment'] = !multi
+    ? null
+    : view === 'plan'
+      ? {
+          label: t('Equipment'), value: equipment?.selected ?? lines[0].ref,
+          options: lines.map((l) => ({ value: l.ref, label: l.label, href: itpEquipmentHref(code, 'plan', l.ref === lines[0].ref ? null : l.ref) })),
+        }
+      : {
+          label: t('Equipment'), value: filter,
+          options: [
+            { value: 'all', label: t('All'), href: itpEquipmentHref(code, 'punch', null, origin) },
+            ...lines.map((l) => ({ value: l.ref, label: l.label, href: itpEquipmentHref(code, 'punch', l.ref, origin) })),
+            { value: COMMON_EQUIPMENT, label: t('Common to the project'), href: itpEquipmentHref(code, 'punch', COMMON_EQUIPMENT, origin) },
+          ],
+        };
   const inspections = plan?.inspections ?? [];
   const s = summariseItp(inspections, punch, plan && plan.template ? { template: plan.template, systems: plan.systems.length, custom: plan.customCount } : null, machineType);
   const kpis: KpiView[] = [
@@ -219,23 +270,34 @@ export function itpScreenView({ code, view, plan, punch, origin = 'all', machine
       { value: 'punch', label: t('Punch list'), href: itpHref(code, 'punch') },
     ],
     kpis,
+    equipment: equipmentView,
     plan:
       view === 'plan'
-        ? { title: t('Inspection & test plan'), groups, empty: groups.length ? null : t('No inspection plan for this project yet · pick a template when creating the project') }
+        ? {
+            title: multi && equipmentView ? `${t('Inspection & test plan')} · ${lines.find((l) => l.ref === equipmentView.value)?.label ?? equipmentView.value}` : t('Inspection & test plan'),
+            groups,
+            empty: groups.length
+              ? null
+              : multi
+                ? t('No inspection plan for this equipment yet · its first inspection creates it')
+                : t('No inspection plan for this project yet · pick a template when creating the project'),
+          }
         : null,
     punch:
       view === 'punch'
         ? (() => {
-            const rows = filterPunchByOrigin(punch, origin);
+            const byOrigin = filterPunchByOrigin(punch, origin);
+            const rows = multi ? filterByEquipment(byOrigin.map((p) => ({ ...p, equipmentRef: p.equipmentRef ?? null })), filter) : byOrigin;
             return {
               title: t('Punch list'),
               subtitle: t('A blocking · B before SAT · C cosmetic'),
-              rows: rows.map((p) => punchRowView(p, viewer.internal, today, t, lang)),
-              empty: rows.length ? null : t(punch.length ? 'No punch item of this origin' : 'No punch item yet'),
+              rows: rows.map((p) => ({ ...punchRowView(p, viewer.internal, today, t, lang), equipment: multi ? lineLabel(p.equipmentRef ?? null) : null })),
+              empty: rows.length ? null : t(!punch.length ? 'No punch item yet' : byOrigin.length ? 'No punch item for this equipment' : 'No punch item of this origin'),
               origin,
               originLabel: t('Origin'),
               origins: PUNCH_ORIGIN_FILTERS.map((o) => ({ value: o, label: t(PUNCH_ORIGIN_FILTER_LABEL[o]), href: punchListHref(code, o) })),
               ncr: viewer.internal,
+              equipment: multi,
             };
           })()
         : null,
@@ -252,7 +314,7 @@ export function punchRowView(p: PunchRow, internal: boolean, today: string, t: T
   const label = step ? stepT(step.label, t, lang) : '';
   return {
     number: p.number, anchor: punchAnchorId(p.number), item: dataT(p.description, lang), origin: t(p.originLabel), siteOrigin: p.origin === 'site',
-    ncr: internal ? (p.ncrNumber ?? '—') : null, location: dataT(p.location, lang), category: p.category ?? '—', categoryClass: look.categoryClass,
+    ncr: internal ? (p.ncrNumber ?? '—') : null, equipment: null, location: dataT(p.location, lang), category: p.category ?? '—', categoryClass: look.categoryClass,
     source: p.sourceText ? t(p.sourceText) : '—', owner: p.ownerName ? dataT(p.ownerName, lang) : p.owner ? t(p.owner) : '—', due: t(itpDateText(p.dueOn, today)),
     status: t(p.statusLabel), statusClass: look.statusClass, color: look.color, step: step ? { label, ariaLabel: `${label} · ${p.number}`, from: p.status } : null,
   };
@@ -292,6 +354,11 @@ export interface CommissioningScreenView {
   columns: string[];
   blockingLabel: string;
   rows: CommissioningRowView[];
+  /**
+   * R-185: the rows by equipment line — one group without label when the project has at most one line (the grid of before
+   * R-185); else a group per line ("EQ-02 · 3 × MEMU") then "Common to the project".
+   */
+  groups: { label: string | null; rows: CommissioningRowView[] }[];
   dossierTitle: string;
   dossier: DossierRowView[];
 }
@@ -315,19 +382,29 @@ export function commissioningScreenView(code: string, c: Commissioning | null, p
     title: t('Commissioning by system'),
     columns: c.steps.map((x) => t(x.label)),
     blockingLabel: t('Blocking A'),
-    rows: c.systems.map((sys) => {
-      const sat = lastSat(sys.name);
-      return {
-        system: dataT(sys.name, lang),
-        blockingA: blockingAOf(sys.name, punch),
-        cells: sys.cells.map((x) => ({
-          status: t(x.statusLabel),
-          date: x.blockingRef ?? t(itpDateText(x.dateOn, today)),
-          ...commissioningCellLook(x.status),
-          ...(x.step === 'sat' && sat ? { title: satTitle(sat, today, t) } : {}),
-        })),
-      };
-    }),
+    ...(() => {
+      // R-185: "Blocking A" of a line's system counts the items of its line and the common ones.
+      const entries = c.systems.map((sys) => {
+        const sat = lastSat(sys.name);
+        const equipmentRef = sys.equipmentRef ?? null;
+        const row: CommissioningRowView = {
+          system: dataT(sys.name, lang),
+          blockingA: blockingAOf(sys.name, punch.filter((p) => sameEquipment(p.equipmentRef, equipmentRef))),
+          cells: sys.cells.map((x) => ({
+            status: t(x.statusLabel),
+            date: x.blockingRef ?? t(itpDateText(x.dateOn, today)),
+            ...commissioningCellLook(x.status),
+            ...(x.step === 'sat' && sat ? { title: satTitle(sat, today, t) } : {}),
+          })),
+        };
+        return { equipmentRef, row };
+      });
+      const rows = entries.map((e) => e.row);
+      const lines = c.equipment ?? [];
+      if (!showsEquipment(lines)) return { rows, groups: [{ label: null, rows }] };
+      const label = (ref: string | null) => (ref ? lines.find((l) => l.ref === ref)?.label ?? ref : t('Common to the project'));
+      return { rows, groups: groupByEquipment(entries, lines).map((g) => ({ label: label(g.ref), rows: g.rows.map((e) => e.row) })) };
+    })(),
     dossierTitle: t('Handover dossier'),
     dossier: c.dossier.map((d) => ({
       item: dataT(d.item, lang), type: d.documentType, status: t(d.statusLabel), statusClass: `tag ${d.statusTag}`, doc: docButton(d.documentRef, d.documentInCodex, code, t),

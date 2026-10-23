@@ -1,4 +1,4 @@
-# Livraison 9 — lot « projets multi-équipements », partie 1 (R-185)
+# Livraison 9 — lot « projets multi-équipements », parties 1 et 2 (R-185)
 
 Statut : construit sur `main-2a2fep` le 23 oct. 2026, d’après le cadrage `docs/delivery-9/cadrage-r185-r186.md` dont les cinq
 choix ont été validés par le responsable produit le même jour (options « recommandé »). Cette partie couvre les étapes (1) et (2)
@@ -138,3 +138,127 @@ par ligne d’équipement (choix 4) est l’objet de la partie 2 ; rien dans cet
 - Modifier les lignes dans l’assistant remet les catégories de l’étape 3 aux catégories de référence (comme un changement de type).
 - Les messages d’audit et d’activité donnent la ligne en « 3 × MEMU · libellé » ; le détail (capacité, options, besoin) est dans
   `before` / `after`.
+
+
+---
+
+# Partie 2 — ITP, réserves, mise en service, nomenclature et parc par ligne d’équipement (étape 3)
+
+Statut : construit sur la branche `r185-part2` le 23 oct. 2026 (étape (3) de l’ordre de construction du § 3 du cadrage ; choix 4
+« un plan ITP par ligne d’équipement »). Le catalogue (R-186) et la ventilation des coûts par équipement restent à faire (§ 2.7).
+
+## 2.1 Ce qui change
+
+| Élément | Où | Rôle |
+|---|---|---|
+| Colonnes | `drizzle/0043_itp_plans_per_equipment.sql` (générée) | `equipment_id` sur `itp_plans`, `punch_items`, `commissioning_systems`, `project_bom_lines`, `machines` ; clé « un plan par projet » remplacée par « un plan par ligne » |
+| Reprise | `drizzle/0044_equipment_links_backfill.sql` (personnalisée, après 0043) | rattache les données existantes à leur ligne (§ 2.3) |
+| Règles pures | `src/domain/equipment-scope.ts` | ligne principale, choix d’une ligne dans un formulaire, filtre d’URL, regroupement par ligne, règle de retrait d’une ligne |
+| ITP | `src/server/dal/itp.ts` (`getItpPlan(code, ligne?)`, `getItpPlans`, `listItpSystems(code, ligne?)`, `ensureEquipmentPlan`, `rebuildEquipmentPlan`, `equipmentPlanInspections`) | un plan par ligne ; inspections numérotées sur tout le projet |
+| Écran ITP | page `itp`, `src/features/itpcom/model.ts`, `itp-view.tsx`, `forms.ts`, `add-buttons.tsx`, `actions.ts` | sélecteur « Équipement » (plan), filtre et colonne « Équipement » (réserves), « Ajouter une inspection » sur le plan affiché, ligne demandée par « Ajouter une réserve » |
+| Mise en service | `src/server/dal/commissioning.ts`, `commissioning-view.tsx` | systèmes rattachés à une ligne ou communs ; grille groupée par ligne ; « Bloquant A » par ligne |
+| Nomenclature | `src/server/dal/bom.ts` (`setBomLineEquipment`), `src/features/bom/*` (`equipment-select.tsx`, `setBomLineEquipmentAction`) | ligne de chaque article : choisie à l’ajout, modifiable dans la liste à plat, filtre `?eq=` et colonne |
+| Parc installé | `src/server/dal/fleet.ts` (`registerDeliveredMachines`, `listDeliveryCandidates`), `src/features/aftersales/*` | « Enregistrer les machines livrées » demande la ligne quand le projet en a plusieurs : type de la ligne, configuration telle que construite de ses articles et des articles communs |
+| Équipement (Contrat) | `src/server/dal/project-equipment.ts` | ajout d’une ligne → son plan ITP ; changement de type → plan reconstruit s’il est vide ; retrait refusé si le plan a des inspections |
+| Assistant | `createWizardProject` (`projects-register.ts`) | un plan par ligne : la ligne principale depuis le modèle (comme avant), les autres depuis leur type |
+| Export ITP | `src/server/export/providers/control.ts` | inspections de tous les plans ; colonne « Équipement » (inspections et réserves) quand le projet a plusieurs lignes |
+| Traductions | `src/i18n/extra/d9-equipment.json` | libellés et textes de démonstration |
+
+Aucune vue `pub_` n’est modifiée (§ 2.6) ; aucun écran n’est ajouté à `src/config/screens.ts`.
+
+## 2.2 Schéma
+
+- `itp_plans.equipment_id` → `project_equipments` (**cascade** : le plan suit sa ligne). `project_id` reste (vues et lecteurs par
+  projet). Clés : `itp_plans_equipment_id_unique` (un plan par ligne) ; index unique partiel `itp_plans_project_without_equipment_idx`
+  (au plus un plan sans ligne par projet — projets sans type de machine, donc sans ligne) ; index `itp_plans_project_id_idx`. La
+  contrainte `itp_plans_project_id_unique` est supprimée.
+- `punch_items.equipment_id`, `commissioning_systems.equipment_id`, `project_bom_lines.equipment_id`, `machines.equipment_id` →
+  `project_equipments`, **set null** (null = commun au projet, ou inconnu pour une machine).
+- `commissioning_systems` garde l’unicité (projet, nom) : la grille est en lecture seule (Q-5, aucun écran ne crée de système), les
+  plans SAT (`sat_plans.system_name`) et « Bloquant A » désignent un système par son nom. Deux lignes du même type nommeront leurs
+  systèmes différemment (« Structure — EQ-03 ») le jour où la création de systèmes existera ; passer à (projet, ligne, nom)
+  demandera aussi la ligne sur `sat_plans`.
+
+## 2.3 Migrations
+
+- 0043 (générée) : colonnes, clés étrangères, clés du plan.
+- 0044 (personnalisée, rejouable : chaque instruction ne remplit qu’un `equipment_id` nul ; SQL non qualifié, PGlite dans `public`,
+  serveur dans `keystone` par le migrateur, comme 0042) :
+  1. chaque plan ITP existant va à la **ligne principale** de son projet (position la plus basse — EQ-01 après 0042) ; un projet sans
+     ligne garde son plan sans ligne ;
+  2. une réserve levée par une inspection (`source_inspection_id`) prend la ligne du plan de l’inspection ; les autres restent communes ;
+  3. les systèmes de mise en service d’un projet **à une seule ligne** vont à cette ligne ; ceux d’un projet à plusieurs lignes
+     restent communs (rien ne dit à quelle ligne ils appartiennent) ;
+  4. une machine du parc livrée par un projet va à la première ligne du projet **de son type**, sinon à la ligne principale.
+- Les lignes de nomenclature restent communes (null). Une base neuve n’a aucune donnée : la seed écrit elle-même les rattachements.
+- Testé par `src/server/db/migration-equipment-links.test.ts` (état d’avant la partie 2 reconstitué, deux passages).
+
+## 2.4 Règles
+
+- **Un plan par ligne** (choix 4). Le plan d’une ligne est créé avec la ligne (assistant, carte « Équipement ») avec les systèmes ITP
+  de son type figés (R-057) ; sinon à la première inspection ajoutée sur la ligne (comme avant pour le plan unique). La première
+  ligne donnée à un projet qui avait un plan sans ligne reprend ce plan.
+- **Numérotation** : les inspections sont numérotées sur **tout le projet** (I-20, I-21… quel que soit le plan) : « I-15 » désigne une
+  seule inspection — résultat (`recordItpResult`), NCR de Vigie (`inspection_number`), source d’une réserve.
+- **Ligne principale** : `getItpPlan(code)` sans ligne = le plan de la ligne principale, c’est-à-dire le plan d’avant R-185 ; les
+  lecteurs sans notion de ligne (KPI « Modèle », badge, export) voient donc les mêmes valeurs pour un projet à une ligne.
+- **Changement de type d’une ligne** : son plan est reconstruit (type et systèmes du nouveau type) **s’il n’a aucune inspection** ; sinon
+  il garde son type et ses systèmes (ce qui a été instancié reste, R-057).
+- **Retrait d’une ligne** (décision) : **refusé tant que son plan a des inspections** (« Cette ligne d’équipement a des inspections
+  dans son plan d’inspection ») — supprimer la ligne supprimerait le plan et ses inspections, qui sont des enregistrements qualité ;
+  sinon le plan vide part avec la ligne et ses réserves, systèmes de mise en service, articles de nomenclature et machines deviennent
+  communs au projet ; l’audit compte ce qui a été détaché (`punchItems`, `commissioningSystems`, `bomLines`, `machines` en plus des
+  lots et activités). La dernière ligne reste refusée.
+- **Réserves** : la ligne vient du plan de l’inspection source quand la réserve est levée depuis une inspection (`sourceInspection`
+  du DAL), sinon de la liste « Équipement » du formulaire (projets à plusieurs lignes ; « Commun au projet » par défaut, ou la ligne
+  du filtre affiché) ; une ligne inconnue est refusée.
+- **Mise en service — « SAT par équipement ou global »** (décision) : pas de réglage. Le SAT est une étape de chaque système ; le chef
+  de projet choisit en rattachant ses systèmes à une ligne (SAT par équipement) ou en les laissant communs (SAT global). L’écran
+  groupe la grille par ligne quand le projet en a plusieurs (« EQ-02 · 3 × MEMU », puis « Commun au projet ») ; « Bloquant A » d’un
+  système d’une ligne ne compte que les réserves de cette ligne et les communes. « Planifier le SAT » sans grille propose les
+  systèmes de tous les plans du projet (chaque nom une fois).
+- **Nomenclature** : un article (une ligne par article et projet) appartient à une ligne ou est commun ; choisi à « Ajouter un
+  article », modifié dans la liste à plat (liste déroulante, mêmes droits que l’ajout, audit « réf · equipment: common → EQ-02 ») ;
+  filtre `?eq=` (une ligne ou `common`).
+- **Parc installé** : « Enregistrer les machines livrées » demande la ligne quand le projet en a plusieurs (défaut : la ligne
+  principale) ; les machines prennent le **type de la ligne** et la configuration telle que construite des articles de la ligne et des
+  articles communs ; `machines.equipment_id` est posé.
+- **Affichage** : colonne, filtre, sélecteur et groupes n’apparaissent que si le projet a **plus d’une ligne** (`showsEquipment`) ;
+  avec une seule ligne, chaque écran est celui d’avant R-185.
+
+## 2.5 Données de démonstration et valeurs affichées
+
+- Harbor Line (HLT-026) : le plan du prototype, ses réserves levées par inspection et ses six systèmes de mise en service sont sur
+  EQ-01 (EMP). EQ-02 (3 × MEMU) reçoit (`DEMO_EQ02`, `src/server/db/seed/execution.ts`) son plan (5 systèmes MEMU), deux inspections
+  numérotées après celles du prototype (I-14 passée, I-15 planifiée — FAT au 12 nov., avant la FAT EMP du 20 nov. : le jalon `fat` de
+  `pub_jalons_projets` ne change pas), une réserve P-09 (catégorie C : ni badge ITP ni « Bloquant A » ne changent) et un système de
+  mise en service « Modules MEMU M1–M3 ». Les machines de la démonstration sont sur la ligne de leur type dans leur projet.
+- Valeurs affichées inchangées : plan ITP principal de HLT-026 (13 inspections, KPI « Inspections réussies », « Points d’arrêt à
+  venir », « Modèle »), tous les projets à une ligne.
+- Changements délibérés (R-185), tests annotés : liste de réserves de HLT-026 (+ P-09 ; « Réserves ouvertes » 6 → 7, « A 0 · B 4 ·
+  C 3 », sur l’écran ITP, et « Réserves ouvertes » 6 → 7 sur l’écran Chantier ; une étape « Démarrer » de plus), grille de mise en
+  service de HLT-026 (+ 1 système : « Systèmes transférés » 0 / 6 → 0 / 7, « Étapes terminées » 1 / 30 → 1 / 35 ; « Planifier le SAT »
+  propose aussi « Modules MEMU M1–M3 »), contexte de « Ajouter une inspection » (« … · EQ-01 · EMP »), sélecteur, colonne et groupes
+  « Équipement » sur HLT-026, export ITP de HLT-026 (inspections des deux plans, colonne « Équipement »). La nomenclature de HLT-026
+  montre la colonne et le filtre « Équipement » (tous ses articles communs) ; les valeurs dorées (`bom.golden.json`) sont rendues
+  sans l’option équipement et ne changent pas. Comptes de la seed (`scripts/db-check.ts`) : `itp_plans` 2, `itp_plan_systems` 11,
+  `itp_inspections` 15, `punch_items` 9, `commissioning_systems` 7, `commissioning_steps` 35.
+- Une base existante (démonstration déjà semée) reçoit la reprise 0044 mais pas les données de démonstration d’EQ-02 ; ses systèmes de
+  mise en service de HLT-026 restent communs (projet à deux lignes).
+
+## 2.6 Vues `pub_`
+
+Aucune vue modifiée. `pub_jalons_projets` lit `itp_plans` par `project_id` (colonne gardée) : le jalon `fat` couvre les inspections
+de tous les plans du projet. `pub_parc_machines.type_machine_code` vient déjà du type de la machine. `pub_reserves` n’a pas reçu
+`equipement_ref` : l’ajout en fin de vue est simple mais demande une mise à jour de la copie de Matrix et du contrat d’Arche — à
+proposer si Arche en a besoin.
+
+## 2.7 Reste
+
+- **Ventilation des coûts par équipement** sur l’écran Budget (d’après `activities.equipment_id`, lecture seule) : non faite.
+- Exemplaire (numéro de série) sur l’inspection et la réserve : non fait (le cadrage dit « si connu ») ; la machine du parc porte sa
+  ligne.
+- Création de systèmes de mise en service par ligne dans Keystone (la grille reste en lecture seule, Q-5) ; unicité (projet, ligne,
+  nom) avec la ligne sur `sat_plans` le jour venu.
+- `pub_reserves.equipement_ref` si Arche le demande (§ 2.6).
+- Catalogue (R-186), Arche (R-187), retrait de `projects.machine_type_code` des écrans : inchangé (§ 7 de la partie 1).

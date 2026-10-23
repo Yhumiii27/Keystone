@@ -15,7 +15,7 @@ import { commissioningScreenView } from '@/features/itpcom/model';
 import { shortName } from '@/lib/format';
 import { businessToday } from '@/server/clock';
 import { getCommissioning } from '@/server/dal/commissioning';
-import { listItpSystems, listPunchItems } from '@/server/dal/itp';
+import { listProjectTemplateSystems, listPunchItems } from '@/server/dal/itp';
 import { getStakeholderRegister } from '@/server/dal/stakeholders';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
@@ -35,7 +35,7 @@ export default async function CommissioningPage({ params }: { params: Promise<{ 
     // system's (none without a commissioning plan); the systems to the plan's, else the inspection template's.
     const [clients, systems] = await Promise.all([
       getStakeholderRegister(projectCode).then((r) => r.stakeholders.filter((x) => x.type === 'client').map((x) => shortName(x.name))),
-      data ? data.systems.map((x) => x.name) : listItpSystems(projectCode),
+      data ? data.systems.map((x) => x.name) : listProjectTemplateSystems(projectCode),
     ]);
     const form = planSatFormDef(systems, { date: defaultSatDate(data?.systems[0]?.cells.find((c) => c.step === 'sat')?.dateOn ?? null), witnesses: clients.join(', ') });
     primary = <ItpFormButton kind="sat" code={projectCode} label={t('Plan SAT')} context={projectLabelText(ctx.project, lang)} form={localizeForm(form, t, lang)} />;

@@ -2,7 +2,7 @@
 // Flat-list filter bar (template 1180–1186): search over reference / article / manufacturer ref (`?q=`, debounced),
 // "Type" and "Supplier" selects (each option carries its URL), "Clear filters" and the "N / M articles" count. The
 // search box follows the URL when it changes from elsewhere (Clear filters, back / forward), never while typing.
-import { Factory, Tag, X } from '@phosphor-icons/react/dist/ssr';
+import { Factory, Gear, Tag, X } from '@phosphor-icons/react/dist/ssr';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { SelectFilter } from '@/components/app/Filter';
@@ -11,7 +11,10 @@ import { ButtonLink } from '@/components/ds/Button';
 import type { FlatView, LinkOption } from './model';
 import s from './bom.module.css';
 
-type Props = Pick<FlatView, 'searchPlaceholder' | 'typeLabel' | 'typeOptions' | 'supplierLabel' | 'supplierOptions' | 'clearHref' | 'clearLabel' | 'count'>;
+type Props = Pick<FlatView, 'searchPlaceholder' | 'typeLabel' | 'typeOptions' | 'supplierLabel' | 'supplierOptions' | 'clearHref' | 'clearLabel' | 'count'> & {
+  /** R-185: the equipment filter (projects with more than one equipment line). */
+  equipment?: { label: string; options: LinkOption[] } | null;
+};
 
 /** Search text synced with `?{param}=`: debounced writes, external URL changes reflected. */
 function useUrlSearch(param: string, debounce = 200) {
@@ -71,6 +74,15 @@ export function FlatFilters(p: Props) {
         value={current(p.supplierOptions)}
         onChange={go(p.supplierOptions)}
       />
+      {p.equipment && (
+        <SelectFilter
+          icon={Gear}
+          label={p.equipment.label}
+          options={p.equipment.options.map((o) => ({ value: o.value, label: o.label }))}
+          value={current(p.equipment.options)}
+          onChange={go(p.equipment.options)}
+        />
+      )}
       {p.clearHref && (
         <ButtonLink variant="ghost" size="xs" icon={X} href={p.clearHref} scroll={false}>
           {p.clearLabel}

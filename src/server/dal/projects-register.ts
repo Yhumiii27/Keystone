@@ -36,6 +36,7 @@ import { listStageHistory, listStages, projectHasBl1, recordStageChange, setStag
 import { getClientCodes } from './people';
 import { listScheduleSummaries, type MilestoneRow, type ScheduleControl } from './planning';
 import { listProjects, type ProjectRow } from './projects';
+import { ensureEquipmentPlan } from './itp';
 import { insertEquipmentLines } from './project-equipment';
 import { costCategoryOptions, inactiveStageCodes } from './settings-lists';
 
@@ -500,9 +501,13 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
     }
     const itpPlan = itpRows.length > 0 && input.templateCode !== 'blank';
     if (itpPlan) {
-      const [{ id: planId }] = await tx.insert(itpPlans).values({ projectId, machineTypeCode: input.templateCode as MachineTypeCode }).returning({ id: itpPlans.id });
+      // R-185 (choice 4): one plan per equipment line — the main line's from the template (as before R-185), then each other
+      // line's from its own type (fallback AUTRE).
+      const [{ id: planId }] = await tx.insert(itpPlans).values({ projectId, equipmentId: equipmentRows[0]?.id ?? null, machineTypeCode: input.templateCode as MachineTypeCode })
+        .returning({ id: itpPlans.id });
       // R-057 (E-9 'a'): the plan keeps the type's ITP systems of today — later edits of the machine type apply to projects created afterwards.
       await tx.insert(itpPlanSystems).values([...new Set(itpRows.map((r) => r.name))].map((name, position) => ({ planId, position, name })));
+      for (const row of equipmentRows.slice(1)) await ensureEquipmentPlan(tx, projectId, row.id);
     }
 
     const actorName = input.actorName ?? 'System';

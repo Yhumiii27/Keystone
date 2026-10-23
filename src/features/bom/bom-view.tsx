@@ -17,6 +17,7 @@ import { IdText, Table, Td, Th } from '@/components/ds/Table';
 import { cx } from '@/components/ds/cx';
 import { SparesActions } from './client-buttons';
 import type { SparesOrderScope } from './spares-order-dialog';
+import { EquipmentSelect } from './equipment-select';
 import { FlatFilters, UsedSearch } from './flat-filters';
 import type { BomScreenView, CompareView, FlatView, KpiView, SparesView, WhereUsedView } from './model';
 import { NodeDrawer } from './node-drawer';
@@ -34,7 +35,7 @@ function Kpis({ kpis }: { kpis: KpiView[] }) {
   );
 }
 
-function FlatList({ view }: { view: FlatView }) {
+function FlatList({ code, view }: { code: string; view: FlatView }) {
   const L = view.labels;
   const sortTh = (key: string) => {
     const h = view.headers.find((x) => x.key === key)!;
@@ -59,6 +60,7 @@ function FlatList({ view }: { view: FlatView }) {
         clearHref={view.clearHref}
         clearLabel={view.clearLabel}
         count={view.count}
+        equipment={view.equipment}
       />
       <SectionCard title={view.title} hint={view.hint} scroll>
         <Table>
@@ -67,6 +69,7 @@ function FlatList({ view }: { view: FlatView }) {
               {sortTh('ref')}
               {sortTh('name')}
               {sortTh('type')}
+              {view.equipment && <Th>{view.equipment.label}</Th>}
               <Th>{L.makeBuy}</Th>
               <Th>{L.pu}</Th>
               <Th align="right">{L.qty}</Th>
@@ -93,6 +96,15 @@ function FlatList({ view }: { view: FlatView }) {
                 <Td tone="secondary" nowrap>
                   {r.type}
                 </Td>
+                {view.equipment && (
+                  <Td tone="secondary" nowrap>
+                    {r.equipment && view.equipment.choices ? (
+                      <EquipmentSelect code={code} partRef={r.ref} value={r.equipment.value} choices={view.equipment.choices} label={`${view.equipment.label} · ${r.ref}`} />
+                    ) : (
+                      r.equipment?.label
+                    )}
+                  </Td>
+                )}
                 <Td tone="secondary">{r.makeBuy}</Td>
                 <td>
                   <span className={cx(r.pu.cls, s.nowrap)}>{r.pu.label}</span>
@@ -347,7 +359,7 @@ export function BomBody({ view, canEdit }: { view: BomScreenView; canEdit: boole
         </div>
         <span className={s.note}>{view.note}</span>
       </div>
-      {view.flat && <FlatList view={view.flat} />}
+      {view.flat && <FlatList code={view.code} view={view.flat} />}
       {view.tree && <TreeTable view={view.tree} />}
       {view.node && <NodeDrawer key={view.node.ref} view={view.node} />}
       {view.used && <WhereUsed view={view.used} />}

@@ -216,8 +216,13 @@ export async function registerMachinesAction(values: Record<string, string>): Pr
     const project = await getProject(v.projectCode);
     if (!project || !(await projectAccessResolver(access.viewer))(project).lead) return { error: messageText('Only the project manager of this project registers its machines', t) };
   }
+  // R-185 part 2: the equipment line delivered, one of the project's (default its main line).
+  const candidate = candidates.find((c) => c.projectCode === v.projectCode);
+  if (v.equipment && !candidate?.equipments?.some((e) => e.ref === v.equipment)) return { error: messageText('Unknown equipment line', t) };
   try {
-    const numbers = await registerDeliveredMachines(v.projectCode, { count: v.count, name: v.name, site: v.site, deliveredOn: v.deliveredOn, warrantyEndOn: v.warrantyEndOn }, {
+    const numbers = await registerDeliveredMachines(v.projectCode, {
+      count: v.count, name: v.name, site: v.site, deliveredOn: v.deliveredOn, warrantyEndOn: v.warrantyEndOn, equipment: v.equipment,
+    }, {
       name: access.viewer.name, role: access.viewer.role,
     });
     refreshAll();

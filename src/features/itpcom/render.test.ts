@@ -48,9 +48,12 @@ async function cm(lang: Lang, code = 'HLT-026') {
 const kpis = (ks: any[]) => ks.map((k) => ({ label: k.label, value: String(k.value), sub: k.sub, color: k.color }));
 /** French singular forms of the rebuild (deviation: the prototype wrote "1 échouées"). */
 const frSingular = (s: string) => s.replace(/^1 échouées/, '1 échouée');
-/** A-6 'a' (R-117): HLT-026's "Open punch items" counts the 2 open items raised on site too (both B): 4 → 6, B 2 → 4. */
+/**
+ * A-6 'a' (R-117): HLT-026's "Open punch items" counts the 2 open items raised on site too (both B): 4 → 6, B 2 → 4. R-185 part 2:
+ * and the open C item of its EQ-02 demo line (P-09): 6 → 7, C 2 → 3.
+ */
 const unifiedPunch = (code: string) => (k: { label: string; value: string; sub: string; color: string }, i: number) =>
-  code === 'HLT-026' && i === 2 ? { ...k, value: '6', sub: 'A 0 · B 4 · C 2' } : k;
+  code === 'HLT-026' && i === 2 ? { ...k, value: '7', sub: 'A 0 · B 4 · C 3' } : k;
 
 describe('ITP · plan view', () => {
   it.each(PROJECTS)('%s EN / FR: KPI tiles, groups and rows equal the prototype', async (code) => {
@@ -107,8 +110,9 @@ describe('ITP · punch view', () => {
         g.punch.map((r: any) => [r.id, r.item, r.loc, r.cat, r.catClass, r.src, r.owner, r.due, r.status, r.stClass, r.color, r.canAdvance ? (lang === 'fr' && r.next === 'Close' ? 'Clôturer' : r.next) : null]),
       );
       // "Inspection" and "Site" read the same in French.
-      expect(view.punch!.rows.map((r) => r.origin)).toEqual([...Array(5).fill('Inspection'), ...Array(3).fill('Site')]);
-      expect(view.punch!.rows.slice(5).map((r) => [r.number, r.category, r.ncr, r.owner, r.status, r.step?.label ?? null])).toEqual([
+      // R-185 part 2: + Harbor Line's EQ-02 demo item (P-09), raised by inspection.
+      expect(view.punch!.rows.map((r) => r.origin)).toEqual([...Array(5).fill('Inspection'), ...Array(3).fill('Site'), 'Inspection']);
+      expect(view.punch!.rows.slice(5, 8).map((r) => [r.number, r.category, r.ncr, r.owner, r.status, r.step?.label ?? null])).toEqual([
         ['P-06', 'B', 'NCR-029', 'Client', lang === 'en' ? 'Open' : 'Ouverte', lang === 'en' ? 'Start' : 'Démarrer'],
         ['P-07', 'B', '—', 'Keystone', lang === 'en' ? 'Open' : 'Ouverte', lang === 'en' ? 'Start' : 'Démarrer'],
         ['P-08', 'B', '—', 'Client', lang === 'en' ? 'Closed' : 'Clôturée', null],
@@ -123,7 +127,8 @@ describe('ITP · punch view', () => {
     for (const s of ['aria-label="Référence"', 'Élément', 'Système', 'Cat.', 'Émise par', 'Responsable', 'Échéance', 'Statut', 'aria-label="Démarrer · P-02"', 'aria-label="Clôturer · P-04"', 'data-punch-step', 'Inspection client'])
       expect(edit).toContain(s);
     // A-6 'a' (R-117): Start / Close on every open item, the 2 open items raised on site included (4 → 6).
-    expect(edit.match(/data-punch-step/g)?.length).toBe(6);
+    // R-185 part 2: + the open item of Harbor Line's EQ-02 demo line (P-09): 7.
+    expect(edit.match(/data-punch-step/g)?.length).toBe(7);
     const ro = html(ItpBody({ code: 'HLT-026', view, canEdit: false, t }), 'fr');
     expect(ro).not.toContain('data-punch-step');
     expect(ro).toContain('Clôturée');
@@ -134,7 +139,8 @@ describe('ITP · punch view', () => {
     const added = { ...punch[1], number: 'P-10', dueOn: null, location: '' };
     const { punch: p } = itpScreenView({ code: 'HLT-026', view: 'punch', plan, punch: [...punch, added], machineType: null, today: DEMO_TODAY_ISO }, makeT('en'), 'en');
     expect(p!.rows.at(-1)).toMatchObject({ number: 'P-10', location: '', due: '', step: { label: 'Start', ariaLabel: 'Start · P-10', from: 'open' } });
-    expect(p!.rows.map((r) => r.step?.from ?? null)).toEqual([null, 'open', 'open', 'in_progress', 'open', 'open']);
+    // R-185 part 2: P-09 (Harbor Line's EQ-02 demo item, open) before the added one.
+    expect(p!.rows.map((r) => r.step?.from ?? null)).toEqual([null, 'open', 'open', 'in_progress', 'open', 'open', 'open']);
   });
 
   it('project without punch items: zero KPIs, the empty panel instead of a bare header row (deviation)', async () => {
@@ -155,10 +161,14 @@ describe('Commissioning', () => {
     for (const lang of ['en', 'fr'] as const) {
       const g = G.commissioning[lang]['HLT-026'];
       const { view } = await cm(lang);
-      expect(view!.kpis).toEqual(kpis(g.kpis));
+      // R-185 part 2: + the system of Harbor Line's EQ-02 demo line (5 planned steps): 0 / 6 → 0 / 7 systems, 1 / 30 → 1 / 35 steps.
+      const plusEq02 = (k: { label: string; value: string }, i: number) => (i === 0 ? { ...k, value: '0 / 7' } : i === 1 ? { ...k, value: '1 / 35' } : k);
+      expect(view!.kpis).toEqual(kpis(g.kpis).map(plusEq02));
       // NEW-D5-3 'a' (R-156): the prototype's French 'Handover' column « Livraison » is « Transfert ».
       expect(view!.columns).toEqual(lang === 'fr' ? g.cols.map((c: string) => (c === 'Livraison' ? 'Transfert' : c)) : g.cols);
-      expect(view!.rows.map((r) => ({ sys: r.system, punchA: r.blockingA, cells: r.cells.map((c) => [c.status, c.date, c.bg, c.border, c.color]) }))).toEqual(
+      // R-185 part 2: the prototype's rows are EQ-01's group; EQ-02's system follows.
+      expect(view!.groups.map((x) => x.rows.length)).toEqual([6, 1]);
+      expect(view!.rows.slice(0, 6).map((r) => ({ sys: r.system, punchA: r.blockingA, cells: r.cells.map((c) => [c.status, c.date, c.bg, c.border, c.color]) }))).toEqual(
         g.rows.map((r: any) => ({ sys: r.sys, punchA: r.punchA, cells: r.cells.map((c: any) => [c.st, c.date, c.bg, c.border, c.color]) })),
       );
       expect(view!.dossier.map((d) => [d.item, d.type, d.status, d.statusClass, d.doc?.ref ?? ''])).toEqual(g.dossier.map((d: any) => [d.item, d.type, d.status, d.stClass, d.doc]));
@@ -181,8 +191,11 @@ describe('Commissioning', () => {
       'Systèmes transférés', 'SAT prévue 10 déc. · transfert 14 janv.', '19 %', '4 éléments manquants',
     ])
       expect(out).toContain(s);
-    expect(out.match(/role="row"/g)?.length).toBe(7);
-    expect(out.match(/role="cell"/g)?.length).toBe(36);
+    // R-185 part 2: two equipment lines — a header row per line (EQ-01 · EMP, EQ-02 · 3 × MEMU) and EQ-02's system (6 cells).
+    expect(out.match(/role="row"/g)?.length).toBe(10);
+    expect(out.match(/role="cell"/g)?.length).toBe(42);
+    expect(out).toContain('EQ-02 · 3 × MEMU');
+    expect(out).toContain('Modules MEMU M1–M3');
   });
 });
 
@@ -234,7 +247,8 @@ describe('action forms', () => {
       expect(f.fields.map((x) => x.defaultValue ?? (x.options ? (x.options[0] as { label?: string }).label ?? x.options[0] : ''))).toEqual(
         g.fields.map((x: any) => (x.id === 'note' && lang === 'fr' ? 'Réserves A levées · rapports de pré-mise en service émis' : x.value)),
       );
-      expect(f.fields[0].options!.map((o) => (typeof o === 'string' ? o : o.value))).toEqual(G.forms.en.commissioning.fields[0].options);
+      // R-185 part 2: + the system of Harbor Line's EQ-02 demo line.
+      expect(f.fields[0].options!.map((o) => (typeof o === 'string' ? o : o.value))).toEqual([...G.forms.en.commissioning.fields[0].options, 'MEMU modules M1–M3']);
     }
   });
 });

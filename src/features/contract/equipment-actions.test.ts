@@ -22,7 +22,7 @@ import { eq } from 'drizzle-orm';
 import { I18nProvider } from '@/i18n/client';
 import { makeT, type Lang } from '@/i18n/translate';
 import { getDb, setDb } from '@/server/db/client';
-import { activities, projects, wbsNodes } from '@/server/db/schema';
+import { activities, itpInspections, itpPlans, projects, wbsNodes } from '@/server/db/schema';
 import { openDatabase } from '@/server/db/open';
 import { listMachineTypeOptions } from '@/server/dal/mtypes';
 import { listActivity, listAudit } from '@/server/dal/notifications';
@@ -131,7 +131,12 @@ describe('equipment Server Functions (R-185)', () => {
     const [act] = await db.select({ id: activities.id }).from(activities).where(eq(activities.projectId, p.id)).limit(1);
     await db.update(wbsNodes).set({ equipmentId: eq2.id }).where(eq(wbsNodes.id, lot.id));
     await db.update(activities).set({ equipmentId: eq2.id }).where(eq(activities.id, act.id));
+    // R-185 part 2: EQ-02's ITP plan has inspections (demo data) — the line is kept until they are gone.
+    expect(await removeEquipmentAction('HLT-026', 'EQ-02')).toEqual({ error: 'This equipment line has inspections in its inspection plan' });
+    const [plan] = await db.select({ id: itpPlans.id }).from(itpPlans).where(eq(itpPlans.equipmentId, eq2.id));
+    await db.delete(itpInspections).where(eq(itpInspections.planId, plan.id));
     expect(await removeEquipmentAction('HLT-026', 'EQ-02')).toEqual({ ok: true });
+    expect(await db.select({ id: itpPlans.id }).from(itpPlans).where(eq(itpPlans.id, plan.id))).toEqual([]);
     expect((await db.select({ e: wbsNodes.equipmentId }).from(wbsNodes).where(eq(wbsNodes.id, lot.id)))[0].e).toBeNull();
     expect((await db.select({ e: activities.equipmentId }).from(activities).where(eq(activities.id, act.id)))[0].e).toBeNull();
     expect((await getProject('HLT-026'))?.equipment).toBe('EMP');

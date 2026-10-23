@@ -7,6 +7,7 @@
 //   ?node=<ref>                       assembly-tree node drawer (`bomNode`)
 //   ?used=<query>                     Where-used search (`bomUsedQ`; empty = CR-BRG-SKF, as the prototype)
 //   ?sys=<assembly ref>  ?kind=PU|PR  PU/PR list system (default: the complete system) and kind filter
+//   ?eq=<EQ-02>|common               flat-list equipment filter (R-185; projects with more than one equipment line)
 // Folding the assembly tree (`bomClosed`) is transient UI kept in the client.
 import { screenHref } from '@/config/screens';
 import { DEFAULT_BOM_SORT, isBomSortKey, type BomSort } from '@/domain/bom';
@@ -28,9 +29,11 @@ export interface BomState {
   used: string;
   sys: string | null;
   kind: 'PU' | 'PR' | null;
+  /** R-185: flat-list equipment filter — a line's reference, 'common', or null (every line). */
+  eq?: string | null;
 }
 
-export const DEFAULT_BOM_STATE: BomState = { view: 'flat', q: '', type: null, mfr: null, sort: DEFAULT_BOM_SORT, part: null, node: null, used: '', sys: null, kind: null };
+export const DEFAULT_BOM_STATE: BomState = { view: 'flat', q: '', type: null, mfr: null, sort: DEFAULT_BOM_SORT, part: null, node: null, used: '', sys: null, kind: null, eq: null };
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -60,6 +63,7 @@ export function parseBomState(sp: SP): BomState {
     used: text(sp.used, 80),
     sys: ref(sp.sys),
     kind: kind === 'PU' || kind === 'PR' ? kind : null,
+    eq: ref(sp.eq),
   };
 }
 
@@ -70,6 +74,7 @@ export function bomHref(code: string, s: Partial<BomState> = {}): string {
   if (s.q) u.set('q', s.q);
   if (s.type) u.set('type', s.type);
   if (s.mfr) u.set('mfr', s.mfr);
+  if (s.eq) u.set('eq', s.eq);
   if (s.sort && (s.sort.key !== DEFAULT_BOM_SORT.key || s.sort.dir !== DEFAULT_BOM_SORT.dir)) {
     u.set('sort', s.sort.key);
     u.set('dir', s.sort.dir);

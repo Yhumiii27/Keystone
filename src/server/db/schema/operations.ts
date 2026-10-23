@@ -1,7 +1,8 @@
 // Project operations (docs/spec/11 §3.7): the interface register (07 §2.5), the inspection & test plan and the punch
 // lists (07 §2.4, 10 §3.6), commissioning and the handover dossier (07 §2.6), lessons learned, the closure checklist and
 // the customer-satisfaction survey (07 §2.7). Keystone owns all of them.
-import { boolean, date, index, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { boolean, date, index, integer, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import type {
   ClosureItemStatus, CommissioningCellStatus, CommissioningStep, HandoverItemStatus, InterfaceStatus, ItpPointType, ItpResult, ItpStage, KeystoneSide, LessonStatus,
   LessonTheme, MachineTypeCode, PunchCategory, PunchOwnerParty, PunchRegister, PunchSource, PunchStatus,
@@ -9,7 +10,7 @@ import type {
 import { id, num, timestamps } from './_common';
 import { documents } from './documents';
 import { persons } from './organisation';
-import { machineTypes, projects } from './portfolio';
+import { machineTypes, projectEquipments, projects } from './portfolio';
 
 /**
  * Interfaces owed by the client or third parties (INTERFACES 3719: HLT-026 × 7). The stored status is open /
@@ -42,14 +43,29 @@ export const projectInterfaces = pgTable(
 
 // ── Inspection & test plan, punch lists (07 §2.4, 10 §3.6) ─────────────────────────────────────────────
 
-/** A project's ITP (ITP 3717: HLT-026 only), built from the machine-type template (ITP_TEMPLATES 3716). */
-export const itpPlans = pgTable('itp_plans', {
-  id: id(),
-  projectId: uuid('project_id').notNull().unique().references(() => projects.id, { onDelete: 'cascade' }),
-  /** Template the plan was built from ("EMP"). */
-  machineTypeCode: text('machine_type_code').$type<MachineTypeCode>().notNull().references(() => machineTypes.code),
-  ...timestamps,
-});
+/**
+ * An ITP (ITP 3717: HLT-026 only), built from the machine-type template (ITP_TEMPLATES 3716). R-185 (choice 4): one plan per
+ * equipment line of the project (`equipment_id`, unique; the line's type) — plans of before R-185 were attached to the
+ * project's first line (custom migration `itp_plans_equipment_backfill`). A project without equipment line (no machine type)
+ * keeps at most one plan without line (partial unique index).
+ */
+export const itpPlans = pgTable(
+  'itp_plans',
+  {
+    id: id(),
+    projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+    /** R-185: the equipment line the plan inspects; null only for a project without equipment line. */
+    equipmentId: uuid('equipment_id').references(() => projectEquipments.id, { onDelete: 'cascade' }),
+    /** Template the plan was built from ("EMP"). */
+    machineTypeCode: text('machine_type_code').$type<MachineTypeCode>().notNull().references(() => machineTypes.code),
+    ...timestamps,
+  },
+  (t) => [
+    unique('itp_plans_equipment_id_unique').on(t.equipmentId),
+    uniqueIndex('itp_plans_project_without_equipment_idx').on(t.projectId).where(sql`${t.equipmentId} is null`),
+    index('itp_plans_project_id_idx').on(t.projectId),
+  ],
+);
 
 /**
  * R-057 (E-9 'a': a machine type's changes apply to projects created afterwards): the ITP systems of a plan, copied from its
@@ -133,6 +149,11 @@ export const punchItems = pgTable(
     /** How it was raised; the seed's "ITP I-03" is stored as `itp` + the inspection. Null for the Site items of the seed. */
     source: text('source').$type<PunchSource>(),
     sourceInspectionId: uuid('source_inspection_id').references(() => itpInspections.id, { onDelete: 'set null' }),
+    /**
+     * R-185: the equipment line concerned — the source inspection's plan's line when raised from an inspection, else chosen when
+     * the item is added; null = common to the project (or not said).
+     */
+    equipmentId: uuid('equipment_id').references(() => projectEquipments.id, { onDelete: 'set null' }),
     /** The NCR it comes from ("NCR-029", Vigie's number); never shown to the client (P-10b). */
     ncrNumber: text('ncr_number'),
     /** Owner person ("L. Fabre"); null when only a party owns it. */
@@ -159,6 +180,9 @@ export const commissioningSystems = pgTable(
   {
     id: id(),
     projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+    /** R-185: the equipment line commissioned; null = common to the project (a system of the whole installation). */
+    equipmentId: uuid('equipment_id').references(() => projectEquipments.id, { onDelete: 'set null' }),
+    /** Unique in the project, whatever the line (the SAT plans and "Blocking A" name the system). */
     name: text('name').notNull(),
     position: integer('position').notNull(),
   },

@@ -11,6 +11,8 @@ import 'server-only';
 //   catalogue price — and each price says where it comes from (`priceSource`). An ordered price is converted from the
 //   order's currency to euros at the project's budget rate (C-9, R-075).
 // Projects without a BOM get empty data (no Harbor Line fallback).
+// R-185 part 2: a BOM line may belong to one of the project's equipment lines (`equipment_id`, null = common), chosen when the
+// article is added and changed on the flat list (`setBomLineEquipment`).
 // The rules themselves (value, roll-up, paths, where-used resolution, deltas, system quantity) are the pure functions of
 // src/domain/bom.ts, golden-tested against the prototype.
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
@@ -24,7 +26,8 @@ import { bomScope, revisionDiffKind, stage as stageCodec, type BomScope, type Pa
 import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
 import type { Tx } from '@/server/db/types';
 import {
-  activities, assemblyLinks, parts, poLines, projectAssemblyRoots, projectBomLines, projects, purchaseOrders, revisionDiffLines, revisionDiffs, spareListLines,
+  activities, assemblyLinks, parts, poLines, projectAssemblyRoots, projectBomLines, projectEquipments, projects, purchaseOrders, revisionDiffLines, revisionDiffs,
+  spareListLines,
 } from '@/server/db/schema';
 import { installedBasePins, openEcoByPart, partsUnderChange, pinSummary, type InstalledBasePin } from './eco';
 import { getPartsByRef, listParts, type PartRow } from './parts';
@@ -54,6 +57,8 @@ export interface BomLine extends PartRow {
   openEco: string | null;
   /** R-111 (NEW-D4-5 = c): lines this one may duplicate (a purchased line and an assembly line), to be checked; [] when none. */
   possibleDuplicateOf: string[];
+  /** R-185: the equipment line of the article ("EQ-02"); null = common to the project. */
+  equipmentRef?: string | null;
 }
 
 export interface ProjectBom {
@@ -123,8 +128,9 @@ export async function getProjectBom(projectCode: string): Promise<ProjectBom | n
   const [p] = await db.select({ id: projects.id, code: projects.code, short: projects.shortCode }).from(projects).where(eq(projects.code, projectCode));
   if (!p) return null;
   const lines = await db
-    .select({ ref: parts.ref, qty: projectBomLines.quantity, scope: projectBomLines.scope, note: projectBomLines.note, act: activities.code })
+    .select({ ref: parts.ref, qty: projectBomLines.quantity, scope: projectBomLines.scope, note: projectBomLines.note, act: activities.code, eq: projectEquipments.ref })
     .from(projectBomLines).innerJoin(parts, eq(parts.id, projectBomLines.partId)).leftJoin(activities, eq(activities.id, projectBomLines.activityId))
+    .leftJoin(projectEquipments, eq(projectEquipments.id, projectBomLines.equipmentId))
     .where(eq(projectBomLines.projectId, p.id)).orderBy(asc(parts.position), asc(projectBomLines.position));
   const [rows, kids, ecoFor, roots, value] = await Promise.all([
     getPartsByRef(lines.map((l) => l.ref)), childrenMap(), openEcoByPart(),
@@ -142,7 +148,7 @@ export async function getProjectBom(projectCode: string): Promise<ProjectBom | n
       ...r, quantity: l.qty, unitPriceEur: v.unitEur, priceSource: v.source, totalEur: v.unitEur * l.qty, valuedByComponents: isValuedByComponents(l.ref, childrenOf, inBom),
       scope: l.scope, scopeLabel: bomScope.label(l.scope), activityCode: l.act ?? null, note: l.note,
       alsoUsedIn: r.usage.filter((u) => u.projectCode !== projectCode).map((u) => u.shortCode), openEco: ecoFor[l.ref] ?? null,
-      possibleDuplicateOf: dup.partners[l.ref] ?? [],
+      possibleDuplicateOf: dup.partners[l.ref] ?? [], equipmentRef: l.eq ?? null,
     };
   });
   return { projectCode: p.code, shortCode: p.short, lines: out, summary: { ...bomSummary(out), possibleDuplicates: dup.pairs }, hasTree: roots.length > 0 };
@@ -419,6 +425,8 @@ export interface NewBomLineInput {
   activityCode?: string | null;
   scope?: BomScope;
   note?: string | null;
+  /** R-185: the project's equipment line of the article ("EQ-02"); null / absent = common to the project. */
+  equipment?: string | null;
 }
 
 /**
@@ -449,14 +457,49 @@ async function insertBomLine(tx: Tx, projectCode: string, input: NewBomLineInput
     if (!a) throw new Error(`Unknown activity ${input.activityCode}`);
     activityId = a.id;
   }
+  const equipmentId = await equipmentIdOf(tx, p.id, input.equipment ?? null);
   const actor = await findPerson(tx, actorName);
   const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${projectBomLines.position}), -1)::int` }).from(projectBomLines).where(eq(projectBomLines.projectId, p.id));
   const [line] = await tx.insert(projectBomLines).values({
-    projectId: p.id, partId: part.id, quantity: input.quantity, activityId, scope, note: input.note?.trim() || null, position: pos + 1, addedByPersonId: actor?.id ?? null,
+    projectId: p.id, partId: part.id, quantity: input.quantity, activityId, scope, note: input.note?.trim() || null, position: pos + 1, addedByPersonId: actor?.id ?? null, equipmentId,
   }).returning({ id: projectBomLines.id });
   await writeAudit(tx, {
     actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `${p.code} BOM`,
-    change: `${ref} × ${input.quantity} added · ${bomScope.label(scope)}${input.activityCode ? ` · ${input.activityCode}` : ''}`, area: 'BOM', entityType: 'project_bom_line', entityId: line.id, projectId: p.id,
+    change: `${ref} × ${input.quantity} added · ${bomScope.label(scope)}${input.activityCode ? ` · ${input.activityCode}` : ''}${input.equipment ? ` · ${input.equipment}` : ''}`,
+    area: 'BOM', entityType: 'project_bom_line', entityId: line.id, projectId: p.id,
   });
   return ref;
+}
+
+/** R-185: the id of a project's equipment line by reference (null for none); throws on an unknown reference. */
+async function equipmentIdOf(tx: Tx, projectId: string, ref: string | null): Promise<string | null> {
+  if (!ref) return null;
+  const [e] = await tx.select({ id: projectEquipments.id }).from(projectEquipments).where(and(eq(projectEquipments.projectId, projectId), eq(projectEquipments.ref, ref)));
+  if (!e) throw new Error('Unknown equipment line');
+  return e.id;
+}
+
+/**
+ * R-185 part 2: moves a BOM line to an equipment line of the project ("EQ-02") or makes it common (null). No change → no write.
+ * Permission checks belong to the calling Server Function. Returns whether the line changed.
+ */
+export async function setBomLineEquipment(projectCode: string, partRef: string, equipment: string | null, actorName: string): Promise<boolean> {
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const p = await requireProject(tx, projectCode);
+    const [line] = await tx.select({ id: projectBomLines.id, eq: projectEquipments.ref }).from(projectBomLines).innerJoin(parts, eq(parts.id, projectBomLines.partId))
+      .leftJoin(projectEquipments, eq(projectEquipments.id, projectBomLines.equipmentId))
+      .where(and(eq(projectBomLines.projectId, p.id), eq(parts.ref, partRef)));
+    if (!line) throw new Error(`${partRef} is not in the project BOM`);
+    if ((line.eq ?? null) === equipment) return false;
+    const equipmentId = await equipmentIdOf(tx, p.id, equipment);
+    await tx.update(projectBomLines).set({ equipmentId, updatedAt: new Date() }).where(eq(projectBomLines.id, line.id));
+    const actor = await findPerson(tx, actorName);
+    await writeAudit(tx, {
+      actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `${p.code} BOM`,
+      change: `${partRef} · equipment: ${line.eq ?? 'common'} → ${equipment ?? 'common'}`, area: 'BOM', entityType: 'project_bom_line', entityId: line.id, projectId: p.id,
+      before: { equipment: line.eq ?? null }, after: { equipment },
+    });
+    return true;
+  });
 }
