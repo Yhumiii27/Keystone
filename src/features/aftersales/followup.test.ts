@@ -96,7 +96,9 @@ describe('R-143 / R-144 rules', () => {
     expect([machineNames('Gantry', 1), machineNames('Gantry', 2)]).toEqual([['Gantry'], ['Gantry #1', 'Gantry #2']]);
     expect(asBuiltConfiguration([{ ref: 'A', revision: 'C' }, { ref: 'SW', revision: null }, { ref: 'A', revision: 'D' }, { ref: 'B', revision: ' 2 ' }])).toEqual([{ ref: 'A', revision: 'C' }, { ref: 'B', revision: '2' }]);
     const v = { project: 'RCF-019', count: '2', name: 'Overhead crane', site: 'Lyon', delivered: '30 Sep 2026', warranty: '29 Sep 2028' };
-    expect(parseRegisterMachines(v, ['RCF-019'], NOW)).toEqual({ ok: true, value: { projectCode: 'RCF-019', count: 2, name: 'Overhead crane', site: 'Lyon', deliveredOn: '2026-09-30', warrantyEndOn: '2028-09-29' } });
+    // R-185 part 2: the equipment line delivered (none chosen: the project's main line).
+    expect(parseRegisterMachines(v, ['RCF-019'], NOW)).toEqual({ ok: true, value: { projectCode: 'RCF-019', count: 2, name: 'Overhead crane', site: 'Lyon', deliveredOn: '2026-09-30', warrantyEndOn: '2028-09-29', equipment: null } });
+    expect(parseRegisterMachines({ ...v, equipment: 'EQ-02' }, ['RCF-019'], NOW)).toMatchObject({ ok: true, value: { equipment: 'EQ-02' } });
     const err = (o: Record<string, string>) => {
       const r = parseRegisterMachines({ ...v, ...o }, ['RCF-019'], NOW);
       return r.ok ? null : r.error;

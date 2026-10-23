@@ -5,7 +5,7 @@ import { date, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-o
 import type { ClaimCoverage, ClaimStatus, InterventionStatus, InterventionType, MachineTypeCode, NcrSeverity, WarrantyStatus } from '../codes';
 import { id, keur, num, timestamps } from './_common';
 import { clients, persons } from './organisation';
-import { machineTypes, projects } from './portfolio';
+import { machineTypes, projectEquipments, projects } from './portfolio';
 
 /**
  * Machines in service (FLEET 3729: 8; machines added in Keystone continue at MCH-050). The zone is derived from the
@@ -25,6 +25,8 @@ export const machines = pgTable('machines', {
   /** Delivering project ("QFR-015"); null = "—". */
   projectCode: text('project_code'),
   projectId: uuid('project_id').references(() => projects.id, { onDelete: 'set null' }),
+  /** R-185: the delivering project's equipment line (its type is the machine's); null when unknown or the line was removed. */
+  equipmentId: uuid('equipment_id').references(() => projectEquipments.id, { onDelete: 'set null' }),
   /** Delivery = warranty start; null = "—". */
   deliveredOn: date('delivered_on', { mode: 'string' }),
   warrantyEndOn: date('warranty_end_on', { mode: 'string' }),

@@ -8,7 +8,7 @@ import { id, num, timestamps } from './_common';
 import { parts } from './catalogue';
 import { persons } from './organisation';
 import { activities } from './planning';
-import { projects } from './portfolio';
+import { projectEquipments, projects } from './portfolio';
 
 /**
  * Project BOM lines (`PARTS.usage {p3: qty}` 3343; Add article form AF.bom). One line per part and project; the
@@ -25,6 +25,8 @@ export const projectBomLines = pgTable(
     /** Activity that installs / needs the article (Add article form); null for the seed lines. */
     activityId: uuid('activity_id').references(() => activities.id, { onDelete: 'set null' }),
     scope: text('scope').$type<BomScope>().notNull().default('keystone'),
+    /** R-185: the equipment line the article belongs to; null = common to the project. */
+    equipmentId: uuid('equipment_id').references(() => projectEquipments.id, { onDelete: 'set null' }),
     note: text('note'),
     /** PARTS order for the seed; lines added in Keystone are appended. */
     position: integer('position').notNull(),

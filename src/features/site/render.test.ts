@@ -152,7 +152,8 @@ describe('Site view model vs the prototype (EN and FR)', () => {
       const x = (await view(lang)).v.exec!;
       // A-12 / D-5: "Client decisions logged" 3 → 2 (decisions of the meetings with the client). A-6 'a' (R-117): "Punch list
       // open" counts the project's single list — 4 open items raised by inspections + 2 raised on site = 6 (still 1 on the client).
-      expect(x.kpis).toEqual(kpis(g.execKpis).map(computed(4, '2')).map(computed(2, '6')));
+      // R-185 part 2: + the open item of Harbor Line's EQ-02 demo line (P-09) = 7.
+      expect(x.kpis).toEqual(kpis(g.execKpis).map(computed(4, '2')).map(computed(2, '7')));
       expect(x.reports.map((r) => ({ date: r.date, act: r.act, pct: r.pct, txt: r.txt, link: r.link, by: r.by }))).toEqual(g.reports);
       expect(x.reports.map((r) => !!r.href)).toEqual(g.reportLinks);
       expect(G.reportLink).toEqual({ screen: 'quality', qTab: 'ncr', ncr: 'NCR-029' });

@@ -20,7 +20,11 @@ import {
 import {
   cities, clients, contracts, countries, machinePartRevisions, machineTypes, machines, parts, projectAssemblyRoots, projectBomLines, projectSites, projects, warrantyClaims,
 } from '@/server/db/schema';
+import { lineOfRef, showsEquipment } from '@/domain/equipment-scope';
+import { equipmentLotLabel } from '@/domain/project-equipment';
 import { listEcos } from './eco';
+import { planLinesOf } from './itp';
+import { equipmentLinesByProject } from './project-equipment';
 import { isIsoDate, managesProject, optionalDate, requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
 import { listProjects } from './projects';
 
@@ -265,6 +269,11 @@ export interface DeliveryCandidate {
   trackedParts: number;
   /** Machines already registered for the project. */
   registered: number;
+  /**
+   * R-185 part 2: the project's equipment lines ("EQ-02", "EQ-02 · 3 × MEMU"), main first — "Register machines" asks for the
+   * line when there are several (the machines take its type).
+   */
+  equipments?: { ref: string; label: string }[];
 }
 
 /**
@@ -285,6 +294,8 @@ export async function listDeliveryCandidates(): Promise<DeliveryCandidate[]> {
   ]);
   const roots = await rootQuantities();
   const typeLabel = new Map(types.map((t) => [t.code, t.label]));
+  const [lines, ids] = await Promise.all([equipmentLinesByProject(db), db.select({ id: projects.id, code: projects.code }).from(projects)]);
+  const idOf = new Map(ids.map((r) => [r.code, r.id]));
   return list
     .filter((p) => isDeliveredStage(p.stage) && p.machineType !== 'R&D')
     .map((p) => {
@@ -296,6 +307,7 @@ export async function listDeliveryCandidates(): Promise<DeliveryCandidate[]> {
         defaultName: `${label} — ${p.name}`, defaultCount: Math.min(MAX_MACHINES_PER_DELIVERY, Math.max(1, roots.get(p.code) ?? 1)),
         warrantyMonths: warrantyMonthsOf(ctr.find((c) => c.code === p.code)?.warranty) ?? DEFAULT_WARRANTY_MONTHS, trackedParts: tracked,
         registered: mch.filter((m) => m.code === p.code).length,
+        equipments: (lines.get(idOf.get(p.code) ?? '') ?? []).map((l) => ({ ref: l.ref, label: equipmentLotLabel(l) })),
       };
     })
     .filter((c) => c.trackedParts > 0);
@@ -317,6 +329,8 @@ export interface RegisterMachinesInput {
   site: string;
   deliveredOn: string;
   warrantyEndOn: string;
+  /** R-185 part 2: the project's equipment line delivered ("EQ-02"); absent = the main line. */
+  equipment?: string | null;
 }
 
 /**
@@ -344,11 +358,17 @@ export async function registerDeliveredMachines(projectCode: string, input: Regi
     const [stageRow] = await tx.select({ stage: projects.stage }).from(projects).where(eq(projects.id, p.id));
     if (!stageRow || !isDeliveredStage(stageRow.stage)) throw new Error(`${projectCode} is not delivered yet`);
     const [client] = p.clientId ? await tx.select({ name: clients.name }).from(clients).where(eq(clients.id, p.clientId)) : [];
-    const [mt] = p.mt ? await tx.select({ code: machineTypes.code }).from(machineTypes).where(eq(machineTypes.code, p.mt)) : [];
+    // R-185 part 2: the machines are of the equipment line delivered (default the main line) — its type, and the as-built
+    // configuration of its BOM lines and the common ones when the project has several lines.
+    const lines = await planLinesOf(tx, p.id);
+    const line = lineOfRef(lines, input.equipment);
+    if (input.equipment && !line) throw new Error(`Unknown equipment ${input.equipment} on ${projectCode}`);
+    const lineType = line?.machineTypeCode ?? p.mt;
+    const [mt] = lineType ? await tx.select({ code: machineTypes.code }).from(machineTypes).where(eq(machineTypes.code, lineType)) : [];
     const typeCode = mt && mt.code !== 'rnd' ? mt.code : 'AUTRE';
-    const bom = await tx.select({ ref: parts.ref, revision: parts.revision }).from(projectBomLines).innerJoin(parts, eq(parts.id, projectBomLines.partId))
+    const bom = await tx.select({ ref: parts.ref, revision: parts.revision, eq: projectBomLines.equipmentId }).from(projectBomLines).innerJoin(parts, eq(parts.id, projectBomLines.partId))
       .where(eq(projectBomLines.projectId, p.id)).orderBy(asc(projectBomLines.position));
-    const config = asBuiltConfiguration(bom);
+    const config = asBuiltConfiguration(showsEquipment(lines) && line ? bom.filter((b) => b.eq === null || b.eq === line.id) : bom);
     if (!config.length) throw new Error(`${projectCode} has no part with a revision in its bill of materials`);
     const existing = await tx.select({ n: machines.number, pos: machines.position }).from(machines);
     let next = existing.reduce((m, e) => Math.max(m, e.pos + 1), 0);
@@ -359,7 +379,7 @@ export async function registerDeliveredMachines(projectCode: string, input: Regi
       const number = nextBusinessNumber(taken, 'MCH-', 3, 49);
       taken.push(number);
       const [row] = await tx.insert(machines).values({
-        number, machineTypeCode: typeCode, name, clientName: client?.name ?? '—', clientId: p.clientId, siteText: site, projectCode: p.code, projectId: p.id,
+        number, machineTypeCode: typeCode, name, clientName: client?.name ?? '—', clientId: p.clientId, siteText: site, projectCode: p.code, projectId: p.id, equipmentId: line?.id ?? null,
         deliveredOn: input.deliveredOn, warrantyEndOn: input.warrantyEndOn, warrantyStatus: addedWarrantyStatus(input.warrantyEndOn, today), position: next++,
       }).returning({ id: machines.id });
       await tx.insert(machinePartRevisions).values(config.map((c, position) => ({ machineId: row.id, partRef: c.ref, revision: c.revision, position })));
@@ -370,7 +390,7 @@ export async function registerDeliveredMachines(projectCode: string, input: Regi
       numbers.push(number);
     }
     await trace(tx, who, {
-      objectRef: p.code, change: `machines registered at delivery · ${numbers.join(', ')}`, area: 'Installed base', projectId: p.id,
+      objectRef: p.code, change: `machines registered at delivery · ${numbers.join(', ')}${line && lines.length > 1 ? ` · ${line.ref}` : ''}`, area: 'Installed base', projectId: p.id,
       activity: { text: `Registered ${numbers.length} delivered ${numbers.length === 1 ? 'machine' : 'machines'} of ${p.code} in the installed base (${numbers.join(', ')})`, kind: 'change' },
     });
     return numbers;

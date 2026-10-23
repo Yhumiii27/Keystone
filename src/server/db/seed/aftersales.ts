@@ -3,7 +3,8 @@
 // 6; the type text "Corrective · WC-014" split into type and claim). See schema/aftersales.ts.
 import { PROTO } from '@/server/prototype';
 import { claimCoverage, claimStatus, interventionStatus, interventionType, isoOfDemoDate, machineType, ncrSeverity, warrantyStatus, type WarrantyStatus } from '../codes';
-import { clients, interventions, machinePartRevisions, machines, warrantyClaims } from '../schema';
+import { asc } from 'drizzle-orm';
+import { clients, interventions, machinePartRevisions, machines, projectEquipments, warrantyClaims } from '../schema';
 import type { Tx } from '../types';
 import { must, newId, personIdOrNull, type SeedCtx } from './context';
 
@@ -33,14 +34,23 @@ export async function seedAftersales(tx: Tx, ctx: SeedCtx): Promise<void> {
   const am = PROTO.AS_MAINT as Record<string, { gen: string; parts: Record<string, string> }>;
   const fleet = PROTO.FLEET as FleetRow[];
   const machineIds = new Map<string, string>();
+  // R-185 part 2: a machine delivered by a project belongs to the project's line of its type (the first one), else its main line
+  // — the rule of the migration equipment_links_backfill.
+  const lines = await tx.select({ id: projectEquipments.id, projectId: projectEquipments.projectId, mt: projectEquipments.machineTypeCode }).from(projectEquipments)
+    .orderBy(asc(projectEquipments.position), asc(projectEquipments.ref));
+  const lineOf = (projectId: string | null, mt: string) => {
+    const own = lines.filter((l) => l.projectId === projectId);
+    return (own.find((l) => l.mt === mt) ?? own[0])?.id ?? null;
+  };
   await tx.insert(machines).values(fleet.map(([number, type, name, client, site, project, delivered, wend, status], position) => {
     const id = newId();
     machineIds.set(number, id);
     const w = warrantyOf(status);
     const code = project && project !== '—' ? project : null;
+    const projectId = code ? ctx.projectByCode.get(code) ?? null : null;
     return {
       id, number, machineTypeCode: machineType.code(type), name, clientName: client, clientId: clientIds.get(client) ?? null, siteText: site, projectCode: code,
-      projectId: code ? ctx.projectByCode.get(code) ?? null : null, deliveredOn: isoOfDemoDate(delivered), warrantyEndOn: isoOfDemoDate(wend),
+      projectId, equipmentId: projectId ? lineOf(projectId, machineType.code(type)) : null, deliveredOn: isoOfDemoDate(delivered), warrantyEndOn: isoOfDemoDate(wend),
       warrantyStatus: w.status, extendedUntil: w.extendedUntil, generation: am[number]?.gen ?? null, position,
     };
   }));

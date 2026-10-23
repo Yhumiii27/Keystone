@@ -134,15 +134,16 @@ const D4_COUNTS: Record<string, number> = {
 /**
  * Seed row counts of the delivery-5 tables: deliverables HLT_DELIVS 10 + 5 × 4 generated (RACI 5 each); the Vigie NCR
  * mirror HLT_NCRS 5 + 5 × 2 generated and the site HSE register 5; ITP 13 inspections and the plan's 6 frozen systems (R-057);
- * punch PUNCH 5 + SITE_PUNCH 3 (one list, R-117);
- * commissioning 6 systems × 5 steps, 8 dossier items; LESSONS 4, CLOSURE 10, SATISFACTION 5; FLEET 8 (AS_MAINT 31 part
+ * punch PUNCH 5 + SITE_PUNCH 3 (one list, R-117); R-185 part 2: Harbor Line's EQ-02 (3 × MEMU) adds its plan (5 MEMU systems),
+ * 2 inspections, 1 punch item and 1 commissioning system (DEMO_EQ02);
+ * commissioning 6 + 1 systems × 5 steps, 8 dossier items; LESSONS 4, CLOSURE 10, SATISFACTION 5; FLEET 8 (AS_MAINT 31 part
  * revisions), CLAIMS 8, INTERVENTIONS 6; the site sheet with 8 equipment, 6 prerequisites, 6 rotations, 4 collisions (no longer read, R-119),
  * 6 cost lines, 2 reports; Cursus 5 people (1 sync); CLIENT_ISSUES 3 (CLIENT_DOCS dropped, L-9: computed from Codex); ENG_* registers; PID 1 / 24 / 5;
  * machine-type aggregate 28 phases, 25 cost categories, 17 ITP systems; SETTINGS0 60 values; CONNECTORS 9 + Vigie; IMPORTS 6.
  */
 const D5_COUNTS: Record<string, number> = {
-  deliverables: 30, deliverable_raci: 150, vigie_ncrs: 15, vigie_ncr_progress: 0, vigie_hse_items: 5, itp_plans: 1, itp_plan_systems: 6, itp_inspections: 13, punch_items: 8,
-  commissioning_systems: 6, commissioning_steps: 30, handover_items: 8, sat_plans: 0, lessons_learned: 4, closure_items: 10, satisfaction_scores: 5,
+  deliverables: 30, deliverable_raci: 150, vigie_ncrs: 15, vigie_ncr_progress: 0, vigie_hse_items: 5, itp_plans: 2, itp_plan_systems: 11, itp_inspections: 15, punch_items: 9,
+  commissioning_systems: 7, commissioning_steps: 35, handover_items: 8, sat_plans: 0, lessons_learned: 4, closure_items: 10, satisfaction_scores: 5,
   machines: 8, machine_part_revisions: 31, warranty_claims: 8, interventions: 6, site_sheets: 1, site_equipment: 8, site_prerequisites: 6, site_rotations: 6,
   site_collisions: 4, site_conflict_arbitrations: 0, mission_cost_lines: 6, daily_reports: 2, cursus_clearances: 5, cursus_requests: 0, cursus_sync_runs: 1, cursus_events: 0,
   client_issues: 3,
@@ -701,17 +702,20 @@ async function delivery5Reads() {
     same([dl.length, dl.filter((d) => d.status === 'accepted').length, dl.filter((d) => d.status === 'submitted').map((d) => d.number), dl[2].acceptanceText, dl.at(-1)!.dueOn,
       (await listDeliverables('RCF-019')).map((d) => d.number)], [10, 3, ['D-014', 'D-016'], 'Accept by 2 Oct', '2027-01-14', ['D-110', 'D-111', 'D-112', 'D-113']]));
   const plan = (await getItpPlan('HLT-026'))!;
-  const punch = (await listPunchItems('HLT-026', 'itp')).filter((p) => p.open);
+  // R-185 part 2: the main line's (EQ-01) plan and items; EQ-02's demo item (P-09) is checked below.
+  const punch = (await listPunchItems('HLT-026', 'itp')).filter((p) => p.open && p.equipmentRef !== 'EQ-02');
   check('ITP HLT-026: 3 / 13 passed · 1 failed · 5 hold points ahead · EMP 6 systems · 2 custom · 4 open punch (B 2 · C 2)',
     same([plan.inspections.filter((i) => i.result === 'passed').length, plan.inspections.length, plan.inspections.filter((i) => i.result === 'failed').length,
       plan.inspections.filter((i) => i.pointType === 'hold' && i.result !== 'passed').length, plan.template, plan.systems.length, plan.customCount, punch.length,
       punch.filter((p) => p.category === 'B').length, punch.filter((p) => p.category === 'C').length], [3, 13, 1, 5, 'EMP', 6, 2, 4, 2, 2]));
   const all = await listPunchItems('HLT-026');
   // A-6 'a' (R-117): one punch list per project, numbered over it — the Site items renumbered after the ITP items.
-  check('punch HLT-026: one list P-01…P-08 · ITP items Keystone · Site items P-06…P-08 category B · P-06 carries NCR-029',
-    same(all.map((p) => [p.number, p.origin, p.category, p.ownerParty, p.ncrNumber]), [
-      ['P-01', 'itp', 'A', 'keystone', null], ['P-02', 'itp', 'B', 'keystone', null], ['P-03', 'itp', 'C', 'keystone', null], ['P-04', 'itp', 'B', 'keystone', null],
-      ['P-05', 'itp', 'C', 'keystone', null], ['P-06', 'site', 'B', 'client', 'NCR-029'], ['P-07', 'site', 'B', 'keystone', null], ['P-08', 'site', 'B', 'client', null],
+  // R-185 part 2: + P-09, Harbor Line's EQ-02 (3 × MEMU) demo item; P-02 (raised by I-03) on EQ-01.
+  check('punch HLT-026: one list P-01…P-09 · ITP items Keystone · Site items P-06…P-08 category B · P-06 carries NCR-029 · P-09 on EQ-02',
+    same(all.map((p) => [p.number, p.origin, p.category, p.ownerParty, p.ncrNumber, p.equipmentRef]), [
+      ['P-01', 'itp', 'A', 'keystone', null, null], ['P-02', 'itp', 'B', 'keystone', null, 'EQ-01'], ['P-03', 'itp', 'C', 'keystone', null, null],
+      ['P-04', 'itp', 'B', 'keystone', null, null], ['P-05', 'itp', 'C', 'keystone', null, null], ['P-06', 'site', 'B', 'client', 'NCR-029', null],
+      ['P-07', 'site', 'B', 'keystone', null, null], ['P-08', 'site', 'B', 'client', null, null], ['P-09', 'itp', 'C', 'keystone', null, 'EQ-02'],
     ]), all.map((p) => p.number));
   const cm = (await getCommissioning('HLT-026'))!;
   const cells = cm.systems.flatMap((x) => x.cells);

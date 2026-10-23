@@ -7,6 +7,7 @@
 // "Blocking A").
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
+import { equipmentChoiceOf } from '@/domain/equipment-scope';
 import { canRecordItpResult, parseInspectionResult, parseNewInspection, parseNewPunch, parsePlanSat, punchStep } from '@/domain/itpcom';
 import { shortName } from '@/lib/format';
 import { businessToday } from '@/server/clock';
@@ -14,6 +15,7 @@ import { itpResult, punchStatus } from '@/server/db/codes';
 import { listSatSystems, planSat } from '@/server/dal/commissioning';
 import { addItpInspection, addPunchItem, advancePunchItem, getItpInspection, listItpSystems, listPunchItems, recordItpResult } from '@/server/dal/itp';
 import type { Actor } from '@/server/dal/ops-common';
+import { listProjectEquipments } from '@/server/dal/project-equipment';
 import { getProject } from '@/server/dal/projects';
 import { teamOwnerOptions } from '@/server/dal/team';
 import { getProjectContext } from '@/server/project-context';
@@ -54,15 +56,19 @@ async function editable(code: unknown, screen: Screen): Promise<{ code: string; 
   return { code: project.code, actor: { name: ctx.viewer.name, role: ctx.viewer.role } };
 }
 
-/** "Add inspection" (AF `itp`, "Add to plan"): I-20… per project, Planned; toast "Inspection added to the plan". */
-export async function addInspectionAction(code: string, values: Record<string, string>): Promise<FormDialogResult> {
+/**
+ * "Add inspection" (AF `itp`, "Add to plan"): I-20… per project, Planned; toast "Inspection added to the plan". R-185 (choice
+ * 4): `equipment` = the line whose plan gets the inspection (the plan shown on the screen; absent = the main line).
+ */
+export async function addInspectionAction(code: string, values: Record<string, string>, equipment?: string): Promise<FormDialogResult> {
   const ok = await editable(code, 'itp');
   if ('error' in ok) return ok;
-  const parsed = parseNewInspection(strings(values), await listItpSystems(ok.code), await businessToday());
+  if (equipment !== undefined && (typeof equipment !== 'string' || !(await listProjectEquipments(ok.code)).some((l) => l.ref === equipment))) return { error: await tr('Unknown equipment line') };
+  const parsed = parseNewInspection(strings(values), await listItpSystems(ok.code, equipment), await businessToday());
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
   try {
-    await addItpInspection(ok.code, { name: v.name, system: v.system, pointType: v.pointType, stage: v.stage, reference: v.reference, plannedOn: v.plannedOn }, ok.actor);
+    await addItpInspection(ok.code, { name: v.name, system: v.system, pointType: v.pointType, stage: v.stage, reference: v.reference, plannedOn: v.plannedOn, equipment }, ok.actor);
   } catch {
     return { error: await tr('The change could not be saved') };
   }
@@ -81,10 +87,13 @@ export async function addPunchItemAction(code: string, values: Record<string, st
   const parsed = parseNewPunch(strings(values), await teamOwnerOptions(ok.code), await businessToday(), { internal: ok.actor.role !== 'client' });
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
+  // R-185: the equipment line of the item (the form offers it when the project has more than one line; else common).
+  const equipment = equipmentChoiceOf(strings(values).equipment, (await listProjectEquipments(ok.code)).map((l) => l.ref));
+  if (!equipment.ok) return { error: await tr(equipment.error) };
   try {
     await addPunchItem(ok.code, {
       description: v.description, location: v.location, category: v.category, source: v.source, owner: v.owner ? shortName(v.owner) : null, dueOn: v.dueOn,
-      origin: v.origin, ownerParty: v.ownerParty, ncrNumber: ok.actor.role === 'client' ? null : v.ncrNumber,
+      origin: v.origin, ownerParty: v.ownerParty, ncrNumber: ok.actor.role === 'client' ? null : v.ncrNumber, equipment: equipment.value,
     }, ok.actor);
   } catch {
     return { error: await tr('The change could not be saved') };

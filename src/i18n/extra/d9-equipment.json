@@ -28,5 +28,18 @@
   "A project keeps at least one equipment line": "Un projet garde au moins une ligne d’équipement",
   "Unknown equipment line": "Ligne d’équipement inconnue",
   "The quantity is a whole number from 1 to 999": "La quantité est un nombre entier de 1 à 999",
-  "A project has at most 20 equipment lines": "Un projet a au plus 20 lignes d’équipement"
+  "A project has at most 20 equipment lines": "Un projet a au plus 20 lignes d’équipement",
+  "Common to the project": "Commun au projet",
+  "Common": "Commun",
+  "All equipment": "Tous les équipements",
+  "No inspection plan for this equipment yet · its first inspection creates it": "Pas encore de plan d’inspection pour cet équipement · sa première inspection le crée",
+  "No punch item for this equipment": "Aucune réserve pour cet équipement",
+  "This equipment line has inspections in its inspection plan": "Cette ligne d’équipement a des inspections dans son plan d’inspection",
+  "Unknown article": "Article inconnu",
+  "Hoist": "Levage",
+  "Dimensional check — module frames M1–M3": "Contrôle dimensionnel — châssis des modules M1–M3",
+  "Load test — hoists of modules M1–M3": "Essai de charge — levages des modules M1–M3",
+  "Cable gland missing — module M2 junction box": "Presse-étoupe manquant — boîte de jonction du module M2",
+  "Electrical · module M2": "Électricité · module M2",
+  "MEMU modules M1–M3": "Modules MEMU M1–M3"
 }
