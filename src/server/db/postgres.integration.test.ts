@@ -4,7 +4,8 @@
 // - `npm run db:migrate` logic: migrations under the advisory lock, the explicit seed choice, idempotent re-run;
 // - driver parity: the DAL reads the same values from PostgreSQL (node-postgres) as from PGlite;
 // - concurrent writes on separate connections: business numbers stay unique (SERIALIZABLE + retry), the S-3 rule holds;
-// - shared-server layout (M-01): tables, journal and pub_ views in the schema `keystone`, nothing in `public`.
+// - shared-server layout (M-01): tables, journal and pub_ views in the schema `keystone`, nothing in `public`;
+// - Arche K-11 (R-193): the maj_le indexes are in `keystone` and an incremental read reaches them through the security_barrier views.
 import { randomBytes } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -32,6 +33,7 @@ import { pendingMigrations } from './migrations';
 import { openDatabase } from './open';
 import { SeedChoiceRequiredError, migrateAndSeedPostgres, openPostgres, type PostgresHandle } from './postgres';
 import { readSeedRecord } from './seed/mode';
+import { SHARE_MAJ_LE_INDEXES } from './share-contracts';
 import type { DB } from './types';
 
 const ADMIN_URL = process.env.KEYSTONE_TEST_DATABASE_URL?.trim();
@@ -97,6 +99,24 @@ describe.skipIf(!ADMIN_URL)('PostgreSQL server (KEYSTONE_TEST_DATABASE_URL)', ()
     expect(journal.rows[0].n).toBeGreaterThan(30);
     const counts = await pg.pool.query<{ v: number; t: number }>('select (select count(*)::int from pub_projets) as v, (select count(*)::int from projects) as t');
     expect(counts.rows[0].v).toBe(counts.rows[0].t);
+  });
+
+  it('K-11: the maj_le indexes are in "keystone"; an incremental read of the view reaches them', async () => {
+    const wanted = Object.values(SHARE_MAJ_LE_INDEXES);
+    const { rows } = await pg.pool.query<{ s: string; t: string; i: string }>('select schemaname as s, tablename as t, indexname as i from pg_indexes where indexname = any($1) order by 3',
+      [wanted.map((x) => x.index)]);
+    expect(rows).toEqual(wanted.map((x) => ({ s: 'keystone', t: x.table, i: x.index })).sort((a, b) => a.i.localeCompare(b.i)));
+    const client = await pg.pool.connect();
+    try {
+      await client.query('set enable_seqscan = off');
+      for (const [view, { index }] of Object.entries(SHARE_MAJ_LE_INDEXES)) {
+        const plan = await client.query<{ 'QUERY PLAN': string }>(`explain select * from ${view} where maj_le > $1::timestamptz`, ['2026-10-01T00:00:00Z']);
+        expect(plan.rows.map((r) => r['QUERY PLAN']).join('\n'), view).toContain(index);
+      }
+    } finally {
+      await client.query('reset enable_seqscan');
+      client.release();
+    }
   });
 
   it('two db:migrate at the same time: the advisory lock serialises them', async () => {

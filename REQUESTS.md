@@ -47,7 +47,7 @@ Format d'une entrée :
 - Validé par Guillaume le : 2026-10-22
 
 ## [2026-10-22] Arche → Keystone — Parc installé, montée en puissance, lecture incrémentale, socle partagé (R-193, R-194)
-- Statut : OUVERTE
+- Statut : ACCEPTÉE — fait : K-07, K-11 ; reste : K-09 (attend arche.pub_rampup), K-12 (socle partagé)
 - Demande : (K-07) ajouter en fin de `pub_parc_machines` les colonnes `type_machine_code`, `livree_le`, `maj_le` ; (K-09) lire `arche.pub_rampup` au parc installé (capacité atteinte, TRS, rebuts de réception) ; (K-11) indexer `maj_le` (ou sa colonne source) des vues lues par Arche ; (K-12) publier le socle partagé `@epc2i/socle` qu'Arche consommera à la place de ses copies.
 - Justification : montée en puissance par machine (livraison 6 d'Arche), lecture plus légère, moins de code copié. Sans ces points, aucun blocage avant la livraison 6 d'Arche : Arche continue de copier les vues en entier et garde sa copie du socle.
 - Détails techniques : `pub_parc_machines` : `type_machine_code` text, `livree_le` date, `maj_le` timestamptz en fin de vue (Arche lit `DISTINCT number, name, project_code, site_text` et ces colonnes). `arche.pub_rampup` (publiée par Arche en livraison 6) : `machine_numero`, `capex_code`, `ligne_production`, `debut_mes_le`, `capacite_nominale`… (contrat dans `docs/CONTRATS.md` d'Arche). Liste des modules du socle copiés par Arche : `docs/SOCLE.md` d'Arche.

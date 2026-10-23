@@ -2,15 +2,18 @@
 // contracts' columns in order (existing columns of pub_projets and pub_livrables unchanged, new ones at the end), what each
 // view publishes from the demo data set, and — Arche's open question P-05 / AC-2 — that pub_avancement_projets publishes no
 // internal cost, rate, actual cost, CPI, EAC or margin. The progress and SPI come from the `share-progress` job's table.
+// Arche K-07 / K-11 (R-193; 0039_share_maj_le_indexes, 0040_share_installed_base): pub_parc_machines' machine columns at the end,
+// one row per machine for Arche's DISTINCT read, maj_le moved by a configuration change; the maj_le indexes reached through the views.
 import { eq, sql } from 'drizzle-orm';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { D7_PROGRESS_PCT, D7_SPI } from '@/test/d7-cost-control';
 import { setCapexLink } from '@/server/dal/capex-link';
+import { completeIntervention, planIntervention } from '@/server/dal/claims';
 import { refreshShareProgress } from '@/server/dal/share-progress';
 import { setDb } from './client';
 import { openDatabase } from './open';
-import { contractAmendments, contracts, milestones, projects, punchItems } from './schema';
-import { INTERNAL_MONEY_COLUMN, SHARE_VIEW_COLUMNS } from './share-contracts';
+import { contractAmendments, contracts, machines, milestones, projects, punchItems } from './schema';
+import { INTERNAL_MONEY_COLUMN, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COLUMNS } from './share-contracts';
 import type { DB } from './types';
 
 let db: DB;
@@ -130,5 +133,40 @@ describe('share views of delivery 9 (0038_share_followup)', () => {
     await expect(db.update(projects).set({ capexCode: 'CAPEX-1' }).where(eq(projects.code, 'NDC-031'))).rejects.toThrow();
     await expect(db.update(projects).set({ capexCode: 'CPX-SAI-2026-01', besoinRef: 'CPX-APM-2026-01/B01' }).where(eq(projects.code, 'NDC-031'))).rejects.toThrow();
     await expect(setCapexLink('HLT-026', { capexCode: '', needRef: 'CPX-SAI-2026-01/B01' }, { name: 'Hélène Marchetti', role: 'director' })).rejects.toThrow('Enter the CAPEX code first');
+  });
+
+  it('pub_parc_machines: machine type, delivery date and last change at the end, one row per machine for Arche (K-07)', async () => {
+    const all = await db.select({ number: machines.number, type: machines.machineTypeCode, delivered: machines.deliveredOn }).from(machines);
+    const v = await rows<{ number: string; type_machine_code: string; livree_le: string | null; maj_le: unknown }>(
+      sql`select distinct number, name, project_code, site_text, type_machine_code, livree_le::text, maj_le from pub_parc_machines`,
+    );
+    expect(v.map((r) => r.number).sort()).toEqual(all.map((m) => m.number).sort());
+    const by = Object.fromEntries(v.map((r) => [r.number, r]));
+    for (const m of all) expect([by[m.number].type_machine_code, by[m.number].livree_le], m.number).toEqual([m.type, m.delivered]);
+    expect(v.every((r) => r.maj_le != null)).toBe(true);
+    // Fitting a new revision changes the machine's rows: its maj_le moves, the other machines' stay.
+    const [cfg] = await rows<{ number: string; part_ref: string }>(sql`select number, part_ref from pub_parc_machines where part_ref is not null order by number, part_ref limit 1`);
+    const stamp = sql`select number, max(maj_le)::text as maj_le from pub_parc_machines group by number order by number`;
+    const before = await rows<{ number: string; maj_le: string }>(stamp);
+    const actor = { name: 'Gabriel Comte', role: 'quality' };
+    const iv = await planIntervention({ machineNumber: cfg.number, claimNumber: null, type: 'preventive', scheduledOn: '2026-10-05', technicians: 'L. Moreau', durationDays: 1 }, actor);
+    await completeIntervention(iv, { doneOn: '2026-10-06', report: 'Part replaced', partRef: cfg.part_ref, revision: 'Z' }, actor);
+    const after = await rows<{ number: string; maj_le: string }>(stamp);
+    const moved = after.filter((r, i) => r.maj_le !== before[i].maj_le).map((r) => r.number);
+    expect(moved).toEqual([cfg.number]);
+    const [fitted] = await rows<{ fitted_revision: string }>(sql`select fitted_revision from pub_parc_machines where number = ${cfg.number} and part_ref = ${cfg.part_ref}`);
+    expect(fitted.fitted_revision).toBe('Z');
+  });
+
+  it('K-11: an incremental read (maj_le > …) of pub_livrables and pub_reserves reaches the updated_at index through the view', async () => {
+    await db.execute(sql`set enable_seqscan = off`);
+    try {
+      for (const [view, { index }] of Object.entries(SHARE_MAJ_LE_INDEXES)) {
+        const plan = await rows<{ 'QUERY PLAN': string }>(sql`explain select * from ${sql.identifier(view)} where maj_le > '2026-10-01T00:00:00Z'::timestamptz`);
+        expect(plan.map((r) => r['QUERY PLAN']).join('\n'), view).toContain(index);
+      }
+    } finally {
+      await db.execute(sql`reset enable_seqscan`);
+    }
   });
 });

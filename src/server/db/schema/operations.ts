@@ -1,7 +1,7 @@
 // Project operations (docs/spec/11 §3.7): the interface register (07 §2.5), the inspection & test plan and the punch
 // lists (07 §2.4, 10 §3.6), commissioning and the handover dossier (07 §2.6), lessons learned, the closure checklist and
 // the customer-satisfaction survey (07 §2.7). Keystone owns all of them.
-import { boolean, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { boolean, date, index, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type {
   ClosureItemStatus, CommissioningCellStatus, CommissioningStep, HandoverItemStatus, InterfaceStatus, ItpPointType, ItpResult, ItpStage, KeystoneSide, LessonStatus,
   LessonTheme, MachineTypeCode, PunchCategory, PunchOwnerParty, PunchRegister, PunchSource, PunchStatus,
@@ -146,7 +146,9 @@ export const punchItems = pgTable(
     position: integer('position').notNull(),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.number)],
+  // K-11 (Arche, R-193): the incremental read of pub_reserves (`maj_le > …`, maj_le = updated_at) reaches this index through the
+  // security_barrier view; docs/delivery-9/notes-share-views.md § 8.
+  (t) => [unique().on(t.projectId, t.number), index('punch_items_updated_at_idx').on(t.updatedAt)],
 );
 
 // ── Commissioning & handover dossier (07 §2.6) ─────────────────────────────────────────────────────────

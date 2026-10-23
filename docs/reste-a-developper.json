@@ -1,6 +1,6 @@
 {
  "generated": "2026-10-10",
- "updated": "2026-10-22",
+ "updated": "2026-10-23",
  "branch": "main-2a2fep",
  "history": [
   {
@@ -118,6 +118,10 @@
   {
    "date": "2026-10-22",
    "text": "Vues de partage pour Crucible et Arche (R-195, R-190, R-189) : pub_jalons, pub_jalons_projets, pub_avancement_projets (côté vente, sans coût ni marge), pub_avenants, pub_reserves ; colonnes ajoutées en fin de pub_projets (capex_code, besoin_ref, saisis sur l’écran Contrat) et de pub_livrables (type, accepte_le, maj_le) ; tâche horaire share-progress pour l’avancement et le SPI ; droits des lecteurs à poser dans Matrix."
+  },
+  {
+   "date": "2026-10-23",
+   "text": "Parc installé et lecture incrémentale pour Arche (R-193, demandes K-07 et K-11) : pub_parc_machines publie en fin de vue le type de machine, la date de livraison et la date de dernière modification (déplacée aussi quand une intervention change la configuration) ; index sur la date de modification des livrables et des réserves, atteints à travers les vues ; copie des vues à rafraîchir dans Matrix."
   }
  ],
  "items": [
@@ -5470,7 +5474,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "Livraison 9",
-    "note": "Livraison 9, lot « share-views » (docs/delivery-9/notes-share-views.md, migration 0038_share_followup) : pub_jalons_projets (8 jalons par projet : commande, fin d’études, FAT, expédition, arrivée site, SAT, PV, fin de garantie, rapprochés des étapes, de l’ITP, de la mise en service, des PV et de la garantie), pub_avancement_projets (côté vente seulement : avancement physique et SPI tenus par la tâche horaire share-progress, fin prévue, contrat, avenants signés et facturé en k€ ; aucun coût interne, taux, CPI, EAC ni marge — testé), pub_avenants (brouillons exclus), pub_reserves ; pub_livrables + type, accepte_le, maj_le en fin de vue ; colonnes vérifiées par db-check (aussi sur PostgreSQL). Reste : droits d’arche_app et copie des vues dans Matrix (demande à déposer après validation), dates BL1 des jalons (reference_le vide : code de jalon CAPEX sur les jalons du planning, à valider), index maj_le (K-11), pub_pack_ingenierie (R-191)."
+    "note": "Livraison 9, lot « share-views » (docs/delivery-9/notes-share-views.md, migration 0038_share_followup) : pub_jalons_projets (8 jalons par projet : commande, fin d’études, FAT, expédition, arrivée site, SAT, PV, fin de garantie, rapprochés des étapes, de l’ITP, de la mise en service, des PV et de la garantie), pub_avancement_projets (côté vente seulement : avancement physique et SPI tenus par la tâche horaire share-progress, fin prévue, contrat, avenants signés et facturé en k€ ; aucun coût interne, taux, CPI, EAC ni marge — testé), pub_avenants (brouillons exclus), pub_reserves ; pub_livrables + type, accepte_le, maj_le en fin de vue ; colonnes vérifiées par db-check (aussi sur PostgreSQL). Reste : droits d’arche_app et copie des vues dans Matrix (demande à déposer après validation), dates BL1 des jalons (reference_le vide : code de jalon CAPEX sur les jalons du planning, à valider), pub_pack_ingenierie (R-191). Index maj_le (K-11) faits le 23 oct. 2026 (notes § 8)."
    }
   },
   {
@@ -5564,8 +5568,9 @@
     "src/domain/aftersales.ts"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-07 — pub_parc_machines : type_machine_code, livree_le, maj_le en fin de vue ; K-09 — lire arche.pub_rampup."
+    "state": "en_cours",
+    "delivery": "Livraison 9",
+    "note": "Livraison 9, lot « share-views » suite (docs/delivery-9/notes-share-views.md § 7–8, migrations 0039_share_maj_le_indexes et 0040_share_installed_base) : K-07 fait — pub_parc_machines + type_machine_code, livree_le, maj_le en fin de vue (colonnes de la machine, une ligne par machine pour la lecture DISTINCT d’Arche ; maj_le = machines.updated_at, déplacée quand une intervention monte une nouvelle révision) ; K-11 fait — index deliverables.updated_at et punch_items.updated_at, seuls utiles (justification § 8). Reste : K-09 — lire arche.pub_rampup au parc installé (capacité atteinte, TRS, rebuts de réception), attend la publication de la vue par Arche (sa livraison 6) ; droit de lecture d’arche_app et copie de la vue dans Matrix (demande à déposer après validation)."
    }
   },
   {

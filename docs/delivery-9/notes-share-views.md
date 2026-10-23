@@ -3,7 +3,8 @@
 Status: built on `main-2a2fep` on 22 Oct 2026, from the three `REQUESTS.md` entries the owner approved for this lot (Crucible
 `pub_jalons`; Arche `pub_projets` + CAPEX link; Arche follow-up views). Not in this lot: `pub_catalogue_machines`,
 `pub_reponses_besoins`, the `capex` connector (R-186, R-187), `pub_pack_ingenierie` (R-191), the `pub_parc_machines` columns,
-the ramp-up and the shared platform (R-193, R-194), the indexes on `maj_le` (K-11).
+the ramp-up and the shared platform (R-193, R-194), the indexes on `maj_le` (K-11). The `pub_parc_machines` columns (K-07) and
+the `maj_le` indexes (K-11) followed on 23 Oct 2026: § 7 and § 8.
 
 ## 1. What changed
 
@@ -125,10 +126,15 @@ after the owner's « validé »).
    - `keystone.pub_livrables` → add `arche_app`;
    - `keystone.pub_jalons_projets`, `keystone.pub_avancement_projets`, `keystone.pub_avenants`, `keystone.pub_reserves` →
      `arche_app`, `matrix_app`.
+   - `keystone.pub_parc_machines` → add `arche_app` (K-07, § 7).
 3. **`partage/30-keystone.sql`**: copy the 5 new views and the new definitions of `pub_projets` and `pub_livrables` from
    `drizzle/0038_share_followup.sql` (qualified `keystone.`), extend its prerequisite check with `projects.capex_code`,
    `projects.besoin_ref`, `milestones.updated_at` and the table `share_project_progress` (migration
    `0037_share_followup_columns`), and update its header ("les 12 vues" → 17).
+   **23 Oct 2026 (K-07, § 7)**: also copy the new definition of `pub_parc_machines` from `drizzle/0040_share_installed_base.sql`
+   (three columns at the end, new comment) and add `machines.machine_type_code`, `machines.delivered_on`, `machines.updated_at`
+   to the prerequisite check (they exist since the first migrations; nothing new to create). The K-11 indexes (§ 8,
+   `0039_share_maj_le_indexes`) belong to Keystone's tables: nothing to copy, and they need no grant.
 4. Nothing to add to `droits.colonnes_sensibles`: the new views read no listed column.
 
 Without (1)–(2) Arche and Crucible cannot read the views on the shared server (they keep their simulation); without (3) a replay
@@ -137,3 +143,60 @@ columns from view"), so the replay fails instead of silently losing them.
 
 Keystone's CI is not affected: its PostgreSQL job builds the base layer from `infra/postgres-socle/` (vendored Matrix `init/`
 only) and never runs Matrix's `partage/` files, and no check compares Keystone's views with a Matrix copy.
+
+## 7. `pub_parc_machines` for Arche (K-07, R-193 — 23 Oct 2026)
+
+Migration `drizzle/0040_share_installed_base.sql` (custom, same rules as `0035_share`): `CREATE OR REPLACE VIEW` keeps the D12 v1
+columns in place (`number` … `fitted_revision`, still read by Vigie) and appends:
+
+| Column | Source | Note |
+|---|---|---|
+| `type_machine_code` | `machines.machine_type_code` | the machine type code of `machine_types` (`EMP`, `RMG`…; `AUTRE` for a machine delivered by an R&D or untyped project) |
+| `livree_le` | `machines.delivered_on` | delivery = warranty start; null for a machine added by hand without a delivery date |
+| `maj_le` | `machines.updated_at` | the machine record's last change, its as-maintained configuration included |
+
+- **One row per machine for Arche.** The view stays one row per machine and fitted part (Vigie reads the parts); the three new
+  columns are the machine's own, identical on each of its rows, so Arche's `DISTINCT number, name, project_code, site_text,
+  type_machine_code, livree_le, maj_le` returns exactly one row per machine (tested in `share-views.test.ts` and `db-check`).
+- **`maj_le` kept current.** No column was missing: `machines` has carried `updated_at` since its creation. Machines are only
+  inserted (added by hand, or registered at delivery from a project); the one writer that changes what the view shows afterwards
+  is "Mark done" of an intervention fitting a part (`completeIntervention`, `src/server/dal/claims.ts`), which rewrites
+  `machine_part_revisions` (no timestamp of its own): it now also sets `machines.updated_at`, in the same transaction. A
+  configuration change thus moves the `maj_le` of every row of that machine, and of no other (tested). `maj_le` does not follow
+  the delivering project's `updated_at` (which moves on every project write): the project code it publishes never changes.
+- Contract in `SHARE_VIEW_COLUMNS` (`src/server/db/share-contracts.ts`): 11 columns, checked by `share-views.test.ts` and
+  `db-check` (also `--postgres`). Still 17 `pub_` views.
+
+## 8. Indexes behind `maj_le` (K-11, R-193 — 23 Oct 2026)
+
+Migration `drizzle/0039_share_maj_le_indexes.sql` (generated from the Drizzle schema): **two** indexes, listed in
+`SHARE_MAJ_LE_INDEXES` (`share-contracts.ts`).
+
+**How an incremental read reaches an index.** A reader filters the view (`where maj_le > $1`). The views are
+`security_barrier`: PostgreSQL pushes the predicate down to the table only when its operator is leakproof. `timestamptz >
+timestamptz` is (`timestamptz_gt`, `timestamptz_ge`: leakproof on PostgreSQL 16.15), so the planner can use an index on the
+source column **when `maj_le` is one plain column of one table**. Two consequences for the readers:
+
+- compare with a `timestamptz` value (`$1::timestamptz`): the cross-type operators with `timestamp without time zone`
+  (`timestamp_gt_timestamptz`…) are not leakproof, and the barrier then keeps the filter above a full scan;
+- `maj_le` is the writer's clock at the time of the write: a row committed a little after another can carry an earlier stamp, so
+  an incremental read re-reads a short overlap (from the last `maj_le` seen minus a margin) and deduplicates on the key.
+
+| View | `maj_le` source | Index | Why |
+|---|---|---|---|
+| `pub_livrables` | `deliverables.updated_at` | **`deliverables_updated_at_idx`** | one plain column; deliverables accumulate with every project (tens per project, never deleted): the incremental read stays proportional to what changed |
+| `pub_reserves` | `punch_items.updated_at` | **`punch_items_updated_at_idx`** | one plain column; the punch list is the largest of these tables (ITP and site items of every project, kept closed) |
+| `pub_projets` | `projects.updated_at` | none | the table holds tens of projects a year (a few pages: a sequential scan costs less than the index); `projects.updated_at` moves on nearly every project write, and an index on it would deny those updates the HOT path on the most written table |
+| `pub_parc_machines` | `machines.updated_at` | none | the installed base grows by a few tens of machines a year; same reasoning as `projects` |
+| `pub_avenants` | `greatest(contract_amendments.updated_at, change_requests.updated_at)` | none | a `greatest()` of two tables cannot be served by a single-column index; a few amendments per contract |
+| `pub_jalons_projets` | `greatest()` of the project, its transitions and each milestone's source | none | `maj_le` is computed from aggregates per project (laterals); the filter cannot go below them, so the view is computed for every project whatever the predicate — no timestamp index can help |
+| `pub_avancement_projets` | `greatest()` of the project, `share_project_progress`, contract, billing plan, amendments, invoices | none | same as `pub_jalons_projets`; one row per project |
+
+Tested: `share-views.test.ts` (PGlite) and `postgres.integration.test.ts` (PostgreSQL 16, schema `keystone`) run
+`explain select * from <view> where maj_le > …::timestamptz` with `enable_seqscan = off` and expect the index in the plan — proof
+that the predicate crosses the security barrier; `db-check` (also `--postgres`) checks that both indexes exist. On the demo data
+set the planner rightly prefers a sequential scan: the indexes pay off with volume.
+
+Not added (open point): the per-project laterals of `pub_jalons_projets` / `pub_avancement_projets` look rows up by
+`project_id` (activities, stage transitions, payment milestones…), most of which have no index of their own. That is the lever
+if a full read of those views becomes slow; it is not a `maj_le` index and no measurement asks for it yet.

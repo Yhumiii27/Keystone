@@ -15,7 +15,7 @@ import { getTableName, is, sql } from 'drizzle-orm';
 import { PgTable } from 'drizzle-orm/pg-core';
 import { healthOf } from '@/domain/health';
 import { D7_ACTUAL, D7_HEALTH, D7_PROGRESS_PCT, D7_SPI } from '@/test/d7-cost-control';
-import { INTERNAL_MONEY_COLUMN, SHARE_VIEW_COLUMNS } from '@/server/db/share-contracts';
+import { INTERNAL_MONEY_COLUMN, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COLUMNS } from '@/server/db/share-contracts';
 import { refreshShareProgress } from '@/server/dal/share-progress';
 import { getCostControl, listChangeRequests } from '@/server/dal/cost';
 import { getStageChecklist, getStageHistory, listStages, toggleStageDeliverable } from '@/server/dal/lifecycle';
@@ -273,6 +273,16 @@ async function main() {
   check('HLT-026 shared: SPI 0.82, 5400 k€ contract, 120 k€ signed amendments, 2970 k€ invoiced, AV-01 signed / AV-02 proposed, ordered 14 Jan 2026',
     followup.spi === D7_SPI['HLT-026'] && followup.contrat === 5400 && followup.avenants === 120 && followup.facture === 2970
     && followup.avenants_hlt === 'AV-01:signe,AV-02:propose' && followup.commande === '2026-01-14', followup);
+  // Arche K-07 / K-11 (R-193; 0039_share_maj_le_indexes, 0040_share_installed_base).
+  const parc = (await db.execute(sql`select
+      (select count(*)::int from (select distinct number, name, project_code, site_text, type_machine_code, livree_le, maj_le from pub_parc_machines) d) as distinct_rows,
+      (select count(*)::int from machines) as machines,
+      (select count(*)::int from pub_parc_machines v join machines m on m.number = v.number
+        where v.type_machine_code is distinct from m.machine_type_code or v.livree_le is distinct from m.delivered_on or v.maj_le is distinct from m.updated_at) as mismatched`)).rows[0] as { distinct_rows: number; machines: number; mismatched: number };
+  check('pub_parc_machines: one row per machine for Arche’s DISTINCT read, type, delivery date and maj_le from the machine', parc.distinct_rows === parc.machines && parc.mismatched === 0, parc);
+  const idx = (await db.execute(sql`select indexname as i from pg_indexes where schemaname = current_schema() and indexname in
+      (${sql.join(Object.values(SHARE_MAJ_LE_INDEXES).map((x) => sql`${x.index}`), sql`, `)})`)).rows as { i: string }[];
+  check(`maj_le indexes (K-11): ${Object.values(SHARE_MAJ_LE_INDEXES).map((x) => x.index).join(', ')}`, idx.length === Object.keys(SHARE_MAJ_LE_INDEXES).length, idx.map((r) => r.i));
 
   console.log('\nDelivery 3 tables (golden row counts)');
   for (const [table, n] of Object.entries(D3_COUNTS)) check(`${table} = ${n}`, counts[table] === n, counts[table]);
