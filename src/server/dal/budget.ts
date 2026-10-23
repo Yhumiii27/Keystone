@@ -9,6 +9,7 @@ import { machineTypes, projects, rexReferences } from '@/server/db/schema';
 import { getCashContract } from './contract';
 import { getCostControl, type CostControl } from './cost';
 import { getOpenCommitment } from './evm';
+import { listProjectEquipments } from './project-equipment';
 
 export interface RexReference {
   /** Analytic code of the reference project, e.g. "HAV001". */
@@ -27,6 +28,11 @@ export interface RexPattern {
   deliv: number;
   acc: number;
   refs: RexReference[];
+  /**
+   * R-185: the REX references of the project's other equipment types (one entry per type of its later lines, in line order;
+   * absent when the project has a single type). The payment pattern stays the main type's.
+   */
+  others?: { mt: string; refs: RexReference[] }[];
 }
 
 /**
@@ -49,7 +55,15 @@ export async function getRexPattern(code: string): Promise<RexPattern | null> {
   };
   const pattern = (p.mtCode ? await load(p.mtCode) : null) ?? (await load('AUTRE'));
   if (!pattern) return null;
-  return { mt: p.mtLabel ?? p.mtCode ?? 'AUTRE', ...pattern };
+  // R-185: the references of the other equipment lines' types.
+  const lines = await listProjectEquipments(code);
+  const others: NonNullable<RexPattern['others']> = [];
+  for (const l of lines)
+    if (l.machineTypeCode !== p.mtCode && !others.some((o) => o.mt === l.typeLabel)) {
+      const refs = await db.select().from(rexReferences).where(eq(rexReferences.machineTypeCode, l.machineTypeCode)).orderBy(asc(rexReferences.position));
+      others.push({ mt: l.typeLabel, refs: refs.map((r) => ({ id: r.analyticCode, name: r.projectName, year: r.year, pattern: r.pattern })) });
+    }
+  return { mt: p.mtLabel ?? p.mtCode ?? 'AUTRE', ...pattern, ...(others.length ? { others } : {}) };
 }
 
 /** Client contract figures used by Cash & recovery (04 §1.6), read from the contract module (src/server/dal/contract.ts). */

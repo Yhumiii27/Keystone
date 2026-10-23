@@ -18,6 +18,7 @@ import {
   defaultPlannedFinish, defaultPlannedStart, instantiateTemplate, monthOfIso, templateActivitiesText, templateWbsText,
 } from '@/domain/project-template';
 import { yearOfIso } from '@/domain/clock';
+import { equipmentLotLabel, equipmentRef, equipmentSummary } from '@/domain/project-equipment';
 import { activityDateText } from '@/domain/schedule-rollup';
 import { getDb } from '@/server/db/client';
 import {
@@ -35,6 +36,7 @@ import { listStageHistory, listStages, projectHasBl1, recordStageChange, setStag
 import { getClientCodes } from './people';
 import { listScheduleSummaries, type MilestoneRow, type ScheduleControl } from './planning';
 import { listProjects, type ProjectRow } from './projects';
+import { insertEquipmentLines } from './project-equipment';
 import { costCategoryOptions, inactiveStageCodes } from './settings-lists';
 
 /** Deliverable ticks per project and stage, aligned with `StageInfo.deliverables` (absent = none ticked). */
@@ -182,6 +184,8 @@ export interface WizardTemplate {
   /** Calendar code of the machine type (the wizard's default calendar when the type is chosen). */
   calCode: CalendarCode;
   phases: string[];
+  /** R-185: the phases specific to an equipment (generated once per equipment line), among `phases`. */
+  perEquipmentPhases: string[];
   /** [name, type label 'Labor'…, budget k as a string] as in the prototype draft. */
   cats: { name: string; type: string; budget: string }[];
   /** ITP systems the project's inspection plan starts with. */
@@ -256,16 +260,17 @@ export async function getNewProjectSetup(viewer?: { name: string; role: string }
     {
       id: 'blank', mt: null, name: blank?.name ?? 'Projet blank', desc: blank?.description ?? '', wbs: blank?.wbsSummary ?? 'Vide',
       acts: blank?.activitiesSummary ?? 'Aucune', cal: calendar.label(blank?.calendar ?? 'standard_5x8'), calCode: blank?.calendar ?? 'standard_5x8',
-      phases: [], cats: [], itpSystems: [],
+      phases: [], perEquipmentPhases: [], cats: [], itpSystems: [],
     },
     ...mts.map((m) => {
-      const own = phases.filter((p) => p.machineTypeCode === m.code).map((p) => p.name);
+      const ownRows = phases.filter((p) => p.machineTypeCode === m.code);
+      const own = ownRows.map((p) => p.name);
       const tpl = tpls.find((t) => t.machineTypeCode === m.code);
       const cal = m.calendar ?? tpl?.calendar ?? 'standard_5x8';
       return {
         id: m.label, mt: m.label, name: tpl?.name ?? `Planning ${m.label}`, desc: m.description || tpl?.description || '',
         wbs: templateWbsText(own.length), acts: templateActivitiesText(own.length), cal: calendar.isCode(cal) ? calendar.label(cal) : cal, calCode: cal,
-        phases: own,
+        phases: own, perEquipmentPhases: ownRows.filter((p) => p.perEquipment).map((p) => p.name),
         cats: cats.filter((c) => c.machineTypeCode === m.code).map((c) => ({ name: c.name, type: costType.label(c.costType), budget: String(c.budgetKeur) })),
         itpSystems: itp.filter((x) => x.machineTypeCode === m.code).map((x) => x.name),
       };
@@ -296,7 +301,13 @@ export interface WizardCreateInput {
   /** Client / sponsor ('' → none, shown "—"; the Server Function requires one, L-3). */
   client: string;
   das: string;
+  /** The main type: the first equipment line's (R-185). */
   machineType: MachineTypeCode;
+  /**
+   * R-185: the equipment lines (type × quantity), the first one of `machineType`; absent → one line of `machineType`, quantity 1.
+   * With a machine-type template, the lots specific to an equipment are generated per line from its type's phases.
+   */
+  equipments?: { machineType: MachineTypeCode; quantity: number }[];
   currency: 'EUR' | 'USD';
   /** 'blank' or the machine type code ('rnd' for R&D, custom codes): the template instantiated. */
   templateCode: string;
@@ -331,6 +342,8 @@ export interface CreatedProject extends ProjectIdentity {
   activities: number;
   links: number;
   itpPlan: boolean;
+  /** R-185: the equipment lines created (EQ-01…). */
+  equipments: number;
 }
 
 /**
@@ -354,6 +367,9 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
   const plannedStart = input.plannedStart ?? defaultPlannedStart(today);
   const askedFinish = input.plannedFinish === undefined ? defaultPlannedFinish(today) : input.plannedFinish;
   const startM = monthOfIso(plannedStart);
+  // R-185: the first line is the main type's; without lines, one line of the main type.
+  const lines = input.equipments?.length ? input.equipments : [{ machineType: input.machineType, quantity: 1 }];
+  if (lines[0].machineType !== input.machineType) throw new Error('The first equipment line is of the main type');
   return db.transaction(async (tx) => {
     // Without a chosen PM, the prototype's default (S. Perrin) on a demo database only (R-011); none on a production one.
     const demo = (await databaseSeedMode(tx)) === 'demo';
@@ -365,7 +381,8 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
       tx.select({ code: projectTemplates.code }).from(projectTemplates).where(eq(projectTemplates.code, input.templateCode)),
       input.templateCode === 'blank'
         ? Promise.resolve([])
-        : tx.select({ name: machineTypePhases.name }).from(machineTypePhases).where(eq(machineTypePhases.machineTypeCode, input.templateCode)).orderBy(asc(machineTypePhases.position)),
+        : tx.select({ code: machineTypePhases.machineTypeCode, name: machineTypePhases.name, perEquipment: machineTypePhases.perEquipment }).from(machineTypePhases)
+          .where(inArray(machineTypePhases.machineTypeCode, [...new Set([input.templateCode, ...lines.map((l) => l.machineType)])])).orderBy(asc(machineTypePhases.position)),
       input.templateCode === 'blank'
         ? Promise.resolve([])
         : tx.select({ name: machineTypeItpSystems.name }).from(machineTypeItpSystems).where(eq(machineTypeItpSystems.machineTypeCode, input.templateCode))
@@ -374,8 +391,16 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
     ]);
     // A-2: plan the machine-type template first — without a planned finish, the plan gives it (L-3b).
     const cal = calendars[input.calendar] ?? new WorkCalendar(BUILTIN_CALENDAR_BY_CODE[input.calendar] ?? BUILTIN_CALENDAR_BY_CODE.standard_5x8);
+    // R-185 (choice 2): phases common to the project from the template, lots specific to an equipment per line (its type's).
+    const mainPhases = phaseRows.filter((p) => p.code === input.templateCode);
+    const refs = lines.map((_, i) => equipmentRef(i + 1));
     const plan = instantiateTemplate({
-      phases: phaseRows.map((p) => p.name), start: plannedStart, finish: askedFinish, calendar: cal, budgetKeur: cats.reduce((a, c) => a + c.budget, 0),
+      phases: mainPhases.map((p) => ({ name: p.name, perEquipment: p.perEquipment })),
+      equipments: input.templateCode === 'blank' ? undefined : lines.map((l, i) => ({
+        ref: refs[i], label: equipmentLotLabel({ ref: refs[i], typeLabel: templateId(l.machineType), quantity: l.quantity }),
+        phases: phaseRows.filter((p) => p.code === l.machineType && p.perEquipment).map((p) => p.name),
+      })),
+      start: plannedStart, finish: askedFinish, calendar: cal, budgetKeur: cats.reduce((a, c) => a + c.budget, 0),
     });
     const plannedFinish = askedFinish ?? plan.finishDate;
     const finishM = plannedFinish ? monthOfIso(plannedFinish) : null;
@@ -423,6 +448,9 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
       .returning({ id: projects.id });
     // L-3b: the site (zone from the country — no zone override).
     if (site) await tx.insert(projectSites).values({ projectId, ...site, zoneOverride: null });
+    // R-185: the equipment lines (EQ-01 = the main type).
+    const equipmentRows = await insertEquipmentLines(tx, projectId, lines.map((l) => ({ machineTypeCode: l.machineType, quantity: l.quantity })));
+    const equipmentId = (ref: string | undefined) => (ref ? equipmentRows.find((e) => e.ref === ref)?.id ?? null : null);
     if (cats.length)
       await tx.insert(costCategories).values(
         cats.map((c, i) => ({
@@ -448,7 +476,7 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
           .insert(wbsNodes)
           .values({
             projectId, code: pkg.code, name: pkg.name, level: 1, parentId: root.id, position: position++, ownerPersonId: pmId,
-            startDate: own[0]?.startDate ?? null, finishDate: own.at(-1)?.finishDate ?? null,
+            startDate: own[0]?.startDate ?? null, finishDate: own.at(-1)?.finishDate ?? null, equipmentId: equipmentId(pkg.equipment),
           })
           .returning({ id: wbsNodes.id });
         for (const a of own) {
@@ -459,7 +487,7 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
               startText: activityDateText(a.startDate, yearOfIso(today)), startActual: false, finishText: activityDateText(a.finishDate, yearOfIso(today)), finishActual: false,
               startDate: a.startDate, finishDate: a.finishDate, baselineFinishText: activityDateText(a.finishDate, yearOfIso(today)), baselineFinishDate: a.finishDate,
               varianceDays: 0, constraintViolated: false, totalFloatDays: 0, percentComplete: 0, ownerPersonId: pmId,
-              budgetKeur: a.budgetKeur, actualKeur: 0, eacKeur: a.budgetKeur, packageName: pkg.name, position: position++,
+              budgetKeur: a.budgetKeur, actualKeur: 0, eacKeur: a.budgetKeur, packageName: pkg.name, position: position++, equipmentId: equipmentId(a.equipment),
             })
             .returning({ id: activities.id });
           actIds.set(a.code, row.id);
@@ -483,9 +511,11 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
       : [];
     const who = { actorName: actor?.full ?? actorName, actorPersonId: actor?.id ?? null };
     const tplText = input.templateCode === 'blank' ? 'blank' : `${templateId(input.templateCode)} · ${plan.packages.length} work packages · ${plan.activities.length} activities`;
-    await writeAudit(tx, { ...who, objectRef: id.code, change: `project created · ${name} · template ${tplText} · ${cats.length} cost categories${site ? ` · site ${site.city}, ${site.countryName}` : ''}`, area: 'Projects', entityType: 'project', entityId: projectId, projectId });
+    const eqText = lines.length > 1 || lines[0].quantity > 1
+      ? ` · equipment ${equipmentSummary(lines.map((l) => ({ typeLabel: templateId(l.machineType), quantity: l.quantity })))}` : '';
+    await writeAudit(tx, { ...who, objectRef: id.code, change: `project created · ${name} · template ${tplText}${eqText} · ${cats.length} cost categories${site ? ` · site ${site.city}, ${site.countryName}` : ''}`, area: 'Projects', entityType: 'project', entityId: projectId, projectId });
     await recordActivity(tx, { ...who, text: `${id.code} · ${name} created at Initiative`, kind: 'change', projectId });
-    return { ...id, name, budget, workPackages: plan.packages.length, activities: plan.activities.length, links: plan.links.length, itpPlan };
+    return { ...id, name, budget, workPackages: plan.packages.length, activities: plan.activities.length, links: plan.links.length, itpPlan, equipments: equipmentRows.length };
   });
 }
 

@@ -76,6 +76,22 @@ const MESSAGES = {
     (p) => `CAPEX link: ${p.from} → ${p.to}`,
     (p) => `Rattachement CAPEX : ${p.from} → ${p.to}`,
   ),
+  // R-185: the project's equipment lines edited on the Contract screen (audit trail and activity feed; "3 × MEMU").
+  'project.equipmentAdded': def(
+    { ref: 'ref', equipment: 'ref' },
+    (p) => `Equipment ${p.ref} added · ${p.equipment}`,
+    (p) => `Équipement ${p.ref} ajouté · ${p.equipment}`,
+  ),
+  'project.equipmentChanged': def(
+    { ref: 'ref', from: 'ref', to: 'ref' },
+    (p) => `Equipment ${p.ref}: ${p.from} → ${p.to}`,
+    (p) => `Équipement ${p.ref} : ${p.from} → ${p.to}`,
+  ),
+  'project.equipmentRemoved': def(
+    { ref: 'ref', equipment: 'ref' },
+    (p) => `Equipment ${p.ref} removed · ${p.equipment}`,
+    (p) => `Équipement ${p.ref} retiré · ${p.equipment}`,
+  ),
 } as const;
 
 export type MessageKey = keyof typeof MESSAGES;

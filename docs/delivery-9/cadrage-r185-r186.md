@@ -5,6 +5,10 @@
 > EPC2i à plusieurs équipements**. CLAUDE.md demande de cadrer l’approche multi-équipements avec le responsable produit
 > **avant** de construire : ce document propose le modèle et les choix par défaut (§ 3), à valider (§ 4). Demandes liées :
 > `REQUESTS.md` (Arche K-01, K-02, K-03, K-10), `docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md`.
+>
+> **23 oct. 2026 — validé.** Le responsable produit a validé les cinq choix du § 4 (options « recommandé ») : ligne = type ×
+> quantité ; phases communes + lots par équipement ; coûts suivis au niveau du projet ; un plan ITP par ligne ; catalogue éditable
+> par le directeur et le responsable ingénierie. Partie 1 (étapes 1 et 2) : `docs/delivery-9/notes-r185-equipments.md`.
 
 ## 1. Aujourd’hui
 

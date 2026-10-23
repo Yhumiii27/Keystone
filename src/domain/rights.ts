@@ -120,6 +120,12 @@ export const canEditContract = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) =
 export const canSetCapexLink = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) =>
   role === 'director' || (a.lead && role !== 'client' && role !== 'finance' && canSee(role, 'contract'));
 
+/**
+ * R-185: the project's equipment lines (Contract screen, "Equipment" card) — the same people as the CAPEX link: the director and
+ * the project's leads who see the Contract screen; not Finance, not the client.
+ */
+export const canSetProjectEquipment = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) => canSetCapexLink(role, a);
+
 /** R-044: Finance reads Budget, Hours and Billing, even on a project whose team it is on (billing gate unchanged). */
 export const FINANCE_READ_ONLY_SCREENS: readonly ScreenId[] = ['budget', 'hours', 'billing'];
 export const financeReadOnly = (role: RoleKey, screen: ScreenId) => role === 'finance' && FINANCE_READ_ONLY_SCREENS.includes(screen);

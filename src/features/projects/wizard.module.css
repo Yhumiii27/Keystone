@@ -39,6 +39,14 @@
 :global(.tag).phaseTag { font-size: 11.5px; }
 .phaseNote { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; }
 
+/* R-185 — equipment lines (type × quantity) */
+.lines { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.lineRow { display: grid; grid-template-columns: 52px minmax(0, 160px) 90px auto; gap: 8px; align-items: center; width: 100%; }
+.lineRef { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--color-neutral-300); }
+:global(.input).lineType { min-height: 32px; font-size: 13px; }
+:global(.input).lineQty { min-height: 32px; font-size: 13px; }
+.lineMain { font-size: 11.5px; color: var(--color-neutral-400); }
+
 /* Step 3 — Budget */
 .catHead { display: flex; align-items: center; gap: 10px; }
 .catTitle { font-size: 13px; color: var(--color-neutral-300); margin-right: auto; }

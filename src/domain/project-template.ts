@@ -58,6 +58,8 @@ export interface TemplatePackage {
   /** "1.1". */
   code: string;
   name: string;
+  /** R-185: the equipment line ("EQ-02") of a lot specific to an equipment; absent = common to the project. */
+  equipment?: string;
 }
 
 export interface TemplateActivity {
@@ -70,6 +72,8 @@ export interface TemplateActivity {
   startDate: string;
   finishDate: string;
   budgetKeur: number;
+  /** R-185: the equipment line of the activity's lot; absent = common. */
+  equipment?: string;
 }
 
 export interface TemplateLink {
@@ -88,15 +92,21 @@ export interface TemplatePlan {
   finishDate: string | null;
 }
 
-/** "6 phases · 6 work packages" (WBS copy item; was the prototype's static "6 phases · 14 lots"). */
-export const templateWbsText = (phases: number) =>
-  phases ? `${phases} ${phases === 1 ? 'phase' : 'phases'} · ${phases} ${phases === 1 ? 'work package' : 'work packages'}` : 'Empty';
+/**
+ * "6 phases · 6 work packages" (WBS copy item; was the prototype's static "6 phases · 14 lots"). R-185: `packages` = the work
+ * packages of the plan when the lots specific to an equipment are generated per line (default: one per phase).
+ */
+export const templateWbsText = (phases: number, packages = phases) =>
+  phases ? `${phases} ${phases === 1 ? 'phase' : 'phases'} · ${packages} ${packages === 1 ? 'work package' : 'work packages'}` : 'Empty';
 
-/** "6 activities · 5 links" (Activities & logic copy item; was the prototype's static "38 activités · 52 liens"). */
-export function templateActivitiesText(phases: number): string {
-  const n = phases * TEMPLATE_ACTIVITIES_PER_PHASE;
+/**
+ * "6 activities · 5 links" (Activities & logic copy item; was the prototype's static "38 activités · 52 liens"). R-185: `shape`
+ * = the activities and links of a plan with lots per equipment line (default: a chain of one activity per phase).
+ */
+export function templateActivitiesText(phases: number, shape?: { activities: number; links: number }): string {
+  const n = shape ? shape.activities : phases * TEMPLATE_ACTIVITIES_PER_PHASE;
   if (!n) return 'None';
-  const links = Math.max(0, n - 1);
+  const links = shape ? shape.links : Math.max(0, n - 1);
   return `${n} ${n === 1 ? 'activity' : 'activities'} · ${links} ${links === 1 ? 'link' : 'links'}`;
 }
 
@@ -141,36 +151,151 @@ export function shareDays(total: number, n: number): number[] {
   return Array.from({ length: n }, (_, i) => base + (i < rest ? 1 : 0));
 }
 
+/** A standard phase of the main type; `perEquipment` (R-185): a lot generated once per equipment line. */
+export interface TemplatePhase {
+  name: string;
+  perEquipment?: boolean;
+}
+
+/**
+ * R-185: an equipment line of the project as the planner reads it — its reference, the suffix of its lots' names when the
+ * project has several lines ("EQ-02 · 3 × MEMU", equipmentLotLabel) and the phases specific to an equipment of ITS type.
+ */
+export interface TemplateEquipment {
+  ref: string;
+  label: string;
+  phases: readonly string[];
+}
+
+export interface TemplatePlanInput {
+  phases: readonly (string | TemplatePhase)[];
+  /** R-185: the project's equipment lines; absent = every phase common to the project (the plan before R-185). */
+  equipments?: readonly TemplateEquipment[];
+}
+
+/** One work package of a plan's structure and the time slots of its activities. */
+interface PlannedPackage extends TemplatePackage {
+  /** Index of the package's first time slot. */
+  slot: number;
+}
+
+interface PlanStructure {
+  packages: PlannedPackage[];
+  /** Time slots of the plan (each lasts the same share of the window). */
+  slots: number;
+  links: [number, number][];
+}
+
+/**
+ * Structure of a template plan (R-185, owner's choice 2 of 23 Oct 2026). The main type's phases common to the project come in
+ * their order, the lots specific to an equipment form one block, placed where the main type's first such phase is (at the
+ * end when the main type has none): in this block every line gets ITS type's phases specific to an equipment, one work package
+ * each, the lines in parallel (same time slots) and each line's lots chained. Logic: the common phase before the block precedes
+ * each line's first lot, each line's last lot precedes the common phase after the block. One line → the plan before R-185 (the
+ * same packages, activities, dates and links), its lots marked with the line. Links are activity indexes.
+ */
+function planStructure(input: TemplatePlanInput): PlanStructure {
+  const phases = input.phases
+    .map((p) => (typeof p === 'string' ? { name: p.trim(), perEquipment: false } : { name: p.name.trim(), perEquipment: !!p.perEquipment }))
+    .filter((p) => p.name);
+  const eqs = input.equipments?.map((e) => ({ ...e, phases: e.phases.map((x) => x.trim()).filter(Boolean) }));
+  type Step = { common: string } | { block: true };
+  let steps: Step[];
+  if (!eqs) steps = phases.map((p) => ({ common: p.name }));
+  else {
+    const common = phases.filter((p) => !p.perEquipment).map((p) => ({ common: p.name }));
+    const first = phases.findIndex((p) => p.perEquipment);
+    const at = first < 0 ? common.length : phases.slice(0, first).filter((p) => !p.perEquipment).length;
+    steps = [...common.slice(0, at), { block: true }, ...common.slice(at)];
+  }
+  const blockLen = eqs ? Math.max(0, ...eqs.map((e) => e.phases.length)) : 0;
+  const several = (eqs?.length ?? 0) > 1;
+  const per = TEMPLATE_ACTIVITIES_PER_PHASE;
+  const packages: PlannedPackage[] = [];
+  const links: [number, number][] = [];
+  let slot = 0;
+  let act = 0;
+  let frontier: number[] = [];
+  const add = (name: string, at: number, equipment?: string) => {
+    const pkg: PlannedPackage = { code: `1.${packages.length + 1}`, name, slot: at, ...(equipment ? { equipment } : {}) };
+    packages.push(pkg);
+    const first = act;
+    act += per;
+    // The activities of a package are chained (TEMPLATE_ACTIVITIES_PER_PHASE > 1).
+    for (let j = first + 1; j < act; j++) links.push([j - 1, j]);
+    return { first, last: act - 1 };
+  };
+  for (const step of steps) {
+    if ('common' in step) {
+      const { first, last } = add(step.common, slot);
+      for (const f of frontier) links.push([f, first]);
+      frontier = [last];
+      slot += per;
+    } else if (blockLen) {
+      const next: number[] = [];
+      for (const e of eqs!) {
+        let prev: number | null = null;
+        e.phases.forEach((name, j) => {
+          const { first, last } = add(several ? `${name} — ${e.label}` : name, slot + j * per, e.ref);
+          if (prev == null) for (const f of frontier) links.push([f, first]);
+          else links.push([prev, first]);
+          prev = last;
+        });
+        if (prev != null) next.push(prev);
+      }
+      frontier = next;
+      slot += blockLen * per;
+    }
+  }
+  return { packages, slots: slot, links };
+}
+
+/** R-185: the size of a template plan — what the wizard's copy items count before creation. */
+export function templatePlanShape(input: TemplatePlanInput): { packages: number; activities: number; links: number } {
+  const s = planStructure(input);
+  return { packages: s.packages.length, activities: s.packages.length * TEMPLATE_ACTIVITIES_PER_PHASE, links: s.links.length };
+}
+
 /**
  * Plans the WBS, activities and links of a template. `phases` = standard phases of the machine type, `budgetKeur` =
  * Σ cost categories (no contingency), `calendar` = the project calendar, `finish` = the planned finish (null: each
- * activity lasts TEMPLATE_ACTIVITY_DAYS, L-3b). Blank template (no phase) → empty plan.
+ * activity lasts TEMPLATE_ACTIVITY_DAYS, L-3b). Blank template (no phase) → empty plan. R-185: with `equipments`, the
+ * lots specific to an equipment are generated per line (planStructure); the window is shared between the time slots (a block
+ * of lots in parallel counts its longest line) and the budget evenly between the activities.
  */
-export function instantiateTemplate(input: { phases: readonly string[]; start: string; finish: string | null; calendar: WorkCalendar; budgetKeur: number }): TemplatePlan {
-  const phases = input.phases.map((p) => p.trim()).filter(Boolean);
-  if (!phases.length) return { packages: [], activities: [], links: [], startDate: null, finishDate: null };
+export function instantiateTemplate(input: TemplatePlanInput & { start: string; finish: string | null; calendar: WorkCalendar; budgetKeur: number }): TemplatePlan {
+  const structure = planStructure(input);
+  if (!structure.packages.length) return { packages: [], activities: [], links: [], startDate: null, finishDate: null };
   const cal = input.calendar;
-  const packages = phases.map((name, i) => ({ code: `1.${i + 1}`, name }));
-  const count = phases.length * TEMPLATE_ACTIVITIES_PER_PHASE;
-  const days = input.finish ? shareDays(cal.durationOf(input.start, input.finish), count) : Array.from({ length: count }, () => TEMPLATE_ACTIVITY_DAYS);
+  const days = input.finish ? shareDays(cal.durationOf(input.start, input.finish), structure.slots) : Array.from({ length: structure.slots }, () => TEMPLATE_ACTIVITY_DAYS);
+  // Dates of each time slot, one after the other on the project calendar.
+  const slots: { start: string; finish: string; days: number }[] = [];
+  let next = cal.nextWorkDay(input.start);
+  for (const d of days) {
+    const finish = cal.finishOf(next, d);
+    slots.push({ start: next, finish, days: d });
+    next = cal.addWorkDays(finish, 1);
+  }
+  const per = TEMPLATE_ACTIVITIES_PER_PHASE;
+  const count = structure.packages.length * per;
   const each = count ? Math.round((input.budgetKeur / count) * 100) / 100 : 0;
   const activities: TemplateActivity[] = [];
-  let next = cal.nextWorkDay(input.start);
-  let k = 0;
-  for (const [i, pkg] of packages.entries()) {
-    for (let j = 0; j < TEMPLATE_ACTIVITIES_PER_PHASE; j++, k++) {
-      const d = days[k];
-      const finish = cal.finishOf(next, d);
+  for (const pkg of structure.packages)
+    for (let j = 0; j < per; j++) {
+      const s = slots[pkg.slot + j];
       activities.push({
-        code: `A${TEMPLATE_CODE_START + k * TEMPLATE_CODE_STEP}`, wbs: pkg.code,
-        name: TEMPLATE_ACTIVITIES_PER_PHASE === 1 ? phases[i] : `${phases[i]} · ${j + 1}`,
-        durationDays: d, startDate: next, finishDate: finish, budgetKeur: each,
+        code: `A${TEMPLATE_CODE_START + activities.length * TEMPLATE_CODE_STEP}`, wbs: pkg.code,
+        name: per === 1 ? pkg.name : `${pkg.name} · ${j + 1}`,
+        durationDays: s.days, startDate: s.start, finishDate: s.finish, budgetKeur: each,
+        ...(pkg.equipment ? { equipment: pkg.equipment } : {}),
       });
-      next = cal.addWorkDays(finish, 1);
     }
-  }
-  const links = activities.slice(1).map((a, i) => ({ predecessor: activities[i].code, successor: a.code, ...TEMPLATE_LINK }));
-  return { packages, activities, links, startDate: activities[0].startDate, finishDate: activities[activities.length - 1].finishDate };
+  const links = structure.links.map(([p, s]) => ({ predecessor: activities[p].code, successor: activities[s].code, ...TEMPLATE_LINK }));
+  const packages: TemplatePackage[] = structure.packages.map((p) => ({ code: p.code, name: p.name, ...(p.equipment ? { equipment: p.equipment } : {}) }));
+  return {
+    packages, activities, links,
+    startDate: activities.map((a) => a.startDate).sort()[0], finishDate: activities.map((a) => a.finishDate).sort().at(-1)!,
+  };
 }
 
 // ── Wizard options ────────────────────────────────────────────────────────────────────────────────────────────────────

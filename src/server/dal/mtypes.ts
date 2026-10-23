@@ -38,7 +38,7 @@ export interface MachineTypeRow {
   /** Shares total 100 %. */
   termsOk: boolean;
   rexReferences: { analyticCode: string; projectName: string; year: string; pattern: string }[];
-  /** Projects of this type (register order): code, name, stage. */
+  /** Projects of this type (register order): code, name, stage — R-185: by main type (the first equipment line's), as the prototype. */
   projects: { code: string; name: string; number: string | null }[];
 }
 
@@ -65,6 +65,13 @@ export async function listMachineTypes(): Promise<MachineTypeRow[]> {
       projects: projs.filter((p) => p.mt === t.code).map((p) => ({ code: p.code, name: p.name, number: p.number })),
     };
   });
+}
+
+/** R-185: the active machine types an equipment line may take (code, display code), in order. */
+export async function listMachineTypeOptions(): Promise<{ code: string; label: string }[]> {
+  const db = await getDb();
+  const rows = await db.select({ code: machineTypes.code, label: machineTypes.label }).from(machineTypes).where(eq(machineTypes.active, true)).orderBy(asc(machineTypes.sortOrder));
+  return rows;
 }
 
 /** One machine type by code ("EMP", "rnd" or "R&D"). */
@@ -133,8 +140,11 @@ export async function setMachineTypePhases(code: string, phases: string[], actor
   const db = await getDb();
   await db.transaction(async (tx) => {
     const t = await loadType(tx, code);
+    // R-185: a phase keeps its "specific to an equipment" flag while its name is kept (a new or renamed phase is common).
+    const perEquipment = new Set((await tx.select({ name: machineTypePhases.name, flag: machineTypePhases.perEquipment }).from(machineTypePhases)
+      .where(eq(machineTypePhases.machineTypeCode, t.code))).filter((p) => p.flag).map((p) => p.name));
     await tx.delete(machineTypePhases).where(eq(machineTypePhases.machineTypeCode, t.code));
-    if (names.length) await tx.insert(machineTypePhases).values(names.map((name, position) => ({ machineTypeCode: t.code, position, name })));
+    if (names.length) await tx.insert(machineTypePhases).values(names.map((name, position) => ({ machineTypeCode: t.code, position, name, perEquipment: perEquipment.has(name) })));
     await trace(tx, await whoIs(tx, actor), { objectRef: `Machine type ${t.label}`, change: `phases: ${names.length}`, area: 'Settings', entityType: 'machine_type' });
   });
 }

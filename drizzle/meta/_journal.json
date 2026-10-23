@@ -288,6 +288,20 @@
       "when": 1792748763758,
       "tag": "0040_share_installed_base",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1792756025677,
+      "tag": "0041_project_equipments",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1792756034627,
+      "tag": "0042_project_equipments_backfill",
+      "breakpoints": true
     }
   ]
 }

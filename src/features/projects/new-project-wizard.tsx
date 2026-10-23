@@ -8,6 +8,9 @@
 // creation instantiates them (work packages, activities, FS links, cost categories, ITP plan); the type of a cost
 // category is a real choice and "Add category" offers Settings › Cost categories; the calendar defaults to the machine
 // type's, and its working time and holidays are the real ones.
+// Delivery 9 (R-185, choices of 23 Oct 2026): the project supplies one or more equipment lines (machine type × quantity, the
+// first one of the main type chosen in step 1), set in step 2; the lots specific to an equipment are generated per line (the
+// copy items count them) and the default cost categories are the lines' reference categories × quantity.
 import { CalendarBlank, Clock, FlagBanner, Plus, X } from '@phosphor-icons/react/dist/ssr';
 import { useId } from 'react';
 import { ChoiceCard } from '@/components/app/Check';
@@ -22,9 +25,10 @@ import {
   wizardClientCode, wizardTotal, wizardTotalText, type ProjectIdentity, type WizardCurrency,
 } from '@/domain/lifecycle';
 import {
-  WIZARD_CALENDAR_OPTIONS, defaultPlannedStart, holidaysText, templateActivitiesText, templateWbsText, wizardSiteError, wizardWindowError,
+  WIZARD_CALENDAR_OPTIONS, defaultPlannedStart, holidaysText, templateActivitiesText, templatePlanShape, templateWbsText, wizardSiteError, wizardWindowError,
   workingTimeText,
 } from '@/domain/project-template';
+import { MAX_EQUIPMENT_LINES, MAX_EQUIPMENT_QUANTITY, equipmentRef, equipmentSummary, referenceCategories } from '@/domain/project-equipment';
 import { useI18n } from '@/i18n/client';
 import type { CalendarCode } from '@/server/db/codes';
 import type { NewProjectSetup, WizardTemplate } from '@/server/dal/projects-register';
@@ -63,18 +67,47 @@ export interface WizardDraft {
   /** Site (L-3b): city and country (EN name of the countries table). */
   city: string;
   country: string;
+  /** R-185: equipment lines (type label × quantity), the first of `mt`; null = one line of `mt`, quantity 1. */
+  lines: WizardLine[] | null;
+}
+
+/** R-185: an equipment line of the wizard. */
+export interface WizardLine {
+  /** Machine type label (EMP, MEMU…). */
+  mt: string;
+  /** Quantity typed (1–999). */
+  qty: number;
 }
 
 /** Empty draft; the planned start follows the business date `today` (R-013; 11 Jan 2027 on 25 Sep 2026). */
 export const defaultDraft = (today: string): WizardDraft => ({
   name: '', client: '', das: '2', mt: 'EMP', cur: 'EUR', template: 'EMP', cats: null, cont: 5, cal: null, pm: null,
-  start: defaultPlannedStart(today), finish: '', city: '', country: '',
+  start: defaultPlannedStart(today), finish: '', city: '', country: '', lines: null,
 });
 
 const BLANK: WizardTemplate = {
   id: 'blank', mt: null, name: 'Projet blank', desc: '', wbs: templateWbsText(0), acts: templateActivitiesText(0), cal: 'Standard 5d · 8h',
-  calCode: 'standard_5x8', phases: [], cats: [], itpSystems: [],
+  calCode: 'standard_5x8', phases: [], perEquipmentPhases: [], cats: [], itpSystems: [],
 };
+
+/** R-185: equipment lines of the draft — the first one always of the main type `mt`. */
+export const draftLines = (d: Pick<WizardDraft, 'mt' | 'lines'>): WizardLine[] => {
+  const lines = d.lines?.length ? d.lines : [{ mt: d.mt, qty: 1 }];
+  return lines[0].mt === d.mt ? lines : [{ ...lines[0], mt: d.mt }, ...lines.slice(1)];
+};
+
+/** R-185: the machine-type template of a line's type (its phases and reference categories). */
+const typeTemplate = (setup: NewProjectSetup, mt: string) => setup.templates.find((x) => x.mt === mt);
+
+/** R-185: the plan the template will create — common phases + lots per equipment line (the copy items' counts). */
+export function draftPlanShape(setup: NewProjectSetup, d: WizardDraft) {
+  const tpl = templateOf(setup, d.template);
+  const lines = draftLines(d);
+  return templatePlanShape({
+    phases: tpl.phases.map((name) => ({ name, perEquipment: tpl.perEquipmentPhases.includes(name) })),
+    equipments: tpl.id === 'blank' ? undefined : lines.map((l, i) => ({ ref: equipmentRef(i + 1), label: l.mt, phases: typeTemplate(setup, l.mt)?.perEquipmentPhases ?? [] })),
+  });
+}
 
 /** Calendar of the draft: the one chosen, else the template's (when the wizard offers it), else Standard. */
 export const draftCalendar = (setup: NewProjectSetup, d: WizardDraft): CalendarCode => {
@@ -95,8 +128,23 @@ export const templateOf = (setup: NewProjectSetup, id: string): WizardTemplate =
   setup.templates.find((x) => x.id === id) ?? setup.templates[0] ?? BLANK;
 const catsOf = (tpl: WizardTemplate): WizardCategory[] => tpl.cats.map((c) => ({ ...c }));
 
-/** Categories of the draft (template defaults until the user edits them). */
-export const draftCategories = (setup: NewProjectSetup, d: WizardDraft): WizardCategory[] => d.cats ?? catsOf(templateOf(setup, d.template));
+/**
+ * R-185 (choice 3): the reference categories of the lines — each line's type categories × its quantity, merged by name and
+ * type (one line of one machine: the template's categories as before).
+ */
+export function lineCategories(setup: NewProjectSetup, d: WizardDraft): WizardCategory[] {
+  const tpl = templateOf(setup, d.template);
+  if (tpl.id === 'blank') return catsOf(tpl);
+  const lines = draftLines(d);
+  if (lines.length === 1 && lines[0].qty === 1) return catsOf(tpl);
+  return referenceCategories(
+    lines.map((l) => ({ machineTypeCode: l.mt, quantity: l.qty })),
+    (mt) => (mt === tpl.mt ? tpl : typeTemplate(setup, mt))?.cats.map((c) => ({ name: c.name, type: c.type, budget: parseFloat(c.budget) || 0 })) ?? [],
+  ).map((c) => ({ name: c.name, type: c.type, budget: String(c.budget) }));
+}
+
+/** Categories of the draft (template defaults — the lines' reference categories — until the user edits them). */
+export const draftCategories = (setup: NewProjectSetup, d: WizardDraft): WizardCategory[] => d.cats ?? lineCategories(setup, d);
 
 /** Identity the project will get (nextProjectId / nextAnalytic for the client typed so far). */
 export const draftIdentity = (setup: NewProjectSetup, d: WizardDraft): ProjectIdentity =>
@@ -141,11 +189,23 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
     return !cats.some((x) => names.includes(x.name.trim().toLowerCase()));
   });
 
+  const lines = draftLines(draft);
+  const shape = draftPlanShape(setup, draft);
   const setMachineType = (mt: string) => {
     const T = setup.templates.find((x) => x.mt === mt);
+    // R-185: the main type is the first equipment line's.
+    const nextLines = [{ ...lines[0], mt }, ...lines.slice(1)];
     // A blank start stays blank and keeps its categories; otherwise switch to that type's template (3956) and its calendar.
-    if (draft.template === 'blank' || !T) onDraft({ mt });
-    else onDraft({ mt, template: T.id, cats: catsOf(T), cal: null });
+    if (draft.template === 'blank' || !T) onDraft({ mt, lines: nextLines });
+    else onDraft({ mt, template: T.id, cats: null, cal: null, lines: nextLines });
+  };
+  // R-185: changing the lines resets the categories to the lines' reference categories (as a change of type does); the first
+  // line's type is the main type (its template and calendar, as step 1's machine type).
+  const setLines = (next: WizardLine[]) => {
+    const cats = draft.template === 'blank' ? {} : { cats: null };
+    if (next[0].mt === draft.mt) return onDraft({ lines: next, ...cats });
+    const T = setup.templates.find((x) => x.mt === next[0].mt);
+    onDraft(draft.template === 'blank' || !T ? { mt: next[0].mt, lines: next } : { mt: next[0].mt, template: T.id, cats: null, cal: null, lines: next });
   };
 
   return (
@@ -302,15 +362,53 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
                   selected={draft.template === x.id}
                   title={dataText(x.name, lang)}
                   description={dataText(x.desc, lang)}
-                  onSelect={() => onDraft({ template: x.id, cats: catsOf(x) })}
+                  onSelect={() => onDraft({ template: x.id, cats: x.id === 'blank' ? catsOf(x) : null })}
                 />
               ))}
           </div>
+          <div className={w.lines}>
+            <span className={w.eyebrow}>{t('Equipment supplied')}</span>
+            {lines.map((l, i) => (
+              <div key={i} className={w.lineRow}>
+                <span className={w.lineRef}>{equipmentRef(i + 1)}</span>
+                <Select
+                  className={w.lineType}
+                  value={l.mt}
+                  aria-label={`${t('Machine type')} ${equipmentRef(i + 1)}`}
+                  onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, mt: e.target.value } : x)))}
+                  options={setup.machineTypes.map((v) => ({ value: v, label: v }))}
+                />
+                <Input
+                  className={w.lineQty}
+                  type="number"
+                  min={1}
+                  max={MAX_EQUIPMENT_QUANTITY}
+                  alignRight
+                  value={String(l.qty)}
+                  aria-label={`${t('Quantity')} ${equipmentRef(i + 1)}`}
+                  onChange={(e) => {
+                    const q = Math.min(MAX_EQUIPMENT_QUANTITY, Math.max(1, Math.floor(Number(e.target.value) || 1)));
+                    setLines(lines.map((x, j) => (j === i ? { ...x, qty: q } : x)));
+                  }}
+                />
+                {i === 0 ? (
+                  <span className={w.lineMain}>{t('main type')}</span>
+                ) : (
+                  <IconButton icon={X} label={`${t('Remove')} ${equipmentRef(i + 1)}`} variant="ghost" size={32} muted onClick={() => setLines(lines.filter((_, j) => j !== i))} />
+                )}
+              </div>
+            ))}
+            {lines.length < MAX_EQUIPMENT_LINES && (
+              <Button variant="ghost" icon={Plus} className={w.btn13} onClick={() => setLines([...lines, { mt: draft.mt, qty: 1 }])}>
+                {t('Add equipment line')}
+              </Button>
+            )}
+          </div>
           <div className={w.copy}>
             {[
-              { label: 'WBS', value: templateTextT(tmpl.wbs, t, lang) },
-              { label: 'Activities & logic', value: templateTextT(tmpl.acts, t, lang) },
-              { label: 'Cost categories', value: categoriesText(t, lang, tmpl.cats.length) },
+              { label: 'WBS', value: templateTextT(tmpl.id === 'blank' ? tmpl.wbs : templateWbsText(tmpl.phases.length, shape.packages), t, lang) },
+              { label: 'Activities & logic', value: templateTextT(tmpl.id === 'blank' ? tmpl.acts : templateActivitiesText(tmpl.phases.length, shape), t, lang) },
+              { label: 'Cost categories', value: categoriesText(t, lang, tmpl.id === 'blank' ? tmpl.cats.length : lineCategories(setup, draft).length) },
               { label: 'Calendars', value: t(tmpl.cal) },
               { label: 'Inspection plan', value: tmpl.itpSystems.length ? itpSystemsText(tmpl.itpSystems.length, lang) : t('Not created'), muted: !tmpl.itpSystems.length },
               { label: 'Baselines', value: t('Not copied'), muted: true },
@@ -326,12 +424,13 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
               <span className={w.eyebrow}>{t('Standard phases — WBS level 1')}</span>
               <div className={w.phaseTags}>
                 {tmpl.phases.map((ph, i) => (
-                  <Tag key={i} tone="neutral" className={w.phaseTag}>
+                  <Tag key={i} tone={tmpl.perEquipmentPhases.includes(ph) ? 'accent' : 'neutral'} className={w.phaseTag}>
                     {i + 1} · {t(ph)}
                   </Tag>
                 ))}
               </div>
               <span className={w.phaseNote}>{t('The budget breakdown in the next step follows the same machine type.')}</span>
+              {tmpl.perEquipmentPhases.length > 0 && <span className={w.phaseNote}>{t('Highlighted phases are lots specific to an equipment: generated once per equipment line.')}</span>}
             </div>
           )}
         </div>
@@ -413,7 +512,7 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
                 projectId: pid,
                 analytic: ana,
                 das: draft.das,
-                machineType: draft.mt,
+                machineType: equipmentSummary(lines.map((l) => ({ typeLabel: l.mt, quantity: l.qty }))) ?? draft.mt,
                 name: draft.name,
                 template: { blank: tmpl.id === 'blank', wbs: tmpl.wbs, acts: tmpl.acts },
                 categories: cats.length,

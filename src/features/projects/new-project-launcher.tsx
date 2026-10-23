@@ -15,7 +15,7 @@ import type { NewProjectSetup } from '@/server/dal/projects-register';
 import { createProjectAction } from './actions';
 import { PROJECTS_RESET_EVENT } from './events';
 import { projectCreatedToastText } from './toasts';
-import { NewProjectWizard, defaultDraft, draftCalendar, draftCategories, draftManager, type WizardDraft } from './new-project-wizard';
+import { NewProjectWizard, defaultDraft, draftCalendar, draftCategories, draftLines, draftManager, type WizardDraft } from './new-project-wizard';
 
 export function NewProjectLauncher({ setup }: { setup: NewProjectSetup }) {
   const { t, lang } = useI18n();
@@ -30,7 +30,7 @@ export function NewProjectLauncher({ setup }: { setup: NewProjectSetup }) {
   const create = () =>
     startTransition(async () => {
       const r = await createProjectAction({
-        ...draft, cats: draftCategories(setup, draft), cal: draftCalendar(setup, draft), pm: draftManager(setup, draft),
+        ...draft, cats: draftCategories(setup, draft), cal: draftCalendar(setup, draft), pm: draftManager(setup, draft), lines: draftLines(draft),
       });
       if (!r.ok) {
         toast.showEn(r.error);

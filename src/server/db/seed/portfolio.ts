@@ -2,13 +2,19 @@
 // stage deliverable checks and stage history.
 import { mIdx } from '@/lib/format';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
-import { STAGES, calendar, costType, isoOfDemoDate, machineType, pipelineWindow, stage, type StageCode } from '../codes';
+import { equipmentRef } from '@/domain/project-equipment';
+import { STAGES, calendar, costType, isoOfDemoDate, machineType, pipelineWindow, stage, type MachineTypeCode, type StageCode } from '../codes';
 import {
-  lifecycleStages, lifecycleTransitions, machineTypes, pipelineStagePlans, projectMembers, projectSites, projectTemplateCostCategories,
+  lifecycleStages, lifecycleTransitions, machineTypes, pipelineStagePlans, projectEquipments, projectMembers, projectSites, projectTemplateCostCategories,
   projectTemplatePhases, projectTemplates, projects, rexReferences, stageDeliverableChecks, stageDeliverableDefs, stageTransitions,
 } from '../schema';
 import type { Tx } from '../types';
 import { must, newId, personId, type SeedCtx } from './context';
+
+/** R-185: the demo projects' equipment lines after EQ-01 (the project's machine type, one machine). */
+export const DEMO_EQUIPMENT_LINES: Record<string, { machineTypeCode: MachineTypeCode; quantity: number }[]> = {
+  'HLT-026': [{ machineTypeCode: 'MEMU', quantity: 3 }],
+};
 
 const templateCode = (id: string) => (id === 'blank' ? 'blank' : machineType.code(id));
 
@@ -91,6 +97,15 @@ async function seedProjects(tx: Tx, ctx: SeedCtx): Promise<void> {
     };
   });
   await tx.insert(projects).values(rows);
+
+  // R-185: one equipment line per typed project (EQ-01, its machine type, one machine) — and a multi-equipment demo project:
+  // Harbor Line (HLT-026) supplies its EMP gantry and three MEMU mobile units (DEMO_EQUIPMENT_LINES).
+  await tx.insert(projectEquipments).values(
+    rows.filter((r) => r.machineTypeCode).flatMap((r) => [
+      { projectId: r.id, ref: 'EQ-01', machineTypeCode: r.machineTypeCode!, quantity: 1, position: 0 },
+      ...(DEMO_EQUIPMENT_LINES[r.code] ?? []).map((l, i) => ({ projectId: r.id, ref: equipmentRef(i + 2), machineTypeCode: l.machineTypeCode, quantity: l.quantity, position: i + 1 })),
+    ]),
+  );
 
   await tx.insert(projectSites).values(
     Object.entries(PROTO.GEO as Record<string, { city: string; country: string; lat: number; lng: number; zone?: 'euna' | 'afr' | 'apac' }>).map(

@@ -226,6 +226,8 @@ export interface SearchableProject {
   number: string;
   analytic: string;
   machineType: string;
+  /** R-185: the types of every equipment line (the search matches any of them); absent = `machineType` only. */
+  machineTypes?: readonly string[];
 }
 
 /**
@@ -240,7 +242,7 @@ export function matchesQuery(p: SearchableProject, q: string): boolean {
     p.code.toLowerCase().includes(ql) ||
     p.number.includes(ql) ||
     p.analytic.toLowerCase().includes(ql) ||
-    p.machineType.toLowerCase() === ql
+    (p.machineTypes ?? [p.machineType]).some((m) => m.toLowerCase() === ql)
   );
 }
 

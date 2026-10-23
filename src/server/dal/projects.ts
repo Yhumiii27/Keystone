@@ -2,6 +2,7 @@ import 'server-only';
 // Projects DAL — contract used by the shell and every screen (Drizzle queries over src/server/db).
 import { asc, eq, like, sql } from 'drizzle-orm';
 import { cache } from 'react';
+import { equipmentSummary } from '@/domain/project-equipment';
 import { healthOf, type Health, type HealthThresholds } from '@/domain/health';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import { clientCode3, machineType, stage, type CalendarCode, type CostType, type MachineTypeCode, type StageCode } from '@/server/db/codes';
@@ -10,6 +11,7 @@ import type { ZoneKey } from '@/server/session';
 import { getCostControl, type CostControl } from './cost';
 import { listProjectEvms, type ProjectEvm } from './evm';
 import { healthThresholds } from './health-thresholds';
+import { equipmentLinesByProject, insertEquipmentLines } from './project-equipment';
 import { getActivities, getMilestones, getScheduleBars, getScheduleControl, getWbs, toProtoActs, type ProtoAct, type ScheduleControl } from './planning';
 
 export interface ProjectRow {
@@ -18,7 +20,11 @@ export interface ProjectRow {
   displayId: string;       // '#026' (PROJ_ID) or the code when none
   analytic: string | null; // 'HAV004'
   das: string | null;      // business area '1'..'4'
-  machineType: string | null; // 'EMP' | 'MEMU' | 'SPUR' | 'AUTRE' | 'R&D'
+  machineType: string | null; // 'EMP' | 'MEMU' | 'SPUR' | 'AUTRE' | 'R&D' — R-185: the main type (first equipment line)
+  /** R-185: the project's equipment lines — "EMP" (one line of one machine) or "1 × EMP · 3 × MEMU"; null without line. */
+  equipment?: string | null;
+  /** R-185: the display codes of the equipment lines' types, in line order (distinct); absent / empty without line. */
+  equipmentTypes?: string[];
   status: string;          // lifecycle stage, French domain value (prototype label), e.g. 'Fabrication & Assemblage'
   pm: string;              // 'R. Aubert'
   /** persons.id of the project manager (R-039: ownership by person for signed-in users). */
@@ -70,11 +76,13 @@ type Joined = { p: typeof projects.$inferSelect; client: string | null; pm: stri
  * its activities (delivery 7, R-073): progress, actual cost and SPI at the data date replace the stored (seeded) figures,
  * which stay for a project without activity budgets.
  */
-function toRow(r: Joined, th: HealthThresholds, evm: ProjectEvm | undefined): ProjectRow {
+function toRow(r: Joined, th: HealthThresholds, evm: ProjectEvm | undefined, lines: { typeLabel: string; quantity: number }[]): ProjectRow {
+  const equipment = equipmentSummary(lines);
   const p = r.p;
+  const mt = p.machineTypeCode ? (machineType.isCode(p.machineTypeCode) ? machineType.label(p.machineTypeCode) : p.machineTypeCode) : null;
   const row = {
     code: p.code, name: p.name, displayId: p.number ?? p.code, analytic: p.analyticCode, das: p.das,
-    machineType: p.machineTypeCode ? (machineType.isCode(p.machineTypeCode) ? machineType.label(p.machineTypeCode) : p.machineTypeCode) : null,
+    machineType: mt, equipment: equipment ?? mt, equipmentTypes: [...new Set(lines.map((l) => l.typeLabel))],
     status: stage.label(p.stage), pm: r.pm ?? '—', pmPersonId: p.pmPersonId, client: r.client ?? '—', start: p.startText, finish: p.finishText,
     budget: p.budgetKeur, actual: evm ? evm.ac : p.actualKeur, progress: evm ? evm.progress : p.progress, spi: evm ? evm.spi : p.spi,
     city: r.city, country: r.country, zone: r.zoneOverride ?? r.countryZone ?? 'euna', hasData: r.controls != null,
@@ -86,6 +94,7 @@ function toRow(r: Joined, th: HealthThresholds, evm: ProjectEvm | undefined): Pr
 /** All projects in register order (new projects first). Memoised per request. */
 export const listProjects = cache(async (): Promise<ProjectRow[]> => {
   const [db, th, evms] = await Promise.all([getDb(), healthThresholds(), listProjectEvms()]);
+  const equipment = await equipmentLinesByProject(db);
   const rows = await db
     .select(projectSelect)
     .from(projects)
@@ -95,7 +104,7 @@ export const listProjects = cache(async (): Promise<ProjectRow[]> => {
     .leftJoin(countries, eq(countries.name, projectSites.countryName))
     .leftJoin(projectControls, eq(projectControls.projectId, projects.id))
     .orderBy(asc(projects.sortOrder));
-  return rows.map((r) => toRow(r, th, evms.get(r.p.code)));
+  return rows.map((r) => toRow(r, th, evms.get(r.p.code), equipment.get(r.p.id) ?? []));
 });
 
 export async function getProject(code: string): Promise<ProjectRow | null> {
@@ -242,13 +251,15 @@ export async function createProject(input: NewProjectInput): Promise<string> {
     }
     const [pm] = await tx.select({ id: persons.id }).from(persons).where(eq(persons.shortName, 'S. Perrin'));
     const [{ min }] = await tx.select({ min: sql<number>`coalesce(min(${projects.sortOrder}), 1)::int` }).from(projects);
-    await tx.insert(projects).values({
+    const [{ id: projectId }] = await tx.insert(projects).values({
       code, number, shortCode: code.slice(0, 3), name: input.name || 'Untitled project', clientId, pmPersonId: pm?.id ?? null,
       stage: 'initiative', das: input.das, machineTypeCode: input.machineType, analyticCode: analytic,
       startText: 'Jan 2027', finishText: 'Sep 2027', startMonth: 12, finishMonth: 20, budgetKeur: budget, actualKeur: 0, progress: 0, spi: 1,
       isNew: true, currency: input.currency, calendar: input.calendar, contingencyPct: input.contingencyPct,
       templateCode: input.templateCode, sortOrder: min - 1,
-    });
+    }).returning({ id: projects.id });
+    // R-185: the project's first equipment line (EQ-01, its machine type, one machine).
+    await insertEquipmentLines(tx, projectId, [{ machineTypeCode: input.machineType, quantity: 1 }]);
     return code;
   });
 }

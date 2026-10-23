@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BUILTIN_CALENDAR_BY_CODE, WorkCalendar } from './calendar';
 import {
-  TEMPLATE_ACTIVITY_DAYS, WIZARD_REQUIRED, defaultPlannedFinish, defaultPlannedStart, holidaysText, instantiateTemplate, monthOfIso, plannedWindowError, shareDays, templateActivitiesText, templateWbsText,
+  TEMPLATE_ACTIVITY_DAYS, WIZARD_REQUIRED, defaultPlannedFinish, defaultPlannedStart, holidaysText, instantiateTemplate, monthOfIso, plannedWindowError, shareDays, templateActivitiesText, templatePlanShape, templateWbsText,
   wizardSiteError, wizardWindowError, workingTimeText,
 } from './project-template';
 
@@ -85,5 +85,78 @@ describe('machine-type template instantiation (A-2 / L-3)', () => {
       .toEqual(['Mon–Fri · 8 h a day', 'Mon–Sat · 10 h a day', '7 days · 24 h a day']);
     expect([holidaysText(BUILTIN_CALENDAR_BY_CODE.standard_5x8), holidaysText(BUILTIN_CALENDAR_BY_CODE.continuous_24h)])
       .toEqual(['French public holidays + Settings holidays', 'Holidays are worked']);
+  });
+});
+
+// R-185 (choice 2 of 23 Oct 2026): phases common to the project + lots specific to an equipment generated per line.
+describe('lots per equipment line (R-185)', () => {
+  const EMP = [
+    { name: 'Études', perEquipment: false }, { name: 'Fabrication', perEquipment: true }, { name: 'Montage', perEquipment: true },
+    { name: 'Essais', perEquipment: false }, { name: 'Réception', perEquipment: false },
+  ];
+  const line = (ref: string, label: string, phases: string[]) => ({ ref, label, phases });
+
+  it('one line: the plan before R-185 (same packages, activities, dates and links), its lots marked with the line', () => {
+    const before = instantiateTemplate({ phases: EMP.map((p) => p.name), start: '2027-01-11', finish: '2027-03-05', calendar: std, budgetKeur: 500 });
+    const after = instantiateTemplate({
+      phases: EMP, equipments: [line('EQ-01', 'EQ-01 · EMP', ['Fabrication', 'Montage'])], start: '2027-01-11', finish: '2027-03-05', calendar: std, budgetKeur: 500,
+    });
+    const strip = <T extends { equipment?: string }>(xs: T[]) => xs.map((x) => { const y = { ...x }; delete y.equipment; return y; });
+    expect(strip(after.packages)).toEqual(before.packages);
+    expect(strip(after.activities)).toEqual(before.activities);
+    expect(after.links).toEqual(before.links);
+    expect(after.packages.map((p) => p.equipment ?? null)).toEqual([null, 'EQ-01', 'EQ-01', null, null]);
+    expect(after.activities.map((a) => a.equipment ?? null)).toEqual([null, 'EQ-01', 'EQ-01', null, null]);
+  });
+
+  it('several lines: one lot per line and phase of ITS type, the lines in parallel, chained inside each line', () => {
+    const plan = instantiateTemplate({
+      phases: EMP,
+      equipments: [line('EQ-01', 'EQ-01 · EMP', ['Fabrication', 'Montage']), line('EQ-02', 'EQ-02 · 3 × MEMU', ['Modules', 'Assemblage', 'Essais plateforme'])],
+      start: '2027-01-11', finish: null, calendar: std, budgetKeur: 800,
+    });
+    expect(plan.packages.map((p) => [p.code, p.name, p.equipment ?? null])).toEqual([
+      ['1.1', 'Études', null],
+      ['1.2', 'Fabrication — EQ-01 · EMP', 'EQ-01'],
+      ['1.3', 'Montage — EQ-01 · EMP', 'EQ-01'],
+      ['1.4', 'Modules — EQ-02 · 3 × MEMU', 'EQ-02'],
+      ['1.5', 'Assemblage — EQ-02 · 3 × MEMU', 'EQ-02'],
+      ['1.6', 'Essais plateforme — EQ-02 · 3 × MEMU', 'EQ-02'],
+      ['1.7', 'Essais', null],
+      ['1.8', 'Réception', null],
+    ]);
+    const a = Object.fromEntries(plan.activities.map((x) => [x.wbs, x]));
+    // The lines start together after the common phase; the block lasts its longest line (3 slots); Essais waits for both lines.
+    expect(a['1.2'].startDate).toBe(a['1.4'].startDate);
+    expect(a['1.3'].startDate).toBe(a['1.5'].startDate);
+    expect(a['1.7'].startDate > a['1.6'].finishDate).toBe(true);
+    expect(plan.activities.every((x) => x.durationDays === TEMPLATE_ACTIVITY_DAYS)).toBe(true);
+    expect(plan.activities.map((x) => x.code)).toEqual(['A1010', 'A1020', 'A1030', 'A1040', 'A1050', 'A1060', 'A1070', 'A1080']);
+    expect(plan.links.map((l) => `${l.predecessor}>${l.successor}`)).toEqual([
+      'A1010>A1020', 'A1020>A1030', 'A1010>A1040', 'A1040>A1050', 'A1050>A1060', 'A1030>A1070', 'A1060>A1070', 'A1070>A1080',
+    ]);
+    expect(plan.activities.reduce((s, x) => s + x.budgetKeur, 0)).toBe(800);
+    expect(templatePlanShape({ phases: EMP, equipments: [line('EQ-01', '', ['Fabrication', 'Montage']), line('EQ-02', '', ['Modules', 'Assemblage', 'Essais plateforme'])] }))
+      .toEqual({ packages: 8, activities: 8, links: 8 });
+    expect([templateWbsText(5, 8), templateActivitiesText(5, { activities: 8, links: 8 })]).toEqual(['5 phases · 8 work packages', '8 activities · 8 links']);
+  });
+
+  it('a planned window is shared between the time slots (a block counts its longest line)', () => {
+    const plan = instantiateTemplate({
+      phases: EMP, equipments: [line('EQ-01', 'a', ['Fabrication', 'Montage']), line('EQ-02', 'b', ['Modules'])], start: '2027-01-11', finish: '2027-03-05', calendar: std, budgetKeur: 0,
+    });
+    // 40 working days over 5 slots (Études, 2 block slots, Essais, Réception): 8 each.
+    expect(plan.activities.map((x) => x.durationDays)).toEqual([8, 8, 8, 8, 8, 8]);
+    expect([plan.startDate, plan.finishDate]).toEqual(['2027-01-11', '2027-03-05']);
+  });
+
+  it('a main type without lots per equipment: the block of the other lines comes after its phases; lines without lots add nothing', () => {
+    const rnd = [{ name: 'Exploration' }, { name: 'Bilan' }];
+    const plan = instantiateTemplate({
+      phases: rnd, equipments: [line('EQ-01', 'EQ-01 · R&D', []), line('EQ-02', 'EQ-02 · EMP', ['Fabrication'])], start: '2027-01-11', finish: null, calendar: std, budgetKeur: 0,
+    });
+    expect(plan.packages.map((p) => [p.name, p.equipment ?? null])).toEqual([['Exploration', null], ['Bilan', null], ['Fabrication — EQ-02 · EMP', 'EQ-02']]);
+    expect(plan.links.map((l) => `${l.predecessor}>${l.successor}`)).toEqual(['A1010>A1020', 'A1020>A1030']);
+    expect(instantiateTemplate({ phases: rnd, equipments: [line('EQ-01', '', [])], start: '2027-01-11', finish: null, calendar: std, budgetKeur: 0 }).packages).toHaveLength(2);
   });
 });

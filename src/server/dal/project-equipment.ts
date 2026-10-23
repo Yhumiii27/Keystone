@@ -1,0 +1,225 @@
+import 'server-only';
+// R-185 (AC-5): the equipment lines of a project — one machine type × a quantity each, EQ-01, EQ-02… (project_equipments).
+// Read by the register, the shell, the Contract screen's "Equipment" card and the Budget's REX references; written by the
+// New project wizard (insertEquipmentLines) and by the project's leads on the Contract screen (add / edit / remove). Every
+// writer keeps projects.machine_type_code = the type of the first line (the "main type" the screens written before R-185
+// read). Rules: src/domain/project-equipment.ts. Permission checks belong to the calling Server Function.
+import { and, asc, eq, inArray } from 'drizzle-orm';
+import {
+  MAX_EQUIPMENT_LINES, equipmentSummary, mainTypeOf, nextEquipmentRef, parseEquipmentLine, type EquipmentLineInput,
+} from '@/domain/project-equipment';
+import { systemMessage } from '@/domain/system-messages';
+import { getDb } from '@/server/db/client';
+import { machineType, type MachineTypeCode } from '@/server/db/codes';
+import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
+import { activities, machineTypes, projectEquipments, projects, wbsNodes } from '@/server/db/schema';
+import type { DB, Tx } from '@/server/db/types';
+import type { Actor } from './ops-common';
+
+type Q = DB | Tx;
+
+export interface EquipmentLine {
+  id: string;
+  /** "EQ-01". */
+  ref: string;
+  machineTypeCode: string;
+  /** Display code of the type ("EMP", "R&D", a custom type's label). */
+  typeLabel: string;
+  quantity: number;
+  /** Typed text (dataText), null = none. */
+  label: string | null;
+  position: number;
+  capacityValue: number | null;
+  capacityUnit: string | null;
+  options: string[];
+  besoinRef: string | null;
+  catalogueVersion: number | null;
+}
+
+const typeLabelOf = (code: string, label: string | null) => label ?? (machineType.isCode(code) ? machineType.label(code) : code);
+
+const lineSelect = {
+  e: projectEquipments,
+  typeLabel: machineTypes.label,
+};
+
+const toLine = (r: { e: typeof projectEquipments.$inferSelect; typeLabel: string | null }): EquipmentLine => ({
+  id: r.e.id, ref: r.e.ref, machineTypeCode: r.e.machineTypeCode, typeLabel: typeLabelOf(r.e.machineTypeCode, r.typeLabel), quantity: r.e.quantity,
+  label: r.e.label, position: r.e.position, capacityValue: r.e.capacityValue, capacityUnit: r.e.capacityUnit, options: r.e.options ?? [],
+  besoinRef: r.e.besoinRef, catalogueVersion: r.e.catalogueVersion,
+});
+
+/** The lines of a project id, in order (the main line first). */
+export async function equipmentLinesOf(q: Q, projectId: string): Promise<EquipmentLine[]> {
+  const rows = await q
+    .select(lineSelect)
+    .from(projectEquipments)
+    .leftJoin(machineTypes, eq(machineTypes.code, projectEquipments.machineTypeCode))
+    .where(eq(projectEquipments.projectId, projectId))
+    .orderBy(asc(projectEquipments.position), asc(projectEquipments.ref));
+  return rows.map(toLine);
+}
+
+/** The lines of a project (empty for an unknown project or one without machine type). */
+export async function listProjectEquipments(projectCode: string): Promise<EquipmentLine[]> {
+  const db = await getDb();
+  const [p] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, projectCode));
+  return p ? equipmentLinesOf(db, p.id) : [];
+}
+
+/** Every project's lines by project id (one query: the register, the shell). */
+export async function equipmentLinesByProject(q?: Q): Promise<Map<string, EquipmentLine[]>> {
+  const db = q ?? (await getDb());
+  const rows = await db
+    .select({ ...lineSelect })
+    .from(projectEquipments)
+    .leftJoin(machineTypes, eq(machineTypes.code, projectEquipments.machineTypeCode))
+    .orderBy(asc(projectEquipments.projectId), asc(projectEquipments.position), asc(projectEquipments.ref));
+  const out = new Map<string, EquipmentLine[]>();
+  for (const r of rows) out.set(r.e.projectId, [...(out.get(r.e.projectId) ?? []), toLine(r)]);
+  return out;
+}
+
+/** "3 × MEMU" (· its label) — the audit and activity texts. */
+const lineText = (l: { quantity: number; typeLabel: string; label: string | null }) => `${l.quantity} × ${l.typeLabel}${l.label ? ` · ${l.label}` : ''}`;
+
+/** Keeps projects.machine_type_code = the first line's type (null when the project has no line left). */
+async function syncMainType(tx: Tx, projectId: string): Promise<void> {
+  const lines = await tx.select({ machineTypeCode: projectEquipments.machineTypeCode, position: projectEquipments.position }).from(projectEquipments).where(eq(projectEquipments.projectId, projectId));
+  const main = mainTypeOf(lines) as MachineTypeCode | null;
+  const [p] = await tx.select({ mt: projects.machineTypeCode }).from(projects).where(eq(projects.id, projectId));
+  if (p && p.mt !== main) await tx.update(projects).set({ machineTypeCode: main, updatedAt: new Date() }).where(eq(projects.id, projectId));
+}
+
+/**
+ * Inserts the lines of a new project (the wizard, the register's createProject, the seed), numbered EQ-01… in order. The
+ * caller validated them. Returns the rows (id, ref) in order. Does not write projects.machine_type_code: the creator sets it to
+ * the first line's type in the same insert.
+ */
+export async function insertEquipmentLines(
+  tx: Tx, projectId: string, lines: readonly (Pick<EquipmentLineInput, 'machineTypeCode' | 'quantity'> & Partial<EquipmentLineInput>)[],
+): Promise<{ id: string; ref: string; machineTypeCode: string; quantity: number }[]> {
+  if (!lines.length) return [];
+  const refs: string[] = [];
+  const values = lines.map((l, position) => {
+    const ref = nextEquipmentRef(refs);
+    refs.push(ref);
+    return {
+      projectId, ref, machineTypeCode: l.machineTypeCode as MachineTypeCode, quantity: l.quantity, position, label: l.label ?? null,
+      capacityValue: l.capacityValue ?? null, capacityUnit: l.capacityUnit ?? null, options: l.options ?? [], besoinRef: l.besoinRef ?? null,
+    };
+  });
+  return tx.insert(projectEquipments).values(values).returning({
+    id: projectEquipments.id, ref: projectEquipments.ref, machineTypeCode: projectEquipments.machineTypeCode, quantity: projectEquipments.quantity,
+  });
+}
+
+/** The machine type codes a line may take: the active types, plus `keep` (a line's current type, even if retired since). */
+async function allowedTypes(q: Q, keep?: string): Promise<{ codes: string[]; label: (code: string) => string }> {
+  const rows = await q.select({ code: machineTypes.code, label: machineTypes.label, active: machineTypes.active }).from(machineTypes);
+  return {
+    codes: rows.filter((r) => r.active || r.code === keep).map((r) => r.code),
+    label: (code) => typeLabelOf(code, rows.find((r) => r.code === code)?.label ?? null),
+  };
+}
+
+async function actorOf(tx: Tx, actor: Actor) {
+  const person = await findPerson(tx, actor.name);
+  return { actorName: person ? nameOf(person) : actor.name, actorPersonId: person?.id ?? null };
+}
+
+const plain = (l: Partial<EquipmentLineInput> & { ref?: string }) => ({
+  ref: l.ref, machineTypeCode: l.machineTypeCode, quantity: l.quantity, label: l.label ?? null, capacityValue: l.capacityValue ?? null,
+  capacityUnit: l.capacityUnit ?? null, options: l.options ?? [], besoinRef: l.besoinRef ?? null,
+});
+
+/** Adds a line at the end of the project's list (the next reference). Returns its reference. */
+export async function addProjectEquipment(projectCode: string, input: Record<string, unknown>, actor: Actor): Promise<string> {
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const p = await requireProject(tx, projectCode);
+    await tx.select({ id: projects.id }).from(projects).where(eq(projects.id, p.id)).for('update');
+    const types = await allowedTypes(tx);
+    const parsed = parseEquipmentLine(input, types.codes);
+    if (!parsed.ok) throw new Error(parsed.error);
+    const lines = await equipmentLinesOf(tx, p.id);
+    if (lines.length >= MAX_EQUIPMENT_LINES) throw new Error(`A project has at most ${MAX_EQUIPMENT_LINES} equipment lines`);
+    const v = parsed.value;
+    const ref = nextEquipmentRef(lines.map((l) => l.ref));
+    const position = lines.length ? Math.max(...lines.map((l) => l.position)) + 1 : 0;
+    const [row] = await tx
+      .insert(projectEquipments)
+      .values({ projectId: p.id, ref, position, ...v, machineTypeCode: v.machineTypeCode as MachineTypeCode })
+      .returning({ id: projectEquipments.id });
+    await syncMainType(tx, p.id);
+    const who = await actorOf(tx, actor);
+    const message = systemMessage('project.equipmentAdded', { ref, equipment: lineText({ ...v, typeLabel: types.label(v.machineTypeCode) }) });
+    await writeAudit(tx, { ...who, objectRef: `${projectCode} · ${ref}`, message, area: 'Contract', entityType: 'project_equipment', entityId: row.id, projectId: p.id, after: plain({ ref, ...v }) });
+    await recordActivity(tx, { ...who, message, kind: 'change', projectId: p.id });
+    return ref;
+  });
+}
+
+/** Edits a line (type, quantity, label, capacity, options, machine need). No change → no write. */
+export async function updateProjectEquipment(projectCode: string, ref: string, input: Record<string, unknown>, actor: Actor): Promise<void> {
+  const db = await getDb();
+  await db.transaction(async (tx) => {
+    const p = await requireProject(tx, projectCode);
+    const [cur] = (await equipmentLinesOf(tx, p.id)).filter((l) => l.ref === ref);
+    if (!cur) throw new Error('Unknown equipment line');
+    const types = await allowedTypes(tx, cur.machineTypeCode);
+    const parsed = parseEquipmentLine(input, types.codes);
+    if (!parsed.ok) throw new Error(parsed.error);
+    const v = parsed.value;
+    const before = plain(cur);
+    const after = plain({ ref, ...v });
+    if (JSON.stringify(before) === JSON.stringify(after)) return;
+    await tx
+      .update(projectEquipments)
+      .set({ ...v, machineTypeCode: v.machineTypeCode as MachineTypeCode, updatedAt: new Date() })
+      .where(and(eq(projectEquipments.id, cur.id), eq(projectEquipments.projectId, p.id)));
+    await syncMainType(tx, p.id);
+    const who = await actorOf(tx, actor);
+    const message = systemMessage('project.equipmentChanged', { ref, from: lineText(cur), to: lineText({ ...v, typeLabel: types.label(v.machineTypeCode) }) });
+    await writeAudit(tx, { ...who, objectRef: `${projectCode} · ${ref}`, message, area: 'Contract', entityType: 'project_equipment', entityId: cur.id, projectId: p.id, before, after });
+    await recordActivity(tx, { ...who, message, kind: 'change', projectId: p.id });
+  });
+}
+
+/**
+ * Removes a line. The last line of a project is kept (a project supplies at least one equipment once it has one). The planning
+ * lots and activities of the line stay, common to the project (equipment_id set null by the foreign key). The next line becomes
+ * the main one when the first is removed.
+ */
+export async function removeProjectEquipment(projectCode: string, ref: string, actor: Actor): Promise<void> {
+  const db = await getDb();
+  await db.transaction(async (tx) => {
+    const p = await requireProject(tx, projectCode);
+    await tx.select({ id: projects.id }).from(projects).where(eq(projects.id, p.id)).for('update');
+    const lines = await equipmentLinesOf(tx, p.id);
+    const cur = lines.find((l) => l.ref === ref);
+    if (!cur) throw new Error('Unknown equipment line');
+    if (lines.length <= 1) throw new Error('A project keeps at least one equipment line');
+    const [lots, acts] = await Promise.all([
+      tx.select({ id: wbsNodes.id }).from(wbsNodes).where(eq(wbsNodes.equipmentId, cur.id)),
+      tx.select({ id: activities.id }).from(activities).where(eq(activities.equipmentId, cur.id)),
+    ]);
+    await tx.delete(projectEquipments).where(eq(projectEquipments.id, cur.id));
+    await syncMainType(tx, p.id);
+    const who = await actorOf(tx, actor);
+    const message = systemMessage('project.equipmentRemoved', { ref, equipment: lineText(cur) });
+    await writeAudit(tx, {
+      ...who, objectRef: `${projectCode} · ${ref}`, message, area: 'Contract', entityType: 'project_equipment', entityId: cur.id, projectId: p.id,
+      before: { ...plain(cur), workPackages: lots.length, activities: acts.length },
+    });
+    await recordActivity(tx, { ...who, message, kind: 'change', projectId: p.id });
+  });
+}
+
+/** Summary of each project's lines by project code ("EMP" / "1 × EMP · 3 × MEMU"); tests and exports. */
+export async function equipmentSummaries(codes?: string[]): Promise<Record<string, string | null>> {
+  const db = await getDb();
+  const ps = await db.select({ id: projects.id, code: projects.code }).from(projects).where(codes?.length ? inArray(projects.code, codes) : undefined);
+  const lines = await equipmentLinesByProject(db);
+  return Object.fromEntries(ps.map((p) => [p.code, equipmentSummary(lines.get(p.id) ?? [])]));
+}

@@ -38,7 +38,7 @@ export interface RegisterRow {
   /** Plan — WBS of the project; null when it has no planning data (canOpen). */
   openHref: string | null;
   isNew: boolean;
-  /** "HAV004 · DAS 2 · EMP" ("—" when unknown). */
+  /** "HAV004 · DAS 2 · EMP" ("—" when unknown); R-185: the equipment lines, "HAV004 · DAS 2 · 1 × EMP · 3 × MEMU". */
   idLine: string;
   /** "R. Aubert · Port authority · Jan 2026 → Dec 2026" (translated). */
   metaLine: string;
@@ -143,11 +143,11 @@ export function buildRegisterModel(data: RegisterInput, zone: ZoneKey | null, t:
     return {
       code: p.code,
       stage: p.stage,
-      search: { names: [p.name, dataText(p.name, lang)], code: p.code, number, analytic: p.analytic ?? '', machineType: p.machineType ?? '' },
+      search: { names: [p.name, dataText(p.name, lang)], code: p.code, number, analytic: p.analytic ?? '', machineType: p.machineType ?? '', machineTypes: p.equipmentTypes?.length ? p.equipmentTypes : undefined },
       name: `${p.displayId} · ${dataText(p.name, lang)}`,
       openHref: p.hasData || planned.has(p.code) ? screenHref('plan', { code: p.code }) : null,
       isNew: p.isNew,
-      idLine: `${p.analytic ?? '—'} · ${p.das ? 'DAS ' + p.das : '—'} · ${p.machineType ?? '—'}`,
+      idLine: `${p.analytic ?? '—'} · ${p.das ? 'DAS ' + p.das : '—'} · ${p.equipment ?? p.machineType ?? '—'}`,
       metaLine: `${p.pm} · ${dataText(p.client, lang)} · ${t(`${p.start} → ${p.finish}`)}`,
       health: live && p.health ? { label: t(HEALTH_LABEL[p.health]), tone: healthTone(p.health) } : { label: '—', tone: 'muted' },
       spiText: ind.spiText,
