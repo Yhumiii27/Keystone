@@ -146,6 +146,10 @@
   {
    "date": "2026-10-24",
    "text": "R-188 fait : classe d’estimation des versions de budget (E50 / E30 / E10), fourchette au Budget et écart d’incertitude au portefeuille."
+  },
+  {
+   "date": "2026-10-24",
+   "text": "R-187 fait : besoins machines des filiales (connecteur Arche, réponses chiffrées, projet créé à la commande, vue pub_reponses_besoins)."
   }
  ],
  "items": [
@@ -5440,7 +5444,7 @@
    "kind": "integration",
    "priority": "a_decider",
    "status": "non_commence",
-   "waiting_on": "R-185, R-186, R-188 et l’application CAPEX",
+   "waiting_on": "",
    "effort": "L",
    "sources": [
     "Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0)",
@@ -5451,8 +5455,9 @@
     "src/domain/project-template.ts (assistant de création)"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-02 — connecteur capex (lire arche.pub_capex et arche.pub_besoins_machines, liens profonds <ARCHE_URL>/capex/<code>), corbeille « Besoins des filiales », pub_reponses_besoins ; K-10 — à la commande, créer le projet EPC2i ou ajouter des équipements à un projet existant, code publié dans pub_reponses_besoins.projet_code."
+    "state": "fait",
+    "delivery": "9",
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-02 — connecteur capex (lire arche.pub_capex et arche.pub_besoins_machines, liens profonds <ARCHE_URL>/capex/<code>), corbeille « Besoins des filiales », pub_reponses_besoins ; K-10 — à la commande, créer le projet EPC2i ou ajouter des équipements à un projet existant, code publié dans pub_reponses_besoins.projet_code. 24 oct. 2026 : fait côté Keystone (docs/delivery-9/notes-r187-capex-needs.md) — connecteur capex (miroir de arche.pub_capex et arche.pub_besoins_machines : lecture directe sur le serveur commun, simulation en démonstration, tâche toutes les 15 min, liens profonds ARCHE_URL), carte « Besoins machines des filiales » sous le registre de Portefeuille › Projets (directeur ; chefs de projet en lecture), réponses chiffrées RB-nnn (qualification, indicatif, devis, offre ferme E10 ; fourchette par la classe), création du projet ou ajout d’une ligne d’équipement à la commande (action du directeur), vue pub_reponses_besoins (migrations 0049-0050). Reste : Arche publie ses deux vues (son lot L4) ; Matrix recopie la vue et vérifie les droits."
    }
   },
   {
