@@ -514,7 +514,7 @@ describe('Delivery 5 backfill (database seeded before migration 0004)', () => {
     expect(await seedIfEmpty(db)).toBe(false);
     const count = async (t: string) => ((await db.execute(sql.raw(`select count(*)::int as n from ${t}`))).rows[0] as { n: number }).n;
     expect(await Promise.all(['deliverables', 'vigie_ncrs', 'machines', 'pid_tags', 'reference_values', 'connectors', 'cursus_clearances', 'machine_type_phases'].map(count)))
-      .toEqual([30, 15, 8, 24, 60, 10, 5, 28]);
+      .toEqual([30, 15, 8, 24, 60, 11, 5, 28]); // R-187: connectors + Arche
     expect(await seedIfEmpty(db)).toBe(false);
     expect(await count('reference_values')).toBe(60);
   }, 60_000);

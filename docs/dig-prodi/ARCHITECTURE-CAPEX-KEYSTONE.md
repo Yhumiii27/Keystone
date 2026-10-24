@@ -26,7 +26,7 @@ une seule colonne d’une table qui grandit (livrables, réserves : K-11, 23 oct
 | Keystone → CAPEX | `pub_catalogue_machines` (nouvelle) | fiches publiées : type, variante, options, capacité nominale, prix catalogue indicatif, délai type, statut | Keystone (R-186) |
 | CAPEX → Keystone | `pub_capex` | CAPEX : code, filiale, site, intitulé, phase, typologie, sponsor, chef de projet filiale, dates G1/G2/G3 | CAPEX |
 | CAPEX → Keystone | `pub_besoins_machines` | besoin : CAPEX, ligne, machine du catalogue (ou besoin libre), quantité, options, capacité visée, date de besoin, statut côté filiale (brouillon, soumis, retiré, commandé) | CAPEX |
-| Keystone → CAPEX | `pub_reponses_besoins` (nouvelle) | réponse EPC2i : qualification (faisable, à étudier, refusé), classe d’estimation, montant de la fourchette, devis / offre (référence Codex), validité, projet EPC2i créé | Keystone (R-187) |
+| Keystone → CAPEX | `pub_reponses_besoins` (**publiée le 24 oct. 2026**, migration `0050_capex_needs_share`, [`notes-r187-capex-needs.md`](../delivery-9/notes-r187-capex-needs.md)) | réponse EPC2i : qualification (faisable, à étudier, refusé), classe d’estimation, montant de la fourchette, devis / offre (référence Codex), validité, projet EPC2i créé | Keystone (R-187) |
 | Keystone → CAPEX | `pub_projets` (existe ; **+ `capex_code`, `besoin_ref` publiés le 22 oct. 2026**, R-190) + `pub_jalons_projets` (**publiée le 22 oct. 2026**) | étape courante, rattachement au CAPEX et au besoin ; dates prévues / réelles : commande, fin d’études, FAT, expédition, arrivée site, SAT, PV, fin de garantie (correspondance : [`notes-share-views.md`](../delivery-9/notes-share-views.md) § 3 ; date BL1 pas encore publiée) | Keystone (R-189, R-190) |
 | Keystone → CAPEX | `pub_avancement_projets` (**publiée le 22 oct. 2026**) | % d’avancement physique, SPI (tâche `share-progress`, toutes les heures), date de fin prévue, montant du contrat et des avenants **côté vente**, facturé, en k€ — **aucun coût interne, taux ni marge** (question ouverte P-05, testé) | Keystone (R-189) |
 | Keystone → CAPEX | `pub_avenants` (**publiée le 22 oct. 2026**) | avenants envoyés au client (brouillons exclus) : numéro, objet, montant, délai (jours de la demande de modification liée), statut proposé / signé / refusé, date de signature | Keystone (R-189) |
@@ -40,7 +40,7 @@ Vues publiées le 22 oct. 2026 (migration `0038_share_followup`, notes [`docs/de
 `pub_jalons_projets`, `pub_avancement_projets`, `pub_avenants`, `pub_reserves`, les colonnes ajoutées en fin de `pub_projets` et
 `pub_livrables`, et `pub_jalons` pour Crucible (R-195). Les droits de lecture d’`arche_app` et de `crucible_app` restent à poser
 dans Matrix (`partage/90-droits.sql`, rôles à créer dans le socle), comme la copie de ces vues dans `partage/30-keystone.sql`.
-Restent à publier : `pub_catalogue_machines` (R-186), `pub_reponses_besoins` (R-187), `pub_pack_ingenierie` (R-191).
+Publiées depuis : `pub_catalogue_machines` (R-186, 24 oct. 2026), `pub_reponses_besoins` (R-187, 24 oct. 2026, avec le connecteur `capex` qui lit `arche.pub_capex` et `arche.pub_besoins_machines`). Reste à publier : `pub_pack_ingenierie` (R-191).
 
 Le **G2 du CAPEX** fait passer le besoin à « commandé » : Keystone crée alors le projet EPC2i (ou l’ajoute à un projet) et
 publie le lien dans `pub_reponses_besoins`. Le **G3 du CAPEX** lit les PV et les réserves de tous les projets EPC2i du CAPEX.

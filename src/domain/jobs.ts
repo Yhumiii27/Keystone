@@ -46,6 +46,9 @@ export type JobName =
   // ── Delivery 9 · R-189 (Arche K-04): the progress and SPI of each project, computed in TypeScript, kept for the SQL view
   // pub_avancement_projets (share_project_progress); hourly, a row changes only when a value does.
   | 'share-progress'
+  // ── Delivery 9 · R-187 (Arche K-02): Arche's views pub_capex and pub_besoins_machines read into the capex mirror, every 15
+  // minutes (Arche reads Keystone's views at the same pace).
+  | 'capex-needs'
   ;
 
 export interface JobSchedule {
@@ -103,6 +106,9 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
   // ── Delivery 9 · R-189: progress and SPI published to Arche (pub_avancement_projets), every hour — the view's readers poll
   // every 15 minutes and the figures move with the activities' progress, which the PM records during the week.
   { name: 'share-progress', everyMs: HOUR, leaseMs: 15 * MIN, firstDelayMs: 65_000 },
+  // ── Delivery 9 · R-187: the subsidiaries' machine needs read from Arche every 15 minutes (nothing with ARCHE_SOURCE=off, the
+  // connector disabled by IT, or the simulation on a non-demo database).
+  { name: 'capex-needs', everyMs: 15 * MIN, leaseMs: 10 * MIN, firstDelayMs: 70_000 },
 ];
 
 export const JOB_NAMES: readonly JobName[] = JOB_SCHEDULES.map((j) => j.name);

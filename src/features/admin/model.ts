@@ -297,7 +297,7 @@ export function plumbingView(i: PlumbingInput, t: T, lang: Lang): PlumbingView {
       return {
         rawName: c.name,
         name: dataText(c.name, lang),
-        mode: connectorLinkT(c.link, t),
+        mode: connectorLinkT(c.link, t, c.mode),
         canSync: c.canSync,
         // R-148: the data scope and frequency are IT's typed settings (connectors file), shown as typed.
         data: c.dataScope ? dataText(c.dataScope, lang) : addedConnectorDataT(c.direction ? directionLabel(c.direction) : null, c.owner, t),

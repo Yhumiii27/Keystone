@@ -15,7 +15,7 @@ import { getTableName, is, sql } from 'drizzle-orm';
 import { PgTable } from 'drizzle-orm/pg-core';
 import { healthOf } from '@/domain/health';
 import { D7_ACTUAL, D7_HEALTH, D7_PROGRESS_PCT, D7_SPI } from '@/test/d7-cost-control';
-import { CATALOGUE_VIEW_TYPES, INTERNAL_MONEY_COLUMN, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COLUMNS, SHARE_VIEW_COUNT } from '@/server/db/share-contracts';
+import { CATALOGUE_VIEW_TYPES, INTERNAL_MONEY_COLUMN, REPONSES_VIEW_TYPES, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COLUMNS, SHARE_VIEW_COUNT } from '@/server/db/share-contracts';
 import { refreshShareProgress } from '@/server/dal/share-progress';
 import { getCostControl, listChangeRequests } from '@/server/dal/cost';
 import { getStageChecklist, getStageHistory, listStages, toggleStageDeliverable } from '@/server/dal/lifecycle';
@@ -152,7 +152,7 @@ const D5_COUNTS: Record<string, number> = {
   // app_settings: the health thresholds and, since delivery 7, the seed record "keystone.seed" (R-011, A-15), the "Reset to
   // defaults" document (R-170) and the record that the demo referents were seeded (R-041); delivery 8, the hours-variance
   // threshold (R-088) and the change control board threshold (R-069, P-6c).
-  machine_type_cost_categories: 25, machine_type_itp_systems: 17, reference_values: 60, app_settings: 6, connectors: 10, connector_sync_runs: 0, import_formats: 6,
+  machine_type_cost_categories: 25, machine_type_itp_systems: 17, reference_values: 60, app_settings: 6, connectors: 11, connector_sync_runs: 0, import_formats: 6,
 };
 
 /**
@@ -240,7 +240,7 @@ async function main() {
   console.log('\nShare views (pub_)');
   const views = await db.execute(sql`select table_name as v from information_schema.views where table_schema = current_schema() and table_name like 'pub\_%' order by 1`);
   const viewNames = (views.rows as { v: string }[]).map((r) => r.v);
-  check(`${SHARE_VIEW_COUNT} pub_ views (0035_share: 12, 0038_share_followup: 5 more, 0046_catalogue_share: 1 more)`, viewNames.length === SHARE_VIEW_COUNT, viewNames);
+  check(`${SHARE_VIEW_COUNT} pub_ views (0035_share: 12, 0038_share_followup: 5 more, 0046_catalogue_share: 1 more, 0050_capex_needs_share: 1 more)`, viewNames.length === SHARE_VIEW_COUNT, viewNames);
   for (const v of viewNames) {
     const r = await db.execute(sql`select count(*)::int as n from ${sql.identifier(v)}`);
     console.log(`  ${v.padEnd(34)} ${String((r.rows[0] as { n: number }).n).padStart(5)}`);
@@ -297,6 +297,22 @@ async function main() {
     frozen = true;
   }
   check('machine_catalogue_entries: a published version is frozen (trigger)', frozen, frozen);
+  // Arche K-02 / K-03 / K-10 (R-187, 0049_capex_needs, 0050_capex_needs_share): the answers' view types and the demo answers.
+  const repTypes = (await db.execute(sql`select column_name as c, data_type as t from information_schema.columns where table_schema = current_schema()
+      and table_name = 'pub_reponses_besoins' order by ordinal_position`)).rows as { c: string; t: string }[];
+  check('pub_reponses_besoins: K-02 column types', isDeepStrictEqual(Object.fromEntries(repTypes.map((r) => [r.c, r.t])), REPONSES_VIEW_TYPES), repTypes);
+  const rep = (await db.execute(sql`select (select count(*)::int from pub_reponses_besoins) as answers,
+      (select string_agg(numero || ':' || nature || ':' || coalesce(classe_estimation, '-') || ':' || statut || ':' || coalesce(projet_code, '-'), ',' order by numero) from pub_reponses_besoins) as rows,
+      (select count(*)::int from capex_needs) as needs, (select count(*)::int from capex_mirror) as capex`)).rows[0] as { answers: number; rows: string; needs: number; capex: number };
+  check('pub_reponses_besoins: 5 demo answers (E50 indicative, E30 quote, two E10 firm offers accepted, RB-003 → RCF-019); mirror 2 CAPEX, 5 needs',
+    rep.answers === 5 && rep.needs === 5 && rep.capex === 2 && rep.rows === 'RB-001:qualification:-:remise:-,RB-002:offre_ferme:E10:acceptee:-,RB-003:offre_ferme:E10:acceptee:RCF-019,RB-004:indicatif:E50:remise:-,RB-005:devis:E30:remise:-', rep);
+  let firmChecked = false;
+  try {
+    await db.execute(sql`update need_answers set estimate_class = 'E30' where nature = 'offre_ferme'`);
+  } catch {
+    firmChecked = true;
+  }
+  check('need_answers: a firm offer is E10 (database check, K-03)', firmChecked, firmChecked);
   const idx = (await db.execute(sql`select indexname as i from pg_indexes where schemaname = current_schema() and indexname in
       (${sql.join(Object.values(SHARE_MAJ_LE_INDEXES).map((x) => sql`${x.index}`), sql`, `)})`)).rows as { i: string }[];
   check(`maj_le indexes (K-11): ${Object.values(SHARE_MAJ_LE_INDEXES).map((x) => x.index).join(', ')}`, idx.length === Object.keys(SHARE_MAJ_LE_INDEXES).length, idx.map((r) => r.i));
@@ -788,10 +804,10 @@ async function delivery5Reads() {
   const conns = await listConnectors();
   const pc = await getPlumbingCounts();
   // A-12: "Events today" = events of the data date (Paris day); the prototype's 6 included one of 26 Sep.
-  // R-021 (NEW-CURSUS-4): Lucca is no longer listed (hours come from Cursus) — 8 + Vigie.
-  check('connectors: 8 + Vigie (live: 6 ECOs · 15 NCRs · 5 HSE items) · Cursus live · 1 warning · 5 events today · 8 audit entries · 6 formats',
-    same([conns.length, conns.at(-1)!.lastVolume, conns.find((c) => c.name === 'Cursus')!.lastVolume, conns.filter((c) => c.status === 'warning').map((c) => c.name), pc.eventsToday,
-      pc.auditLast7Days, (await listImportFormats()).length], [9, '6 ECOs · 15 NCRs · 5 HSE items', '5 people · HLT-026', ['Outlook / Exchange'], 5, 8, 6]));
+  // R-021 (NEW-CURSUS-4): Lucca is no longer listed (hours come from Cursus) — 8 + Vigie; R-187: + Arche (the CAPEX application).
+  check('connectors: 8 + Vigie (live: 6 ECOs · 15 NCRs · 5 HSE items) + Arche · Cursus live · 1 warning · 5 events today · 8 audit entries · 6 formats',
+    same([conns.length, conns.find((c) => c.name === 'Vigie')!.lastVolume, conns.find((c) => c.name === 'Cursus')!.lastVolume, conns.filter((c) => c.status === 'warning').map((c) => c.name), pc.eventsToday,
+      pc.auditLast7Days, (await listImportFormats()).length], [10, '6 ECOs · 15 NCRs · 5 HSE items', '5 people · HLT-026', ['Outlook / Exchange'], 5, 8, 6]));
   check('My approvals: client contact D-014, D-016 · quality no NCR in verification',
     same([(await deliverableAcceptanceQueue('HLT-026', { name: 'Nadia Bensaïd', role: 'client' })).map((d) => d.number), (await ncrVerificationQueue('HLT-026', { name: 'Gabriel Comte', role: 'quality' })).length],
       [['D-014', 'D-016'], 0]));

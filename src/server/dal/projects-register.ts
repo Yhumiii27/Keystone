@@ -21,6 +21,7 @@ import { yearOfIso } from '@/domain/clock';
 import { equipmentLotLabel, equipmentRef, equipmentSummary } from '@/domain/project-equipment';
 import { activityDateText } from '@/domain/schedule-rollup';
 import { getDb } from '@/server/db/client';
+import type { Tx } from '@/server/db/types';
 import {
   calendar, clientCode3, costType, machineType, type CalendarCode, type CostType, type MachineTypeCode, type StageCode, type TransitionMode,
 } from '@/server/db/codes';
@@ -316,7 +317,17 @@ export interface WizardCreateInput {
    * R-185: the equipment lines (type × quantity), the first one of `machineType`; absent → one line of `machineType`, quantity 1.
    * With a machine-type template, the lots specific to an equipment are generated per line from its type's phases.
    */
-  equipments?: { machineType: MachineTypeCode; quantity: number; catalogueCode?: string | null; catalogueVersion?: number | null }[];
+  equipments?: {
+    machineType: MachineTypeCode; quantity: number; catalogueCode?: string | null; catalogueVersion?: number | null;
+    /** R-187 (K-10): a line from a subsidiary's ordered need — its label, capacity, options and need reference. */
+    label?: string | null; capacityValue?: number | null; capacityUnit?: string | null; options?: string[]; besoinRef?: string | null;
+    /** R-187: the catalogue version the need chose is kept even when retired since (as a line keeps its own version). */
+    keepCatalogue?: boolean;
+  }[];
+  /** R-187 (K-10): the project created at the order of a subsidiary's need — its CAPEX link (pub_projets.capex_code, besoin_ref). */
+  capexLink?: { capexCode: string; needRef: string } | null;
+  /** R-187: runs in the creation transaction once the project, its lines and its audit row are written. */
+  afterCreate?: (tx: Tx, created: { projectId: string; code: string; equipments: { id: string; ref: string }[]; who: { actorName: string; actorPersonId: string | null } }) => Promise<void>;
   currency: 'EUR' | 'USD';
   /** 'blank' or the machine type code ('rnd' for R&D, custom codes): the template instantiated. */
   templateCode: string;
@@ -453,6 +464,7 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
         currency: input.currency, calendar: input.calendar, contingencyPct: input.contingencyPct,
         // project_templates holds the prototype's templates only; a custom machine type keeps its code on the project.
         templateCode: tplRows.length ? input.templateCode : null, sortOrder: min - 1,
+        capexCode: input.capexLink?.capexCode ?? null, besoinRef: input.capexLink?.needRef ?? null,
       })
       .returning({ id: projects.id });
     // L-3b: the site (zone from the country — no zone override).
@@ -462,8 +474,12 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
     const lineInputs = lines.map((l) => ({
       machineTypeCode: l.machineType, quantity: l.quantity,
       catalogueCode: 'catalogueCode' in l ? l.catalogueCode ?? null : null, catalogueVersion: 'catalogueVersion' in l ? l.catalogueVersion ?? null : null,
+      // R-187: a line from a subsidiary's need.
+      label: 'label' in l ? l.label ?? null : null, capacityValue: 'capacityValue' in l ? l.capacityValue ?? null : null,
+      capacityUnit: 'capacityUnit' in l ? l.capacityUnit ?? null : null, options: 'options' in l ? l.options ?? [] : [], besoinRef: 'besoinRef' in l ? l.besoinRef ?? null : null,
+      keepCatalogue: 'keepCatalogue' in l && !!l.keepCatalogue,
     }));
-    for (const l of lineInputs) await checkCatalogueChoice(tx, l);
+    for (const l of lineInputs) await checkCatalogueChoice(tx, l, l.keepCatalogue ? { code: l.catalogueCode, version: l.catalogueVersion } : undefined);
     const equipmentRows = await insertEquipmentLines(tx, projectId, lineInputs);
     const equipmentId = (ref: string | undefined) => (ref ? equipmentRows.find((e) => e.ref === ref)?.id ?? null : null);
     if (cats.length)
@@ -534,6 +550,7 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
       ? ` · equipment ${equipmentSummary(lines.map((l) => ({ typeLabel: templateId(l.machineType), quantity: l.quantity })))}` : '';
     await writeAudit(tx, { ...who, objectRef: id.code, change: `project created · ${name} · template ${tplText}${eqText} · ${cats.length} cost categories${site ? ` · site ${site.city}, ${site.countryName}` : ''}`, area: 'Projects', entityType: 'project', entityId: projectId, projectId });
     await recordActivity(tx, { ...who, text: `${id.code} · ${name} created at Initiative`, kind: 'change', projectId });
+    if (input.afterCreate) await input.afterCreate(tx, { projectId, code: id.code, equipments: equipmentRows.map((e) => ({ id: e.id, ref: e.ref })), who });
     return { ...id, name, budget, workPackages: plan.packages.length, activities: plan.activities.length, links: plan.links.length, itpPlan, equipments: equipmentRows.length };
   });
 }

@@ -32,3 +32,4 @@ export * from './files';
 export * from './jobs';
 export * from './cost-control';
 export * from './share';
+export * from './capex';

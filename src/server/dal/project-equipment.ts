@@ -160,7 +160,15 @@ export async function checkCatalogueChoice(
 }
 
 /** Adds a line at the end of the project's list (the next reference). Returns its reference. */
-export async function addProjectEquipment(projectCode: string, input: Record<string, unknown>, actor: Actor): Promise<string> {
+export async function addProjectEquipment(
+  projectCode: string, input: Record<string, unknown>, actor: Actor,
+  opts: {
+    /** R-187: the catalogue version of a subsidiary's need is kept even when retired since. */
+    keepCatalogue?: boolean;
+    /** R-187 (K-10): runs in the same transaction once the line, its ITP plan and its audit row are written. */
+    afterAdd?: (tx: Tx, added: { projectId: string; ref: string; lineId: string; who: { actorName: string; actorPersonId: string | null } }) => Promise<void>;
+  } = {},
+): Promise<string> {
   const db = await getDb();
   return db.transaction(async (tx) => {
     const p = await requireProject(tx, projectCode);
@@ -171,7 +179,7 @@ export async function addProjectEquipment(projectCode: string, input: Record<str
     const lines = await equipmentLinesOf(tx, p.id);
     if (lines.length >= MAX_EQUIPMENT_LINES) throw new Error(`A project has at most ${MAX_EQUIPMENT_LINES} equipment lines`);
     const v = parsed.value;
-    await checkCatalogueChoice(tx, v);
+    await checkCatalogueChoice(tx, v, opts.keepCatalogue ? { code: v.catalogueCode, version: v.catalogueVersion } : undefined);
     const ref = nextEquipmentRef(lines.map((l) => l.ref));
     const position = lines.length ? Math.max(...lines.map((l) => l.position)) + 1 : 0;
     const [row] = await tx
@@ -185,6 +193,7 @@ export async function addProjectEquipment(projectCode: string, input: Record<str
     const message = systemMessage('project.equipmentAdded', { ref, equipment: lineText({ ...v, typeLabel: types.label(v.machineTypeCode) }) });
     await writeAudit(tx, { ...who, objectRef: `${projectCode} · ${ref}`, message, area: 'Contract', entityType: 'project_equipment', entityId: row.id, projectId: p.id, after: plain({ ref, ...v }) });
     await recordActivity(tx, { ...who, message, kind: 'change', projectId: p.id });
+    if (opts.afterAdd) await opts.afterAdd(tx, { projectId: p.id, ref, lineId: row.id, who });
     return ref;
   });
 }

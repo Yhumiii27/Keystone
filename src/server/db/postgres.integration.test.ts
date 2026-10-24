@@ -5,7 +5,9 @@
 // - driver parity: the DAL reads the same values from PostgreSQL (node-postgres) as from PGlite;
 // - concurrent writes on separate connections: business numbers stay unique (SERIALIZABLE + retry), the S-3 rule holds;
 // - shared-server layout (M-01): tables, journal and pub_ views in the schema `keystone`, nothing in `public`;
-// - Arche K-11 (R-193): the maj_le indexes are in `keystone` and an incremental read reaches them through the security_barrier views.
+// - Arche K-11 (R-193): the maj_le indexes are in `keystone` and an incremental read reaches them through the security_barrier views;
+// - Arche K-02 (R-187): the capex connector reads Arche's views arche.pub_capex and arche.pub_besoins_machines on the shared
+//   server (schema-qualified, from Keystone's connection in search_path=keystone) into its mirror.
 import { randomBytes } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -34,6 +36,8 @@ import { openDatabase } from './open';
 import { SeedChoiceRequiredError, migrateAndSeedPostgres, openPostgres, type PostgresHandle } from './postgres';
 import { readSeedRecord } from './seed/mode';
 import { SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COUNT } from './share-contracts';
+import { refreshCapexMirror } from '@/server/integrations/capex/connector';
+import { SIMULATED_PUB_BESOINS_MACHINES, SIMULATED_PUB_CAPEX } from '@/server/integrations/capex/simulation';
 import type { DB } from './types';
 
 const ADMIN_URL = process.env.KEYSTONE_TEST_DATABASE_URL?.trim();
@@ -99,6 +103,24 @@ describe.skipIf(!ADMIN_URL)('PostgreSQL server (KEYSTONE_TEST_DATABASE_URL)', ()
     expect(journal.rows[0].n).toBeGreaterThan(30);
     const counts = await pg.pool.query<{ v: number; t: number }>('select (select count(*)::int from pub_projets) as v, (select count(*)::int from projects) as t');
     expect(counts.rows[0].v).toBe(counts.rows[0].t);
+  });
+
+  it('R-187 (Arche K-02): the capex connector reads arche.pub_capex and arche.pub_besoins_machines on the shared server', async () => {
+    // Arche's schema and views, as Arche's migrations create them on the shared server (literal rows of the simulated source).
+    const lit = (rows: readonly Record<string, unknown>[]) => `'${JSON.stringify(rows).replace(/'/g, "''")}'::jsonb`;
+    await admin(`create schema arche;
+      create view arche.pub_capex as select x->>'code' as code, x->>'filiale' as filiale, x->>'intitule' as intitule, (x->>'g2_le')::date as g2_le,
+        (x->>'maj_le')::timestamptz as maj_le from jsonb_array_elements(${lit(SIMULATED_PUB_CAPEX)}) x;
+      create view arche.pub_besoins_machines as select x->>'besoin_ref' as besoin_ref, x->>'capex_code' as capex_code, x->>'ligne' as ligne,
+        x->>'catalogue_code' as catalogue_code, (x->>'catalogue_version')::int as catalogue_version, (x->>'quantite')::int as quantite, x->'options' as options,
+        (x->>'capacite_visee')::numeric as capacite_visee, x->>'unite_capacite' as unite_capacite, x->>'statut' as statut, (x->>'maj_le')::timestamptz as maj_le
+        from jsonb_array_elements(${lit(SIMULATED_PUB_BESOINS_MACHINES)}) x;`, name);
+    expect(await refreshCapexMirror('job', { source: 'server', db: pg.db, checkEnabled: false })).toEqual({ state: 'done', source: 'server', capex: 2, needs: 5, skipped: 0 });
+    const { rows } = await pg.pool.query<{ n: number; s: string }>(`select count(*)::int as n, string_agg(status, ',' order by need_ref) as s from capex_needs`);
+    expect(rows[0]).toEqual({ n: 5, s: 'submitted,submitted,ordered,withdrawn,ordered' });
+    const mirror = await pg.pool.query<{ schema: string }>(`select table_schema as schema from information_schema.tables where table_name = 'capex_needs'`);
+    expect(mirror.rows).toEqual([{ schema: 'keystone' }]);
+    await admin('drop schema arche cascade', name);
   });
 
   it('K-11: the maj_le indexes are in "keystone"; an incremental read of the view reaches them', async () => {
