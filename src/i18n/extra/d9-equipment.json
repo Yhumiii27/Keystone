@@ -41,5 +41,10 @@
   "Load test — hoists of modules M1–M3": "Essai de charge — levages des modules M1–M3",
   "Cable gland missing — module M2 junction box": "Presse-étoupe manquant — boîte de jonction du module M2",
   "Electrical · module M2": "Électricité · module M2",
-  "MEMU modules M1–M3": "Modules MEMU M1–M3"
+  "MEMU modules M1–M3": "Modules MEMU M1–M3",
+  "Budget by equipment": "Budget par équipement",
+  "From the planning lots of each equipment line · read-only": "D’après les lots de planning de chaque ligne d’équipement · consultation seule",
+  "The budget follows the equipment line of each work package; actual cost, EAC and earned value follow each activity (else its work package); open orders follow the article’s equipment line, else the activity they are needed for. The unallocated contingency and the lots without an equipment line are common to the project.": "Le budget suit la ligne d’équipement de chaque lot ; le coût réel, l’EAC et la valeur acquise suivent chaque activité (sinon son lot) ; les commandes ouvertes suivent la ligne d’équipement de l’article, sinon l’activité pour laquelle elles sont passées. La provision non affectée et les lots sans ligne d’équipement sont communs au projet.",
+  "Cost categories are not broken down by equipment: their actuals and commitments are booked per category (timesheets, invoices, Sage), not per activity.": "Les catégories de coûts ne sont pas ventilées par équipement : leurs réels et engagements sont comptabilisés par catégorie (pointages, factures, Sage), pas par activité.",
+  "Earned value is not broken down: this project’s earned value is not computed from its activities.": "La valeur acquise n’est pas ventilée : celle de ce projet n’est pas calculée à partir de ses activités."
 }

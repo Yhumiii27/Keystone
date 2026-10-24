@@ -1,11 +1,19 @@
 // Cost seed: materialises the cost side of projectData() — categories (CAT_ROWS + CATS), work-package
 // budgets (WPS), offer quotes (OFFER), cost streams (STREAMS; HLT monthly values from HLT_STREAMS) and the
 // cumulative PV / EV / AC series.
+import { and, eq } from 'drizzle-orm';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
 import { costType } from '../codes';
-import { costCategories, costStreamPeriods, costStreams, evmPeriods, offerQuotes, wpBudgets } from '../schema';
+import { costCategories, costStreamPeriods, costStreams, evmPeriods, offerQuotes, projectEquipments, wbsNodes, wpBudgets } from '../schema';
 import type { Tx } from '../types';
 import { must, newId, type SeedCtx } from './context';
+
+/**
+ * R-185 (costs by equipment line): the demo work packages of Harbor Line that belong to an equipment line — the crane
+ * installation to its EMP gantry (EQ-01), the MEP systems to its three MEMU technical modules (EQ-02); the other packages stay
+ * common to the project. Only the lots are marked (their activities inherit the line), no amount changes.
+ */
+export const DEMO_EQUIPMENT_LOTS: { project: string; lots: Record<string, string> } = { project: 'HLT-026', lots: { '1.5': 'EQ-01', '1.6': 'EQ-02' } };
 
 interface ProtoOffer { sys: string; sup: string; amt: number; terms: string; order: number; deliv: number; acc: number | null; lead: number }
 
@@ -64,5 +72,14 @@ export async function seedCost(tx: Tx, ctx: SeedCtx): Promise<void> {
     await tx.insert(evmPeriods).values(
       PV.map((pv, monthIndex) => ({ projectId, monthIndex, pvKeur: pv, evKeur: EV[monthIndex] ?? null, acKeur: AC[monthIndex] ?? null })),
     );
+  }
+
+  // R-185: Harbor Line's per-equipment lots (DEMO_EQUIPMENT_LOTS).
+  const projectId = must(ctx.projectByCode, DEMO_EQUIPMENT_LOTS.project, 'project');
+  const wbs = must(ctx.wbs, DEMO_EQUIPMENT_LOTS.project, 'project WBS');
+  for (const [wbsCode, ref] of Object.entries(DEMO_EQUIPMENT_LOTS.lots)) {
+    const [line] = await tx.select({ id: projectEquipments.id }).from(projectEquipments).where(and(eq(projectEquipments.projectId, projectId), eq(projectEquipments.ref, ref)));
+    if (!line) throw new Error(`Seed: no equipment line ${ref} on ${DEMO_EQUIPMENT_LOTS.project}`);
+    await tx.update(wbsNodes).set({ equipmentId: line.id }).where(eq(wbsNodes.id, must(wbs, wbsCode, 'work package')));
   }
 }
