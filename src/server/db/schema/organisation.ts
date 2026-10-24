@@ -7,14 +7,31 @@ import { id, num, timestamps } from './_common';
 import { rateRoles } from './resources';
 
 /** Client organisations (CLIENT_CODES 3167 + clients cited by projects). */
-export const clients = pgTable('clients', {
-  id: id(),
-  name: text('name').notNull().unique(),
-  /** Registered 3-letter code (HAV…); null for clients never registered (new code proposed by clientCode3). */
-  code3: text('code3').unique(),
-  sortOrder: integer('sort_order').notNull(),
-  ...timestamps,
-});
+export const clients = pgTable(
+  'clients',
+  {
+    id: id(),
+    name: text('name').notNull().unique(),
+    /** Registered 3-letter code (HAV…); null for clients never registered (new code proposed by clientCode3). */
+    code3: text('code3').unique(),
+    sortOrder: integer('sort_order').notNull(),
+    ...timestamps,
+    /**
+     * R-190 (Arche K-05): the client is a group subsidiary (internal client) — it follows its projects in the CAPEX application,
+     * never in the client portal (R-179, I-2b). Set by the director (Contract screen) or at the order of a subsidiary's need.
+     */
+    isInternal: boolean('is_internal').notNull().default(false),
+    /**
+     * R-190: the subsidiary's code as Arche (pub_capex.filiale_code, "SAI") and Matrix (pub_filiales.code, D21) know it; one client
+     * per subsidiary; only on an internal client; null when not known yet.
+     */
+    subsidiaryCode: text('subsidiary_code').unique('clients_subsidiary_code_unique'),
+  },
+  (t) => [
+    check('clients_subsidiary_code_check', sql`${t.subsidiaryCode} ~ '^[A-Z]{3}$'`),
+    check('clients_subsidiary_internal_check', sql`${t.subsidiaryCode} is null or ${t.isInternal}`),
+  ],
+);
 
 /** Departments (DEPTS 3268). */
 export const departments = pgTable(

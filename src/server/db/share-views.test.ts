@@ -12,7 +12,7 @@ import { completeIntervention, planIntervention } from '@/server/dal/claims';
 import { refreshShareProgress } from '@/server/dal/share-progress';
 import { setDb } from './client';
 import { openDatabase } from './open';
-import { contractAmendments, contracts, machines, milestones, projects, punchItems } from './schema';
+import { clients, contractAmendments, contracts, machines, milestones, projects, punchItems } from './schema';
 import { INTERNAL_MONEY_COLUMN, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COLUMNS, SHARE_VIEW_COUNT } from './share-contracts';
 import type { DB } from './types';
 
@@ -133,6 +133,20 @@ describe('share views of delivery 9 (0038_share_followup)', () => {
     await expect(db.update(projects).set({ capexCode: 'CAPEX-1' }).where(eq(projects.code, 'NDC-031'))).rejects.toThrow();
     await expect(db.update(projects).set({ capexCode: 'CPX-SAI-2026-01', besoinRef: 'CPX-APM-2026-01/B01' }).where(eq(projects.code, 'NDC-031'))).rejects.toThrow();
     await expect(setCapexLink('HLT-026', { capexCode: '', needRef: 'CPX-SAI-2026-01/B01' }, { name: 'Hélène Marchetti', role: 'director' })).rejects.toThrow('Enter the CAPEX code first');
+  });
+
+  it('pub_projets: the internal client at the end — false for an external client, never null (R-190)', async () => {
+    const v = await rows<{ code: string; client_interne: boolean | null; filiale_code: string | null }>(sql`select code, client_interne, filiale_code from pub_projets`);
+    expect(v.length).toBeGreaterThan(0);
+    // The demo's subsidiary (Sahel Agro Industries, SAI) has no project yet: every demo project has an external client.
+    expect(v.every((r) => r.client_interne === false && r.filiale_code === null)).toBe(true);
+    // The database refuses a subsidiary code on an external client and a malformed code.
+    await expect(db.update(clients).set({ subsidiaryCode: 'HTR' }).where(eq(clients.name, 'Health trust'))).rejects.toThrow();
+    await expect(db.update(clients).set({ isInternal: true, subsidiaryCode: 'H1' }).where(eq(clients.name, 'Health trust'))).rejects.toThrow();
+    await db.update(clients).set({ isInternal: true, subsidiaryCode: 'HTR' }).where(eq(clients.name, 'Health trust'));
+    const [r] = await rows<{ client_interne: boolean; filiale_code: string }>(sql`select client_interne, filiale_code from pub_projets where code = 'RCF-019'`);
+    expect(r).toEqual({ client_interne: true, filiale_code: 'HTR' });
+    await db.update(clients).set({ isInternal: false, subsidiaryCode: null }).where(eq(clients.name, 'Health trust'));
   });
 
   it('pub_parc_machines: machine type, delivery date and last change at the end, one row per machine for Arche (K-07)', async () => {

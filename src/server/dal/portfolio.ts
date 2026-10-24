@@ -72,7 +72,7 @@ export async function getMyProjects(viewer: Viewer, currentProject: string, lang
   ]);
   // R-041: the viewer's team role (tag) and read-only state per project follow the named project team.
   const access = (p: ProjectRow) => {
-    const a = projectAccess(viewer, { client: p.client, pm: p.pm, pmPersonId: p.pmPersonId, team: teams.get(p.code) ?? [] });
+    const a = projectAccess(viewer, { client: p.client, clientInternal: p.clientInternal, pm: p.pm, pmPersonId: p.pmPersonId, team: teams.get(p.code) ?? [] });
     return { teamRole: a.teamRole, readOnly: a.readOnly };
   };
   // A-3: the same population as the Overview (projects in execution).

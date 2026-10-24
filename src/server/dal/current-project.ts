@@ -5,9 +5,11 @@ import 'server-only';
 //   the last project used (cookie) when it still exists → DEFAULT_PROJECT when the database has it (demo database: the
 //   behaviour is unchanged) → the first project of the register → none (a new production database before its first project).
 // A client only ever gets a project of their own organisation (P-10a, R-042): a remembered project of another organisation is
-// ignored, and with no organisation (or none of its projects) there is no current project.
+// ignored, and with no organisation (or none of its projects) there is no current project. R-190: never a project whose client is
+// a group subsidiary (`clientRefusedProject`).
 import { asc, eq } from 'drizzle-orm';
 import { DEFAULT_PROJECT } from '@/config/screens';
+import { clientRefusedProject } from '@/domain/rights';
 import { getDb } from '@/server/db/client';
 import { clients, projects } from '@/server/db/schema';
 
@@ -22,11 +24,13 @@ export function chooseCurrentProject(remembered: string | null | undefined, code
 export async function resolveCurrentProject(remembered: string | null | undefined, viewer?: { role: string; organisation?: string | null }): Promise<string | null> {
   const db = await getDb();
   const rows = await db
-    .select({ code: projects.code, client: clients.name })
+    .select({ code: projects.code, client: clients.name, internal: clients.isInternal })
     .from(projects)
     .leftJoin(clients, eq(clients.id, projects.clientId))
     .orderBy(asc(projects.sortOrder), asc(projects.code));
-  const pool = viewer?.role === 'client' ? rows.filter((r) => !!viewer.organisation && r.client === viewer.organisation) : rows;
+  const pool = viewer?.role === 'client'
+    ? rows.filter((r) => !clientRefusedProject({ role: 'client', organisation: viewer.organisation ?? null }, { client: r.client ?? '—', clientInternal: !!r.internal }))
+    : rows;
   if (remembered && pool.some((r) => r.code === remembered)) return remembered;
   return chooseCurrentProject(null, pool.map((r) => r.code));
 }

@@ -76,6 +76,17 @@ const MESSAGES = {
     (p) => `CAPEX link: ${p.from} → ${p.to}`,
     (p) => `Rattachement CAPEX : ${p.from} → ${p.to}`,
   ),
+  // R-190: the project's client flagged as a group subsidiary (internal client) or back to external ('—' = subsidiary code not known).
+  'client.internalSet': def(
+    { client: 'data', subsidiary: 'ref' },
+    (p) => `Client ${p.client} marked internal · group subsidiary ${p.subsidiary}`,
+    (p, f) => `Client ${f.data(p.client)} marqué interne · filiale du groupe ${p.subsidiary}`,
+  ),
+  'client.internalCleared': def(
+    { client: 'data' },
+    (p) => `Client ${p.client} marked external`,
+    (p, f) => `Client ${f.data(p.client)} marqué externe`,
+  ),
   // R-185: the project's equipment lines edited on the Contract screen (audit trail and activity feed; "3 × MEMU").
   'project.equipmentAdded': def(
     { ref: 'ref', equipment: 'ref' },

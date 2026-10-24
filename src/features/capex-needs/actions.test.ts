@@ -163,6 +163,9 @@ describe('the order (K-10)', () => {
       ['EQ-02', 'MEMU', 1, null, null, [], null, null, null],
     ]);
     expect((await viewRow('RB-002')).projet_code).toBe(code);
+    // R-190: the subsidiary (the demo's internal client SAI) is the project's client, published as such.
+    expect((await db.execute(sql`select client, client_interne, filiale_code from pub_projets where code = ${code}`)).rows)
+      .toEqual([{ client: 'Sahel Agro Industries', client_interne: true, filiale_code: 'SAI' }]);
     const audit = await db.select({ change: auditEntries.change }).from(auditEntries).where(sql`${auditEntries.change} like 'Project ${sql.raw(code)} created from ordered need%'`);
     expect(audit.map((a) => a.change)).toEqual([`Project ${code} created from ordered need CPX-SAI-2026-01/B03`]);
     // Once only.

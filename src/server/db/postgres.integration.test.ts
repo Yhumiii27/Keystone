@@ -103,6 +103,12 @@ describe.skipIf(!ADMIN_URL)('PostgreSQL server (KEYSTONE_TEST_DATABASE_URL)', ()
     expect(journal.rows[0].n).toBeGreaterThan(30);
     const counts = await pg.pool.query<{ v: number; t: number }>('select (select count(*)::int from pub_projets) as v, (select count(*)::int from projects) as t');
     expect(counts.rows[0].v).toBe(counts.rows[0].t);
+    // R-190 (0052_internal_client_share): the internal client at the end of pub_projets in `keystone`, never null.
+    const cols = await pg.pool.query<{ c: string; t: string }>(`select column_name as c, data_type as t from information_schema.columns
+      where table_schema = 'keystone' and table_name = 'pub_projets' order by ordinal_position desc limit 2`);
+    expect(cols.rows.reverse()).toEqual([{ c: 'client_interne', t: 'boolean' }, { c: 'filiale_code', t: 'text' }]);
+    const nulls = await pg.pool.query<{ n: number }>('select count(*)::int as n from pub_projets where client_interne is null');
+    expect(nulls.rows[0].n).toBe(0);
   });
 
   it('R-187 (Arche K-02): the capex connector reads arche.pub_capex and arche.pub_besoins_machines on the shared server', async () => {

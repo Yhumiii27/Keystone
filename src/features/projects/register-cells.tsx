@@ -41,7 +41,17 @@ export function ProjectCell({ row }: { row: RegisterRow }) {
         <span className={s.projectName}>{name}</span>
       )}
       <span className={s.projectIds}>{row.idLine}</span>
-      <span className={s.projectMeta}>{row.metaLine}</span>
+      <span className={s.projectMeta}>
+        {row.metaLine}
+        {row.clientInternal && (
+          <>
+            {' '}
+            <Tag tone="outline" size="xs" title={t('Internal client (group subsidiary)')}>
+              {t('Internal')}
+            </Tag>
+          </>
+        )}
+      </span>
     </div>
   );
 }

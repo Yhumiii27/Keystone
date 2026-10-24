@@ -75,6 +75,7 @@ import d9Equipment from './d9-equipment.json';
 import d9Catalogue from './d9-catalogue.json';
 import d9EstimateClass from './d9-estimate-class.json';
 import d9CapexNeeds from './d9-capex-needs.json';
+import d9InternalClient from './d9-internal-client.json';
 
 export const EXTRA_FR: Record<string, string> = {
   ...common,
@@ -150,4 +151,5 @@ export const EXTRA_FR: Record<string, string> = {
   ...d9Catalogue,
   ...d9EstimateClass,
   ...d9CapexNeeds,
+  ...d9InternalClient,
 };

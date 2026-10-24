@@ -30,6 +30,8 @@ export interface ProjectRow {
   /** persons.id of the project manager (R-039: ownership by person for signed-in users). */
   pmPersonId: string | null;
   client: string;          // 'Port authority'
+  /** R-190: the client is a group subsidiary (internal client); present (true) only then — no client-portal access (R-179). */
+  clientInternal?: true;
   start: string;           // 'Jan 2026'
   finish: string;          // 'Dec 2026'
   budget: number;          // k€
@@ -58,6 +60,7 @@ export const projectLabel = (p: Pick<ProjectRow, 'displayId' | 'name'>) => `${p.
 const projectSelect = {
   p: projects,
   client: clients.name,
+  clientInternal: clients.isInternal,
   pm: persons.shortName,
   city: projectSites.city,
   country: projectSites.countryName,
@@ -68,7 +71,7 @@ const projectSelect = {
   controls: projectControls.projectId,
 };
 
-type Joined = { p: typeof projects.$inferSelect; client: string | null; pm: string | null; city: string | null; country: string | null;
+type Joined = { p: typeof projects.$inferSelect; client: string | null; clientInternal: boolean | null; pm: string | null; city: string | null; country: string | null;
   lat: number | null; lng: number | null; zoneOverride: ZoneKey | null; countryZone: ZoneKey | null; controls: string | null };
 
 /**
@@ -87,6 +90,7 @@ function toRow(r: Joined, th: HealthThresholds, evm: ProjectEvm | undefined, lin
     budget: p.budgetKeur, actual: evm ? evm.ac : p.actualKeur, progress: evm ? evm.progress : p.progress, spi: evm ? evm.spi : p.spi,
     city: r.city, country: r.country, zone: r.zoneOverride ?? r.countryZone ?? 'euna', hasData: r.controls != null,
     stage: p.stage, shortCode: p.shortCode, isNew: p.isNew, lat: r.lat, lng: r.lng,
+    ...(r.clientInternal ? { clientInternal: true as const } : {}),
   };
   return { ...row, health: healthOf(row, th) };
 }
