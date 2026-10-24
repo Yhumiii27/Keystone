@@ -6,6 +6,7 @@ import { SectionCard } from '@/components/app/SectionCard';
 import { EmptyState } from '@/components/app/EmptyState';
 import { PageHeader } from '@/components/app/shell/page-header';
 import { CardTitle } from '@/components/ds/Card';
+import { stageEstimateClass } from '@/domain/estimate-class';
 import { scheduleView } from '@/domain/schedule-gantt';
 import { RebaselineButton } from '@/features/schedule/rebaseline-button';
 import { ScheduleView } from '@/features/schedule/schedule-view';
@@ -28,7 +29,7 @@ export default async function SchedulePage({
   const showBaseline = baselineParam !== '0' && baselineParam !== 'off';
 
   const primary =
-    data && ctx.canEdit('schedule') ? <RebaselineButton code={ctx.project.code} context={projectLabelText(ctx.project, lang)} /> : undefined;
+    data && ctx.canEdit('schedule') ? <RebaselineButton code={ctx.project.code} context={projectLabelText(ctx.project, lang)} defaultClass={stageEstimateClass(ctx.project.stage)} /> : undefined;
 
   return (
     <>

@@ -25,6 +25,8 @@ describe('portfolio DAL', () => {
     expect(ov.kpis.map((k) => [k.value, k.sub])).toEqual([
       ['€13.63M', '6 active projects'], ['€6.74M', '49% of budget spent'], ['€13.88M', '−€245k vs budget'],
       ['0.97', 'Earned per $1 spent'], ['0.92', 'Weighted by budget'], ['3 of 6', '1 off track'],
+      // R-188 (DIG-PRODI D-6): a seventh tile, the uncertainty gap of the five E10 budgets (15 % each); PRS-038 has no baseline.
+      ['€1.47M', '1 not at class E10'],
     ]);
     // R-130 (NEW-D1-1) on the R-073 figures: computed alerts, worst first — HLT-026 off track (SPI 0.82 ≤ CPI 0.89: the schedule),
     // the critical-path slips (worst float first), the RCF-019 cost overrun (HLT-026, off track, shows its CPI in its own alert),

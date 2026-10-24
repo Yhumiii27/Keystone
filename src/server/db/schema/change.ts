@@ -6,8 +6,9 @@
 //  - `budget_change_lines` — the Budget screen's own list (projectData().CRS = HCRS 3193), kept verbatim
 //    (titles, days, status and "date · decider" meta differ) so the Budget screen renders the prototype exactly.
 //    Each line points to the register entry with the same number.
-import { date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
-import type { BaselineSource, BaselineState, BudgetChangeStatus, ChangeStatus, ChangeStep, ChangeType, ContractImpact, StepDecision } from '../codes';
+import { sql } from 'drizzle-orm';
+import { check, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import type { BaselineSource, BaselineState, BudgetChangeStatus, EstimateClass, ChangeStatus, ChangeStep, ChangeType, ContractImpact, StepDecision } from '../codes';
 import { id, keur, timestamps } from './_common';
 import { persons } from './organisation';
 import { activities, wbsNodes } from './planning';
@@ -145,9 +146,15 @@ export const baselines = pgTable(
     /** Re-baseline form fields (11 §3.3): approver and scope ("Dates & budget" / "Dates only" / "Budget only"). */
     approverPersonId: uuid('approver_person_id').references(() => persons.id),
     scope: text('scope'),
+    /**
+     * R-188 (DIG-PRODI, Arche K-03): estimate class of the version's BAC — E50 ±50 %, E30 ±30 %, E10 +10/−5 %
+     * (src/domain/estimate-class.ts). Set when the version is created (default by the project's stage); null = not classified.
+     * Rows older than R-188 were classified by 0048_baseline_estimate_class_backfill.
+     */
+    estimateClass: text('estimate_class').$type<EstimateClass>(),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.code)],
+  (t) => [unique().on(t.projectId, t.code), check('baselines_estimate_class_check', sql`${t.estimateClass} in ('E50', 'E30', 'E10')`)],
 );
 
 /**

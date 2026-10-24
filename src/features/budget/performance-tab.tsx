@@ -12,6 +12,7 @@ import { DEFAULT_HEALTH_THRESHOLDS, type HealthThresholds } from '@/domain/healt
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import type { CostControl } from '@/server/dal/cost';
+import type { EstimateKpi } from './estimate-class-field';
 import s from './budget.module.css';
 import { dataText } from '@/i18n/data-text';
 
@@ -25,11 +26,13 @@ export interface PerformanceTabProps {
   setupHref: string;
   /** Delivery 8 (R-080, C-1): the Settings health thresholds the tiles follow (default 0.97 / 0.90). */
   th?: HealthThresholds;
+  /** R-188: "Estimate range" tile (class and low – high of the BAC), already translated; shown after the BAC. */
+  estimate?: EstimateKpi;
   lang: Lang;
   t: T;
 }
 
-export function PerformanceTab({ cost, core, offer, profileText, setupHref, th = DEFAULT_HEALTH_THRESHOLDS, lang, t }: PerformanceTabProps) {
+export function PerformanceTab({ cost, core, offer, profileText, setupHref, th = DEFAULT_HEALTH_THRESHOLDS, estimate, lang, t }: PerformanceTabProps) {
   const f = (k: number, signed?: boolean) => money(k, lang, { signed });
   const { bac } = cost;
   // R-080 (C-1): the tiles follow the Settings health thresholds (the prototype coloured EAC, VAC, CPI and TCPI LO whatever the value).
@@ -49,9 +52,11 @@ export function PerformanceTab({ cost, core, offer, profileText, setupHref, th =
   return (
     <div className={s.stack}>
       <KpiGrid min={140}>
-        {kpis.map((k) => (
-          <KpiTile key={k.label} label={t(k.label)} value={k.value} sub={t(k.sub)} color={k.color} />
-        ))}
+        {kpis.map((k) => [
+          <KpiTile key={k.label} label={t(k.label)} value={k.value} sub={t(k.sub)} color={k.color} />,
+          // R-188: the class and range of the BAC, next to it.
+          k.label === 'Budget (BAC)' && estimate ? <KpiTile key="estimate" label={estimate.label} value={estimate.value} sub={estimate.sub} color={estimate.alert ? LO : OK} /> : null,
+        ])}
       </KpiGrid>
 
       <div className={s.cardsRow}>

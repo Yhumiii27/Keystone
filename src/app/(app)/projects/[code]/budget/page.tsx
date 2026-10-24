@@ -15,6 +15,9 @@ import s from '@/features/budget/budget.module.css';
 import { money } from '@/lib/format';
 import { categoryAmountFrozen } from '@/domain/baseline-policy';
 import { getBudgetData } from '@/server/dal/budget';
+import { getBudgetEstimate } from '@/server/dal/estimate-class';
+import { estimateKpi } from '@/features/budget/estimate-class-field';
+import { KpiGrid, KpiTile, LO, OK } from '@/components/app';
 import { listProjectBaselines } from '@/server/dal/baselines';
 import { healthThresholds } from '@/server/dal/health-thresholds';
 import { costCategoryOptions } from '@/server/dal/settings-lists';
@@ -33,16 +36,28 @@ export default async function BudgetPage({
   // Delivery 8: the Settings health thresholds colour the Performance tiles (R-080, C-1); the category amounts are frozen after
   // BL1 (R-081, C-3a — the same "after BL1" test as Set baseline).
   const [ctx, i18n, data, th] = await Promise.all([getProjectContext(code, 'budget'), getI18n(), getBudgetData(code), healthThresholds()]);
+  // R-188: the budget's estimate class and range (current baseline, else the class of the stage).
+  const est = await getBudgetEstimate(ctx.project.code);
   const { lang } = i18n;
   const t = budgetT(i18n.t, lang);
   const projectCode = ctx.project.code;
   const base = screenHref('budget', { code: projectCode });
+  const estimate = est ? estimateKpi(est, (k) => money(k, lang), t) : undefined;
 
   if (!data)
     return (
       <>
         <PageHeader screen="budget" projectCode={projectCode} />
-        <EmptyState variant="boxed">{t('No cost data for this project yet')}</EmptyState>
+        <div className={s.stack}>
+          {/* R-188: a project without cost data (pipeline) still shows its budget, class and range. */}
+          {est && estimate && (
+            <KpiGrid min={140}>
+              <KpiTile label={t('Budget (BAC)')} value={money(est.bac, lang)} sub={t('Current budget')} color={OK} />
+              <KpiTile label={estimate.label} value={estimate.value} sub={estimate.sub} color={estimate.alert ? LO : OK} />
+            </KpiGrid>
+          )}
+          <EmptyState variant="boxed">{t('No cost data for this project yet')}</EmptyState>
+        </div>
       </>
     );
 
@@ -97,7 +112,7 @@ export default async function BudgetPage({
       : null;
     body = <CashTab recovery={recovery} contractTotal={total} terms={contract?.terms ?? ''} ac={core.ac} lang={lang} t={t} />;
   } else {
-    body = <PerformanceTab cost={cost} core={core} offer={offer} profileText={profileText} setupHref={budgetTabHref(base, 'setup')} th={th} lang={lang} t={t} />;
+    body = <PerformanceTab cost={cost} core={core} offer={offer} profileText={profileText} setupHref={budgetTabHref(base, 'setup')} th={th} estimate={estimate} lang={lang} t={t} />;
   }
 
   return (

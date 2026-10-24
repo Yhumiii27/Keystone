@@ -1,0 +1,15 @@
+{
+  "Estimate class": "Classe d’estimation",
+  "E50 — order of magnitude (±50 %)": "E50 — ordre de grandeur (±50 %)",
+  "E30 — budgetary (±30 %)": "E30 — budgétaire (±30 %)",
+  "E10 — firm (+10 % / −5 %)": "E10 — ferme (+10 % / −5 %)",
+  "Unknown estimate class": "Classe d’estimation inconnue",
+  "Estimate range": "Fourchette d’estimation",
+  "Not classified": "Non classé",
+  "Working budget": "Budget de travail",
+  "Current budget": "Budget actuel",
+  "Uncertainty gap": "Écart d’incertitude",
+  "All budgets at class E10": "Tous les budgets en classe E10",
+  "A firm offer requires estimate class E10 (+10 % / −5 %)": "Une offre ferme exige la classe d’estimation E10 (+10 % / −5 %)",
+  "A priced answer needs an estimate class": "Une réponse chiffrée exige une classe d’estimation"
+}

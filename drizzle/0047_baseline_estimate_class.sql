@@ -1,0 +1,2 @@
+ALTER TABLE "baselines" ADD COLUMN "estimate_class" text;--> statement-breakpoint
+ALTER TABLE "baselines" ADD CONSTRAINT "baselines_estimate_class_check" CHECK ("baselines"."estimate_class" in ('E50', 'E30', 'E10'));

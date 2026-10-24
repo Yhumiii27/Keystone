@@ -6,6 +6,7 @@ import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import { parseAssignmentQuantities } from '@/domain/assignments';
 import { BUILTIN_CALENDARS, BUILTIN_CALENDAR_BY_CODE, WorkCalendar } from '@/domain/calendar';
 import { DEFAULT_PROJECT_CALENDAR } from '@/domain/ch4-defaults';
+import { legacyBaselineClass } from '@/domain/estimate-class';
 import { isoOfDemoDate } from '../codes';
 import { activities, activityAssignments, baselineActivities, baselines, calendars, persons, projectControls, projects, wbsNodes } from '../schema';
 import type { Tx } from '../types';
@@ -79,6 +80,22 @@ async function seedAssignmentQuantities(tx: Tx): Promise<void> {
   }
 }
 
+/**
+ * R-188: the estimate class of the seeded baselines, by the rule of migration 0048 (`legacyBaselineClass`): HLT-026 BL0 (proposal
+ * estimate) E30, every BL1 and HLT-026's proposed BL2 E10. Only unclassified rows are filled.
+ */
+async function classifySeedBaselines(tx: Tx): Promise<void> {
+  const rows = await tx
+    .select({ id: baselines.id, code: baselines.code, stage: projects.stage })
+    .from(baselines)
+    .innerJoin(projects, eq(projects.id, baselines.projectId))
+    .where(isNull(baselines.estimateClass));
+  for (const r of rows) {
+    const estimateClass = legacyBaselineClass(r.code, r.stage);
+    if (estimateClass) await tx.update(baselines).set({ estimateClass }).where(eq(baselines.id, r.id));
+  }
+}
+
 /** Chapter 4 seed: in the initial seed transaction, or once on a database seeded before migration 0005. */
 export async function seedChapter4(tx: Tx): Promise<void> {
   const have = new Set((await tx.select({ code: calendars.code }).from(calendars)).map((c) => c.code));
@@ -86,6 +103,7 @@ export async function seedChapter4(tx: Tx): Promise<void> {
   if (missing.length) await tx.insert(calendars).values(missing);
   await markSeedBaselines(tx);
   await seedBaselineSnapshots(tx);
+  await classifySeedBaselines(tx);
   await seedAssignmentQuantities(tx);
 }
 
