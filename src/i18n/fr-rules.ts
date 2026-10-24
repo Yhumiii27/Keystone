@@ -47,3 +47,6 @@ FR_RULES.push(
   [/^(\d+) tasks sent$/, '$1 tâches envoyées'],
   [/^(\d+) tasks pending$/, '$1 tâches en attente'],
 );
+
+// R-188: the Portfolio overview's "Uncertainty gap" sub-line ("2 not at class E10").
+FR_RULES.push([/^(\d+) not at class E10$/, '$1 hors classe E10']);

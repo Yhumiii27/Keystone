@@ -6,6 +6,7 @@ import type { RoleKey } from '@/config/screens';
 import type { Lang } from '@/i18n/translate';
 import { fmtD, mIdx, money, monthDate } from '@/lib/format';
 import { STAGES, type StageCode } from '@/server/db/codes';
+import type { UncertaintyTotals } from './estimate-class';
 import { DEFAULT_HEALTH_THRESHOLDS, HEALTH_LABEL, clampHealthCpi, healthOf, indexAlert, type Health, type HealthThresholds } from './health';
 import type { ProjectTeamRole } from './rights';
 
@@ -123,7 +124,7 @@ export function portfolioTotals(rows: (EvmInput & { metrics: OverviewMetrics })[
   return { count: rows.length, budget, actual, earned, eac, cpi: actual ? earned / actual : 1, spi: budget ? spiW / budget : 1, atRisk, offTrack };
 }
 
-export type KpiIcon = 'briefcase' | 'receipt' | 'trend-up' | 'gauge' | 'timer' | 'warning';
+export type KpiIcon = 'briefcase' | 'receipt' | 'trend-up' | 'gauge' | 'timer' | 'warning' | 'range';
 
 /** KPI tile view: label/value/sub are EN source strings (money already formatted for `lang`); `alert` = value in LO. */
 export interface KpiView {
@@ -147,6 +148,18 @@ export function portfolioKpis(t: PortfolioTotals, lang: Lang, th: HealthThreshol
     { key: 'spi', label: 'Schedule perf. (SPI)', value: t.spi.toFixed(2), sub: 'Weighted by budget', icon: 'timer', alert: indexAlert(t.spi, th) },
     { key: 'risk', label: 'Projects at risk', value: `${t.atRisk} of ${n}`, sub: `${t.offTrack} off track`, icon: 'warning', alert: t.atRisk > 0 },
   ];
+}
+
+/**
+ * R-188 (DIG-PRODI D-6): "Uncertainty gap" tile of the Portfolio overview, after the prototype's six — Σ (high − low) of the active
+ * projects' budgets in their estimate class (src/domain/estimate-class.ts `uncertaintyTotals`), alert while a budget is not at
+ * E10 (+10 / −5 %) or not classified: a project in execution has passed APD, whose budget precision is +10 / −5 %.
+ */
+export function uncertaintyKpi(u: UncertaintyTotals, lang: Lang): KpiView {
+  return {
+    key: 'uncertainty', label: 'Uncertainty gap', value: money(u.gap, lang), sub: u.notFirm ? `${u.notFirm} not at class E10` : 'All budgets at class E10', icon: 'range',
+    alert: u.notFirm > 0,
+  };
 }
 
 /** "6 projects · FY2026" — the prototype's static card hint, here counting the rows shown (zone filter), fiscal year of the data date. */

@@ -25,6 +25,7 @@ import s from '@/features/plan/plan.module.css';
 import { canSnapshotFreely } from '@/domain/baseline-policy';
 import { workdayOffsetOf } from '@/domain/clock';
 import { nextBaselineCode } from '@/domain/ch4-defaults';
+import { stageEstimateClass } from '@/domain/estimate-class';
 import { longDateText } from '@/domain/schedule-rollup';
 import { baselineWhenText, trashMetaText } from '@/features/plan/i18n';
 import { RecentlyDeleted } from '@/features/plan/recently-deleted';
@@ -196,6 +197,7 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
           baseline={baselineChip}
           dataDate={dataDateText}
           nextBaseline={nextBaselineCode(baselineCodes)}
+          defaultEstimateClass={stageEstimateClass(ctx.project.stage)}
           baselineChangeRequestHref={canSnapshotFreely(baselineCodes) ? undefined : `${screenHref('changes', { code: projectCode })}?new=1&baseline=1`}
           canSchedule={canSchedule}
           t={t}

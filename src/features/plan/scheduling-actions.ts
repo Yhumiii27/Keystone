@@ -19,6 +19,7 @@ import {
   rescheduledText, todoAddedText, todoRemovedText,
 } from './i18n';
 import { canEditTask } from '@/features/mywork/permissions';
+import { parseEstimateClassInput } from '@/features/budget/estimate-class-field';
 import { canEditPlan, canEditStructure, canSchedulePlan } from './rights';
 
 export type PlanToastResult = { ok: true; toast?: string } | { error: string };
@@ -89,12 +90,16 @@ export async function setBaselineAction(code: string, values: Record<string, str
   const comment = str(values?.comment).trim();
   if (name.length > NAME_MAX) return { error: t('Baseline name is too long') };
   if (comment.length > COMMENT_MAX) return { error: t('Comment is too long') };
+  // R-188: the version's estimate class (blank = the class of the project's stage).
+  const cls = parseEstimateClassInput(values?.estimateClass);
+  if (!cls.ok) return { error: t(cls.error) };
   let res: Awaited<ReturnType<typeof createBaselineSnapshot>>;
   try {
     // The S-3 rule is checked again inside the snapshot transaction (R-010): two "Set baseline" sent at BL0 at the same time
     // create BL1 once; the second is refused instead of creating BL2 without a change request.
     res = await createBaselineSnapshot(r.ctx.project.code, {
       actorName: r.ctx.viewer.name, name: name || undefined, comment: comment || null, source: 'snapshot', makeCurrent: true, enforcePolicy: true,
+      estimateClass: cls.value,
     });
   } catch (e) {
     if (e instanceof BaselinePolicyError) return { error: t('After BL1, a new baseline goes through a change request') };
