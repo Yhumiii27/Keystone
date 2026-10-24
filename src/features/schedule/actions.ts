@@ -29,7 +29,7 @@ export async function rebaselineSchedule(code: string, values: Record<string, st
   const parsed = parseRebaseline(values);
   if (!parsed.ok) return { error: t(parsed.error) };
   if (!(await getScheduleControl(project.code))) return { error: t('No schedule recorded for this project') };
-  const { name, reason, approver, scope } = parsed.value;
+  const { name, reason, approver, scope, estimateClass } = parsed.value;
   const mentioned = [...`${name} ${reason}`.matchAll(/\bCR-\d{3,}\b/g)].map((m) => m[0]);
   const crs = await listChangeRequestDetails(project.code);
   const known = new Set(crs.map((c) => c.id));
@@ -50,7 +50,7 @@ export async function rebaselineSchedule(code: string, values: Record<string, st
     // Checked again inside the snapshot transaction (R-010): a concurrent BL1 or a concurrent proposal on the same request.
     res = await createBaselineSnapshot(project.code, {
       actorName: ctx.viewer.name, name, comment: reason, source: linked ? 'change_request' : 'snapshot', changeRequestNumber: linked,
-      approverName: PERSONA_BY_ROLE[approver].name, scope, makeCurrent: free && !linked, enforcePolicy: true,
+      approverName: PERSONA_BY_ROLE[approver].name, scope, makeCurrent: free && !linked, enforcePolicy: true, estimateClass,
     });
   } catch (e) {
     if (!(e instanceof BaselinePolicyError)) throw e;

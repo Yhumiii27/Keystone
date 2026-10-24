@@ -6,6 +6,7 @@ import { ChartBar, Clock, Eye, TreeStructure } from '@phosphor-icons/react/dist/
 import { FilterGroup, FilterLabel } from '@/components/app/Filter';
 import { cx } from '@/components/ds/cx';
 import { Segmented } from '@/components/ds/Segmented';
+import type { EstimateClass } from '@/domain/estimate-class';
 import type { T } from '@/i18n/translate';
 import type { PlanView } from './model';
 import { PickerChip, RescheduleButton, SetBaselineButton, type ChipOption } from './plan-controls';
@@ -24,6 +25,8 @@ export interface PlanToolbarProps {
   dataDate: string;
   /** Next baseline code ("BL3"), the default name of "Set baseline". */
   nextBaseline: string;
+  /** R-188: estimate class preset in "Set baseline" (class of the project's stage). */
+  defaultEstimateClass: EstimateClass;
   /** S-3: after BL1, "Set baseline" links to this Change control form (new request proposing the next baseline). */
   baselineChangeRequestHref?: string;
   /** Director / project manager: chips change, Reschedule and Set baseline shown. */
@@ -31,7 +34,7 @@ export interface PlanToolbarProps {
   t: T;
 }
 
-export function PlanToolbar({ view, hrefs, code, context, calendar, baseline, dataDate, nextBaseline, baselineChangeRequestHref, canSchedule, t }: PlanToolbarProps) {
+export function PlanToolbar({ view, hrefs, code, context, calendar, baseline, dataDate, nextBaseline, defaultEstimateClass, baselineChangeRequestHref, canSchedule, t }: PlanToolbarProps) {
   return (
     <div className={s.toolbar}>
       <FilterGroup>
@@ -56,7 +59,7 @@ export function PlanToolbar({ view, hrefs, code, context, calendar, baseline, da
       {canSchedule && (
         <div className={s.toolbarRight}>
           <RescheduleButton code={code} />
-          <SetBaselineButton code={code} context={context} defaultName={nextBaseline} changeRequestHref={baselineChangeRequestHref} />
+          <SetBaselineButton code={code} context={context} defaultName={nextBaseline} defaultClass={defaultEstimateClass} changeRequestHref={baselineChangeRequestHref} />
         </div>
       )}
     </div>

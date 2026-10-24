@@ -6,6 +6,7 @@ import 'server-only';
 // The Change control register keeps reading `getBaselines` / `getBaselineRegister` (planning.ts, changes-baselines.ts).
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { baselineNumber, canSnapshotFreely } from '@/domain/baseline-policy';
+import { stageEstimateClass, type EstimateClass } from '@/domain/estimate-class';
 import { businessToday } from '@/server/clock';
 import { DEFAULT_DISPLAYED_BASELINE, displayedBaselineCode, nextBaselineCode, projectDataDate } from '@/domain/ch4-defaults';
 import { getDb, type DB, type Tx } from '@/server/db/client';
@@ -34,6 +35,8 @@ export interface BaselineInfo {
   activityCount: number;
   /** Shown by Plan / Schedule. */
   displayed: boolean;
+  /** R-188: estimate class of the version's BAC; null = not classified. */
+  estimateClass: EstimateClass | null;
 }
 
 export interface BaselineActivityRow {
@@ -54,7 +57,7 @@ export interface BaselineActivityRow {
 
 async function projectHead(q: Q, code: string) {
   const [p] = await q
-    .select({ id: projects.id, displayed: projects.displayedBaselineCode, dataDate: projects.dataDate, budget: projects.budgetKeur })
+    .select({ id: projects.id, displayed: projects.displayedBaselineCode, dataDate: projects.dataDate, budget: projects.budgetKeur, stage: projects.stage })
     .from(projects)
     .where(eq(projects.code, code));
   if (!p) throw new Error(`Unknown project ${code}`);
@@ -77,7 +80,7 @@ export async function listProjectBaselines(code: string, q?: Q): Promise<Baselin
   const shown = resolveDisplayed(p.displayed, rows.map((r) => r.b.code));
   return rows.map(({ b, cr, n }) => ({
     code: b.code, name: b.name, setOn: b.setOn, finishDate: b.finishDate, bacKeur: b.bacKeur, state: b.state, source: b.source, comment: b.comment,
-    dataDate: b.dataDate, createdByName: b.createdByName, changeRequest: cr, activityCount: n, displayed: b.code === shown,
+    dataDate: b.dataDate, createdByName: b.createdByName, changeRequest: cr, activityCount: n, displayed: b.code === shown, estimateClass: b.estimateClass,
   }));
 }
 
@@ -143,6 +146,8 @@ export interface SnapshotInput {
   setOn?: string;
   approverName?: string | null;
   scope?: string | null;
+  /** R-188: estimate class of the version (validated by the caller); default: the class of the project's stage (stageEstimateClass). */
+  estimateClass?: EstimateClass;
   /**
    * Re-checks the S-3 policy inside the writing transaction (R-010: two simultaneous "Set baseline" at BL0 must not create
    * BL2 without a change request): a snapshot made current, or one without change request, needs the project below BL1;
@@ -199,20 +204,21 @@ export async function createBaselineSnapshot(code: string, input: SnapshotInput,
     const [{ finish }] = await tx.select({ finish: sql<string | null>`max(${activities.finishDate})::text` }).from(activities).where(eq(activities.projectId, proj.id));
     const dataDate = projectDataDate(p, await businessToday(tx));
     const setOn = input.setOn ?? dataDate;
+    const estimateClass = input.estimateClass ?? stageEstimateClass(p.stage);
     const [b] = await tx
       .insert(baselines)
       .values({
         projectId: proj.id, code: blCode, name: input.name?.trim() || blCode, setOn, bacKeur: input.bacKeur ?? p.budget, finishDate: finish ?? setOn,
         state: input.makeCurrent ? 'current' : 'proposed', changeRequestId: cr?.id ?? null, comment: input.comment?.trim() || null, source: input.source ?? 'snapshot',
         dataDate, createdByPersonId: actor?.id ?? null, createdByName: actor ? nameOf(actor) : input.actorName, approverPersonId: approver?.id ?? null,
-        scope: input.scope ?? null, position: Math.max(-1, ...existing.map((e) => e.position)) + 1,
+        scope: input.scope ?? null, estimateClass, position: Math.max(-1, ...existing.map((e) => e.position)) + 1,
       })
       .returning({ id: baselines.id });
     if (input.makeCurrent) await supersedeCurrent(tx, proj.id, b.id);
     const rows = await snapshotRows(tx, proj.id, b.id);
     if (rows.length) await tx.insert(baselineActivities).values(rows);
     const who = actor ? nameOf(actor) : input.actorName;
-    await writeAudit(tx, { actorName: who, actorPersonId: actor?.id, objectRef: `${code} ${blCode}`, change: `baseline set · ${rows.length} activities`, area: 'Planning', entityType: 'baseline', entityId: b.id, projectId: proj.id });
+    await writeAudit(tx, { actorName: who, actorPersonId: actor?.id, objectRef: `${code} ${blCode}`, change: `baseline set · ${rows.length} activities`, area: 'Planning', entityType: 'baseline', entityId: b.id, projectId: proj.id, after: { estimateClass } });
     await recordActivity(tx, { actorName: who, actorPersonId: actor?.id, text: `Set baseline ${blCode} · ${rows.length} activities`, kind: 'snapshot', projectId: proj.id });
     // R-054 (L-2 "a"): BL1 (or a later BLn) made current ticks « Planning BL1 posé » — returned, never kept outside (R-010).
     const bl1Ticked = input.makeCurrent && baselineNumber(blCode) >= 1 ? await markBl1Deliverable(tx, proj.id, input.actorName) : false;
@@ -264,7 +270,7 @@ export async function snapshotIntoBaseline(code: string, baselineCode: string, i
  * the caller's transaction; returns the new code.
  */
 export async function createProposedBaseline(tx: Q, input: { projectId: string; changeRequestId: string; changeRequestNumber: string; actorName: string; comment?: string | null }): Promise<string> {
-  const [p] = await tx.select({ budget: projects.budgetKeur, dataDate: projects.dataDate }).from(projects).where(eq(projects.id, input.projectId));
+  const [p] = await tx.select({ budget: projects.budgetKeur, dataDate: projects.dataDate, stage: projects.stage }).from(projects).where(eq(projects.id, input.projectId));
   if (!p) throw new Error('Unknown project');
   const existing = await tx.select({ code: baselines.code, position: baselines.position }).from(baselines).where(eq(baselines.projectId, input.projectId));
   const blCode = nextBaselineCode(existing.map((b) => b.code));
@@ -276,11 +282,13 @@ export async function createProposedBaseline(tx: Q, input: { projectId: string; 
       projectId: input.projectId, code: blCode, name: `${blCode} — ${input.changeRequestNumber}`, setOn: null, bacKeur: p.budget, finishDate: finish ?? projectDataDate(p, await businessToday(tx)),
       state: 'proposed', changeRequestId: input.changeRequestId, comment: input.comment?.trim() || null, source: 'change_request', dataDate: null,
       createdByPersonId: actor?.id ?? null, createdByName: actor ? nameOf(actor) : input.actorName, position: Math.max(-1, ...existing.map((e) => e.position)) + 1,
+      // R-188: a re-baseline proposed by a change request comes after BL1 — the class of the stage (E10 from APD on).
+      estimateClass: stageEstimateClass(p.stage),
     })
     .returning({ id: baselines.id });
   await writeAudit(tx, {
     actorName: actor ? nameOf(actor) : input.actorName, actorPersonId: actor?.id, objectRef: blCode, change: `baseline proposed by ${input.changeRequestNumber}`,
-    area: 'Planning', entityType: 'baseline', entityId: b.id, projectId: input.projectId,
+    area: 'Planning', entityType: 'baseline', entityId: b.id, projectId: input.projectId, after: { estimateClass: stageEstimateClass(p.stage) },
   });
   return blCode;
 }

@@ -7,6 +7,8 @@ import { ArrowsClockwise, Calendar, CaretDown, Check, FlagBanner, Plus, X } from
 import { useState, useTransition } from 'react';
 import { FormDialog } from '@/components/app/FormDialog';
 import type { FormDef } from '@/components/app/form-def';
+import type { EstimateClass } from '@/domain/estimate-class';
+import { estimateClassField } from '@/features/budget/estimate-class-field';
 import { Button, ButtonLink, IconButton } from '@/components/ds/Button';
 import { cx } from '@/components/ds/cx';
 import { Input, Select } from '@/components/ds/Field';
@@ -121,7 +123,9 @@ export function RescheduleButton({ code }: { code: string }) {
  * "Set baseline": dialog (name = next code, comment) snapshotting every activity — up to BL1 only (S-3, L-2). From BL2 on
  * (`changeRequestHref` given) the same button opens the Change control form proposing the next baseline instead.
  */
-export function SetBaselineButton({ code, context, defaultName, changeRequestHref }: { code: string; context: string; defaultName: string; changeRequestHref?: string }) {
+export function SetBaselineButton({
+  code, context, defaultName, defaultClass, changeRequestHref,
+}: { code: string; context: string; defaultName: string; /** R-188: preset estimate class (class of the project's stage). */ defaultClass: EstimateClass; changeRequestHref?: string }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   if (changeRequestHref)
@@ -137,6 +141,7 @@ export function SetBaselineButton({ code, context, defaultName, changeRequestHre
     fields: [
       { id: 'name', label: 'Baseline name', type: 'text', required: true, defaultValue: defaultName },
       { id: 'comment', label: 'Comment', type: 'textarea' },
+      estimateClassField(defaultClass),
     ],
   };
   return (

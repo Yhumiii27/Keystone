@@ -105,6 +105,9 @@ export const milestoneStatus = codec<MilestoneStatus, string>([
   ['done', 'Done'], ['late', 'Late'], ['at_risk', 'At risk'], ['on_track', 'On track'],
 ]);
 
+/** R-188: estimate class of a budget version (DIG-PRODI ±50 % / ±30 % / +10 −5 %; rules in src/domain/estimate-class.ts). */
+export type EstimateClass = 'E50' | 'E30' | 'E10';
+
 export type BaselineState = 'superseded' | 'current' | 'proposed';
 export const baselineState = codec<BaselineState, string>([
   ['superseded', 'Superseded'], ['current', 'Current'], ['proposed', 'Proposed'],

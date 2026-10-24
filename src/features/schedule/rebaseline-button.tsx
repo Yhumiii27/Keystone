@@ -7,9 +7,10 @@ import { FormDialog } from '@/components/app/FormDialog';
 import { Button } from '@/components/ds/Button';
 import { useI18n } from '@/i18n/client';
 import { rebaselineSchedule } from './actions';
-import { REBASELINE_FORM } from './rebaseline';
+import type { EstimateClass } from '@/domain/estimate-class';
+import { rebaselineForm } from './rebaseline';
 
-export function RebaselineButton({ code, context }: { code: string; /** Translated "#026 · Harbor Line…" */ context: string }) {
+export function RebaselineButton({ code, context, defaultClass }: { code: string; /** Translated "#026 · Harbor Line…" */ context: string; /** R-188: preset estimate class. */ defaultClass: EstimateClass }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   return (
@@ -18,7 +19,7 @@ export function RebaselineButton({ code, context }: { code: string; /** Translat
         {t('Re-baseline')}
       </Button>
       <FormDialog
-        {...REBASELINE_FORM}
+        {...rebaselineForm(defaultClass)}
         translate
         open={open}
         onClose={() => setOpen(false)}

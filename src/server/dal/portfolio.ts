@@ -2,10 +2,12 @@ import 'server-only';
 // Portfolio DAL — Portfolio overview (docs/spec/03 §4) and My projects (§2). Composes the projects, planning
 // and people DALs with the pure logic of src/domain/portfolio.ts. Strings are EN source strings with money
 // formatted for `lang`: render them through t().
+import { uncertaintyTotals } from '@/domain/estimate-class';
+import { listBudgetEstimates } from './estimate-class';
 import { businessToday } from '@/server/clock';
 import type { Lang } from '@/i18n/translate';
 import {
-  inExecution, overviewMetrics, portfolioKpis, portfolioTotals, myProjectsModel,
+  inExecution, overviewMetrics, portfolioKpis, portfolioTotals, myProjectsModel, uncertaintyKpi,
   type KpiView, type MyProjectsModel, type OverviewMetrics, type PortfolioAlert, type PortfolioTotals, type TodoLite,
 } from '@/domain/portfolio';
 import { approvalCount } from '@/server/approvals';
@@ -47,10 +49,13 @@ export async function getPortfolioOverview(zone: ZoneKey | null, lang: Lang): Pr
   // A-13: one health rule with the Settings thresholds (the same verdict as `ProjectRow.health`).
   const rows = all.filter((p) => inExecution(p) && inZone(p, zone)).map((p) => ({ ...p, metrics: overviewMetrics(p, th) }));
   const totals = portfolioTotals(rows);
+  // R-188: the "Uncertainty gap" of the same projects' budgets (class of the current baseline, else of the stage).
+  const estimates = await listBudgetEstimates();
+  const uncertainty = uncertaintyTotals(rows.map((p) => ({ amount: p.budget, estimateClass: estimates.get(p.code)?.estimateClass ?? null })));
   const zoneOf = new Map(all.map((p) => [p.code, p.zone]));
   // R-130 (NEW-D1-1): alerts computed by rules at the data date (were the prototype's four fixed texts).
   const alerts = (await getPortfolioAlerts(lang)).filter((a) => !a.code || !zone || zoneOf.get(a.code) === zone);
-  return { rows, totals, kpis: portfolioKpis(totals, lang, th), alerts, today };
+  return { rows, totals, kpis: [...portfolioKpis(totals, lang, th), uncertaintyKpi(uncertainty, lang)], alerts, today };
 }
 
 /** Every task (assignee full name, status, project short code) for the "open tasks" indicators. */

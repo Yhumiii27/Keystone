@@ -8,21 +8,21 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-24 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 107 faits, 30 en cours, 60 à faire, sur 197 points.
+**Avancement** : 108 faits, 30 en cours, 59 à faire, sur 197 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
 | Bloquant production | 16 | ≈ 106 |
 | Prochaine étape | 22 | ≈ 184 |
-| À décider | 32 | ≈ 244 |
+| À décider | 31 | ≈ 240 |
 | Plus tard | 20 | ≈ 74 |
-| **Total** | **90** | **≈ 607** |
+| **Total** | **89** | **≈ 603** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
-| Non commencé | 39 |
+| Non commencé | 38 |
 | Partiel | 11 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
@@ -34,7 +34,7 @@ L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il
 | Intégrations avec les autres systèmes | 5 | 6 | 4 | 5 | 20 | 5 |
 | Projets, cycle de vie et modèles par type de machine | 0 | 1 | 2 | 1 | 4 | 5 |
 | Planning | 1 | 0 | 3 | 1 | 5 | 3 |
-| Coûts, contrat et finance | 0 | 2 | 3 | 0 | 5 | 12 |
+| Coûts, contrat et finance | 0 | 2 | 2 | 0 | 4 | 13 |
 | Ressources et RH | 0 | 2 | 1 | 1 | 4 | 5 |
 | Achats et stock | 2 | 1 | 2 | 0 | 5 | 4 |
 | Ingénierie et PLM | 0 | 1 | 2 | 0 | 3 | 9 |
@@ -101,7 +101,6 @@ Décisions à prendre et données à fournir avant de pouvoir développer. Les q
 - **R-181** Décider qui crée le projet dans Codex et Vigie à sa création dans Keystone — Décision du responsable produit ; API de création de projet côté Codex et Vigie
 - **R-182** Décider si les factures client sont émises et encaissées dans Sage X3 — Service finance : processus de facturation client dans Sage X3 (numérotation légale, encaissements, facturation électronique)
 - **R-187** Besoins machines des filiales : connecteur capex, réponse chiffrée, création du projet à la commande — R-185, R-186, R-188 et l’application CAPEX
-- **R-188** Classe d’estimation des budgets et des offres (±50 % / ±30 % / +10 −5 %) — Validation du responsable produit
 - **R-189** Vues de suivi pour le CAPEX : jalons, avancement côté vente, avenants, réserves — Réponse P-05 (données financières visibles par la filiale)
 - **R-190** Filiale = client interne ; projet rattaché à son CAPEX — R-187
 - **R-191** Part EPC2i du pack ingénierie et son % de complétude (vue pub_pack_ingenierie) — Liste type du pack ingénierie (CDC, point C-9)
@@ -471,7 +470,7 @@ En plus du lot, une CR peut citer, en option, les activités touchées et leur n
 À l’envoi du compte rendu, une action confiée à un externe (client, fournisseur) doit créer une tâche de suivi pour le responsable interne de la relation : stakeholders.owner_person_id, ou à défaut le CP. Toute tâche doit reprendre l’échéance saisie, déjà stockée dans meeting_lines.due_date, au lieu de J+3. Elle doit aussi reprendre l’activité liée, ce qui demande une colonne activity_id sur meeting_lines (migration) et un sélecteur d’activité dans le formulaire d’action.  
 *Avancement : Livraison 8 : tâches de suivi des actions de compte rendu avec l’échéance saisie (S-12). · Sources : S-12, 05 OQ16-18, DELIVERY-3.md §5, §7*
 
-### 2.6 Coûts, contrat et finance (5 restants, 12 faits)
+### 2.6 Coûts, contrat et finance (4 restants, 13 faits)
 
 **R-074 · Alimenter le coût réel depuis Cursus et Sage X3** — *Prochaine étape · attend un système externe · effort L*  
 Coût réel = heures validées Cursus × taux en vigueur, plus achats à la réception, sous-traitance et locations sur facture validée dans Sage X3. Aujourd’hui seules les étiquettes de source existent et les colonnes actual / committed ne sont écrites que par le seed.  
@@ -488,10 +487,6 @@ Le responsable produit doit vérifier avec la finance les types de retenues et g
 **R-182 · Décider si les factures client sont émises et encaissées dans Sage X3** — *À décider · attend le responsable produit · effort M*  
 Keystone émet lui-même les factures client avec sa propre numérotation (INV-2026-00n) et les marque payées à la main, alors que la facture légale et les encaissements relèvent normalement de la comptabilité (Sage X3), et que la réforme de la facturation électronique s'applique. Décider avec la finance si Keystone garde l'émission ou passe une demande de facturation à X3 et reçoit en retour le numéro et le paiement, comme pour les factures fournisseurs (SC-2).  
 *Attend : Service finance : processus de facturation client dans Sage X3 (numérotation légale, encaissements, facturation électronique) · Sources : P-4, I-3b, A-5, SC-2 (règle analogue fournisseurs), 04 §4, DELIVERY-3.md §4 (Billing), §7 (P-4, 04 Q7)*
-
-**R-188 · Classe d’estimation des budgets et des offres (±50 % / ±30 % / +10 −5 %)** — *À décider · non commencé · effort M*  
-Chaque version de budget et chaque offre porte une classe d’estimation, la fourchette est affichée, un indicateur « écart d’incertitude » est au tableau de bord ; une offre ferme exige la classe +10/−5 %.  
-*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-03 — classe d’estimation E50 / E30 / E10 et fourchette sur les réponses et les offres ; offre ferme = E10. · Attend : Validation du responsable produit · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
 
 **~~R-075 · Gérer plusieurs devises avec consolidation en euros~~** — *Bloquant production · non commencé · effort L* · **fait (Livraison 7)**  
 Chaque contrat, commande et facture garde sa devise ; budget, trésorerie et finance du portefeuille sont consolidés en euros au taux budgétaire fixé pour chaque projet. Aujourd’hui seul le symbole change et tous les montants sont en k€.  
@@ -528,6 +523,10 @@ Chaque contrat choisit sa règle : N jours date de facture, 45 jours fin de mois
 **~~R-079 · Donner aux avenants leurs propres jalons et un cycle de signature~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 7)**  
 Un avenant signé doit porter ses propres échéances au lieu de re-chiffrer tous les jalons, y compris ceux déjà facturés (NEW-D3-3). Il faut modéliser les jalons par avenant, leur saisie, revoir le plan de facturation et les écarts jalon / facture, et ajouter les transitions brouillon → envoyé pour signature → signé ainsi que la libération des cautions.  
 *Sources : NEW-D3-3, A-5, C-7, 11 §6.3 Amendment / Bond, DELIVERY-3.md §5*
+
+**~~R-188 · Classe d’estimation des budgets et des offres (±50 % / ±30 % / +10 −5 %)~~** — *À décider · non commencé · effort M* · **fait (9)**  
+Chaque version de budget et chaque offre porte une classe d’estimation, la fourchette est affichée, un indicateur « écart d’incertitude » est au tableau de bord ; une offre ferme exige la classe +10/−5 %.  
+*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-03 — classe d’estimation E50 / E30 / E10 et fourchette sur les réponses et les offres ; offre ferme = E10. 24 oct. 2026 : fait (docs/delivery-9/notes-r188-estimate-class.md) — classes E50 (±50 %), E30 (±30 %), E10 (+10 / −5 %) d’après ANALYSE-DIG-PRODI § 3 ; classe portée par chaque version de budget (baselines.estimate_class, migrations 0047-0048, proposée selon la phase au gel), tuile « Fourchette d’estimation » au Budget, indicateur « Écart d’incertitude » à la vue d’ensemble du portefeuille ; règle « offre ferme = E10 » prête pour les réponses aux besoins d’Arche (R-187, colonnes de pub_reponses_besoins). · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
 
 **~~R-077 · Bloquer la facturation quand les jalons dépassent 100 %~~** — *Plus tard · partiel · effort S* · **fait (Livraison 8)**  
 L’échéancier reste modifiable, mais aucune facture ne doit partir tant que le total des jalons dépasse 100 % de la valeur du contrat. Aujourd’hui un simple avertissement s’affiche.  
@@ -949,6 +948,7 @@ Proposition : version tablette des écrans Chantier, Réserves et Livraisons ave
 
 ## 3. Mises à jour
 
+- 2026-10-24 — R-188 fait : classe d’estimation des versions de budget (E50 / E30 / E10), fourchette au Budget et écart d’incertitude au portefeuille.
 - 2026-10-24 — Ventilation des coûts par équipement (R-185) et catalogue machines publié aux filiales (R-186, vue pub_catalogue_machines, demande K-01 d’Arche).
 - 2026-10-23 — R-185 fait : projets à plusieurs équipements fusionnés dans main (PR #29 et #30). Prochaines étapes du cadrage : catalogue machines (R-186), corbeille des besoins d’Arche (R-187), classe d’estimation (R-188).
 - 2026-10-23 — R-185 partie 2 : plan ITP par ligne d’équipement ; réserves, mise en service, nomenclature et parc installé rattachés à l’équipement.
