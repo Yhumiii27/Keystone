@@ -6,6 +6,8 @@ import 'server-only';
 // now" runs the index sync, recorded as a simulated run like every mock connector (integrations.ts `syncConnector`).
 // Delivery 8 (R-033): with CODEX_API_URL the row is live — "Sync now" delivers the approval outbox
 // (getCodexConnector().sync()) before reading Codex's index, and a failure of either marks the row.
+import { ARCHE_CONNECTOR_NAME, archeSource } from '@/server/integrations/capex/config';
+import { capexRefreshSummary, refreshCapexMirror } from '@/server/integrations/capex/connector';
 import { codexConnectorMode } from '@/server/integrations/codex/config';
 import { getCodexConnector } from '@/server/integrations/codex/connector';
 import { getCodexSyncState, refreshCodexIndex, syncCodexIndex } from './documents';
@@ -36,6 +38,7 @@ export async function listAdminConnectors(): Promise<ConnectorRow[]> {
  * Codex's index is read, both inside the logged run; mock, the run is simulated and Keystone's index sync recorded.
  */
 export async function syncAdminConnector(name: string, actor: Actor): Promise<{ ok: boolean; volume: string; error: string | null; simulated: boolean }> {
+  if (name === ARCHE_CONNECTOR_NAME) return syncArche(actor);
   if (name !== CODEX_CONNECTOR) return syncConnector(name, actor);
   if (codexConnectorMode() === 'http')
     return syncConnector(name, actor, {
@@ -51,4 +54,22 @@ export async function syncAdminConnector(name: string, actor: Actor): Promise<{ 
   if (!r.ok) return r;
   const records = await syncCodexIndex(actor.name);
   return { ok: true, volume: `${records} records`, error: null, simulated: r.simulated };
+}
+
+/**
+ * R-187: "Sync now" of the Arche row — reads Arche's views into the capex mirror. Live (ARCHE_SOURCE=server): the read is the
+ * logged exchange and a failure marks the row; simulation: the run is recorded as simulated, then the demo source is applied.
+ */
+async function syncArche(actor: Actor): Promise<{ ok: boolean; volume: string; error: string | null; simulated: boolean }> {
+  if (archeSource() === 'server')
+    return syncConnector(ARCHE_CONNECTOR_NAME, actor, {
+      exchange: async () => {
+        const r = await refreshCapexMirror('sync', { checkEnabled: false });
+        return r.state === 'done' ? { ok: true, volume: capexRefreshSummary(r), error: null } : { ok: false, volume: '', error: capexRefreshSummary(r) };
+      },
+    });
+  const run = await syncConnector(ARCHE_CONNECTOR_NAME, actor);
+  if (!run.ok) return run;
+  const r = await refreshCapexMirror('sync', { checkEnabled: false });
+  return r.state === 'done' ? { ...run, volume: capexRefreshSummary(r) } : { ok: false, volume: '', error: capexRefreshSummary(r), simulated: run.simulated };
 }

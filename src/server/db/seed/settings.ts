@@ -13,6 +13,7 @@ import { APP_SETTING_DEFAULTS, holidayCode, type SettingsDefaults } from '@/doma
 import { appSettings, connectors, importFormats, referenceValues } from '../schema';
 import type { Tx } from '../types';
 import { mirrorSeedInstant } from '@/server/integrations/vigie/prototype-snapshot';
+import { ensureArcheConnector } from './capex-needs';
 
 export { holidayCode };
 
@@ -86,6 +87,8 @@ export async function seedSettings(tx: Tx, opts: { demo: boolean } = { demo: tru
     status: opts.demo ? 'ok' : 'ready', lastSyncAt: opts.demo ? mirrorSeedInstant() : null, lastVolume: '', position: rows.length,
   });
   await tx.insert(connectors).values(rows.map((r) => ({ ...r, direction: r.kind === 'static' ? null : 'both' as const })));
+  // R-187: Arche (the CAPEX application), after Vigie — "Ready" in both seeds (its state is the capex connector's).
+  await ensureArcheConnector(tx);
   await tx.insert(importFormats).values((PROTO.IMPORTS as [string, string, string][]).map(([name, description, icon], position) => ({
     position, name, description, icon, direction: name.startsWith('Export') ? 'export' as const : 'import' as const,
   })));

@@ -32,6 +32,12 @@ export const RETIRED_CONNECTORS: readonly string[] = ['Lucca'];
  * CODEX_API_URL, R-033 — then live like Vigie and Cursus).
  */
 export const MOCK_CONNECTORS: readonly string[] = ['Codex'];
+/**
+ * R-187: connectors that read another tool's pub_ views on the shared PostgreSQL server (Arche: arche.pub_capex,
+ * arche.pub_besoins_machines) — live in mode `sql` (ARCHE_SOURCE=server), a mock over the demo source in mode `mock`
+ * (ARCHE_SOURCE=simulation), not connected when off.
+ */
+export const SHARED_DB_CONNECTORS: readonly string[] = ['Arche'];
 /** Recorded connectors that exchange files only (MS Project XML export; imports off, D-7b). */
 export const FILE_CONNECTORS: readonly string[] = ['MS Project'];
 
@@ -64,8 +70,9 @@ export function connectorScopeText(name: string, stored: string): string {
 }
 
 /** How Keystone is linked to the system of a connector row (`mode`: Vigie / Cursus / Codex connector-layer mode). */
-export function connectorLink(c: { name: string; kind: ConnectorKind; mode: 'mock' | 'http' | null }): ConnectorLink {
+export function connectorLink(c: { name: string; kind: ConnectorKind; mode: 'mock' | 'http' | 'sql' | null }): ConnectorLink {
   if (c.kind === 'vigie' || c.kind === 'cursus') return c.mode === 'http' ? 'live' : 'mock';
+  if (SHARED_DB_CONNECTORS.includes(c.name)) return c.mode === 'sql' ? 'live' : c.mode === 'mock' ? 'mock' : 'none';
   // R-033: Codex is live once its API URL is set (the outbox is delivered and the index read), a mock over the index otherwise.
   if (MOCK_CONNECTORS.includes(c.name)) return c.mode === 'http' ? 'live' : 'mock';
   if (FILE_CONNECTORS.includes(c.name)) return 'file';

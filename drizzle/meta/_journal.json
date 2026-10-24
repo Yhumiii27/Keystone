@@ -344,6 +344,20 @@
       "when": 1792841885628,
       "tag": "0048_baseline_estimate_class_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1792862200000,
+      "tag": "0049_capex_needs",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1792862209158,
+      "tag": "0050_capex_needs_share",
+      "breakpoints": true
     }
   ]
 }

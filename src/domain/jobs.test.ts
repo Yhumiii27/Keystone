@@ -28,6 +28,8 @@ describe('jobs and schedules', () => {
       ['cursus-tasks', 1440, 15],
       // Delivery 9 (R-189, Arche K-04): progress and SPI kept for pub_avancement_projets, hourly.
       ['share-progress', 60, 15],
+      // Delivery 9 (R-187, Arche K-02): Arche's machine needs read into the capex mirror, every 15 minutes.
+      ['capex-needs', 15, 10],
     ]);
     expect(JOB_SCHEDULES.filter((j) => j.daily === 'night').map((j) => j.name)).toEqual(['cursus-tasks']);
     expect(NIGHT_JOBS_AT).toBe('02:00');

@@ -135,13 +135,14 @@ describe('Activity, integrations & audit body', () => {
     for (const l of ['Connectors', 'System', 'Data', 'Frequency', 'Status', 'Last sync', 'Last volume', 'Sync now', 'Configure']) expect(plain, l).toContain(label(l, lang));
     // R-021: Lucca is no longer listed (header + 9 rows); Codex, Cursus and Vigie are mocks, MS Project a file exchange, the
     // other five "Not connected" — no seeded "Warning" (Outlook) any more, and "Sync now" only on the three mocks.
-    expect(count(out, /<tr>/g)).toBe(10);
-    expect(count(out, /class="[^"]*connMode/g)).toBe(4);
+    // R-187: + Arche (the CAPEX application), a mock over the demo source.
+    expect(count(out, /<tr>/g)).toBe(11);
+    expect(count(out, /class="[^"]*connMode/g)).toBe(5);
     expect(count(out, /class="tag tag-accent"/g)).toBe(0);
     expect(count(out, new RegExp(`>${lang === 'en' ? 'Not connected' : 'Non connecté'}<`, 'g'))).toBe(5);
-    expect(count(out, new RegExp(`>${lang === 'en' ? 'Mock' : 'Simulé'}<`, 'g'))).toBe(3);
-    expect(count(out, new RegExp(`aria-label="${label('Sync now', lang)} · `, 'g'))).toBe(3);
-    expect(count(out, new RegExp(`aria-label="${label('Configure', lang)} · `, 'g'))).toBe(9);
+    expect(count(out, new RegExp(`>${lang === 'en' ? 'Mock' : 'Simulé'}<`, 'g'))).toBe(4);
+    expect(count(out, new RegExp(`aria-label="${label('Sync now', lang)} · `, 'g'))).toBe(4);
+    expect(count(out, new RegExp(`aria-label="${label('Configure', lang)} · `, 'g'))).toBe(10);
     expect(plain).toContain(lang === 'en' ? 'Vigie Mock connector · local mirror' : 'Vigie Connecteur simulé · miroir local');
     expect(plain).toContain(lang === 'en' ? 'MS Project File exchange · no live connection' : 'MS Project Échange de fichiers · pas de connexion directe');
     const ro = await body(lang, 'connectors', false);

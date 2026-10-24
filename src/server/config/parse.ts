@@ -52,6 +52,15 @@ export type FileScanMode = (typeof FILE_SCAN_MODES)[number];
 /** Where clamd listens: a unix socket, or a host and port (no default port: clamd's usual 3310 is Keystone's smoke-test port on the Mac). */
 export type ClamdTarget = { socket: string } | { host: string; port: number };
 
+/**
+ * R-187: where the capex connector reads Arche's views (arche.pub_capex, arche.pub_besoins_machines): `server` = on the shared
+ * PostgreSQL server (Keystone's role only SELECTs them), `simulation` = the demo source (a demo database only), `off` = no read.
+ */
+export const ARCHE_SOURCES = ['server', 'simulation', 'off'] as const;
+export type ArcheSource = (typeof ARCHE_SOURCES)[number];
+/** Arche's local address on the owner's Mac (Arche CLAUDE.md: port 3400). */
+export const DEFAULT_ARCHE_URL = 'http://localhost:3400';
+
 export interface KeystoneConfig {
   env: RuntimeEnv;
   production: boolean;
@@ -86,6 +95,11 @@ export interface KeystoneConfig {
    */
   cursus: { apiUrl: string | null; apiKey: string | null; eventsKey: string | null; directory: boolean };
   vigie: { apiUrl: string | null; apiKey: string | null };
+  /**
+   * R-187 (Arche K-02): the CAPEX application. `url` = its web app (deep links `<url>/capex/<code>`), `source` = where the capex
+   * connector reads (ARCHE_SOURCE; default `server` with DATABASE_URL, else `simulation`).
+   */
+  arche: { url: string; source: ArcheSource };
   ai: { anthropicApiKeySet: boolean; enabled: boolean; model: string | null; fallbacks: boolean };
   /** Secret values present in the environment: the logger masks them wherever they appear. */
   secrets: string[];
@@ -211,6 +225,13 @@ const VARS = {
   MATRIX_URL: httpUrl.optional(),
   MATRIX_TOKEN: z.string().optional(),
   MATRIX_DECLARATIONS_DIR: z.string().optional(),
+  // R-187 (Arche K-02): the CAPEX application — its web app for the deep links, and where its views are read.
+  ARCHE_URL: httpUrl.optional(),
+  ARCHE_SOURCE: z
+    .string()
+    .transform((v) => v.toLowerCase())
+    .pipe(z.enum(ARCHE_SOURCES, { message: 'must be "server", "simulation" or "off"' }))
+    .optional(),
 } as const;
 
 export type ConfigVariable = keyof typeof VARS;
@@ -327,6 +348,11 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
     for (const [name, app] of [['NEXT_PUBLIC_CODEX_URL', 'Codex'], ['NEXT_PUBLIC_CURSUS_URL', 'Cursus'], ['NEXT_PUBLIC_VIGIE_URL', 'Vigie']] as const)
       if (!v[name]) warnings.push({ variable: name, message: `is not set: links open ${app} on localhost` });
 
+  // R-187: Arche's views are read on the shared server only (a PGlite database has no arche schema).
+  if (v.ARCHE_SOURCE === 'server' && !v.DATABASE_URL) errors.push({ variable: 'ARCHE_SOURCE', message: 'is "server" but DATABASE_URL is not set (Arche’s views are read on the shared PostgreSQL server)' });
+  const archeSource: ArcheSource = v.ARCHE_SOURCE && !(v.ARCHE_SOURCE === 'server' && !v.DATABASE_URL) ? v.ARCHE_SOURCE : v.DATABASE_URL ? 'server' : 'simulation';
+  if (production && !v.ARCHE_URL) warnings.push({ variable: 'ARCHE_URL', message: 'is not set: links open Arche on localhost' });
+
   // Demo mode in production (R-038): "View as" with no sign-in, the director by default. Refused with the production data
   // set (real people, no persona); otherwise allowed (the Mac app, demonstrations) with a warning when not chosen explicitly.
   if (production && v.KEYSTONE_AUTH !== 'entra') {
@@ -391,6 +417,7 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
       log: { level: v.LOG_LEVEL ?? 'info', format: v.LOG_FORMAT ?? (production ? 'json' : 'pretty') },
       cursus: { apiUrl: v.CURSUS_API_URL ?? null, apiKey: cursusApiKey, eventsKey: cursusEventsKey, directory: v.CURSUS_DIRECTORY === 'on' },
       vigie: { apiUrl: v.VIGIE_API_URL ?? null, apiKey: v.VIGIE_API_KEY ?? null },
+      arche: { url: v.ARCHE_URL ?? DEFAULT_ARCHE_URL, source: archeSource },
       ai: { anthropicApiKeySet: !!anthropic, enabled: !!anthropic && v.KEYSTONE_AI !== 'off', model: v.KEYSTONE_AI_MODEL ?? null, fallbacks: v.KEYSTONE_AI_FALLBACKS !== 'off' },
       secrets: [...new Set(secrets)],
     },

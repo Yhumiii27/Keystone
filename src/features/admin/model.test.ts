@@ -217,7 +217,8 @@ describe('Activity, integrations & audit view model', () => {
     // that do not exist; no e-mail or Teams connector, so in-app is the only channel (the prototype: "3 · In-app · e-mail · Teams").
     const k = kpis(g((x) => x.plumbing.kpis));
     expect([k[1].sub, k[4].value, k[4].sub]).toEqual([lang === 'en' ? '7 healthy · 1 warning' : '7 sains · 1 en alerte', '3', 'In-app · e-mail · Teams']);
-    k[1] = { ...k[1], value: '9', sub: lang === 'en' ? '1 connected · 3 mock · 5 not connected' : '1 connecté · 3 simulés · 5 non connectés', color: 'var(--color-text)' };
+    // R-187: Arche (the CAPEX application, simulated source without DATABASE_URL) is a tenth connector, a fourth mock.
+    k[1] = { ...k[1], value: '10', sub: lang === 'en' ? '1 connected · 4 mock · 5 not connected' : '1 connecté · 4 simulés · 5 non connectés', color: 'var(--color-text)' };
     // X-6b / S-11 (R-037): Teams is no notification channel any more (was "In-app · e-mail and Teams not connected").
     k[4] = { ...k[4], value: '1', sub: lang === 'en' ? 'In-app · e-mail not connected' : 'In-app · e-mail non connecté' };
     // A-12 (chapter 4, 10 OQ4): "Events today" = events of the data date (Paris day) — 5 on 25 Sep (the prototype's 6
@@ -287,6 +288,8 @@ describe('Activity, integrations & audit view model', () => {
       ['Cursus', mirror, true], ['Codex', mirror, true], ['Sage X3', null, false], ['SolidWorks PDM', null, false],
       ['MS Project', lang === 'en' ? 'File exchange · no live connection' : 'Échange de fichiers · pas de connexion directe', false],
       ['Outlook / Exchange', null, false], ['Microsoft Teams', null, false], ['E-mail (SMTP)', null, false], ['Vigie', mirror, true],
+      // R-187: Arche, the capex connector over the demo source.
+      ['Arche', mirror, true],
     ]);
     expect(rows[8]).toEqual({
       name: 'Vigie',
@@ -307,7 +310,7 @@ describe('Activity, integrations & audit view model', () => {
       expect([vigie.link, vigie.state, vigie.mode, vigie.canSync, vigie.lastSyncAt]).toEqual(['live', 'ok', 'http', true, '2026-09-25T05:30:00.000Z']);
       const v = await plumbing('en', { view: 'connectors' });
       expect(v.connectors.find((c) => c.rawName === 'Vigie')).toMatchObject({ mode: 'Live connector · HTTP API', status: 'OK', tone: 'neutral', last: '25 Sep 07:30' });
-      expect(v.kpis[1].sub).toBe('2 connected · 2 mock · 5 not connected');
+      expect(v.kpis[1].sub).toBe('2 connected · 3 mock · 5 not connected'); // R-187: + Arche (mock)
     } finally {
       process.env.VIGIE_API_URL = prev ?? '';
     }

@@ -9,7 +9,7 @@ import { DEMO_CURSUS_API_KEY, DEMO_CURSUS_EVENTS_KEY, formatIssues, parseConfig 
 const parse = (env: Record<string, string | undefined>) => parseConfig(env, { cwd: '/srv/keystone' });
 const vars = (issues: { variable: string }[]) => issues.map((i) => i.variable);
 // KEYSTONE_FILE_SCAN set explicitly: production otherwise warns about the antivirus (R-175, platform-ops lot).
-const PROD = { NODE_ENV: 'production', KEYSTONE_AUTH: 'demo', KEYSTONE_FILE_SCAN: 'off', NEXT_PUBLIC_CODEX_URL: 'https://codex', NEXT_PUBLIC_CURSUS_URL: 'https://cursus', NEXT_PUBLIC_VIGIE_URL: 'https://vigie' };
+const PROD = { NODE_ENV: 'production', KEYSTONE_AUTH: 'demo', KEYSTONE_FILE_SCAN: 'off', NEXT_PUBLIC_CODEX_URL: 'https://codex', NEXT_PUBLIC_CURSUS_URL: 'https://cursus', NEXT_PUBLIC_VIGIE_URL: 'https://vigie', ARCHE_URL: 'https://arche' };
 
 describe('CURSUS_EVENTS_KEY (R-029)', () => {
   it('outside production: the demo events key by default, or the key given', () => {
@@ -61,5 +61,26 @@ describe('GDPR reminder for Claude analysis (R-173)', () => {
     expect(parse({ ...PROD, ANTHROPIC_API_KEY: 'sk-ant-0123456789' }).config.ai).toMatchObject({ anthropicApiKeySet: true, enabled: true });
     // The warning never echoes the key.
     expect(formatIssues(parse({ ...PROD, ANTHROPIC_API_KEY: 'sk-ant-0123456789' }).warnings).join(' ')).not.toContain('sk-ant');
+  });
+});
+
+// Delivery 9 (R-187, Arche K-02): the capex connector — Arche's web app for the deep links, and where its views are read.
+describe('ARCHE_URL, ARCHE_SOURCE (R-187)', () => {
+  const PG = 'postgres://keystone_app:secret@db:5432/epc2i';
+  it('default: Arche on localhost:3400; the views read on the shared server with DATABASE_URL, else the demo simulation', () => {
+    expect(parse({}).config.arche).toEqual({ url: 'http://localhost:3400', source: 'simulation' });
+    expect(parse({ DATABASE_URL: PG }).config.arche).toEqual({ url: 'http://localhost:3400', source: 'server' });
+    expect(parse({ ARCHE_URL: 'https://arche.example/', ARCHE_SOURCE: 'OFF' }).config.arche).toEqual({ url: 'https://arche.example', source: 'off' });
+    expect(parse({ DATABASE_URL: PG, ARCHE_SOURCE: 'simulation' }).config.arche.source).toBe('simulation');
+  });
+
+  it('"server" without DATABASE_URL, an unknown source or a bad URL are errors; production warns without ARCHE_URL', () => {
+    const noDb = parse({ ARCHE_SOURCE: 'server' });
+    expect([formatIssues(noDb.errors), noDb.config.arche.source]).toEqual([['ARCHE_SOURCE is "server" but DATABASE_URL is not set (Arche’s views are read on the shared PostgreSQL server)'], 'simulation']);
+    expect(formatIssues(parse({ ARCHE_SOURCE: 'http' }).errors)).toEqual(['ARCHE_SOURCE must be "server", "simulation" or "off"']);
+    expect(vars(parse({ ARCHE_URL: 'arche' }).errors)).toEqual(['ARCHE_URL']);
+    const { ARCHE_URL: _unset, ...withoutUrl } = PROD;
+    void _unset;
+    expect(formatIssues(parse(withoutUrl).warnings)).toEqual(['ARCHE_URL is not set: links open Arche on localhost']);
   });
 });

@@ -134,6 +134,13 @@ const RUNS: Record<JobName, () => Promise<JobOutcome>> = {
     const r = await (await import('@/server/dal/share-progress')).refreshShareProgress();
     return { summary: `Shared progress · ${r.projects} projects · ${r.changed} changed`, counts: r };
   },
+  // ── Delivery 9 · R-187 (Arche K-02): Arche's views read into the capex mirror. A failed read keeps the mirror (warning).
+  'capex-needs': async (): Promise<JobOutcome> => {
+    const { refreshCapexMirror, capexRefreshSummary } = await import('@/server/integrations/capex/connector');
+    const r = await refreshCapexMirror('job');
+    const counts: Record<string, number> = r.state === 'done' ? { capex: r.capex, needs: r.needs, skipped: r.skipped } : {};
+    return { summary: capexRefreshSummary(r), counts, warn: r.state === 'failed' || (r.state === 'done' && r.skipped > 0) };
+  },
 };
 
 export const JOB_DEFINITIONS: readonly JobDefinition[] = JOB_SCHEDULES.map((s) => ({ ...s, run: RUNS[s.name] }));

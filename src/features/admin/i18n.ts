@@ -30,7 +30,9 @@ export const connectorModeT = (mode: 'mock' | 'http', t: T) => t(mode === 'http'
  * Line under the system name from the real link (R-021): the connector layer's mode (live, mock), "File exchange · no live
  * connection" for MS Project; nothing for a connector that does not exist (its status says "Not connected").
  */
-export function connectorLinkT(link: 'live' | 'mock' | 'file' | 'none', t: T): string | null {
+export function connectorLinkT(link: 'live' | 'mock' | 'file' | 'none', t: T, mode?: 'mock' | 'http' | 'sql' | null): string | null {
+  // R-187: Arche is read through its pub_ views on the shared PostgreSQL server, not an HTTP API.
+  if (link === 'live' && mode === 'sql') return t('Live connector · shared database views');
   if (link === 'live') return connectorModeT('http', t);
   if (link === 'mock') return connectorModeT('mock', t);
   return link === 'file' ? t('File exchange · no live connection') : null;
@@ -70,6 +72,11 @@ export function volumeT(text: string, t: T, lang: Lang): string {
     const tasks = cursus[2] == null ? '' : ` · ${plural(+cursus[2], 'tâche', 'tâches')} ${cursus[3] === 'sent' ? (+cursus[2] === 1 ? 'envoyée' : 'envoyées') : 'en attente'}`;
     return `${plural(+cursus[1], 'approbation reçue', 'approbations reçues')}${tasks}`;
   }
+  // R-187: the Arche row ("2 CAPEX · 5 needs · 5 answers") and its "Sync now" ("2 CAPEX · 5 needs (simulated)").
+  const arche = /^(\d+) CAPEX · (\d+) needs(?: · (\d+) answers)?( · (\d+) rows skipped)?( \(simulated\))?$/.exec(text);
+  if (arche)
+    return `${arche[1]} CAPEX · ${plural(+arche[2], 'besoin', 'besoins')}${arche[3] != null ? ` · ${plural(+arche[3], 'réponse', 'réponses')}` : ''}`
+      + `${arche[4] ? ` · ${plural(+arche[5], 'ligne ignorée', 'lignes ignorées')}` : ''}${arche[6] ? ' (simulé)' : ''}`;
   if (text === 'First sync scheduled') return 'Première synchro planifiée';
   return t(text);
 }

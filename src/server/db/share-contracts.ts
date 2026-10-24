@@ -1,5 +1,5 @@
 // Columns of Keystone's pub_ views published or extended in delivery 9 (migrations 0038_share_followup, 0040_share_installed_base,
-// 0046_catalogue_share;
+// 0046_catalogue_share, 0050_capex_needs_share;
 // docs/delivery-9/notes-share-views.md), in order: the contracts the readers (Crucible, Arche, Matrix) rely on. A column is never removed, renamed or moved; new ones go
 // at the end. Checked by src/server/db/share-views.test.ts (PGlite) and scripts/db-check.ts (also on PostgreSQL, --postgres).
 export const SHARE_VIEW_COLUMNS: Record<string, string[]> = {
@@ -24,6 +24,11 @@ export const SHARE_VIEW_COLUMNS: Record<string, string[]> = {
     'code', 'version', 'type_code', 'type_libelle', 'variante', 'libelle', 'description', 'options', 'capacite_nominale', 'unite_capacite', 'prix_indicatif_keur',
     'delai_type_semaines', 'statut', 'maj_le',
   ],
+  // Arche K-02 / K-03 / K-10 (R-187, 0050_capex_needs_share): Keystone's answers to the subsidiaries' machine needs, one row per answer.
+  pub_reponses_besoins: [
+    'besoin_ref', 'capex_code', 'numero', 'nature', 'qualification', 'motif', 'classe_estimation', 'montant_central_keur', 'montant_bas_keur', 'montant_haut_keur',
+    'delai_semaines', 'valide_jusqu_au', 'document_ref', 'projet_code', 'statut', 'repondu_le', 'maj_le',
+  ],
 };
 
 /** K-01 column types of pub_catalogue_machines (information_schema data_type), in contract order. */
@@ -33,8 +38,15 @@ export const CATALOGUE_VIEW_TYPES: Record<string, string> = {
   maj_le: 'timestamp with time zone',
 };
 
-/** Number of Keystone's pub_ views (0035_share: 12, 0038_share_followup: 5, 0046_catalogue_share: 1). */
-export const SHARE_VIEW_COUNT = 18;
+/** K-02 column types of pub_reponses_besoins (information_schema data_type), in contract order. */
+export const REPONSES_VIEW_TYPES: Record<string, string> = {
+  besoin_ref: 'text', capex_code: 'text', numero: 'text', nature: 'text', qualification: 'text', motif: 'text', classe_estimation: 'text',
+  montant_central_keur: 'numeric', montant_bas_keur: 'numeric', montant_haut_keur: 'numeric', delai_semaines: 'integer', valide_jusqu_au: 'date', document_ref: 'text',
+  projet_code: 'text', statut: 'text', repondu_le: 'timestamp with time zone', maj_le: 'timestamp with time zone',
+};
+
+/** Number of Keystone's pub_ views (0035_share: 12, 0038_share_followup: 5, 0046_catalogue_share: 1, 0050_capex_needs_share: 1). */
+export const SHARE_VIEW_COUNT = 19;
 
 /**
  * Arche K-11 (R-193): indexes on the source column of `maj_le` for the views whose `maj_le` is one column of a growing table, so
@@ -45,6 +57,8 @@ export const SHARE_MAJ_LE_INDEXES: Record<string, { table: string; index: string
   pub_reserves: { table: 'punch_items', index: 'punch_items_updated_at_idx' },
   // R-186 (0045_machine_catalogue): Arche K-01 + K-11.
   pub_catalogue_machines: { table: 'machine_catalogue_entries', index: 'machine_catalogue_entries_updated_at_idx' },
+  // R-187 (0049_capex_needs): Arche K-02 + K-11.
+  pub_reponses_besoins: { table: 'need_answers', index: 'need_answers_updated_at_idx' },
 };
 
 

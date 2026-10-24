@@ -21,6 +21,7 @@ import { demoLeaveToShift, shiftDemoLeave } from './demo-leave';
 import { seedDocuments } from './documents';
 import { seedEngineering } from './engineering';
 import { demoCatalogueToBackfill, seedDemoCatalogue } from './machine-catalogue';
+import { demoCapexNeedsToBackfill, ensureArcheConnector, seedDemoCapexNeeds } from './capex-needs';
 import { seedExecution } from './execution';
 import { seedOperations } from './operations';
 import { seedOrganisation } from './organisation';
@@ -93,6 +94,8 @@ async function seedDemoData(tx: Tx): Promise<void> {
   await seedDemoAssignments(tx);
   // Delivery 9 (R-186): the demo machine catalogue (published, draft and retired versions).
   await seedDemoCatalogue(tx);
+  // Delivery 9 (R-187): the subsidiaries' machine needs mirrored from Arche (simulated) and Keystone's answers.
+  await seedDemoCapexNeeds(tx);
 }
 
 /**
@@ -118,6 +121,8 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
       // only missing keys are added, an edited factor is never overwritten; here rather than in a SQL migration (PostgreSQL gets
       // it through db:migrate, which seeds after migrating).
       await db.transaction(async (tx) => seedRateMultipliers(tx)).catch((e) => logError('Delivery 8 rate multipliers backfill', e, { component: 'seed' }));
+      // R-187: Arche's connector row (idempotent: added once, never changed).
+      await ensureArcheConnector(db).catch((e) => logError('Delivery 9 Arche connector backfill', e, { component: 'seed' }));
       return false;
     }
     const [{ c }] = await db.select({ c: sql<number>`count(*)::int` }).from(parts);
@@ -167,6 +172,12 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
     // R-186: the demo machine catalogue of a demo database seeded before it (once: while nobody has written to the catalogue).
     if (await demoCatalogueToBackfill(db)) {
       await db.transaction(async (tx) => { await seedDemoCatalogue(tx); }).catch((e) => logError('Delivery 9 demo catalogue backfill', e, { component: 'seed' }));
+    }
+    // R-187: Arche's connector row, then the demo machine needs and answers of a demo database seeded before them (once: while
+    // the mirror and the answers are empty).
+    await ensureArcheConnector(db).catch((e) => logError('Delivery 9 Arche connector backfill', e, { component: 'seed' }));
+    if (await demoCapexNeedsToBackfill(db)) {
+      await db.transaction(async (tx) => { await seedDemoCapexNeeds(tx); }).catch((e) => logError('Delivery 9 demo machine needs backfill', e, { component: 'seed' }));
     }
     // ── Delivery 8 · demo backfills · connectors ──
     // Databases seeded before delivery 7 adopt their (demo) record.

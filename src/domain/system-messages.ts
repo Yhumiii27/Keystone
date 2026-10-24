@@ -108,6 +108,28 @@ const MESSAGES = {
   ),
   'catalogue.retired': def({ ref: 'ref' }, (p) => `Catalogue ${p.ref} retired`, (p) => `Catalogue ${p.ref} retiré`),
   'catalogue.discarded': def({ ref: 'ref' }, (p) => `Catalogue draft ${p.ref} discarded`, (p) => `Brouillon catalogue ${p.ref} abandonné`),
+  // R-187 (Arche K-02, K-10): Keystone's answers to the subsidiaries' machine needs, and the project at the order.
+  'needAnswer.recorded': def(
+    { number: 'ref', need: 'ref', nature: 'label' },
+    (p) => `Answer ${p.number} to need ${p.need} recorded · ${p.nature}`,
+    (p, f) => `Réponse ${p.number} au besoin ${p.need} enregistrée · ${f.label(p.nature)}`,
+  ),
+  'needAnswer.edited': def({ number: 'ref', need: 'ref' }, (p) => `Answer ${p.number} to need ${p.need} edited`, (p) => `Réponse ${p.number} au besoin ${p.need} modifiée`),
+  'needAnswer.status': def(
+    { number: 'ref', need: 'ref', from: 'label', to: 'label' },
+    (p) => `Answer ${p.number} to need ${p.need}: ${p.from} → ${p.to}`,
+    (p, f) => `Réponse ${p.number} au besoin ${p.need} : ${f.label(p.from)} → ${f.label(p.to)}`,
+  ),
+  'needAnswer.projectCreated': def(
+    { need: 'ref', project: 'ref' },
+    (p) => `Project ${p.project} created from ordered need ${p.need}`,
+    (p) => `Projet ${p.project} créé à partir du besoin commandé ${p.need}`,
+  ),
+  'needAnswer.lineAdded': def(
+    { need: 'ref', project: 'ref', ref: 'ref' },
+    (p) => `Ordered need ${p.need} added to project ${p.project} as ${p.ref}`,
+    (p) => `Besoin commandé ${p.need} ajouté au projet ${p.project} en ${p.ref}`,
+  ),
   // R-185 / R-186: a standard phase flagged specific to an equipment (generated once per equipment line) or common to the project.
   'machineType.phaseScope': def(
     { type: 'ref', phase: 'data', perEquipment: 'label' },

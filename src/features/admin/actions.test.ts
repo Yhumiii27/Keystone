@@ -268,7 +268,8 @@ describe('Activity & integrations Server Functions and the audit export', () => 
     expect(cursus).toMatchObject({ ok: true });
     expect((cursus as { toast: string }).toast).toMatch(/^Cursus · simulated sync \(mock connector\) · \d+ approvals received$/);
     // A simulated run dates no sync.
-    expect((await listAdminConnectors()).filter((c) => c.link === 'mock').map((c) => c.lastSyncAt)).toEqual([null, null, null]);
+    // R-187: Arche (simulated source) is a fourth mock.
+    expect((await listAdminConnectors()).filter((c) => c.link === 'mock').map((c) => c.lastSyncAt)).toEqual([null, null, null, null]);
     expect(revalidatePath).toHaveBeenCalledWith('/', 'layout');
   });
 

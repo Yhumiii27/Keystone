@@ -68,7 +68,7 @@ describe('parseConfig', () => {
 
   it('production: JSON logs; the Cursus demo key is refused and CURSUS_API_URL needs a key', () => {
     // KEYSTONE_FILE_SCAN explicit: unset, production warns about the antivirus (R-175).
-    const base = { NODE_ENV: 'production', KEYSTONE_AUTH: 'demo', KEYSTONE_FILE_SCAN: 'off', NEXT_PUBLIC_CODEX_URL: 'https://codex', NEXT_PUBLIC_CURSUS_URL: 'https://cursus', NEXT_PUBLIC_VIGIE_URL: 'https://vigie' };
+    const base = { NODE_ENV: 'production', KEYSTONE_AUTH: 'demo', KEYSTONE_FILE_SCAN: 'off', NEXT_PUBLIC_CODEX_URL: 'https://codex', NEXT_PUBLIC_CURSUS_URL: 'https://cursus', NEXT_PUBLIC_VIGIE_URL: 'https://vigie', ARCHE_URL: 'https://arche' };
     expect(parse(base)).toMatchObject({ errors: [], warnings: [], config: { production: true, log: { format: 'json' }, cursus: { apiKey: null } } });
     expect(vars(parse({ ...base, CURSUS_API_URL: 'https://cursus/api' }).errors)).toEqual(['CURSUS_API_KEY']);
     const demo = parse({ ...base, CURSUS_API_URL: 'https://cursus/api', CURSUS_API_KEY: DEMO_CURSUS_API_KEY });
@@ -83,7 +83,7 @@ describe('parseConfig', () => {
   });
 
   it('production with a Cursus on this machine (the Mac app): the demo key is accepted with a warning', () => {
-    const base = { NODE_ENV: 'production', KEYSTONE_AUTH: 'demo', KEYSTONE_FILE_SCAN: 'off', NEXT_PUBLIC_CODEX_URL: 'https://codex', NEXT_PUBLIC_CURSUS_URL: 'https://cursus', NEXT_PUBLIC_VIGIE_URL: 'https://vigie' };
+    const base = { NODE_ENV: 'production', KEYSTONE_AUTH: 'demo', KEYSTONE_FILE_SCAN: 'off', NEXT_PUBLIC_CODEX_URL: 'https://codex', NEXT_PUBLIC_CURSUS_URL: 'https://cursus', NEXT_PUBLIC_VIGIE_URL: 'https://vigie', ARCHE_URL: 'https://arche' };
     for (const url of ['http://localhost:3210', 'http://127.0.0.1:3210', 'http://[::1]:3210']) {
       const r = parse({ ...base, CURSUS_API_URL: url });
       expect(r.errors).toEqual([]);
@@ -99,7 +99,7 @@ describe('parseConfig', () => {
   it('production warnings: links to localhost, Vigie without a key (V-3)', () => {
     const r = parse({ NODE_ENV: 'production', KEYSTONE_AUTH: 'demo', KEYSTONE_FILE_SCAN: 'off', VIGIE_API_URL: 'https://vigie/api' });
     expect(r.errors).toEqual([]);
-    expect(vars(r.warnings)).toEqual(['VIGIE_API_KEY', 'NEXT_PUBLIC_CODEX_URL', 'NEXT_PUBLIC_CURSUS_URL', 'NEXT_PUBLIC_VIGIE_URL']);
+    expect(vars(r.warnings)).toEqual(['VIGIE_API_KEY', 'NEXT_PUBLIC_CODEX_URL', 'NEXT_PUBLIC_CURSUS_URL', 'NEXT_PUBLIC_VIGIE_URL', 'ARCHE_URL']);
     expect(parse({ NODE_ENV: 'production', VIGIE_API_URL: 'https://vigie/api', VIGIE_API_KEY: 'v-key-123' }).config.vigie).toEqual({ apiUrl: 'https://vigie/api', apiKey: 'v-key-123' });
   });
 
