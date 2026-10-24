@@ -142,6 +142,10 @@
   {
    "date": "2026-10-24",
    "text": "Ventilation des coûts par équipement (R-185) et catalogue machines publié aux filiales (R-186, vue pub_catalogue_machines, demande K-01 d’Arche)."
+  },
+  {
+   "date": "2026-10-24",
+   "text": "R-188 fait : classe d’estimation des versions de budget (E50 / E30 / E10), fourchette au Budget et écart d’incertitude au portefeuille."
   }
  ],
  "items": [
@@ -5460,7 +5464,7 @@
    "kind": "fonction_manquante",
    "priority": "a_decider",
    "status": "non_commence",
-   "waiting_on": "Validation du responsable produit",
+   "waiting_on": "",
    "effort": "M",
    "sources": [
     "Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0)",
@@ -5471,8 +5475,9 @@
     "src/domain/cost-control.ts"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-03 — classe d’estimation E50 / E30 / E10 et fourchette sur les réponses et les offres ; offre ferme = E10."
+    "state": "fait",
+    "delivery": "9",
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-03 — classe d’estimation E50 / E30 / E10 et fourchette sur les réponses et les offres ; offre ferme = E10. 24 oct. 2026 : fait (docs/delivery-9/notes-r188-estimate-class.md) — classes E50 (±50 %), E30 (±30 %), E10 (+10 / −5 %) d’après ANALYSE-DIG-PRODI § 3 ; classe portée par chaque version de budget (baselines.estimate_class, migrations 0047-0048, proposée selon la phase au gel), tuile « Fourchette d’estimation » au Budget, indicateur « Écart d’incertitude » à la vue d’ensemble du portefeuille ; règle « offre ferme = E10 » prête pour les réponses aux besoins d’Arche (R-187, colonnes de pub_reponses_besoins)."
    }
   },
   {
