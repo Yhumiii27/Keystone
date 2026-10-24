@@ -41,7 +41,7 @@
 
 /* R-185 — equipment lines (type × quantity) */
 .lines { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
-.lineRow { display: grid; grid-template-columns: 52px minmax(0, 160px) 90px auto; gap: 8px; align-items: center; width: 100%; }
+.lineRow { display: grid; grid-template-columns: 52px minmax(0, 160px) 90px minmax(0, 1fr) auto; gap: 8px; align-items: center; width: 100%; }
 .lineRef { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--color-neutral-300); }
 :global(.input).lineType { min-height: 32px; font-size: 13px; }
 :global(.input).lineQty { min-height: 32px; font-size: 13px; }

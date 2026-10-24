@@ -1,4 +1,5 @@
-// Columns of Keystone's pub_ views published or extended in delivery 9 (migrations 0038_share_followup, 0040_share_installed_base;
+// Columns of Keystone's pub_ views published or extended in delivery 9 (migrations 0038_share_followup, 0040_share_installed_base,
+// 0046_catalogue_share;
 // docs/delivery-9/notes-share-views.md), in order: the contracts the readers (Crucible, Arche, Matrix) rely on. A column is never removed, renamed or moved; new ones go
 // at the end. Checked by src/server/db/share-views.test.ts (PGlite) and scripts/db-check.ts (also on PostgreSQL, --postgres).
 export const SHARE_VIEW_COLUMNS: Record<string, string[]> = {
@@ -18,7 +19,22 @@ export const SHARE_VIEW_COLUMNS: Record<string, string[]> = {
   pub_parc_machines: [
     'number', 'name', 'client_name', 'site_text', 'project_code', 'warranty_status', 'part_ref', 'fitted_revision', 'type_machine_code', 'livree_le', 'maj_le',
   ],
+  // Arche K-01 (R-186, 0046_catalogue_share): the machine catalogue, one row per code and version, drafts never published.
+  pub_catalogue_machines: [
+    'code', 'version', 'type_code', 'type_libelle', 'variante', 'libelle', 'description', 'options', 'capacite_nominale', 'unite_capacite', 'prix_indicatif_keur',
+    'delai_type_semaines', 'statut', 'maj_le',
+  ],
 };
+
+/** K-01 column types of pub_catalogue_machines (information_schema data_type), in contract order. */
+export const CATALOGUE_VIEW_TYPES: Record<string, string> = {
+  code: 'text', version: 'integer', type_code: 'text', type_libelle: 'text', variante: 'text', libelle: 'text', description: 'text', options: 'jsonb',
+  capacite_nominale: 'numeric', unite_capacite: 'text', prix_indicatif_keur: 'numeric', delai_type_semaines: 'integer', statut: 'text',
+  maj_le: 'timestamp with time zone',
+};
+
+/** Number of Keystone's pub_ views (0035_share: 12, 0038_share_followup: 5, 0046_catalogue_share: 1). */
+export const SHARE_VIEW_COUNT = 18;
 
 /**
  * Arche K-11 (R-193): indexes on the source column of `maj_le` for the views whose `maj_le` is one column of a growing table, so
@@ -27,6 +43,8 @@ export const SHARE_VIEW_COLUMNS: Record<string, string[]> = {
 export const SHARE_MAJ_LE_INDEXES: Record<string, { table: string; index: string }> = {
   pub_livrables: { table: 'deliverables', index: 'deliverables_updated_at_idx' },
   pub_reserves: { table: 'punch_items', index: 'punch_items_updated_at_idx' },
+  // R-186 (0045_machine_catalogue): Arche K-01 + K-11.
+  pub_catalogue_machines: { table: 'machine_catalogue_entries', index: 'machine_catalogue_entries_updated_at_idx' },
 };
 
 

@@ -20,6 +20,7 @@ import { demoAssignmentsToBackfill, seedDemoAssignments } from './demo-assignmen
 import { demoLeaveToShift, shiftDemoLeave } from './demo-leave';
 import { seedDocuments } from './documents';
 import { seedEngineering } from './engineering';
+import { demoCatalogueToBackfill, seedDemoCatalogue } from './machine-catalogue';
 import { seedExecution } from './execution';
 import { seedOperations } from './operations';
 import { seedOrganisation } from './organisation';
@@ -90,6 +91,8 @@ async function seedDemoData(tx: Tx): Promise<void> {
   await seedDemoReferents(tx);
   // Delivery 9 (owner answer 18 Oct 2026): named people on the demo schedules — the load is read from them (R-084).
   await seedDemoAssignments(tx);
+  // Delivery 9 (R-186): the demo machine catalogue (published, draft and retired versions).
+  await seedDemoCatalogue(tx);
 }
 
 /**
@@ -160,6 +163,10 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
     // seeded leave is still exactly the prototype's.
     if (await demoLeaveToShift(db)) {
       await db.transaction(async (tx) => { await shiftDemoLeave(tx); }).catch((e) => logError('Delivery 9 demo leave shift', e, { component: 'seed' }));
+    }
+    // R-186: the demo machine catalogue of a demo database seeded before it (once: while nobody has written to the catalogue).
+    if (await demoCatalogueToBackfill(db)) {
+      await db.transaction(async (tx) => { await seedDemoCatalogue(tx); }).catch((e) => logError('Delivery 9 demo catalogue backfill', e, { component: 'seed' }));
     }
     // ── Delivery 8 · demo backfills · connectors ──
     // Databases seeded before delivery 7 adopt their (demo) record.

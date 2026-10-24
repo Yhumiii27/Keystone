@@ -15,7 +15,7 @@ import { getTableName, is, sql } from 'drizzle-orm';
 import { PgTable } from 'drizzle-orm/pg-core';
 import { healthOf } from '@/domain/health';
 import { D7_ACTUAL, D7_HEALTH, D7_PROGRESS_PCT, D7_SPI } from '@/test/d7-cost-control';
-import { INTERNAL_MONEY_COLUMN, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COLUMNS } from '@/server/db/share-contracts';
+import { CATALOGUE_VIEW_TYPES, INTERNAL_MONEY_COLUMN, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COLUMNS, SHARE_VIEW_COUNT } from '@/server/db/share-contracts';
 import { refreshShareProgress } from '@/server/dal/share-progress';
 import { getCostControl, listChangeRequests } from '@/server/dal/cost';
 import { getStageChecklist, getStageHistory, listStages, toggleStageDeliverable } from '@/server/dal/lifecycle';
@@ -240,7 +240,7 @@ async function main() {
   console.log('\nShare views (pub_)');
   const views = await db.execute(sql`select table_name as v from information_schema.views where table_schema = current_schema() and table_name like 'pub\_%' order by 1`);
   const viewNames = (views.rows as { v: string }[]).map((r) => r.v);
-  check('17 pub_ views (0035_share: 12, 0038_share_followup: 5 more)', viewNames.length === 17, viewNames);
+  check(`${SHARE_VIEW_COUNT} pub_ views (0035_share: 12, 0038_share_followup: 5 more, 0046_catalogue_share: 1 more)`, viewNames.length === SHARE_VIEW_COUNT, viewNames);
   for (const v of viewNames) {
     const r = await db.execute(sql`select count(*)::int as n from ${sql.identifier(v)}`);
     console.log(`  ${v.padEnd(34)} ${String((r.rows[0] as { n: number }).n).padStart(5)}`);
@@ -281,6 +281,22 @@ async function main() {
       (select count(*)::int from pub_parc_machines v join machines m on m.number = v.number
         where v.type_machine_code is distinct from m.machine_type_code or v.livree_le is distinct from m.delivered_on or v.maj_le is distinct from m.updated_at) as mismatched`)).rows[0] as { distinct_rows: number; machines: number; mismatched: number };
   check('pub_parc_machines: one row per machine for Arche’s DISTINCT read, type, delivery date and maj_le from the machine', parc.distinct_rows === parc.machines && parc.mismatched === 0, parc);
+  // Arche K-01 (R-186, 0045_machine_catalogue, 0046_catalogue_share): the catalogue view's types, drafts never published, a
+  // published version frozen by the trigger.
+  const catTypes = (await db.execute(sql`select column_name as c, data_type as t from information_schema.columns where table_schema = current_schema()
+      and table_name = 'pub_catalogue_machines' order by ordinal_position`)).rows as { c: string; t: string }[];
+  check('pub_catalogue_machines: K-01 column types', isDeepStrictEqual(Object.fromEntries(catTypes.map((r) => [r.c, r.t])), CATALOGUE_VIEW_TYPES), catTypes);
+  const cat = (await db.execute(sql`select (select count(*)::int from pub_catalogue_machines) as shared,
+      (select count(*)::int from machine_catalogue_entries where status in ('published', 'retired')) as published,
+      (select count(*)::int from machine_catalogue_entries where status = 'draft') as drafts`)).rows[0] as { shared: number; published: number; drafts: number };
+  check('pub_catalogue_machines: published and retired versions only (demo: 3 shared, 1 draft hidden)', cat.shared === cat.published && cat.shared === 3 && cat.drafts === 1, cat);
+  let frozen = false;
+  try {
+    await db.execute(sql`update machine_catalogue_entries set label = 'db-check' where status = 'published'`);
+  } catch {
+    frozen = true;
+  }
+  check('machine_catalogue_entries: a published version is frozen (trigger)', frozen, frozen);
   const idx = (await db.execute(sql`select indexname as i from pg_indexes where schemaname = current_schema() and indexname in
       (${sql.join(Object.values(SHARE_MAJ_LE_INDEXES).map((x) => sql`${x.index}`), sql`, `)})`)).rows as { i: string }[];
   check(`maj_le indexes (K-11): ${Object.values(SHARE_MAJ_LE_INDEXES).map((x) => x.index).join(', ')}`, idx.length === Object.keys(SHARE_MAJ_LE_INDEXES).length, idx.map((r) => r.i));

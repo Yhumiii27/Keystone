@@ -72,6 +72,7 @@ import d9PlanningLoad from './d9-planning-load.json';
 import d9CursusTasks from './d9-cursus-tasks.json';
 import d9ShareViews from './d9-share-views.json';
 import d9Equipment from './d9-equipment.json';
+import d9Catalogue from './d9-catalogue.json';
 
 export const EXTRA_FR: Record<string, string> = {
   ...common,
@@ -144,4 +145,5 @@ export const EXTRA_FR: Record<string, string> = {
   ...d9CursusTasks,
   ...d9ShareViews,
   ...d9Equipment,
+  ...d9Catalogue,
 };

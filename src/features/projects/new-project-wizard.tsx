@@ -77,6 +77,8 @@ export interface WizardLine {
   mt: string;
   /** Quantity typed (1–999). */
   qty: number;
+  /** R-186: the published catalogue version chosen ("EMP-40T@1"), '' / absent = none; of the line's type. */
+  cat?: string;
 }
 
 /** Empty draft; the planned start follows the business date `today` (R-013; 11 Jan 2027 on 25 Sep 2026). */
@@ -93,7 +95,8 @@ const BLANK: WizardTemplate = {
 /** R-185: equipment lines of the draft — the first one always of the main type `mt`. */
 export const draftLines = (d: Pick<WizardDraft, 'mt' | 'lines'>): WizardLine[] => {
   const lines = d.lines?.length ? d.lines : [{ mt: d.mt, qty: 1 }];
-  return lines[0].mt === d.mt ? lines : [{ ...lines[0], mt: d.mt }, ...lines.slice(1)];
+  // R-186: a catalogue version chosen for another type does not follow the change of type.
+  return lines[0].mt === d.mt ? lines : [{ ...lines[0], mt: d.mt, ...(lines[0].cat ? { cat: '' } : {}) }, ...lines.slice(1)];
 };
 
 /** R-185: the machine-type template of a line's type (its phases and reference categories). */
@@ -194,7 +197,7 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
   const setMachineType = (mt: string) => {
     const T = setup.templates.find((x) => x.mt === mt);
     // R-185: the main type is the first equipment line's.
-    const nextLines = [{ ...lines[0], mt }, ...lines.slice(1)];
+    const nextLines = [{ ...lines[0], mt, cat: '' }, ...lines.slice(1)];
     // A blank start stays blank and keeps its categories; otherwise switch to that type's template (3956) and its calendar.
     if (draft.template === 'blank' || !T) onDraft({ mt, lines: nextLines });
     else onDraft({ mt, template: T.id, cats: null, cal: null, lines: nextLines });
@@ -375,7 +378,7 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
                   className={w.lineType}
                   value={l.mt}
                   aria-label={`${t('Machine type')} ${equipmentRef(i + 1)}`}
-                  onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, mt: e.target.value } : x)))}
+                  onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, mt: e.target.value, cat: '' } : x)))}
                   options={setup.machineTypes.map((v) => ({ value: v, label: v }))}
                 />
                 <Input
@@ -391,6 +394,18 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
                     setLines(lines.map((x, j) => (j === i ? { ...x, qty: q } : x)));
                   }}
                 />
+                {/* R-186: an optional published catalogue version of the line's type (does not change the categories). */}
+                {setup.catalogue.some((c) => c.mt === l.mt) ? (
+                  <Select
+                    className={w.lineType}
+                    value={l.cat ?? ''}
+                    aria-label={`${t('Catalogue entry')} ${equipmentRef(i + 1)}`}
+                    onChange={(e) => onDraft({ lines: lines.map((x, j) => (j === i ? { ...x, cat: e.target.value } : x)) })}
+                    options={[{ value: '', label: t('No catalogue entry') }, ...setup.catalogue.filter((c) => c.mt === l.mt).map((c) => ({ value: c.value, label: dataText(c.label, lang) }))]}
+                  />
+                ) : (
+                  <span />
+                )}
                 {i === 0 ? (
                   <span className={w.lineMain}>{t('main type')}</span>
                 ) : (
