@@ -200,7 +200,7 @@ describe('R-118 · who prepares and fills the site sheet (9 personas)', () => {
   });
 
   it('defaults: the contract currency else the project currency else EUR; the first client stakeholder', async () => {
-    expect(await siteSheetDefaults(HLT)).toEqual({ site: 'Le Havre', country: 'France', currency: 'EUR', clientContact: 'Nadia Bensaïd · n.bensaid@port-lehavre.fr' });
+    expect(await siteSheetDefaults(HLT)).toEqual({ site: 'Le Havre', country: 'France', currency: 'EUR', clientContact: 'Nadia Bensaïd · n.bensaid@port-exemple.fr' });
     await rows(`UPDATE projects SET currency = 'MAD' WHERE code = 'NDC-031'`);
     expect((await siteSheetDefaults('NDC-031')).currency).toBe('MAD');
     expect((await siteSheetDefaults('EWA-051')).currency).toBe('EUR');

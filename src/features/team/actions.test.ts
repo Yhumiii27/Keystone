@@ -61,13 +61,13 @@ describe('team Server Functions', () => {
     viewer.name = 'Romain Aubert';
     const team = await teamOwnerOptions('HLT-026');
     const owner = team[1];
-    expect(await addStakeholderAction('HLT-026', { name: ' Yves Morel ', org: 'Bureau Veritas', role: 'Inspector', type: 'third_party', contact: 'y.morel@bv.com', owner })).toEqual({
+    expect(await addStakeholderAction('HLT-026', { name: ' Yves Morel ', org: 'Bureau Veritas', role: 'Inspector', type: 'third_party', contact: 'y.morel@controle-exemple.com', owner })).toEqual({
       toast: 'Stakeholder added',
     });
     const reg = await getStakeholderRegister('HLT-026');
     expect(reg.stakeholders).toHaveLength(9);
     expect(reg.stakeholders.at(-1)).toMatchObject({
-      name: 'Yves Morel', organisation: 'Bureau Veritas', role: 'Inspector', type: 'third_party', contactEmail: 'y.morel@bv.com', lastText: '25 Sep', notes: 'New', stale: false,
+      name: 'Yves Morel', organisation: 'Bureau Veritas', role: 'Inspector', type: 'third_party', contactEmail: 'y.morel@controle-exemple.com', lastText: '25 Sep', notes: 'New', stale: false,
     });
     expect(reg.stakeholders.at(-1)!.owner).toMatch(/^[A-Z]\. /);
     expect((await listAudit())[0]).toMatchObject({ who: 'Romain Aubert', object: 'Yves Morel', area: 'Stakeholders' });
