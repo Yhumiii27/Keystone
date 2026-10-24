@@ -15,7 +15,7 @@ import s from './contract.module.css';
 
 const draftOf = (v: FormValues): EquipmentLineDraft => ({
   machineTypeCode: v.machineTypeCode ?? '', quantity: v.quantity ?? '', label: v.label ?? '', capacityValue: v.capacityValue ?? '',
-  capacityUnit: v.capacityUnit ?? '', options: v.options ?? '', besoinRef: v.besoinRef ?? '',
+  capacityUnit: v.capacityUnit ?? '', options: v.options ?? '', besoinRef: v.besoinRef ?? '', catalogue: v.catalogue ?? '',
 });
 
 export function AddEquipmentButton({ code, context, form, label, saved }: { code: string; context: string; form: FormDef; label: string; saved: string }) {

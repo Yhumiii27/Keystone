@@ -357,6 +357,8 @@ export interface EquipmentLineDraft {
   /** Comma-separated. */
   options: string;
   besoinRef: string;
+  /** R-186: the catalogue version chosen, "EMP-40T@2"; '' = none (optional, absent from older clients). */
+  catalogue?: string;
 }
 
 /** Checks the viewer may edit the project's equipment lines (R-185): the director and the leads, on a project they may edit. */
@@ -373,6 +375,8 @@ const EQUIPMENT_ERRORS = [
   'Choose the machine type among the proposed types', 'The equipment label is too long', 'The target capacity is a positive number', 'The capacity unit is too long',
   'Enter the unit of the target capacity', 'Invalid options', 'Too many or too long options', 'The machine need follows the CAPEX application’s format (CPX-SAI-2026-01/B01)',
   'A project keeps at least one equipment line', 'Unknown equipment line', 'This equipment line has inspections in its inspection plan',
+  // R-186: the catalogue choice.
+  'Unknown catalogue entry', 'This catalogue version is retired', 'The catalogue entry is of another machine type',
 ];
 const equipmentError = (e: unknown) => {
   const m = e instanceof Error ? e.message : '';
@@ -384,7 +388,7 @@ const lineFields = (v: unknown) => {
   const d = strings(v);
   return {
     machineTypeCode: d.machineTypeCode, quantity: d.quantity, label: d.label ?? '', capacityValue: d.capacityValue ?? '', capacityUnit: d.capacityUnit ?? '',
-    options: d.options ?? '', besoinRef: d.besoinRef ?? '',
+    options: d.options ?? '', besoinRef: d.besoinRef ?? '', catalogue: d.catalogue ?? '',
   };
 };
 

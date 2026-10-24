@@ -23,10 +23,13 @@ describe('parseEquipmentLine', () => {
   const ok = (v: Record<string, unknown>) => parseEquipmentLine(v, TYPES);
   it('accepts a type among the proposed ones and a whole quantity; trims and normalises the optional fields', () => {
     expect(ok({ machineTypeCode: 'MEMU', quantity: '3', label: '  Unités quai 4 ', capacityValue: '12,5', capacityUnit: ' t/h ', options: 'Cabine, ,Radio,Cabine', besoinRef: 'cpx-sai-2026-01/b02' }))
-      .toEqual({ ok: true, value: { machineTypeCode: 'MEMU', quantity: 3, label: 'Unités quai 4', capacityValue: 12.5, capacityUnit: 't/h', options: ['Cabine', 'Radio'], besoinRef: 'CPX-SAI-2026-01/B02' } });
+      .toEqual({ ok: true, value: { machineTypeCode: 'MEMU', quantity: 3, label: 'Unités quai 4', capacityValue: 12.5, capacityUnit: 't/h', options: ['Cabine', 'Radio'], besoinRef: 'CPX-SAI-2026-01/B02', catalogueCode: null, catalogueVersion: null } });
     expect(ok({ machineTypeCode: 'EMP', quantity: 1 })).toEqual({
-      ok: true, value: { machineTypeCode: 'EMP', quantity: 1, label: null, capacityValue: null, capacityUnit: null, options: [], besoinRef: null },
+      ok: true, value: { machineTypeCode: 'EMP', quantity: 1, label: null, capacityValue: null, capacityUnit: null, options: [], besoinRef: null, catalogueCode: null, catalogueVersion: null },
     });
+    // R-186: a catalogue choice "CODE@version" (checked against the catalogue by the DAL).
+    expect(ok({ machineTypeCode: 'EMP', quantity: 1, catalogue: 'EMP-40T@2' })).toMatchObject({ ok: true, value: { catalogueCode: 'EMP-40T', catalogueVersion: 2 } });
+    expect(ok({ machineTypeCode: 'EMP', quantity: 1, catalogue: 'EMP-40T' })).toEqual({ ok: false, error: 'Unknown catalogue entry' });
     // A unit without a capacity is dropped.
     expect(ok({ machineTypeCode: 'EMP', quantity: 2, capacityUnit: 't' })).toMatchObject({ ok: true, value: { capacityValue: null, capacityUnit: null } });
   });

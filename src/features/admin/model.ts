@@ -125,6 +125,8 @@ export interface MtDetailView {
   termsText: string;
   termsOk: boolean;
   phases: EditableText[];
+  /** R-185 / R-186: per phase, a lot specific to an equipment (generated once per equipment line). */
+  phaseFlags: boolean[];
   itpSystems: EditableText[];
   costCategories: { name: EditableText; type: CostType; budget: string; budgetKeur: number }[];
   costTypeOptions: { value: CostType; label: string }[];
@@ -168,6 +170,7 @@ export function machineTypesView(input: { types: MachineTypeRow[]; projects: Pro
       stateText: t(sel.active ? 'Active' : 'Inactive'), toggleLabel: t(sel.active ? 'Deactivate' : 'Activate'),
       deposit: sel.depositPct, delivery: sel.deliveryPct, acceptance: sel.acceptancePct, termsText: terms.text, termsOk: terms.ok,
       phases: sel.phases.map((p) => editable(p, t)),
+      phaseFlags: sel.phaseFlags ?? sel.phases.map(() => false),
       itpSystems: sel.itpSystems.map((s) => editable(s, t)),
       costCategories: sel.costCategories.map((c) => ({ name: editable(c.name, t), type: c.type, budget: String(c.budgetKeur), budgetKeur: c.budgetKeur })),
       costTypeOptions: MT_COST_TYPES.map((c) => ({ value: c, label: t(costType.label(c)) })),

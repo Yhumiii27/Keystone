@@ -19,6 +19,9 @@ import {
   removeRexReferenceAction, setMachineTypeCostCategoriesAction, setMachineTypeItpSystemsAction, setMachineTypePhasesAction, updateMachineTypeAction,
   type AdminActionResult,
 } from './actions';
+import { setMachineTypePhaseScopeAction } from './catalogue-actions';
+import type { CatalogueView } from './catalogue-model';
+import { CatalogueSection } from './catalogue-section';
 import type { EditableText, MtDetailView } from './model';
 import s from './admin.module.css';
 
@@ -53,7 +56,7 @@ const enterBlurs = (e: KeyboardEvent<HTMLInputElement>) => {
   if (e.key === 'Enter') e.currentTarget.blur();
 };
 
-export function MachineTypeEditor({ mt, canEdit }: { mt: MtDetailView; canEdit: boolean }) {
+export function MachineTypeEditor({ mt, canEdit, catalogue }: { mt: MtDetailView; canEdit: boolean; catalogue?: CatalogueView }) {
   const { t } = useI18n();
   const [pending, start] = useTransition();
   const save = (p: () => Promise<AdminActionResult>, onFail?: () => void) =>
@@ -73,6 +76,9 @@ export function MachineTypeEditor({ mt, canEdit }: { mt: MtDetailView; canEdit: 
           canEdit={canEdit}
           onSave={(list, fail) => save(() => setMachineTypePhasesAction(mt.code, list), fail)}
           newItem={NEW_PHASE}
+          // R-185 / R-186: the lots specific to an equipment (generated once per equipment line by the New project wizard).
+          flags={{ values: mt.phaseFlags, label: t('Per equipment'), onToggle: (i, v) => save(() => setMachineTypePhaseScopeAction(mt.code, i, v)) }}
+          hint={mt.phaseFlags.some(Boolean) ? t('Phases ticked “Per equipment” are generated once per equipment line') : undefined}
         />
         <TextListCard
           key={`itp-${mt.code}`}
@@ -87,6 +93,7 @@ export function MachineTypeEditor({ mt, canEdit }: { mt: MtDetailView; canEdit: 
         />
       </div>
       <CostCategories key={`cats-${mt.code}`} mt={mt} canEdit={canEdit} save={save} />
+      {catalogue && <CatalogueSection key={`catalogue-${mt.code}`} typeCode={mt.code} typeLabel={mt.displayCode} view={catalogue} />}
       <div className={s.twoGrid}>
         <div className={cx('card', 'elev-sm', s.sectionCard)}>
           <span className={s.sectionLabel}>{t('Financial REX · reference projects')}</span>
@@ -261,7 +268,7 @@ const rowsOf = (list: EditableText[]): TextRow[] => list.map((x) => ({ stored: x
 /** Value written back: the stored text when the row was not edited (the input may show a translation). */
 const sendValue = (r: TextRow) => (r.stored != null && r.text === r.shown ? r.stored : r.text);
 
-function TextListCard({ title, addLabel, numbered, rows: server, canEdit, onSave, newItem, hint }: {
+function TextListCard({ title, addLabel, numbered, rows: server, canEdit, onSave, newItem, hint, flags }: {
   title: string;
   addLabel: string;
   numbered?: boolean;
@@ -271,6 +278,8 @@ function TextListCard({ title, addLabel, numbered, rows: server, canEdit, onSave
   newItem: string;
   /** Help line under the list (translated). */
   hint?: string;
+  /** A checkbox per saved row (R-186: "Per equipment" on the standard phases), aligned with the server rows. */
+  flags?: { values: boolean[]; label: string; onToggle: (index: number, value: boolean) => void };
 }) {
   const { t } = useI18n();
   const [rows, setRows] = useServerState(rowsOf(server), JSON.stringify(server));
@@ -287,7 +296,7 @@ function TextListCard({ title, addLabel, numbered, rows: server, canEdit, onSave
         )}
       </div>
       {rows.map((r, i) => (
-        <div key={i} className={numbered ? s.phaseRow : s.itpRow}>
+        <div key={i} className={cx(numbered ? s.phaseRow : s.itpRow, flags && s.phaseRowFlag)}>
           {numbered && <span className={s.phaseNo}>{i + 1}</span>}
           <input
             className={cx('input', s.mtInput)}
@@ -301,6 +310,18 @@ function TextListCard({ title, addLabel, numbered, rows: server, canEdit, onSave
               if (canEdit && r.text !== r.shown) commit(rows);
             }}
           />
+          {flags && (
+            <label className={s.phaseFlag}>
+              <input
+                type="checkbox"
+                checked={!!flags.values[i] && r.stored != null}
+                disabled={!canEdit || r.stored == null || i >= server.length}
+                aria-label={`${flags.label} · ${r.text}`}
+                onChange={(e) => flags.onToggle(i, e.target.checked)}
+              />
+              {flags.label}
+            </label>
+          )}
           {canEdit && (
             <IconButton
               icon={X}

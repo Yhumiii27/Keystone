@@ -37,7 +37,9 @@ import { getClientCodes } from './people';
 import { listScheduleSummaries, type MilestoneRow, type ScheduleControl } from './planning';
 import { listProjects, type ProjectRow } from './projects';
 import { ensureEquipmentPlan } from './itp';
-import { insertEquipmentLines } from './project-equipment';
+import { checkCatalogueChoice, insertEquipmentLines } from './project-equipment';
+import { listCatalogueChoices } from './machine-catalogue';
+import { catalogueChoiceValue, catalogueRef } from '@/domain/machine-catalogue';
 import { costCategoryOptions, inactiveStageCodes } from './settings-lists';
 
 /** Deliverable ticks per project and stage, aligned with `StageInfo.deliverables` (absent = none ticked). */
@@ -224,6 +226,8 @@ export interface NewProjectSetup {
   /** L-3b site: the countries of the countries table (EN names, in order) and the known cities with their country. */
   countries: string[];
   cities: { name: string; country: string }[];
+  /** R-186: the published catalogue versions an equipment line may reference ("EMP-40T@1"), with the type label they belong to. */
+  catalogue: { value: string; label: string; mt: string }[];
 }
 
 const templateId = (code: string) => (code === 'blank' ? 'blank' : machineType.isCode(code) ? machineType.label(code) : code);
@@ -242,7 +246,7 @@ async function managerOptions(q: Pick<Awaited<ReturnType<typeof getDb>>, 'select
 /** Wizard reference data and numbering inputs. `viewerName` = the viewer (default PM when they are one). */
 export async function getNewProjectSetup(viewer?: { name: string; role: string }): Promise<NewProjectSetup> {
   const db = await getDb();
-  const [blankTpl, tpls, mts, phases, cats, itp, numbers, clientCodes, managers, settingsCats, countryRows, cityRows] = await Promise.all([
+  const [blankTpl, tpls, mts, phases, cats, itp, numbers, clientCodes, managers, settingsCats, countryRows, cityRows, catalogue] = await Promise.all([
     db.select().from(projectTemplates).where(eq(projectTemplates.code, 'blank')),
     db.select().from(projectTemplates).orderBy(asc(projectTemplates.sortOrder)),
     db.select().from(machineTypes).where(eq(machineTypes.active, true)).orderBy(asc(machineTypes.sortOrder)),
@@ -255,6 +259,7 @@ export async function getNewProjectSetup(viewer?: { name: string; role: string }
     costCategoryOptions(db),
     db.select({ name: countries.name }).from(countries).orderBy(asc(countries.sortOrder)),
     db.select({ name: cities.name, country: cities.countryName }).from(cities).orderBy(asc(cities.name)),
+    listCatalogueChoices(db),
   ]);
   const blank = blankTpl[0];
   const templates: WizardTemplate[] = [
@@ -293,6 +298,9 @@ export async function getNewProjectSetup(viewer?: { name: string; role: string }
     settingsCategories: settingsCats.filter((c) => c.type !== 'reserve').map((c) => ({ name: c.label, type: costType.label(c.type) })),
     countries: countryRows.map((c) => c.name),
     cities: cityRows,
+    catalogue: catalogue
+      .filter((c) => mts.some((m) => m.code === c.machineTypeCode))
+      .map((c) => ({ value: catalogueChoiceValue(c.code, c.version), label: `${catalogueRef(c.code, c.version)} · ${c.label}`, mt: templateId(c.machineTypeCode) })),
   };
 }
 
@@ -308,7 +316,7 @@ export interface WizardCreateInput {
    * R-185: the equipment lines (type × quantity), the first one of `machineType`; absent → one line of `machineType`, quantity 1.
    * With a machine-type template, the lots specific to an equipment are generated per line from its type's phases.
    */
-  equipments?: { machineType: MachineTypeCode; quantity: number }[];
+  equipments?: { machineType: MachineTypeCode; quantity: number; catalogueCode?: string | null; catalogueVersion?: number | null }[];
   currency: 'EUR' | 'USD';
   /** 'blank' or the machine type code ('rnd' for R&D, custom codes): the template instantiated. */
   templateCode: string;
@@ -450,7 +458,13 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
     // L-3b: the site (zone from the country — no zone override).
     if (site) await tx.insert(projectSites).values({ projectId, ...site, zoneOverride: null });
     // R-185: the equipment lines (EQ-01 = the main type).
-    const equipmentRows = await insertEquipmentLines(tx, projectId, lines.map((l) => ({ machineTypeCode: l.machineType, quantity: l.quantity })));
+    // R-186: a line may reference a published catalogue version of its type.
+    const lineInputs = lines.map((l) => ({
+      machineTypeCode: l.machineType, quantity: l.quantity,
+      catalogueCode: 'catalogueCode' in l ? l.catalogueCode ?? null : null, catalogueVersion: 'catalogueVersion' in l ? l.catalogueVersion ?? null : null,
+    }));
+    for (const l of lineInputs) await checkCatalogueChoice(tx, l);
+    const equipmentRows = await insertEquipmentLines(tx, projectId, lineInputs);
     const equipmentId = (ref: string | undefined) => (ref ? equipmentRows.find((e) => e.ref === ref)?.id ?? null : null);
     if (cats.length)
       await tx.insert(costCategories).values(

@@ -6,6 +6,7 @@ import type { FormDef, FormValues } from '@/components/app/form-def';
 import { Card, CardTitle } from '@/components/ds/Card';
 import { cx } from '@/components/ds/cx';
 import { Table, Th } from '@/components/ds/Table';
+import { catalogueChoiceValue, catalogueRef } from '@/domain/machine-catalogue';
 import { MAX_EQUIPMENT_LINES, equipmentCount, equipmentSummary } from '@/domain/project-equipment';
 import { dataText } from '@/i18n/data-text';
 import { intlLocale, type Lang, type T } from '@/i18n/translate';
@@ -13,12 +14,33 @@ import type { EquipmentLine } from '@/server/dal/project-equipment';
 import { AddEquipmentButton, EditEquipmentButton, RemoveEquipmentButton } from './equipment-buttons';
 import s from './contract.module.css';
 
-/** The line form (Add / Edit): `types` = the active machine types (code, display label). */
-export function equipmentFormDef(t: T, types: { code: string; label: string }[], title: string, submit: string): FormDef {
+/** A catalogue version the form offers (R-186): published ones, plus a line's current one. */
+export interface CatalogueOptionView {
+  code: string;
+  version: number;
+  label: string;
+  machineTypeCode: string;
+}
+
+/**
+ * The line form (Add / Edit): `types` = the active machine types (code, display label); `catalogue` = the catalogue versions
+ * offered (R-186: optional, "None" first; the version must be of the line's type — checked by the server).
+ */
+export function equipmentFormDef(t: T, types: { code: string; label: string }[], title: string, submit: string, catalogue: CatalogueOptionView[] = [], lang: Lang = 'en'): FormDef {
+  const typeLabel = (code: string) => types.find((m) => m.code === code)?.label ?? code;
   return {
     title, submit,
     fields: [
       { id: 'machineTypeCode', label: t('Machine type'), type: 'select', options: types.map((m) => ({ value: m.code, label: m.label })) },
+      ...(catalogue.length
+        ? [{
+          id: 'catalogue', label: t('Catalogue entry'), type: 'select' as const, span: 'full' as const, defaultValue: '',
+          options: [
+            { value: '', label: t('None') },
+            ...catalogue.map((c) => ({ value: catalogueChoiceValue(c.code, c.version), label: `${catalogueRef(c.code, c.version)} · ${dataText(c.label, lang)} · ${typeLabel(c.machineTypeCode)}` })),
+          ],
+        }]
+        : []),
       { id: 'quantity', label: t('Quantity'), type: 'number', required: true, defaultValue: '1' },
       { id: 'label', label: t('Equipment label'), type: 'text', placeholder: t('Optional'), span: 'full' },
       { id: 'capacityValue', label: t('Target capacity'), type: 'number', placeholder: t('Optional') },
@@ -35,20 +57,27 @@ export interface EquipmentCardProps {
   canEdit: boolean;
   /** Active machine types offered by the form (a line keeps its own type even when retired). */
   types: { code: string; label: string }[];
+  /** R-186: the published catalogue versions (a line keeps its own version, even retired since). */
+  catalogue?: CatalogueOptionView[];
   /** Translated project label, the dialogs' sub-line. */
   context: string;
   t: T;
   lang: Lang;
 }
 
-export function EquipmentCard({ lines, code, canEdit, types, context, t, lang }: EquipmentCardProps) {
+export function EquipmentCard({ lines, code, canEdit, types, catalogue = [], context, t, lang }: EquipmentCardProps) {
   const nf = new Intl.NumberFormat(intlLocale(lang), { maximumFractionDigits: 2 });
   const summary = equipmentSummary(lines);
   const machines = equipmentCount(lines);
   const values = (l: EquipmentLine): FormValues => ({
     machineTypeCode: l.machineTypeCode, quantity: String(l.quantity), label: l.label ?? '', capacityValue: l.capacityValue == null ? '' : String(l.capacityValue),
     capacityUnit: l.capacityUnit ?? '', options: l.options.join(', '), besoinRef: l.besoinRef ?? '',
+    catalogue: l.catalogueCode && l.catalogueVersion ? catalogueChoiceValue(l.catalogueCode, l.catalogueVersion) : '',
   });
+  const editCatalogue = (l: EquipmentLine): CatalogueOptionView[] =>
+    !l.catalogueCode || !l.catalogueVersion || catalogue.some((c) => c.code === l.catalogueCode && c.version === l.catalogueVersion)
+      ? catalogue
+      : [{ code: l.catalogueCode, version: l.catalogueVersion, label: t('Retired'), machineTypeCode: l.machineTypeCode }, ...catalogue];
   const editTypes = (l: EquipmentLine) => (types.some((m) => m.code === l.machineTypeCode) ? types : [{ code: l.machineTypeCode, label: l.typeLabel }, ...types]);
   return (
     <Card className={s.listCard}>
@@ -62,7 +91,7 @@ export function EquipmentCard({ lines, code, canEdit, types, context, t, lang }:
           </span>
         </div>
         {canEdit && lines.length < MAX_EQUIPMENT_LINES && (
-          <AddEquipmentButton code={code} context={context} form={equipmentFormDef(t, types, t('Add equipment line'), t('Add'))} label={t('Add equipment line')} saved={t('Equipment saved')} />
+          <AddEquipmentButton code={code} context={context} form={equipmentFormDef(t, types, t('Add equipment line'), t('Add'), catalogue, lang)} label={t('Add equipment line')} saved={t('Equipment saved')} />
         )}
       </div>
       {lines.length > 0 && (
@@ -85,6 +114,7 @@ export function EquipmentCard({ lines, code, canEdit, types, context, t, lang }:
                 <td className={s.num}>
                   {l.quantity} × {l.typeLabel}
                   {i === 0 && lines.length > 1 && <span className={s.meta}> · {t('main type')}</span>}
+                  {l.catalogueCode && l.catalogueVersion && <span className={s.meta}> · {catalogueRef(l.catalogueCode, l.catalogueVersion)}</span>}
                 </td>
                 <td>{l.label ? dataText(l.label, lang) : <span className={s.muted}>—</span>}</td>
                 <td className={cx(s.right, s.num)}>{l.capacityValue == null ? '—' : `${nf.format(l.capacityValue)} ${l.capacityUnit ?? ''}`.trim()}</td>
@@ -94,7 +124,7 @@ export function EquipmentCard({ lines, code, canEdit, types, context, t, lang }:
                   <td className={s.actionCell}>
                     <span className={s.milestoneActions}>
                       <EditEquipmentButton
-                        code={code} refCode={l.ref} context={`${context} · ${l.ref}`} form={equipmentFormDef(t, editTypes(l), `${t('Edit equipment line')} ${l.ref}`, t('Save'))}
+                        code={code} refCode={l.ref} context={`${context} · ${l.ref}`} form={equipmentFormDef(t, editTypes(l), `${t('Edit equipment line')} ${l.ref}`, t('Save'), editCatalogue(l), lang)}
                         values={values(l)} label={t('Edit')} ariaLabel={`${t('Edit equipment line')} ${l.ref}`} saved={t('Equipment saved')}
                       />
                       {lines.length > 1 && (

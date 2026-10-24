@@ -92,6 +92,28 @@ const MESSAGES = {
     (p) => `Equipment ${p.ref} removed · ${p.equipment}`,
     (p) => `Équipement ${p.ref} retiré · ${p.equipment}`,
   ),
+  // R-186: the machine catalogue on the Machine types screen ("EMP-40T v2"; audit trail, activity feed on publish and retire).
+  'catalogue.created': def(
+    { ref: 'ref', label: 'data' },
+    (p) => `Catalogue entry ${p.ref} created (draft) · ${p.label}`,
+    (p, f) => `Fiche catalogue ${p.ref} créée (brouillon) · ${f.data(p.label)}`,
+  ),
+  'catalogue.versionCreated': def({ ref: 'ref' }, (p) => `Catalogue version ${p.ref} created (draft)`, (p) => `Version catalogue ${p.ref} créée (brouillon)`),
+  'catalogue.draftSaved': def({ ref: 'ref' }, (p) => `Catalogue draft ${p.ref} saved`, (p) => `Brouillon catalogue ${p.ref} enregistré`),
+  'catalogue.published': def({ ref: 'ref' }, (p) => `Catalogue ${p.ref} published`, (p) => `Catalogue ${p.ref} publié`),
+  'catalogue.publishedSuperseding': def(
+    { ref: 'ref', previous: 'ref' },
+    (p) => `Catalogue ${p.ref} published · ${p.previous} retired`,
+    (p) => `Catalogue ${p.ref} publié · ${p.previous} retiré`,
+  ),
+  'catalogue.retired': def({ ref: 'ref' }, (p) => `Catalogue ${p.ref} retired`, (p) => `Catalogue ${p.ref} retiré`),
+  'catalogue.discarded': def({ ref: 'ref' }, (p) => `Catalogue draft ${p.ref} discarded`, (p) => `Brouillon catalogue ${p.ref} abandonné`),
+  // R-185 / R-186: a standard phase flagged specific to an equipment (generated once per equipment line) or common to the project.
+  'machineType.phaseScope': def(
+    { type: 'ref', phase: 'data', perEquipment: 'label' },
+    (p) => `Machine type ${p.type} · phase ${p.phase}: ${p.perEquipment}`,
+    (p, f) => `Type de machine ${p.type} · phase ${f.data(p.phase)} : ${f.label(p.perEquipment)}`,
+  ),
 } as const;
 
 export type MessageKey = keyof typeof MESSAGES;

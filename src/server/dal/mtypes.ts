@@ -4,11 +4,13 @@ import 'server-only';
 // projects (`MT_ALL` 5085). The new-project wizard instantiates the type (phases, cost categories, ITP plan — A-2); E-9 'a'
 // (R-057): a type's changes apply to the projects created afterwards — an ITP plan keeps the systems frozen when it was
 // created (itp_plan_systems, itp.ts); Budget still reads the REX pattern live (budget.ts).
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import { calendar, costType, machineType, type CalendarCode, type CostType, type MachineTypeCode } from '@/server/db/codes';
 import { machineTypeCostCategories, machineTypeItpSystems, machineTypePhases, machineTypes, projects, rexReferences } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
+import { systemMessage } from '@/domain/system-messages';
+import { touchCatalogueOfType } from './machine-catalogue';
 import { requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
 
 export type { Actor };
@@ -28,6 +30,8 @@ export interface MachineTypeRow {
   active: boolean;
   isStandard: boolean;
   phases: string[];
+  /** R-185 / R-186: per phase (same order), whether it is a lot specific to an equipment (generated once per equipment line). */
+  phaseFlags: boolean[];
   costCategories: { name: string; type: CostType; typeLabel: string; budgetKeur: number }[];
   /** Σ reference budgets, k€. */
   costTotalKeur: number;
@@ -58,7 +62,8 @@ export async function listMachineTypes(): Promise<MachineTypeRow[]> {
     const cal = t.calendar ?? 'standard_5x8';
     return {
       code: t.code, displayCode: t.label, label: t.name ?? t.label, description: t.description ?? '', calendar: cal, calendarLabel: calendar.label(cal), active: t.active,
-      isStandard: t.isStandard, phases: phases.filter((x) => x.machineTypeCode === t.code).map((x) => x.name), costCategories: c,
+      isStandard: t.isStandard, phases: phases.filter((x) => x.machineTypeCode === t.code).map((x) => x.name),
+      phaseFlags: phases.filter((x) => x.machineTypeCode === t.code).map((x) => x.perEquipment), costCategories: c,
       costTotalKeur: c.reduce((s, x) => s + x.budgetKeur, 0), itpSystems: itp.filter((x) => x.machineTypeCode === t.code).map((x) => x.name),
       depositPct: t.depositPct, deliveryPct: t.deliveryPct, acceptancePct: t.acceptancePct, termsOk: t.depositPct + t.deliveryPct + t.acceptancePct === 100,
       rexReferences: refs.filter((r) => r.machineTypeCode === t.code).map((r) => ({ analyticCode: r.analyticCode, projectName: r.projectName, year: r.year, pattern: r.pattern })),
@@ -129,6 +134,8 @@ export async function updateMachineType(code: string, patch: MachineTypePatch, a
     if (patch.acceptancePct !== undefined) { set.acceptancePct = pct(patch.acceptancePct, 'Acceptance'); changes.push(`acceptance ${set.acceptancePct} %`); }
     if (!changes.length) return;
     await tx.update(machineTypes).set(set).where(eq(machineTypes.code, t.code));
+    // R-186: pub_catalogue_machines.type_libelle reads the label — the catalogue rows of the type move their maj_le.
+    if (patch.label !== undefined && set.name !== (t.name ?? t.label)) await touchCatalogueOfType(tx, t.code);
     await trace(tx, await whoIs(tx, actor), { objectRef: `Machine type ${t.label}`, change: changes.join(' · '), area: 'Settings', entityType: 'machine_type' });
   });
 }
@@ -146,6 +153,29 @@ export async function setMachineTypePhases(code: string, phases: string[], actor
     await tx.delete(machineTypePhases).where(eq(machineTypePhases.machineTypeCode, t.code));
     if (names.length) await tx.insert(machineTypePhases).values(names.map((name, position) => ({ machineTypeCode: t.code, position, name, perEquipment: perEquipment.has(name) })));
     await trace(tx, await whoIs(tx, actor), { objectRef: `Machine type ${t.label}`, change: `phases: ${names.length}`, area: 'Settings', entityType: 'machine_type' });
+  });
+}
+
+/**
+ * R-185 / R-186: flags the phase at `position` as a lot specific to an equipment (the New project wizard generates it once per
+ * equipment line) or common to the project. Projects already created keep their plan.
+ */
+export async function setMachineTypePhaseScope(code: string, position: number, perEquipment: boolean, actor: Actor): Promise<void> {
+  MT(actor);
+  if (!Number.isInteger(position) || position < 0) throw new Error('Unknown phase');
+  const db = await getDb();
+  await db.transaction(async (tx) => {
+    const t = await loadType(tx, code);
+    const [ph] = await tx.select().from(machineTypePhases).where(and(eq(machineTypePhases.machineTypeCode, t.code), eq(machineTypePhases.position, position)));
+    if (!ph) throw new Error('Unknown phase');
+    if (ph.perEquipment === perEquipment) return;
+    await tx.update(machineTypePhases).set({ perEquipment }).where(and(eq(machineTypePhases.machineTypeCode, t.code), eq(machineTypePhases.position, position)));
+    await tx.update(machineTypes).set({ updatedAt: new Date() }).where(eq(machineTypes.code, t.code));
+    await trace(tx, await whoIs(tx, actor), {
+      objectRef: `Machine type ${t.label}`, area: 'Settings', entityType: 'machine_type',
+      message: systemMessage('machineType.phaseScope', { type: t.label, phase: ph.name, perEquipment: perEquipment ? 'specific to an equipment' : 'common to the project' }),
+      before: { phase: ph.name, perEquipment: ph.perEquipment }, after: { phase: ph.name, perEquipment },
+    });
   });
 }
 
