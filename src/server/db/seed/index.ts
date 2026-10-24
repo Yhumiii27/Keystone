@@ -21,7 +21,7 @@ import { demoLeaveToShift, shiftDemoLeave } from './demo-leave';
 import { seedDocuments } from './documents';
 import { seedEngineering } from './engineering';
 import { demoCatalogueToBackfill, seedDemoCatalogue } from './machine-catalogue';
-import { demoCapexNeedsToBackfill, ensureArcheConnector, seedDemoCapexNeeds } from './capex-needs';
+import { demoCapexNeedsToBackfill, demoInternalClientToBackfill, ensureArcheConnector, seedDemoCapexNeeds, seedDemoInternalClient } from './capex-needs';
 import { seedExecution } from './execution';
 import { seedOperations } from './operations';
 import { seedOrganisation } from './organisation';
@@ -178,6 +178,10 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
     await ensureArcheConnector(db).catch((e) => logError('Delivery 9 Arche connector backfill', e, { component: 'seed' }));
     if (await demoCapexNeedsToBackfill(db)) {
       await db.transaction(async (tx) => { await seedDemoCapexNeeds(tx); }).catch((e) => logError('Delivery 9 demo machine needs backfill', e, { component: 'seed' }));
+    }
+    // R-190: the demo subsidiary registered as an internal client (once: while no client is internal nor uses its name or codes).
+    if (await demoInternalClientToBackfill(db)) {
+      await db.transaction(async (tx) => { await seedDemoInternalClient(tx); }).catch((e) => logError('Delivery 9 demo internal client backfill', e, { component: 'seed' }));
     }
     // ── Delivery 8 · demo backfills · connectors ──
     // Databases seeded before delivery 7 adopt their (demo) record.

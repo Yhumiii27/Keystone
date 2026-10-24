@@ -9,7 +9,7 @@ import { estimateRange } from '@/domain/estimate-class';
 import { snapshotOf, applyCapexSnapshot, recordCapexRun } from '@/server/integrations/capex/mirror';
 import { simulatedArcheViews } from '@/server/integrations/capex/simulation';
 import { findPerson, nameOf } from '../helpers';
-import { capexMirror, connectors, needAnswers, projectEquipments, projects } from '../schema';
+import { capexMirror, clients, connectors, needAnswers, projectEquipments, projects } from '../schema';
 import type { DB, Tx } from '../types';
 
 /** Arche's row in the connectors table (not in the prototype's CONNECTORS: the CAPEX application came with delivery 9). */
@@ -78,10 +78,32 @@ export async function seedDemoCapexNeeds(tx: Tx): Promise<void> {
       createdAt: a.answeredAt, updatedAt: a.answeredAt,
     });
   }
+  await seedDemoInternalClient(tx);
   if (rcf) {
     await tx.update(projects).set({ capexCode: DEMO_NEED_PROJECT.capexCode, besoinRef: DEMO_NEED_PROJECT.needRef }).where(eq(projects.id, rcf.id));
     await tx.update(projectEquipments).set({ besoinRef: DEMO_NEED_PROJECT.needRef }).where(and(eq(projectEquipments.projectId, rcf.id), eq(projectEquipments.ref, 'EQ-01')));
   }
+}
+
+/**
+ * R-190: the demo's group subsidiary registered as an internal client — Sahel Agro Industries (SAI, Arche's demo code of
+ * CPX-SAI-2026-01), whose ordered need CPX-SAI-2026-01/B03 is still to be turned into a project: the wizard starts from this
+ * client and the project is published with client_interne = true, filiale_code = 'SAI'. No demo project has it yet (RCF-019,
+ * linked to CPX-SAI-2026-01 by R-187, keeps its client "Health trust": a Lyon clinic fit-out is not the subsidiary).
+ */
+export const DEMO_INTERNAL_CLIENT = { name: 'Sahel Agro Industries', code3: 'SAI', subsidiaryCode: 'SAI' } as const;
+
+/** Registers the demo subsidiary client once (seed, and a demo database seeded before R-190); never changes an existing client. */
+export async function seedDemoInternalClient(q: DB | Tx): Promise<void> {
+  const [{ max }] = await q.select({ max: sql<number>`coalesce(max(${clients.sortOrder}), 0)::int` }).from(clients);
+  await q.insert(clients).values({ ...DEMO_INTERNAL_CLIENT, isInternal: true, sortOrder: max + 1 }).onConflictDoNothing();
+}
+
+/** A demo database seeded before R-190: no internal client and no client of that name or codes. Backfilled once (index.ts). */
+export async function demoInternalClientToBackfill(db: DB | Tx): Promise<boolean> {
+  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(clients)
+    .where(sql`${clients.isInternal} or ${clients.name} = ${DEMO_INTERNAL_CLIENT.name} or ${clients.code3} = ${DEMO_INTERNAL_CLIENT.code3} or ${clients.subsidiaryCode} = ${DEMO_INTERNAL_CLIENT.subsidiaryCode}`);
+  return n === 0;
 }
 
 /** A demo database seeded before R-187: no mirrored CAPEX and no answer. Backfilled once (index.ts). */

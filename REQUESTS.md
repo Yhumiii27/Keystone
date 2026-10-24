@@ -26,7 +26,7 @@ Format d'une entrée :
 - Validé par Guillaume le : 2026-10-22
 
 ## [2026-10-22] Arche → Keystone — Rattacher les projets EPC2i au CAPEX dans pub_projets (R-190)
-- Statut : ACCEPTÉE — fait : capex_code et besoin_ref en fin de pub_projets (écran Contrat) ; reste : drapeau « client interne » sur les clients (avec R-179)
+- Statut : FAITE — capex_code et besoin_ref (R-190, 23/10), client interne et code de filiale : client_interne et filiale_code en fin de pub_projets (R-190, 24/10)
 - Demande : (K-05) ajouter en fin de vue `pub_projets` les colonnes `capex_code` et `besoin_ref` ; admettre qu'une filiale du groupe soit le client d'un projet (client interne).
 - Justification : Arche affiche, sur chaque CAPEX, les projets EPC2i qui livrent ses machines. Sans ces colonnes, Arche ne retrouve un projet que par le `projet_code` d'une réponse acceptée (`pub_reponses_besoins`) : un projet ouvert hors de ce circuit reste invisible dans Arche.
 - Détails techniques : `capex_code` text (`CPX-SAI-2026-01`, null pour un projet sans CAPEX), `besoin_ref` text (premier besoin à l'origine du projet, `CPX-SAI-2026-01/B01`), ajoutées après `maj_le` (contrat D02 v1 inchangé pour les lecteurs actuels). Arche lit `code`, `nom`, `phase_code`, `phase`, `chef_projet_nom`, `capex_code`, `besoin_ref`, `maj_le`.

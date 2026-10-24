@@ -21,7 +21,9 @@ import {
 } from '@/server/dal/contract';
 import { canSetBudgetRate, canSetCapexLink, canSetProjectEquipment } from '@/domain/rights';
 import { parseCapexLink } from '@/domain/capex-link';
+import { canSetInternalClient, parseInternalClient } from '@/domain/internal-client';
 import { setCapexLink } from '@/server/dal/capex-link';
+import { setProjectClientInternal } from '@/server/dal/internal-client';
 import { addProjectEquipment, removeProjectEquipment, updateProjectEquipment } from '@/server/dal/project-equipment';
 import { setProjectBudgetRate } from '@/server/dal/currency';
 import { getProject } from '@/server/dal/projects';
@@ -341,6 +343,31 @@ export async function setCapexLinkAction(code: string, capexCode: string, needRe
   try {
     await setCapexLink(project.code, parsed.value, { name: ctx.viewer.name, role: ctx.viewer.role });
   } catch {
+    return { error: await tr('The change could not be saved') };
+  }
+  refresh();
+  return { ok: true };
+}
+
+/**
+ * R-190 (Arche K-05): the project's client is external or a group subsidiary (internal client, with its subsidiary code) — the
+ * Contract screen's "Client" card. The portfolio director only (`canSetInternalClient`), on a project whose Contract they may
+ * edit; the flag is on the client (every project of that client), published at the end of pub_projets.
+ */
+export async function setInternalClientAction(code: string, isInternal: boolean, subsidiaryCode: string): Promise<ContractEditResult> {
+  if (typeof code !== 'string' || !code || typeof isInternal !== 'boolean' || typeof subsidiaryCode !== 'string') return { error: await tr('Invalid request') };
+  const project = await getProject(code);
+  if (!project) return { error: await tr('Unknown project') };
+  const ctx = await getProjectContext(project.code, 'contract');
+  if (!canSetInternalClient(ctx.viewer.role) || !ctx.canEdit('contract')) return { error: await tr('Only the director sets whether the client is a group subsidiary') };
+  const parsed = parseInternalClient({ isInternal, subsidiaryCode });
+  if (!parsed.ok) return { error: await tr(parsed.error) };
+  try {
+    await setProjectClientInternal(project.code, parsed.value, { name: ctx.viewer.name, role: ctx.viewer.role });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : '';
+    if (message === 'This project has no registered client') return { error: await tr(message) };
+    if (message.startsWith('Subsidiary ')) return { error: await tr('This subsidiary is already another client') };
     return { error: await tr('The change could not be saved') };
   }
   refresh();

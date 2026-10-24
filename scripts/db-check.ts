@@ -313,6 +313,21 @@ async function main() {
     firmChecked = true;
   }
   check('need_answers: a firm offer is E10 (database check, K-03)', firmChecked, firmChecked);
+  // R-190 (0051_internal_clients, 0052_internal_client_share): the internal client at the end of pub_projets, never null; the demo's
+  // subsidiary Sahel Agro Industries (SAI) registered as an internal client, no demo project with it yet.
+  const internal = (await db.execute(sql`select (select count(*)::int from pub_projets where client_interne is null) as nulls,
+      (select count(*)::int from pub_projets where client_interne) as internal_projects,
+      (select string_agg(name || ':' || coalesce(subsidiary_code, '-'), ',' order by name) from clients where is_internal) as internal_clients`)).rows[0] as
+    { nulls: number; internal_projects: number; internal_clients: string | null };
+  check('pub_projets: client_interne never null; demo internal client Sahel Agro Industries (SAI), no project yet (R-190)',
+    internal.nulls === 0 && internal.internal_projects === 0 && internal.internal_clients === 'Sahel Agro Industries:SAI', internal);
+  let subsidiaryChecked = false;
+  try {
+    await db.execute(sql`update clients set subsidiary_code = 'ZZZ' where not is_internal`);
+  } catch {
+    subsidiaryChecked = true;
+  }
+  check('clients: a subsidiary code only on an internal client (database check, R-190)', subsidiaryChecked, subsidiaryChecked);
   const idx = (await db.execute(sql`select indexname as i from pg_indexes where schemaname = current_schema() and indexname in
       (${sql.join(Object.values(SHARE_MAJ_LE_INDEXES).map((x) => sql`${x.index}`), sql`, `)})`)).rows as { i: string }[];
   check(`maj_le indexes (K-11): ${Object.values(SHARE_MAJ_LE_INDEXES).map((x) => x.index).join(', ')}`, idx.length === Object.keys(SHARE_MAJ_LE_INDEXES).length, idx.map((r) => r.i));

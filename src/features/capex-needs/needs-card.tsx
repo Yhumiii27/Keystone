@@ -24,6 +24,7 @@ import { getDb } from '@/server/db/client';
 import { machineType } from '@/server/db/codes';
 import { countries, machineTypes } from '@/server/db/schema';
 import { getNeedsInbox, listOpenProjects, type InboxNeed, type NeedAnswerRow } from '@/server/dal/capex-needs';
+import { subsidiaryClientNames } from '@/server/dal/internal-client';
 import { getNewProjectSetup } from '@/server/dal/projects-register';
 import { archeUrl } from '@/server/integrations/capex/config';
 import { ARCHE_LINK_ATTRS, archeCapexUrl, archeNeedsUrl } from '@/server/integrations/capex/links';
@@ -85,13 +86,15 @@ export async function NeedsCard() {
 
   // Director only: the wizard's data, the projects a line may go to, the machine types of a free need, the countries by ISO code.
   const db = director ? await getDb() : null;
-  const [setup, openProjects, types, countryRows] = director && db
+  // R-190: the client registered for a subsidiary (internal client) is the one the wizard starts from.
+  const [setup, openProjects, types, countryRows, subsidiaryClients] = director && db
     ? await Promise.all([
       getNewProjectSetup({ name: viewer.name, role: viewer.role }), listOpenProjects(),
       db.select({ code: machineTypes.code, label: machineTypes.label }).from(machineTypes).where(eq(machineTypes.active, true)).orderBy(machineTypes.sortOrder),
       db.select({ name: countries.name, iso2: countries.iso2 }).from(countries).where(isNotNull(countries.iso2)),
+      subsidiaryClientNames(db),
     ])
-    : [null, [], [], []];
+    : [null, [], [], [], {} as Record<string, string>];
   const typeLabel = (code: string, label: string | null) => label ?? (machineType.isCode(code) ? machineType.label(code) : code);
 
   const toAnswer = inbox.needs.filter((n) => n.status === 'submitted' && !n.latest).length;
@@ -233,7 +236,8 @@ export async function NeedsCard() {
                               needRef={n.needRef} setup={setup} label={t('Create the project')}
                               seed={{
                                 name: needProjectName(capexTitle, n.catalogue ? dataText(n.catalogue.label, lang) : (n.freeLabel ? dataText(n.freeLabel, lang) : n.needRef)),
-                                client: n.capex?.subsidiaryName ?? n.capex?.subsidiaryCode ?? '', mt: seedType, qty: n.quantity,
+                                client: (n.capex?.subsidiaryCode ? subsidiaryClients[n.capex.subsidiaryCode] : undefined) ?? n.capex?.subsidiaryName ?? n.capex?.subsidiaryCode ?? '',
+                                mt: seedType, qty: n.quantity,
                                 city: '', country: countryRows.find((c) => c.iso2 === n.capex?.countryIso2)?.name ?? '',
                               }}
                             />

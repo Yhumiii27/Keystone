@@ -28,12 +28,12 @@ export function refuseClient(): never {
 }
 
 /** The viewer's rights on a project, given every project's team (`listProjectTeams`). */
-export function accessOf(viewer: Viewer, p: Pick<ProjectRow, 'code' | 'pm' | 'client' | 'pmPersonId'>, teams: Map<string, TeamMember[]>): ProjectAccess {
-  return projectAccess(viewer, { client: p.client, pm: p.pm, pmPersonId: p.pmPersonId, team: teams.get(p.code) ?? [] });
+export function accessOf(viewer: Viewer, p: Pick<ProjectRow, 'code' | 'pm' | 'client' | 'clientInternal' | 'pmPersonId'>, teams: Map<string, TeamMember[]>): ProjectAccess {
+  return projectAccess(viewer, { client: p.client, clientInternal: p.clientInternal, pm: p.pm, pmPersonId: p.pmPersonId, team: teams.get(p.code) ?? [] });
 }
 
 /** Rights resolver for an explicit viewer (exports, imports, tests): one read of the teams, then a pure function per project. */
-export async function projectAccessResolver(viewer: Viewer): Promise<(p: Pick<ProjectRow, 'code' | 'pm' | 'client' | 'pmPersonId'>) => ProjectAccess> {
+export async function projectAccessResolver(viewer: Viewer): Promise<(p: Pick<ProjectRow, 'code' | 'pm' | 'client' | 'clientInternal' | 'pmPersonId'>) => ProjectAccess> {
   const teams = await listProjectTeams();
   return (p) => accessOf(viewer, p, teams);
 }
@@ -42,7 +42,7 @@ export async function projectAccessResolver(viewer: Viewer): Promise<(p: Pick<Pr
  * The project is "mine" (`isMineP`, R-041): the director → all; a client → the projects of their organisation; anybody else →
  * they are on its named team. `teams` = `listProjectTeams()`.
  */
-export function isMineProject(viewer: Viewer, p: Pick<ProjectRow, 'code' | 'pm' | 'client' | 'pmPersonId'>, teams: Map<string, TeamMember[]>): boolean {
+export function isMineProject(viewer: Viewer, p: Pick<ProjectRow, 'code' | 'pm' | 'client' | 'clientInternal' | 'pmPersonId'>, teams: Map<string, TeamMember[]>): boolean {
   return accessOf(viewer, p, teams).member;
 }
 

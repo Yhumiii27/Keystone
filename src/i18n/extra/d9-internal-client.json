@@ -1,0 +1,16 @@
+{
+  "Internal client (group subsidiary)": "Client interne (filiale du groupe)",
+  "A group subsidiary follows its projects in the CAPEX application, not in the client portal": "Une filiale du groupe suit ses projets dans l’application CAPEX, pas dans le portail client",
+  "Group subsidiary": "Filiale du groupe",
+  "External client": "Client externe",
+  "Client type": "Type de client",
+  "Subsidiary": "Filiale",
+  "Not known yet": "Pas encore connue",
+  "Save client type": "Enregistrer le type de client",
+  "Client type saved": "Type de client enregistré",
+  "Only the director sets whether the client is a group subsidiary": "Seul le directeur indique si le client est une filiale du groupe",
+  "This project has no registered client": "Ce projet n’a pas de client enregistré",
+  "This subsidiary is already another client": "Cette filiale est déjà un autre client",
+  "Only an internal client has a subsidiary code": "Seul un client interne porte un code de filiale",
+  "Choose a subsidiary code of three capital letters": "Choisissez un code de filiale de trois majuscules"
+}

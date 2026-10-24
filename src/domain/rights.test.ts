@@ -72,6 +72,14 @@ describe('R-042 / R-043 · the client (P-1, P-10a, P-10b)', () => {
     expect(clientRefusedProject({ role: 'pm', organisation: null }, HARBOR)).toBe(false);
   });
 
+  it('R-190 (R-179, I-2b): a project whose client is a group subsidiary is refused to every client, internal roles keep it', () => {
+    const internal = { ...HARBOR, clientInternal: true };
+    expect(clientRefusedProject({ role: 'client', organisation: 'Port authority' }, internal)).toBe(true);
+    expect(projectAccess(viewer('client', 'Client', { organisation: 'Port authority' }), internal)).toMatchObject({ member: false, client: false, refused: true, readOnly: true });
+    expect(projectAccess(viewer('director', 'M. Lefebvre'), internal)).toMatchObject({ member: true, refused: false });
+    expect(clientRefusedProject({ role: 'pm', organisation: null }, internal)).toBe(false);
+  });
+
   it('meetings, notifications and search targets', () => {
     expect([clientSeesMeeting('external'), clientSeesMeeting('internal'), clientSeesMeeting('weekly')]).toEqual([true, false, false]);
     expect(clientSeesTarget('client', { tab: 'progress' }, true)).toBe(true);

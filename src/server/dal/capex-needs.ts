@@ -20,6 +20,7 @@ import { capexMirror, capexNeeds, machineCatalogueEntries, machineTypes, needAns
 import type { DB, Tx } from '@/server/db/types';
 import { archeSource, type ArcheSource } from '@/server/integrations/capex/config';
 import { lastCapexRuns } from '@/server/integrations/capex/mirror';
+import { markNeedSubsidiaryClient } from './internal-client';
 import { addProjectEquipment } from './project-equipment';
 import { createWizardProject, type CreatedProject, type WizardCreateInput } from './projects-register';
 import type { Actor } from './ops-common';
@@ -311,7 +312,8 @@ export type NeedProjectInput = Omit<WizardCreateInput, 'equipments' | 'capexLink
 /**
  * K-10, (a): creates the EPC2i project from an ordered need with the wizard's creation path (`createWizardProject`): EQ-01 = the
  * need's equipment line (type from its catalogue version, quantity, options, capacity, besoin_ref, catalogue code and version),
- * the project's CAPEX link set, and — in the same transaction — the need's answers pointing at the project. Never automatic.
+ * the project's CAPEX link set, and — in the same transaction — the need's answers pointing at the project and (R-190) its client
+ * flagged as the subsidiary when it is that subsidiary. Never automatic.
  */
 export async function createProjectFromNeed(needRef: string, input: NeedProjectInput, actor: Actor): Promise<CreatedProject> {
   requireDirector(actor);
@@ -340,6 +342,8 @@ export async function createProjectFromNeed(needRef: string, input: NeedProjectI
       await writeAudit(tx, { ...created.who, objectRef: `${created.code} · ${needRef}`, message, area: 'Projects', entityType: 'project', entityId: created.projectId, projectId: created.projectId,
         after: { capexCode: need.capexCode, besoinRef: needRef } });
       await recordActivity(tx, { ...created.who, message, kind: 'change', projectId: created.projectId });
+      // R-190: the subsidiary is the project's internal client (when the client is that subsidiary).
+      await markNeedSubsidiaryClient(tx, created.projectId, need.capexCode, created.who);
     },
   });
 }

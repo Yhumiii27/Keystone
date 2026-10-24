@@ -10,12 +10,15 @@ import { Stack } from '@/components/app/SectionCard';
 import type { FormDef } from '@/components/app/form-def';
 import { ButtonLink } from '@/components/ds/Button';
 import { Card, CardTitle } from '@/components/ds/Card';
+import { Tag } from '@/components/ds/Tag';
 import { cx } from '@/components/ds/cx';
 import { Table, Th } from '@/components/ds/Table';
 import { documentsHref } from '@/features/docs/links';
-import type { T } from '@/i18n/translate';
+import { dataText } from '@/i18n/data-text';
+import type { Lang, T } from '@/i18n/translate';
 import { BudgetRateForm } from './budget-rate-form';
 import { CapexLinkForm } from './capex-link-form';
+import { InternalClientForm } from './internal-client-form';
 import { FormButton } from './form-button';
 import type { ContractView, CurrencyView } from './model';
 import { EditMilestoneButton, ReleaseBondButton, RemoveMilestoneButton, SendAmendmentButton, SignAmendmentButton } from './row-actions';
@@ -98,6 +101,58 @@ export function CapexLinkCard({ link, code, canEdit, t }: { link: { capexCode: s
           capexCode={link.capexCode ?? ''}
           needRef={link.needRef ?? ''}
           labels={{ capex: t('CAPEX code'), need: t('Machine need'), save: t('Save CAPEX link'), saved: t('CAPEX link saved') }}
+        />
+      )}
+    </Card>
+  );
+}
+
+/** "Internal" badge of a client that is a group subsidiary (R-190): register rows and the Contract screen's "Client" card. */
+export function InternalClientTag({ t }: { t: T }) {
+  return (
+    <Tag tone="outline" size="xs" title={t('Internal client (group subsidiary)')}>
+      {t('Internal')}
+    </Tag>
+  );
+}
+
+/**
+ * "Client" card (R-190, Arche K-05): the project's registered client, external or a group subsidiary (internal client — it follows
+ * the project in the CAPEX application, never in the client portal), published in pub_projets; the editor for the director.
+ */
+export function ProjectClientCard({ client, code, canEdit, subsidiaries, t, lang }: {
+  client: { name: string; isInternal: boolean; subsidiaryCode: string | null } | null; code: string; canEdit: boolean;
+  subsidiaries: { code: string; name: string }[]; t: T; lang: Lang;
+}) {
+  if (!client) return null;
+  const options = subsidiaries.map((x) => ({ value: x.code, label: `${x.code} · ${dataText(x.name, lang)}` }));
+  if (client.subsidiaryCode && !subsidiaries.some((x) => x.code === client.subsidiaryCode)) options.unshift({ value: client.subsidiaryCode, label: client.subsidiaryCode });
+  return (
+    <Card className={s.listCard}>
+      <div className={s.headTop}>
+        <div className={s.titleCol}>
+          <CardTitle>{t('Client')}</CardTitle>
+          <span className={s.subtitle}>{t('A group subsidiary follows its projects in the CAPEX application, not in the client portal')}</span>
+        </div>
+      </div>
+      <div className={s.rateLine}>
+        <span className={s.clientName}>
+          {dataText(client.name, lang)}
+          {client.isInternal && <InternalClientTag t={t} />}
+        </span>
+        <span className={s.num}>{client.isInternal ? (client.subsidiaryCode ?? '—') : ''}</span>
+        <span className={s.meta}>{client.isInternal ? t('Group subsidiary') : t('External client')}</span>
+      </div>
+      {canEdit && (
+        <InternalClientForm
+          code={code}
+          isInternal={client.isInternal}
+          subsidiaryCode={client.subsidiaryCode ?? ''}
+          subsidiaries={options}
+          labels={{
+            kind: t('Client type'), external: t('External client'), internal: t('Internal client (group subsidiary)'), subsidiary: t('Subsidiary'),
+            unknown: t('Not known yet'), save: t('Save client type'), saved: t('Client type saved'),
+          }}
         />
       )}
     </Card>

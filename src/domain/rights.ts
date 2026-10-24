@@ -52,6 +52,8 @@ export interface RightsViewer {
 export interface ProjectFacts {
   /** Client organisation name ("Port authority"). */
   client: string;
+  /** R-190: the client is a group subsidiary (internal client) — no client-portal access (R-179, I-2b). Absent = external. */
+  clientInternal?: boolean;
   /** Short name of the PM of record ("R. Aubert", '—' when none). */
   pm: string;
   pmPersonId: string | null;
@@ -83,7 +85,7 @@ export const isViewerMember = (v: Pick<RightsViewer, 'personId' | 'short'>, m: P
 /** The viewer's rights on a project (R-041). */
 export function projectAccess(v: RightsViewer, p: ProjectFacts): ProjectAccess {
   if (v.role === 'client') {
-    const own = !!v.organisation && p.client === v.organisation;
+    const own = !clientRefusedProject(v, p);
     return { member: own, lead: false, pm: false, client: own, readOnly: !own, refused: !own, teamRole: null };
   }
   const isPmOfRecord = v.personId ? !!p.pmPersonId && p.pmPersonId === v.personId : p.pm === v.short;
@@ -148,9 +150,13 @@ export const canPreviewClientView = (role: RoleKey, a: Pick<ProjectAccess, 'lead
 /** P-1: a client is refused (sent to their home) on any screen outside their workspace; internal roles read it. */
 export const clientRefusedScreen = (role: RoleKey, screen: ScreenId) => role === 'client' && !canSee(role, screen);
 
-/** P-10a: a client is refused every project of another organisation (and every project when they have no organisation). */
-export const clientRefusedProject = (v: Pick<RightsViewer, 'role' | 'organisation'>, p: { client: string }) =>
-  v.role === 'client' && !(!!v.organisation && p.client === v.organisation);
+/**
+ * P-10a: a client is refused every project of another organisation (and every project when they have no organisation).
+ * R-190 (R-179, I-2b): and every project whose client is a group subsidiary — an internal client follows its projects in the
+ * CAPEX application, the client portal is for external clients only.
+ */
+export const clientRefusedProject = (v: Pick<RightsViewer, 'role' | 'organisation'>, p: { client: string; clientInternal?: boolean }) =>
+  v.role === 'client' && !(!!v.organisation && p.client === v.organisation && !p.clientInternal);
 
 // ── R-043 · What the client does not see of their own project (P-10b) ──────────────────────────────────────────────
 
