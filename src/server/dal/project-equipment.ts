@@ -13,6 +13,7 @@ import { equipmentRemovalBlocker } from '@/domain/equipment-scope';
 import {
   MAX_EQUIPMENT_LINES, equipmentSummary, mainTypeOf, nextEquipmentRef, parseEquipmentLine, type EquipmentLineInput,
 } from '@/domain/project-equipment';
+import { catalogueChoiceBlocker, catalogueRef } from '@/domain/machine-catalogue';
 import { systemMessage } from '@/domain/system-messages';
 import { getDb } from '@/server/db/client';
 import { machineType, type MachineTypeCode } from '@/server/db/codes';
@@ -20,6 +21,7 @@ import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '
 import { activities, commissioningSystems, machineTypes, machines, projectBomLines, projectEquipments, projects, punchItems, wbsNodes } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
 import { ensureEquipmentPlan, equipmentPlanInspections, rebuildEquipmentPlan } from './itp';
+import { findCatalogueVersion } from './machine-catalogue';
 import type { Actor } from './ops-common';
 
 type Q = DB | Tx;
@@ -40,6 +42,8 @@ export interface EquipmentLine {
   options: string[];
   besoinRef: string | null;
   catalogueVersion: number | null;
+  /** R-186: the catalogue code chosen ("EMP-40T"), with catalogueVersion; null = none. */
+  catalogueCode: string | null;
 }
 
 const typeLabelOf = (code: string, label: string | null) => label ?? (machineType.isCode(code) ? machineType.label(code) : code);
@@ -52,7 +56,7 @@ const lineSelect = {
 const toLine = (r: { e: typeof projectEquipments.$inferSelect; typeLabel: string | null }): EquipmentLine => ({
   id: r.e.id, ref: r.e.ref, machineTypeCode: r.e.machineTypeCode, typeLabel: typeLabelOf(r.e.machineTypeCode, r.typeLabel), quantity: r.e.quantity,
   label: r.e.label, position: r.e.position, capacityValue: r.e.capacityValue, capacityUnit: r.e.capacityUnit, options: r.e.options ?? [],
-  besoinRef: r.e.besoinRef, catalogueVersion: r.e.catalogueVersion,
+  besoinRef: r.e.besoinRef, catalogueVersion: r.e.catalogueVersion, catalogueCode: r.e.catalogueCode,
 });
 
 /** The lines of a project id, in order (the main line first). */
@@ -113,6 +117,7 @@ export async function insertEquipmentLines(
     return {
       projectId, ref, machineTypeCode: l.machineTypeCode as MachineTypeCode, quantity: l.quantity, position, label: l.label ?? null,
       capacityValue: l.capacityValue ?? null, capacityUnit: l.capacityUnit ?? null, options: l.options ?? [], besoinRef: l.besoinRef ?? null,
+      catalogueCode: l.catalogueCode ?? null, catalogueVersion: l.catalogueVersion ?? null,
     };
   });
   return tx.insert(projectEquipments).values(values).returning({
@@ -137,7 +142,22 @@ async function actorOf(tx: Tx, actor: Actor) {
 const plain = (l: Partial<EquipmentLineInput> & { ref?: string }) => ({
   ref: l.ref, machineTypeCode: l.machineTypeCode, quantity: l.quantity, label: l.label ?? null, capacityValue: l.capacityValue ?? null,
   capacityUnit: l.capacityUnit ?? null, options: l.options ?? [], besoinRef: l.besoinRef ?? null,
+  catalogue: l.catalogueCode && l.catalogueVersion ? catalogueRef(l.catalogueCode, l.catalogueVersion) : null,
 });
+
+/**
+ * R-186: the catalogue version chosen for a line must be published (or the line's current one, even retired since) and of the
+ * line's machine type.
+ */
+export async function checkCatalogueChoice(
+  q: Q, v: Pick<EquipmentLineInput, 'machineTypeCode' | 'catalogueCode' | 'catalogueVersion'>, current?: { code: string | null; version: number | null },
+): Promise<void> {
+  if (!v.catalogueCode || !v.catalogueVersion) return;
+  const choice = { code: v.catalogueCode, version: v.catalogueVersion };
+  const entry = await findCatalogueVersion(q, choice.code, choice.version);
+  const blocker = catalogueChoiceBlocker(choice, entry, v.machineTypeCode, current);
+  if (blocker) throw new Error(blocker);
+}
 
 /** Adds a line at the end of the project's list (the next reference). Returns its reference. */
 export async function addProjectEquipment(projectCode: string, input: Record<string, unknown>, actor: Actor): Promise<string> {
@@ -151,6 +171,7 @@ export async function addProjectEquipment(projectCode: string, input: Record<str
     const lines = await equipmentLinesOf(tx, p.id);
     if (lines.length >= MAX_EQUIPMENT_LINES) throw new Error(`A project has at most ${MAX_EQUIPMENT_LINES} equipment lines`);
     const v = parsed.value;
+    await checkCatalogueChoice(tx, v);
     const ref = nextEquipmentRef(lines.map((l) => l.ref));
     const position = lines.length ? Math.max(...lines.map((l) => l.position)) + 1 : 0;
     const [row] = await tx
@@ -179,6 +200,7 @@ export async function updateProjectEquipment(projectCode: string, ref: string, i
     const parsed = parseEquipmentLine(input, types.codes);
     if (!parsed.ok) throw new Error(parsed.error);
     const v = parsed.value;
+    await checkCatalogueChoice(tx, v, { code: cur.catalogueCode, version: cur.catalogueVersion });
     const before = plain(cur);
     const after = plain({ ref, ...v });
     if (JSON.stringify(before) === JSON.stringify(after)) return;

@@ -17,10 +17,11 @@ import { isLongLead, workPackageBar, workPackageTotals, type OfferQuote } from '
 import type { Lang, T } from '@/i18n/translate';
 import { money, pct } from '@/lib/format';
 import type { CostControl } from '@/server/dal/cost';
-import type { RexPattern } from '@/server/dal/budget';
+import type { EquipmentCosts, RexPattern } from '@/server/dal/budget';
 import type { ListOption } from '@/domain/settings-rules';
 import { AddCategoryButton, EditCategoryButton } from './category-buttons';
 import { addCategoryFormDef, editCategoryFormDef, editCategoryValues } from './category-forms';
+import { EquipmentCostsCard } from './equipment-costs-card';
 import { costTypeLabel } from './i18n';
 import { NewChangeRequestLink } from './change-request-link';
 import s from './budget.module.css';
@@ -47,6 +48,8 @@ export interface SetupTabProps {
    * points to Change control: the amount changes only through an approved change request.
    */
   amountsFrozen?: boolean;
+  /** R-185: the costs by equipment line — only for a project with more than one line (absent: the screen as before). */
+  equipment?: EquipmentCosts | null;
   lang: Lang;
   t: T;
 }
@@ -67,7 +70,7 @@ function CardHead({ title, subtitle, actions }: { title: string; subtitle: strin
   );
 }
 
-export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, code, context, categoryOptions = [], amountsFrozen = false, lang, t }: SetupTabProps) {
+export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, code, context, categoryOptions = [], amountsFrozen = false, equipment, lang, t }: SetupTabProps) {
   const f = (k: number, signed?: boolean) => money(k, lang, { signed });
   const m = (i: number | null) => (i == null ? '' : (cost.chartMonths[i] ?? ''));
   const rc = cost.recon;
@@ -340,6 +343,9 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
           </tbody>
         </Table>
       </SectionCard>
+
+      {/* R-185: Budget by equipment (projects with more than one equipment line). */}
+      {equipment && <EquipmentCostsCard equipment={equipment} lang={lang} t={t} />}
     </div>
   );
 }

@@ -74,6 +74,7 @@ export default async function BudgetPage({
         context={projectLabelText(ctx.project, lang)}
         categoryOptions={options}
         amountsFrozen={categoryAmountFrozen(bls.map((b) => b.code))}
+        equipment={data.equipment}
         lang={lang}
         t={t}
       />

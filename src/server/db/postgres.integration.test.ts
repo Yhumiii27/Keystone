@@ -33,7 +33,7 @@ import { pendingMigrations } from './migrations';
 import { openDatabase } from './open';
 import { SeedChoiceRequiredError, migrateAndSeedPostgres, openPostgres, type PostgresHandle } from './postgres';
 import { readSeedRecord } from './seed/mode';
-import { SHARE_MAJ_LE_INDEXES } from './share-contracts';
+import { SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COUNT } from './share-contracts';
 import type { DB } from './types';
 
 const ADMIN_URL = process.env.KEYSTONE_TEST_DATABASE_URL?.trim();
@@ -94,7 +94,7 @@ describe.skipIf(!ADMIN_URL)('PostgreSQL server (KEYSTONE_TEST_DATABASE_URL)', ()
     expect(rows.filter((r) => r.schema !== 'keystone')).toEqual([]);
     const tables = rows.find((r) => r.kind === 'r')?.n ?? 0;
     expect(tables).toBeGreaterThan(200);
-    expect(rows.find((r) => r.kind === 'v')?.n).toBe(17);
+    expect(rows.find((r) => r.kind === 'v')?.n).toBe(SHARE_VIEW_COUNT);
     const journal = await pg.pool.query<{ n: number }>('select count(*)::int as n from keystone.__drizzle_migrations');
     expect(journal.rows[0].n).toBeGreaterThan(30);
     const counts = await pg.pool.query<{ v: number; t: number }>('select (select count(*)::int from pub_projets) as v, (select count(*)::int from projects) as t');

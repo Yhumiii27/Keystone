@@ -1,7 +1,7 @@
 // Portfolio and projects (docs/spec/11 §3.2): projects, sites, members, lifecycle reference (stages, gates,
 // transitions, stage deliverables), deliverable checks, stage history, machine types and project templates.
 import { sql } from 'drizzle-orm';
-import { boolean, check, date, doublePrecision, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { boolean, check, date, doublePrecision, foreignKey, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { CalendarCode, CostType, MachineTypeCode, StageCode, StageGroup, TransitionMode, ValidationStatus, ZoneCode } from '../codes';
 import { id, keur, months, num, timestamps } from './_common';
 import { clients, countries, persons, zones } from './organisation';
@@ -122,6 +122,47 @@ export const rexReferences = pgTable('rex_references', {
   year: text('year').notNull(),
   pattern: text('pattern').notNull(),
 });
+
+/**
+ * R-186 (AC-4, K-01): the machine catalogue published to the subsidiaries — one row per catalogue code and version
+ * ("EMP-40T" v1, v2…), each built on a machine type (its reference budget and ITP template stay on the type). Rules:
+ * src/domain/machine-catalogue.ts. A published or retired version is frozen (trigger `machine_catalogue_entries_frozen`,
+ * migration 0046): only published → retired, `retired_at` and `updated_at` may change, and it is never deleted. Published to
+ * the CAPEX application by the view pub_catalogue_machines (0046; drafts never), `maj_le` = `updated_at` (indexed, K-11).
+ */
+export const machineCatalogueEntries = pgTable('machine_catalogue_entries', {
+  id: id(),
+  /** "EMP-40T" — the same machine type for every version of a code. */
+  code: text('code').notNull(),
+  version: integer('version').notNull(),
+  machineTypeCode: text('machine_type_code').$type<MachineTypeCode>().notNull().references(() => machineTypes.code),
+  /** Typed text (dataText): variant, label, description. */
+  variant: text('variant'),
+  label: text('label').notNull(),
+  description: text('description'),
+  /** K-01 shape, published as is: `[{ code, libelle, prix_indicatif_keur }]`. */
+  options: jsonb('options').$type<{ code: string; libelle: string; prix_indicatif_keur: number | null }[]>().notNull().default(sql`'[]'::jsonb`),
+  nominalCapacity: num('nominal_capacity'),
+  capacityUnit: text('capacity_unit'),
+  /** Indicative price, estimate class E50, k€. */
+  indicativePriceKeur: keur('indicative_price_keur'),
+  leadTimeWeeks: integer('lead_time_weeks'),
+  /** 'draft' | 'published' | 'retired'. */
+  status: text('status').$type<'draft' | 'published' | 'retired'>().notNull().default('draft'),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
+  retiredAt: timestamp('retired_at', { withTimezone: true }),
+  ...timestamps,
+}, (t) => [
+  unique('machine_catalogue_entries_code_version_unique').on(t.code, t.version),
+  uniqueIndex('machine_catalogue_entries_one_draft_idx').on(t.code).where(sql`${t.status} = 'draft'`),
+  uniqueIndex('machine_catalogue_entries_one_published_idx').on(t.code).where(sql`${t.status} = 'published'`),
+  index('machine_catalogue_entries_updated_at_idx').on(t.updatedAt),
+  check('machine_catalogue_entries_code_check', sql`${t.code} ~ '^[A-Z0-9][A-Z0-9-]{1,29}$'`),
+  check('machine_catalogue_entries_version_check', sql`${t.version} >= 1`),
+  check('machine_catalogue_entries_status_check', sql`${t.status} in ('draft', 'published', 'retired')`),
+  check('machine_catalogue_entries_options_check', sql`jsonb_typeof(${t.options}) = 'array'`),
+  check('machine_catalogue_entries_published_check', sql`${t.status} = 'draft' or (${t.publishedAt} is not null and ${t.indicativePriceKeur} is not null and ${t.leadTimeWeeks} is not null)`),
+]);
 
 /** New-project templates (NP_TEMPLATES 3179, incl. 'blank'; NP_TEMPLATES_OLD is ignored). French data. */
 export const projectTemplates = pgTable('project_templates', {
@@ -259,10 +300,16 @@ export const projectEquipments = pgTable('project_equipments', {
   options: jsonb('options').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
   /** Arche machine need at the origin of the line ("CPX-SAI-2026-01/B01"); a cross-schema reference: text, no foreign key. */
   besoinRef: text('besoin_ref'),
-  /** Catalogue version of the machine type chosen (R-186); null until the catalogue is versioned. */
+  /**
+   * R-186: the catalogue entry chosen for the line — code ("EMP-40T") and version, both or neither (a published version of the
+   * line's machine type when chosen; a retired one stays on the lines that chose it).
+   */
   catalogueVersion: integer('catalogue_version'),
+  catalogueCode: text('catalogue_code'),
   ...timestamps,
 }, (t) => [
+  foreignKey({ name: 'project_equipments_catalogue_fk', columns: [t.catalogueCode, t.catalogueVersion], foreignColumns: [machineCatalogueEntries.code, machineCatalogueEntries.version] }),
+  check('project_equipments_catalogue_check', sql`(${t.catalogueCode} is null) = (${t.catalogueVersion} is null)`),
   unique('project_equipments_project_ref_unique').on(t.projectId, t.ref),
   check('project_equipments_ref_check', sql`${t.ref} ~ '^EQ-[0-9]{2,}$'`),
   check('project_equipments_quantity_check', sql`${t.quantity} >= 1`),

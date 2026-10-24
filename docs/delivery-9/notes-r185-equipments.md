@@ -262,3 +262,72 @@ proposer si Arche en a besoin.
   nom) avec la ligne sur `sat_plans` le jour venu.
 - `pub_reserves.equipement_ref` si Arche le demande (§ 2.6).
 - Catalogue (R-186), Arche (R-187), retrait de `projects.machine_type_code` des écrans : inchangé (§ 7 de la partie 1).
+
+
+---
+
+# Ventilation des coûts par équipement (R-185, choix 3)
+
+Statut : construit sur la branche `r185-costs` le 24 oct. 2026. Choix 3 validé : le suivi des coûts reste au niveau du projet, avec
+une **ventilation par équipement là où les lots du planning la donnent** ; aucune catégorie de coûts par équipement. Lecture seule,
+sans migration ni changement de schéma.
+
+## Où
+
+| Élément | Où |
+|---|---|
+| Règle pure | `src/domain/equipment-costs.ts` (`equipmentCostBreakdown`, `wbsEquipmentOf`), tests `equipment-costs.test.ts` |
+| DAL | `getEquipmentCosts` (`src/server/dal/budget.ts`), lu par `getBudgetData` → `BudgetData.equipment` |
+| Écran | Budget › Structure & modifications, carte « Budget par équipement » sous « Budget par lot de travaux » (`src/features/budget/equipment-costs-card.tsx`) |
+| Traductions | `src/i18n/extra/d9-equipment.json` |
+| Tests d’intégration | `src/features/budget/equipment-costs.render.test.ts` |
+
+La carte n’apparaît que si le projet a **plus d’une ligne** (`showsEquipment`) : un projet à une ligne voit l’écran d’avant ; les
+valeurs dorées du Budget ne changent pas. Droits : ceux de l’écran Budget (`getProjectContext(code, 'budget')` : chef de projet,
+directeur, Finance… ; le client n’a pas l’écran Budget).
+
+## Règle d’attribution
+
+Chaque montant va à **une** ligne d’équipement ou à « Commun au projet » ; rien n’est réparti au prorata.
+
+- **Nœud WBS** : sa ligne (`wbs_nodes.equipment_id`), sinon celle de son ancêtre le plus proche ; aucune → commun.
+- **Activité** : sa ligne (`activities.equipment_id`), sinon celle de son nœud WBS.
+- **Budget actuel** (initial + modifications approuvées, colonne « Actuel » du tableau « Budget par lot de travaux ») : ligne du nœud du lot ; la
+  ligne « Provision pour aléas (non affectée) » est commune.
+- **Réel et EAC** d’un lot : ceux de chacune de ses activités vont à la ligne de l’activité ; le stock sorti dans Keystone (SC-5a,
+  R-098) à la ligne de l’activité à laquelle il a été sorti (sinon à celle du lot) ; le reste du lot (ses propres chiffres quand il n’a
+  pas d’activité, la provision consommée) à la ligne du lot.
+- **Valeur acquise** (seulement quand elle est calculée à partir des activités, R-073) : BAC × budget de l’activité × % d’avancement
+  / Σ budgets des activités — c’est exactement la valeur acquise du projet à sa date d’état, sommée par ligne.
+- **Commandes ouvertes** (engagé des commandes Keystone, R-073) : ligne de l’article dans la nomenclature du projet
+  (`project_bom_lines.equipment_id`), sinon ligne de l’activité pour laquelle la commande est passée
+  (`purchase_orders.needed_for_activity_id`), sinon commun ; au taux budgétaire du projet comme `getOpenCommitment`.
+- Une ligne retirée entre-temps compte comme commune.
+
+**Invariant** (testé) : la ligne Total égale les chiffres que l’écran montre déjà — Total du tableau « Budget par lot de travaux » (actuel = BAC,
+réel = AC, EAC), valeur acquise de la tuile Performance, commandes passées (`ordersPlaced`, arrondi à 0,1 k€).
+
+## Ce qui n’est pas ventilé, et pourquoi
+
+- **Catégories de coûts** (main-d’œuvre, matériaux, équipement, sous-traitance, frais, provision) : leurs réels et engagés viennent par
+  catégorie (pointages × taux, factures, Sage X3 — R-074), pas par activité ; les ventiler demanderait une clé de répartition
+  inventée. Une note le dit sous le tableau.
+- **Engagé hors commandes** (engagé saisi des catégories autres que la première catégorie matériaux) : même raison.
+- **PV, CPI, SPI, EAC « au CPI » par ligne** : la valeur planifiée vient de l’instantané de la référence (par activité, sans ligne) ;
+  ces indices restent au niveau du projet. L’EAC affiché par ligne est l’EAC ascendant des lots (comme le tableau « Budget par lot de travaux »).
+- **Valeur acquise d’un projet sans budget d’activités** (séries de la seed) : affichée « — » avec une note.
+- **Budget d’un lot dont les activités sont sur des lignes différentes** : le budget reste à la ligne du lot (pas de répartition par
+  budget d’activité) ; l’assistant génère des lots dont les activités ont la ligne de leur lot, ce cas ne vient que d’une saisie manuelle.
+- Pas d’export : l’export Budget (`src/server/export/providers/budget.ts`) est inchangé.
+
+## Démonstration et valeurs affichées
+
+- Harbor Line (HLT-026) : les lots **1.5 « Crane installation » → EQ-01** (portique EMP) et **1.6 « MEP systems » → EQ-02**
+  (3 modules MEMU) sont marqués (`DEMO_EQUIPMENT_LOTS`, `src/server/db/seed/cost.ts`) ; leurs activités héritent de la ligne. Aucun
+  montant, lot ni activité n’est ajouté : totaux du projet, EVM, valeurs dorées et constantes D7 inchangés.
+- Carte affichée (EN) : EQ-01 · EMP 685 k€ / réel 372 / EAC 690 / VA 186 / commandes 3,70 M€ (grue 250 t, PO-1052) ; EQ-02 · 3 × MEMU
+  780 / 296 / 830 / 182 / 246 k€ (PO-1063, PO-1071, PO-1078) ; Commun 3,33 M€ / 2,69 / 3,72 / 2,64 ; Total 4,80 M€ / 3,36 / 5,24 / 3,01
+  / 3,95 M€.
+- Seul changement affiché : la nouvelle carte sur HLT-026. Une base de démonstration déjà semée ne reçoit pas ces marques (seed
+  seulement) : la carte y montre tout en « Commun au projet ».
+- Le retrait d’une ligne détache ses lots (`set null`) : leurs coûts redeviennent communs (le nombre de lots détachés est déjà à l’audit).

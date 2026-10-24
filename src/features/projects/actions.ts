@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import {
   CATEGORY_TYPES, CONTINGENCIES, DAS_LIST, WIZARD_CURRENCIES, effectiveDateError, isTransitionAllowed, moveError,
 } from '@/domain/lifecycle';
+import { parseCatalogueChoice } from '@/domain/machine-catalogue';
 import { MAX_EQUIPMENT_LINES, MAX_EQUIPMENT_QUANTITY } from '@/domain/project-equipment';
 import { WIZARD_CALENDAR_OPTIONS, WIZARD_REQUIRED, wizardSiteError, wizardWindowError } from '@/domain/project-template';
 import { costType, machineType, stage as stageCodec, type MachineTypeCode, type StageCode } from '@/server/db/codes';
@@ -140,7 +141,7 @@ export interface NewProjectDraft {
   /**
    * R-185: the equipment lines (type label × quantity), the first one of `mt`; absent → one line of `mt`, quantity 1.
    */
-  lines?: { mt: string; qty: number }[];
+  lines?: { mt: string; qty: number; cat?: string }[];
   cur: string;
   /** 'blank' or the machine type label of the template. */
   template: string;
@@ -196,16 +197,19 @@ export async function createProjectAction(draft: NewProjectDraft): Promise<Creat
   const mtCode = codeOf(mt);
   // R-185: equipment lines — known active types, whole quantities, the first one of the main type.
   const rawLines: unknown = draft?.lines;
-  let equipments: { machineType: MachineTypeCode; quantity: number }[] | undefined;
+  let equipments: { machineType: MachineTypeCode; quantity: number; catalogueCode: string | null; catalogueVersion: number | null }[] | undefined;
   if (rawLines !== undefined && rawLines !== null) {
     if (!Array.isArray(rawLines) || !rawLines.length || rawLines.length > MAX_EQUIPMENT_LINES) return { ok: false, error: INVALID_SETUP };
     equipments = [];
-    for (const l of rawLines as { mt?: unknown; qty?: unknown }[]) {
+    for (const l of rawLines as { mt?: unknown; qty?: unknown; cat?: unknown }[]) {
       if (typeof l?.mt !== 'string' || !setup.machineTypes.includes(l.mt)) return { ok: false, error: 'Choose the machine type among the proposed types' };
       const qty = l.qty;
       if (typeof qty !== 'number' || !Number.isInteger(qty) || qty < 1 || qty > MAX_EQUIPMENT_QUANTITY)
         return { ok: false, error: `The quantity is a whole number from 1 to ${MAX_EQUIPMENT_QUANTITY}` };
-      equipments.push({ machineType: codeOf(l.mt), quantity: qty });
+      // R-186: an optional published catalogue version of the line's type ("EMP-40T@1").
+      const cat = parseCatalogueChoice(l.cat);
+      if (!cat.ok || (cat.value && !setup.catalogue.some((c) => c.value === l.cat && c.mt === l.mt))) return { ok: false, error: 'Unknown catalogue entry' };
+      equipments.push({ machineType: codeOf(l.mt), quantity: qty, catalogueCode: cat.value?.code ?? null, catalogueVersion: cat.value?.version ?? null });
     }
     if (equipments[0].machineType !== mtCode) return { ok: false, error: INVALID_SETUP };
   }

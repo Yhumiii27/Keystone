@@ -109,3 +109,17 @@ describe('wizard with several equipment lines (R-185)', () => {
     expect(draftPlanShape(setup, { ...d, lines: null })).toEqual({ packages: 6, activities: 6, links: 5 });
   });
 });
+
+describe('wizard lines referencing the machine catalogue (R-186)', () => {
+  it('offers the published versions with their type; a line takes one of its type, stored with its code and version', async () => {
+    const setup = await getNewProjectSetup({ name: 'Romain Aubert', role: 'pm' });
+    expect(setup.catalogue.map((c) => [c.value, c.mt])).toEqual([['EMP-40T@1', 'EMP'], ['MEMU-16@1', 'MEMU']]);
+    expect(await createProjectAction(draft({ lines: [{ mt: 'EMP', qty: 1, cat: 'MEMU-16@1' }] }))).toEqual({ ok: false, error: 'Unknown catalogue entry' });
+    // A draft version (EMP-40T v2) is not offered.
+    expect(await createProjectAction(draft({ lines: [{ mt: 'EMP', qty: 1, cat: 'EMP-40T@2' }] }))).toEqual({ ok: false, error: 'Unknown catalogue entry' });
+    const r = await createProjectAction(draft({ lines: [{ mt: 'EMP', qty: 1, cat: 'EMP-40T@1' }, { mt: 'MEMU', qty: 2, cat: '' }] }));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect((await listProjectEquipments(r.code)).map((l) => [l.ref, l.catalogueCode, l.catalogueVersion])).toEqual([['EQ-01', 'EMP-40T', 1], ['EQ-02', null, null]]);
+  });
+});

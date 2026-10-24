@@ -16,6 +16,7 @@ import {
 } from '@/features/contract/model';
 import { EquipmentCard } from '@/features/contract/equipment-card';
 import { canSetBudgetRate, canSetCapexLink, canSetProjectEquipment } from '@/domain/rights';
+import { listCatalogueChoices } from '@/server/dal/machine-catalogue';
 import { listMachineTypeOptions } from '@/server/dal/mtypes';
 import { listProjectEquipments } from '@/server/dal/project-equipment';
 import { getCapexLink } from '@/server/dal/capex-link';
@@ -29,8 +30,8 @@ export default async function ContractPage({ params }: { params: Promise<{ code:
   const { code } = await params;
   const ctx = await getProjectContext(code, 'contract');
   const projectCode = ctx.project.code;
-  const [{ t, lang }, contract, capexLink, equipment, types] = await Promise.all([
-    getI18n(), getContract(projectCode), getCapexLink(projectCode), listProjectEquipments(projectCode), listMachineTypeOptions(),
+  const [{ t, lang }, contract, capexLink, equipment, types, catalogue] = await Promise.all([
+    getI18n(), getContract(projectCode), getCapexLink(projectCode), listProjectEquipments(projectCode), listMachineTypeOptions(), listCatalogueChoices(),
   ]);
   // C-9: the portfolio director and Finance (R-044) set the project's currency and budget rate.
   const canSetRate = canSetBudgetRate(ctx.viewer.role) && ctx.canEdit('contract');
@@ -39,7 +40,7 @@ export default async function ContractPage({ params }: { params: Promise<{ code:
   // R-185: the project's equipment lines; the director and the project's leads edit them (also on a project without contract).
   const equipmentCard = (
     <EquipmentCard
-      lines={equipment} code={projectCode} canEdit={canSetProjectEquipment(ctx.viewer.role, ctx.access) && ctx.canEdit('contract')} types={types}
+      lines={equipment} code={projectCode} canEdit={canSetProjectEquipment(ctx.viewer.role, ctx.access) && ctx.canEdit('contract')} types={types} catalogue={catalogue}
       context={projectLabelText(ctx.project, lang)} t={t} lang={lang}
     />
   );

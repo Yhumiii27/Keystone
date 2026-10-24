@@ -2,10 +2,17 @@ import 'server-only';
 // Budget & cost screen data (docs/spec/04 §1): cost control (EVM series, offer, categories, work packages, budget
 // change lines, reconciliation — via cost.ts), the REX payment pattern of the project's machine type (Cost profile),
 // and the client contract that feeds Cash & recovery (§1.6).
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
+import { COMMITTED_PO_STATUSES } from '@/domain/cost-control';
+import { projectFxOf, toEur } from '@/domain/currency';
+import { equipmentCostBreakdown, type EquipmentCostBreakdown, type EquipmentCostRow } from '@/domain/equipment-costs';
+import { equipmentLotLabel } from '@/domain/project-equipment';
+import { showsEquipment } from '@/domain/equipment-scope';
 import type { PaymentMilestone } from '@/domain/evm';
 import { getDb } from '@/server/db/client';
-import { machineTypes, projects, rexReferences } from '@/server/db/schema';
+import {
+  activities, machineTypes, poLines, projectBomLines, projects, purchaseOrders, rexReferences, stockMovements, wbsNodes,
+} from '@/server/db/schema';
 import { getCashContract } from './contract';
 import { getCostControl, type CostControl } from './cost';
 import { getOpenCommitment } from './evm';
@@ -95,16 +102,93 @@ export async function getBudgetContract(code: string): Promise<BudgetContract | 
   return { ref: ct.reference, amount: ct.amount, terms: ct.terms, amendments: ct.amendments, milestones: ct.milestones, openCommit: await getOpenCommitment(code), year: ct.year };
 }
 
+/** R-185: a row of the Budget's "Budget by equipment" table. */
+export interface EquipmentCostLine extends EquipmentCostRow {
+  /** "EQ-02 · 3 × MEMU"; null for the "Common to the project" row. */
+  lotLabel: string | null;
+  /** The line's typed label (dataText), null when none. */
+  label: string | null;
+}
+
+/** R-185: the project's costs by equipment line (src/domain/equipment-costs.ts), read-only. */
+export interface EquipmentCosts extends EquipmentCostBreakdown {
+  rows: EquipmentCostLine[];
+}
+
+/**
+ * R-185 (owner's choice 3): the costs of a multi-equipment project broken down by equipment line where the planning lots give
+ * it (attribution rule: src/domain/equipment-costs.ts); null for a project with one line or none (the screen stays as it was).
+ * Reads the same facts as the Budget's work packages, EV and orders placed (src/server/dal/cost.ts, evm.ts, stock.ts), so the
+ * total row equals the figures the screen shows.
+ */
+export async function getEquipmentCosts(code: string, cost: CostControl): Promise<EquipmentCosts | null> {
+  const lines = await listProjectEquipments(code);
+  if (!showsEquipment(lines)) return null;
+  const db = await getDb();
+  const [p] = await db.select({ id: projects.id, currency: projects.currency, budgetRate: projects.budgetRate }).from(projects).where(eq(projects.code, code));
+  if (!p) return null;
+  const [nodes, acts, stock, orders] = await Promise.all([
+    db.select({ id: wbsNodes.id, code: wbsNodes.code, parentId: wbsNodes.parentId, equipmentId: wbsNodes.equipmentId }).from(wbsNodes).where(eq(wbsNodes.projectId, p.id)),
+    db
+      .select({
+        id: activities.id, wbsNodeId: activities.wbsNodeId, equipmentId: activities.equipmentId, budget: activities.budgetKeur, pct: activities.percentComplete,
+        actual: activities.actualKeur, eac: activities.eacKeur,
+      })
+      .from(activities)
+      .where(eq(activities.projectId, p.id)),
+    // The stock movements stockCostByWorkPackage charges to a work package (SC-5a, R-098), by activity.
+    db
+      .select({ wbs: stockMovements.wbsCode, activityId: stockMovements.activityId, type: stockMovements.type, value: sql<number>`sum(${stockMovements.valueEur})::float8` })
+      .from(stockMovements)
+      .where(and(eq(stockMovements.projectId, p.id), inArray(stockMovements.type, ['issue', 'return']), isNotNull(stockMovements.wbsCode), isNotNull(stockMovements.valueEur)))
+      .groupBy(stockMovements.wbsCode, stockMovements.activityId, stockMovements.type),
+    // The open purchase-order lines getOpenCommitment counts, with the article's BOM line and the order's activity.
+    db
+      .select({
+        orderedQty: poLines.orderedQty, receivedQty: poLines.receivedQty, unitPrice: poLines.unitPriceEur, currency: purchaseOrders.currency,
+        activityId: purchaseOrders.neededForActivityId, bomEquipmentId: projectBomLines.equipmentId,
+      })
+      .from(poLines)
+      .innerJoin(purchaseOrders, eq(purchaseOrders.id, poLines.poId))
+      .leftJoin(projectBomLines, and(eq(projectBomLines.projectId, purchaseOrders.projectId), eq(projectBomLines.partId, poLines.partId)))
+      .where(and(eq(purchaseOrders.projectId, p.id), inArray(purchaseOrders.status, [...COMMITTED_PO_STATUSES]))),
+  ]);
+  const fx = projectFxOf(p);
+  const breakdown = equipmentCostBreakdown({
+    lines,
+    wbs: nodes,
+    activities: acts,
+    workPackages: cost.workPackages,
+    stock: stock.filter((m) => m.wbs && m.value).map((m) => ({ wbs: m.wbs!, activityId: m.activityId, amount: ((m.type === 'return' ? -1 : 1) * m.value) / 1000 })),
+    openOrders: orders.map((o) => ({
+      amount: (Math.max(0, (o.orderedQty || 0) - (o.receivedQty || 0)) * toEur(o.unitPrice || 0, o.currency, fx)) / 1000,
+      bomEquipmentId: o.bomEquipmentId, activityId: o.activityId,
+    })),
+    bac: cost.bac,
+    earnedValue: cost.evmSource === 'keystone',
+  });
+  const byId = new Map(lines.map((l) => [l.id, l]));
+  return {
+    ...breakdown,
+    rows: breakdown.rows.map((r) => {
+      const l = byId.get(r.key);
+      return { ...r, lotLabel: l ? equipmentLotLabel(l) : null, label: l?.label ?? null };
+    }),
+  };
+}
+
 export interface BudgetData {
   cost: CostControl;
   rex: RexPattern | null;
   contract: BudgetContract | null;
+  /** R-185: costs by equipment line; null unless the project has more than one line. */
+  equipment: EquipmentCosts | null;
 }
 
 /** Everything the Budget & cost screen reads; null for projects without cost data (empty state). */
 export async function getBudgetData(code: string): Promise<BudgetData | null> {
   const cost = await getCostControl(code);
   if (!cost || !cost.ev.length) return null;
-  const [rex, contract] = await Promise.all([getRexPattern(code), getBudgetContract(code)]);
-  return { cost, rex, contract };
+  const [rex, contract, equipment] = await Promise.all([getRexPattern(code), getBudgetContract(code), getEquipmentCosts(code, cost)]);
+  return { cost, rex, contract, equipment };
 }

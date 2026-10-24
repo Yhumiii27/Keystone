@@ -11,6 +11,8 @@
 //   Planning      phases common to the project + lots specific to an equipment generated per line (choice 2): see
 //                 PER_EQUIPMENT_PHASES and instantiateTemplate (src/domain/project-template.ts).
 
+import { parseCatalogueChoice } from './machine-catalogue';
+
 /** "EQ-01" … "EQ-99", "EQ-100". */
 export const EQUIPMENT_REF_RE = /^EQ-(\d{2,})$/;
 export const equipmentRef = (n: number) => `EQ-${String(n).padStart(2, '0')}`;
@@ -58,6 +60,9 @@ export interface EquipmentLineInput {
   capacityUnit: string | null;
   options: string[];
   besoinRef: string | null;
+  /** R-186: the catalogue entry chosen ("EMP-40T", 2), both or neither; checked against the catalogue by the DAL. */
+  catalogueCode: string | null;
+  catalogueVersion: number | null;
 }
 
 export type Parsed<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -94,9 +99,15 @@ export function parseEquipmentLine(input: Record<string, unknown> | null | undef
   if (need == null) return { ok: false, error: 'The machine need follows the CAPEX application’s format (CPX-SAI-2026-01/B01)' };
   const besoinRef = need ? need.toUpperCase() : null;
   if (besoinRef && !NEED_REF_RE.test(besoinRef)) return { ok: false, error: 'The machine need follows the CAPEX application’s format (CPX-SAI-2026-01/B01)' };
+  // R-186: "EMP-40T@2" from the form's catalogue list ('' = none).
+  const cat = parseCatalogueChoice(v.catalogue);
+  if (!cat.ok) return cat;
   return {
     ok: true,
-    value: { machineTypeCode: mt, quantity: q, label: label || null, capacityValue, capacityUnit: capacityValue != null ? unit : null, options, besoinRef },
+    value: {
+      machineTypeCode: mt, quantity: q, label: label || null, capacityValue, capacityUnit: capacityValue != null ? unit : null, options, besoinRef,
+      catalogueCode: cat.value?.code ?? null, catalogueVersion: cat.value?.version ?? null,
+    },
   };
 }
 

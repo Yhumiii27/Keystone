@@ -1,6 +1,6 @@
 # Keystone PM — reste à développer
 
-Inventaire initial du 2026-10-10, mis à jour le 2026-10-23 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
+Inventaire initial du 2026-10-10, mis à jour le 2026-10-24 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
 
 **Méthode.** Onze relectures indépendantes ont croisé les 195 décisions produit (`docs/DECISIONS.md`), les écarts et questions ouvertes de `DELIVERY-1.md` à `DELIVERY-6.md`, `docs/BACKLOG.md`, les marqueurs du code (TODO, simulations, constantes du prototype), la spécification fonctionnelle (`docs/spec/`) et la préparation à la production. Chaque point a ensuite été vérifié dans le code, catégorie par catégorie : ce qui existait déjà a été écarté (153 candidats), les doublons fusionnés, puis un contrôle de complétude a ajouté ce qui manquait. Le détail, avec les preuves relevées dans le code pour chaque point, est dans `docs/reste-a-developper.json` ; ce document et la page sont produits par `npm run remaining:page`.
 
@@ -8,21 +8,21 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-23 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 105 faits, 31 en cours, 61 à faire, sur 197 points.
+**Avancement** : 107 faits, 30 en cours, 60 à faire, sur 197 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
 | Bloquant production | 16 | ≈ 106 |
 | Prochaine étape | 22 | ≈ 184 |
-| À décider | 34 | ≈ 286 |
+| À décider | 32 | ≈ 244 |
 | Plus tard | 20 | ≈ 74 |
-| **Total** | **92** | **≈ 649** |
+| **Total** | **90** | **≈ 607** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
-| Non commencé | 41 |
+| Non commencé | 39 |
 | Partiel | 11 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
@@ -32,7 +32,7 @@ L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il
 | Plateforme et mise en production | 7 | 5 | 0 | 2 | 14 | 11 |
 | Authentification, utilisateurs et droits | 1 | 0 | 3 | 1 | 5 | 12 |
 | Intégrations avec les autres systèmes | 5 | 6 | 4 | 5 | 20 | 5 |
-| Projets, cycle de vie et modèles par type de machine | 0 | 1 | 4 | 1 | 6 | 3 |
+| Projets, cycle de vie et modèles par type de machine | 0 | 1 | 2 | 1 | 4 | 5 |
 | Planning | 1 | 0 | 3 | 1 | 5 | 3 |
 | Coûts, contrat et finance | 0 | 2 | 3 | 0 | 5 | 12 |
 | Ressources et RH | 0 | 2 | 1 | 1 | 4 | 5 |
@@ -100,8 +100,6 @@ Décisions à prendre et données à fournir avant de pouvoir développer. Les q
 - **R-179** Choisir la connexion des clients avant d'ouvrir le portail — Décision du responsable produit et de la DSI sur la date d'ouverture du portail et le mode de connexion client
 - **R-181** Décider qui crée le projet dans Codex et Vigie à sa création dans Keystone — Décision du responsable produit ; API de création de projet côté Codex et Vigie
 - **R-182** Décider si les factures client sont émises et encaissées dans Sage X3 — Service finance : processus de facturation client dans Sage X3 (numérotation légale, encaissements, facturation électronique)
-- **R-185** Projets multi-équipements (ex. une EMP et plusieurs MEMU) : adapter l’approche projet — —
-- **R-186** Catalogue machines publié aux filiales (vue pub_catalogue_machines) — —
 - **R-187** Besoins machines des filiales : connecteur capex, réponse chiffrée, création du projet à la commande — R-185, R-186, R-188 et l’application CAPEX
 - **R-188** Classe d’estimation des budgets et des offres (±50 % / ±30 % / +10 −5 %) — Validation du responsable produit
 - **R-189** Vues de suivi pour le CAPEX : jalons, avancement côté vente, avenants, réserves — Réponse P-05 (données financières visibles par la filiale)
@@ -401,7 +399,7 @@ Pour que Cursus propose les lignes de feuille de temps « depuis les tâches Key
 Crucible (K-2) lit les échéances des projets pour anticiper les besoins d’essais : vue pub_jalons (projet_code, jalon_id, nom, mois_reference, mois_prevu, statut, activite_code, date_activite_fin = fin au plus tôt de l’activité liée si datée, maj_le). La lecture de pub_projets par crucible_app (K-1) est un droit à accorder dans Matrix (partage/90-droits.sql), pas un changement de Keystone. Proche de pub_jalons_projets demandée par Arche (R-189) : une seule vue pour les deux lecteurs si les colonnes se rejoignent.  
 *Avancement : Livraison 9, lot « share-views » (docs/delivery-9/notes-share-views.md) : vue pub_jalons (projet_code, jalon_id, nom, position, mois_reference, mois_prevu, statut, activite_code, date_fin_activite, maj_le) selon la demande validée de Crucible ; milestones.updated_at ajouté (maj_le). Le droit de lecture de crucible_app (et le rôle) reste à poser dans Matrix (partage/90-droits.sql). · Attend : Validation du responsable produit ; contrat commun avec R-189 · Sources : Crucible (application de planification des moyens d’essais R&D), docs/DEMANDES-KEYSTONE.md, 22 oct. 2026*
 
-### 2.4 Projets, cycle de vie et modèles par type de machine (6 restants, 3 faits)
+### 2.4 Projets, cycle de vie et modèles par type de machine (4 restants, 5 faits)
 
 **R-053 · Créer le standard complet par type de machine et l’instancier à la création** — *Prochaine étape · attend le responsable produit · effort L*  
 Chaque type de projet doit avoir un standard tenu et modifiable dans Keystone : WBS avec lots, activités, durées et liens, budgets, livrables par étape, points ITP. L’assistant en fait une copie que le CP personnalise avant le lancement. Aujourd’hui le modèle se limite aux noms des phases (un lot et une activité de 30 jours ouvrés par phase, enchaînés FS), aux catégories de coûts et aux noms des systèmes ITP : aucun point d’inspection n’est créé et les livrables d’étape sont communs à tous les types. Sans fin saisie, la fin prévue vient de ce plan type, pas d’une date fixe.  
@@ -415,14 +413,6 @@ La saisie pays / ville est faite, mais un site dont la ville n’est pas déjà 
 Réponse « À discuter » sans note. Les champs influence, intérêt et attitude existent mais restent vides et ne sont pas affichés. Le « dernier contact » prend la date figée du 30 sept. 2026 à la création de la partie prenante et ne peut plus être modifié ensuite. Il faut choisir entre une grille avec dernier contact déduit des réunions Keystone (recommandé), une grille avec les e-mails Microsoft 365, ou un registre simple avec une date à mettre à jour à la main (à rendre modifiable).  
 *Attend : Discussion avec le responsable produit (S-13a, « À discuter » sans note ; statut Plus tard) · Sources : S-13a, 05 OQ19, DELIVERY-3.md §4, §6, §7*
 
-**R-185 · Projets multi-équipements (ex. une EMP et plusieurs MEMU) : adapter l’approche projet** — *À décider · non commencé · effort XL* · **en cours (9)**  
-Un projet peut fournir plusieurs équipements, de types différents et en plusieurs exemplaires (par exemple une EMP et plusieurs MEMU). Aujourd’hui un projet porte un seul type de machine : le modèle de création (phases, catégories de coûts, systèmes ITP), le plan ITP unique du projet, le budget de référence (références REX) et l’affichage du projet en dépendent ; la mise en service et la nomenclature ne savent pas à quel équipement se rattache un système ou une ligne. Le parc installé, lui, enregistre déjà une machine par équipement livré, avec son propre type. L’approche projet doit pouvoir s’adapter : équipements du projet (type, quantité), lots / systèmes, ITP, mise en service, nomenclature et coûts par équipement, livraison et parc installé par exemplaire. À cadrer avec le responsable produit avant de construire ; toute nouvelle fonction ne doit plus supposer « un seul type de machine par projet ».  
-*Avancement : Consigné le 15 oct. 2026 à la demande du responsable produit ; à cadrer avant la livraison 9. 22 oct. 2026 : prérequis du lien avec l’application CAPEX (un besoin de plusieurs machines = un projet EPC2i à plusieurs équipements, recommandé). Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-10 — un besoin de plusieurs machines doit pouvoir créer un projet EPC2i à plusieurs équipements ou en ajouter à un projet existant. 23 oct. 2026 : AC-5 tranché (oui) — un besoin de plusieurs machines = un projet EPC2i à plusieurs équipements ; cadrage proposé dans docs/delivery-9/cadrage-r185-r186.md, 5 choix à valider avant de construire. 23 oct. 2026 : les 5 choix du cadrage validés par le responsable produit. Partie 1 faite (docs/delivery-9/notes-r185-equipments.md) : lignes d’équipement project_equipments (type × quantité, EQ-01…), reprise des projets existants (migrations 0041-0042), carte « Équipement » sur l’écran Contrat, résumé « 1 × EMP · 3 × MEMU » au registre, assistant à plusieurs lignes avec lots propres à chaque équipement (phases per_equipment), budget de référence = somme des types × quantité. Reste (partie 2) : un plan ITP par ligne, réserves, mise en service, nomenclature et parc installé rattachés à l’équipement. Partie 2 faite (même notes, section « Partie 2 ») : un plan ITP par ligne d’équipement (migrations 0043-0044, plans existants rattachés à la ligne principale, numéros d’inspection uniques sur le projet), réserves, systèmes de mise en service, nomenclature et machines du parc installé rattachés à une ligne (ou communs), écrans ITP, réserves, mise en service, nomenclature et parc installé filtrés par équipement quand le projet a plusieurs lignes ; démonstration : HLT-026 EQ-02 (3 × MEMU) a son plan, deux inspections, une réserve C et un système. Reste : ventilation des coûts par équipement au Budget (à décider). · Sources : Responsable produit, 15 oct. 2026 (note pour les futurs développements)*
-
-**R-186 · Catalogue machines publié aux filiales (vue pub_catalogue_machines)** — *À décider · non commencé · effort L*  
-Les types de machine deviennent des fiches catalogue (variantes, options, capacité nominale, prix catalogue indicatif, délai type, budget de référence, statut publié / retiré), lues par l’application CAPEX dans la vue pub_catalogue_machines. Le configurateur (règles d’options, chiffrage automatique) reste une option à valider.  
-*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-01 — pub_catalogue_machines (fiches publiées, versions, options, capacité nominale, prix indicatif, délai type, statut). 23 oct. 2026 : AC-4 tranché (oui) — le catalogue machines est un module de Keystone, construit à partir des types de machine ; cadrage dans docs/delivery-9/cadrage-r185-r186.md. · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
-
 **R-058 · Intégrer la matrice RACI d’entreprise, par rôle et non modifiable** — *Plus tard · attend le responsable produit · effort M*  
 S-13b : la matrice RACI fournie par le responsable produit sera fixe et organisée par rôle, et Keystone doit permettre d’affecter chaque rôle à une personne de l’équipe projet. Aujourd’hui la RACI est stockée par projet, en lecture seule, avec des colonnes en texte libre. Seul HLT-026 en a une (semée depuis le prototype), et un projet créé par l’assistant n’en a aucune. La RACI-B des livrables qualité est un objet distinct, hors du périmètre de la réponse.  
 *Attend : Matrice RACI par rôle, en cours de définition par le responsable produit · Sources : S-13b, 05 OQ20, DELIVERY-3.md §7, DELIVERY-5.md §6*
@@ -434,6 +424,14 @@ L-2 : BL1 est figée en fin d’APD et conditionne le passage en Études. Le liv
 **~~R-055 · Saisir la date effective d’un changement d’étape~~** — *Prochaine étape · partiel · effort S* · **fait (Livraison 7)**  
 Le CP indique la date réelle du changement d’étape (par exemple un PV de FAT signé la veille), proposée par défaut à aujourd’hui ; l’heure de saisie reste dans l’audit. Le DAL accepte déjà effectiveOn mais l’interface ne le propose pas, et c’est la date figée qui est inscrite.  
 *Sources : L-4c, S-4, 03 OQ19, DELIVERY-1.md §4*
+
+**~~R-185 · Projets multi-équipements (ex. une EMP et plusieurs MEMU) : adapter l’approche projet~~** — *À décider · non commencé · effort XL* · **fait (9)**  
+Un projet peut fournir plusieurs équipements, de types différents et en plusieurs exemplaires (par exemple une EMP et plusieurs MEMU). Aujourd’hui un projet porte un seul type de machine : le modèle de création (phases, catégories de coûts, systèmes ITP), le plan ITP unique du projet, le budget de référence (références REX) et l’affichage du projet en dépendent ; la mise en service et la nomenclature ne savent pas à quel équipement se rattache un système ou une ligne. Le parc installé, lui, enregistre déjà une machine par équipement livré, avec son propre type. L’approche projet doit pouvoir s’adapter : équipements du projet (type, quantité), lots / systèmes, ITP, mise en service, nomenclature et coûts par équipement, livraison et parc installé par exemplaire. À cadrer avec le responsable produit avant de construire ; toute nouvelle fonction ne doit plus supposer « un seul type de machine par projet ».  
+*Avancement : Consigné le 15 oct. 2026 à la demande du responsable produit ; à cadrer avant la livraison 9. 22 oct. 2026 : prérequis du lien avec l’application CAPEX (un besoin de plusieurs machines = un projet EPC2i à plusieurs équipements, recommandé). Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-10 — un besoin de plusieurs machines doit pouvoir créer un projet EPC2i à plusieurs équipements ou en ajouter à un projet existant. 23 oct. 2026 : AC-5 tranché (oui) — un besoin de plusieurs machines = un projet EPC2i à plusieurs équipements ; cadrage proposé dans docs/delivery-9/cadrage-r185-r186.md, 5 choix à valider avant de construire. 23 oct. 2026 : les 5 choix du cadrage validés par le responsable produit. Partie 1 faite (docs/delivery-9/notes-r185-equipments.md) : lignes d’équipement project_equipments (type × quantité, EQ-01…), reprise des projets existants (migrations 0041-0042), carte « Équipement » sur l’écran Contrat, résumé « 1 × EMP · 3 × MEMU » au registre, assistant à plusieurs lignes avec lots propres à chaque équipement (phases per_equipment), budget de référence = somme des types × quantité. Reste (partie 2) : un plan ITP par ligne, réserves, mise en service, nomenclature et parc installé rattachés à l’équipement. Partie 2 faite (même notes, section « Partie 2 ») : un plan ITP par ligne d’équipement (migrations 0043-0044, plans existants rattachés à la ligne principale, numéros d’inspection uniques sur le projet), réserves, systèmes de mise en service, nomenclature et machines du parc installé rattachés à une ligne (ou communs), écrans ITP, réserves, mise en service, nomenclature et parc installé filtrés par équipement quand le projet a plusieurs lignes ; démonstration : HLT-026 EQ-02 (3 × MEMU) a son plan, deux inspections, une réserve C et un système. Reste : ventilation des coûts par équipement au Budget (à décider). 23 oct. 2026 : parties 1 et 2 fusionnées dans main (PR #29, #30), CI verte. 24 oct. 2026 : ventilation des coûts par équipement faite à la demande du responsable produit (carte « Budget par équipement », Budget › Structure : budget actuel, réel, EAC, valeur acquise et commandes ouvertes par ligne ; catégories de coûts et engagé hors commandes restent au niveau du projet). · Sources : Responsable produit, 15 oct. 2026 (note pour les futurs développements)*
+
+**~~R-186 · Catalogue machines publié aux filiales (vue pub_catalogue_machines)~~** — *À décider · non commencé · effort L* · **fait (9)**  
+Les types de machine deviennent des fiches catalogue (variantes, options, capacité nominale, prix catalogue indicatif, délai type, budget de référence, statut publié / retiré), lues par l’application CAPEX dans la vue pub_catalogue_machines. Le configurateur (règles d’options, chiffrage automatique) reste une option à valider.  
+*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-01 — pub_catalogue_machines (fiches publiées, versions, options, capacité nominale, prix indicatif, délai type, statut). 23 oct. 2026 : AC-4 tranché (oui) — le catalogue machines est un module de Keystone, construit à partir des types de machine ; cadrage dans docs/delivery-9/cadrage-r185-r186.md. 24 oct. 2026 : fait (docs/delivery-9/notes-r186-catalogue.md) — fiches catalogue versionnées (brouillon → publié → retiré, version publiée figée par déclencheur, une version en vigueur par code), section « Catalogue machines » de l’écran Types de machine (directeur et responsable ingénierie), case « propre à chaque équipement » sur les phases, vue pub_catalogue_machines au contrat K-01 (migrations 0045-0046), ligne d’équipement liée à une version publiée. Reste côté Matrix : recopier la vue dans 30-keystone.sql. · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
 
 **~~R-057 · Figer dans le projet les systèmes ITP du type de machine~~** — *Plus tard · partiel · effort S* · **fait (Livraison 8)**  
 E-9 veut que la modification d’un type de machine ne touche que les nouveaux projets. Phases, lots et catégories sont copiés à la création, mais les systèmes ITP d’un projet existant sont relus en direct sur le type : il faut les copier dans le plan ITP à la création.  
@@ -951,6 +949,8 @@ Proposition : version tablette des écrans Chantier, Réserves et Livraisons ave
 
 ## 3. Mises à jour
 
+- 2026-10-24 — Ventilation des coûts par équipement (R-185) et catalogue machines publié aux filiales (R-186, vue pub_catalogue_machines, demande K-01 d’Arche).
+- 2026-10-23 — R-185 fait : projets à plusieurs équipements fusionnés dans main (PR #29 et #30). Prochaines étapes du cadrage : catalogue machines (R-186), corbeille des besoins d’Arche (R-187), classe d’estimation (R-188).
 - 2026-10-23 — R-185 partie 2 : plan ITP par ligne d’équipement ; réserves, mise en service, nomenclature et parc installé rattachés à l’équipement.
 - 2026-10-23 — R-185 partie 1 : projets à plusieurs équipements — lignes d’équipement, reprise des projets existants, carte Équipement, assistant à plusieurs lignes avec lots par équipement ; les 5 choix du cadrage validés par le responsable produit.
 - 2026-10-23 — AC-4 et AC-5 tranchés par le responsable produit (catalogue machines dans Keystone ; projet à plusieurs équipements) ; cadrage R-185 / R-186 rédigé, 5 choix à valider. Demande déposée chez Matrix (REQUESTS.md, PR Matrix #22) pour recopier les nouvelles vues de partage dans 30-keystone.sql.
