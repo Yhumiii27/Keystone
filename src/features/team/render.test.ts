@@ -72,12 +72,12 @@ describe('Stakeholders & RACI view model', () => {
       ['Sans contact > 30 j', '1', 'référent relation à relancer', LO],
     ]);
     expect(view.rows.map((r) => [r.name, r.sub, r.type, r.owner, r.lastText, r.contactText, r.notes, r.initials])).toEqual([
-      ['Nadia Bensaïd', 'Autorité portuaire · Chef de projet client', 'Client', 'R. Aubert', '25 sept.', 'n.bensaid@port-lehavre.fr', 'Weekly call · decides on hold points', 'NB'],
-      ['Karim Doucouré', 'Autorité portuaire · Exploitation terminal', 'Client', 'R. Aubert', '12 sept.', 'k.doucoure@port-lehavre.fr', 'Owns quay 4 access windows', 'KD'],
-      ['Port authority HSE', 'Autorité portuaire · Service HSE', 'Autorité', 'L. Fabre', '18 sept.', 'hse@port-lehavre.fr', 'Permits · prevention plan', 'Pa'],
+      ['Nadia Bensaïd', 'Autorité portuaire · Chef de projet client', 'Client', 'R. Aubert', '25 sept.', 'n.bensaid@port-exemple.fr', 'Weekly call · decides on hold points', 'NB'],
+      ['Karim Doucouré', 'Autorité portuaire · Exploitation terminal', 'Client', 'R. Aubert', '12 sept.', 'k.doucoure@port-exemple.fr', 'Owns quay 4 access windows', 'KD'],
+      ['Port authority HSE', 'Autorité portuaire · Service HSE', 'Autorité', 'L. Fabre', '18 sept.', 'hse@port-exemple.fr', 'Permits · prevention plan', 'Pa'],
       ['Marie Lefebvre', 'Keystone · Directrice de portefeuille · sponsor', 'Interne', 'R. Aubert', '25 sept.', '—', 'Approves forced gates and CR > 100 k€', 'ML'],
       ['Alain Girard', 'Keystone · Référent ingénierie', 'Interne', 'R. Aubert', '29 sept.', '—', '', 'AG'],
-      ['Kjell Lindqvist', 'Nordvolt · Grand compte · variateurs', 'Fournisseur', 'F. Bertrand', '10 sept.', 'k.lindqvist@nordvolt.se', 'FAT lot 2 · status word mapping', 'KL'],
+      ['Kjell Lindqvist', 'Nordvolt · Grand compte · variateurs', 'Fournisseur', 'F. Bertrand', '10 sept.', 'k.lindqvist@nordvolt.example', 'FAT lot 2 · status word mapping', 'KL'],
       ['DREAL Normandie', 'État · Autorité environnementale', 'Autorité', 'R. Aubert', '12 mars · > 30 j', '—', 'Permit conditions · noise at night', 'DN'],
       ['Terminal OS vendor', 'Navis · Équipe intégration', 'Tiers', 'C. Morvan', '22 sept.', '—', 'Interface spec rev B · slow to answer', 'TO'],
     ]);

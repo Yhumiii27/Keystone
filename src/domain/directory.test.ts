@@ -53,8 +53,8 @@ describe('planDirectoryImport', () => {
   });
 
   it('external contacts are never matched nor touched, and their e-mail is never given to a new person', () => {
-    const persons = [P('ext', { email: 'n.bensaid@port-lehavre.fr', clientId: 'c1', shortName: 'N. Bensaïd' })];
-    const plan = planDirectoryImport([E('EMP-2', { nom: 'Bensaïd', prenom: 'Nadia', email: 'n.bensaid@port-lehavre.fr' })], persons, DEPTS);
+    const persons = [P('ext', { email: 'n.bensaid@port-exemple.fr', clientId: 'c1', shortName: 'N. Bensaïd' })];
+    const plan = planDirectoryImport([E('EMP-2', { nom: 'Bensaïd', prenom: 'Nadia', email: 'n.bensaid@port-exemple.fr' })], persons, DEPTS);
     expect([plan.matched, plan.updates, plan.creates]).toEqual([[], [], []]);
     expect(plan.reports[0].reason).toBe('E-mail held by an external contact: not matched');
   });

@@ -41,7 +41,7 @@ const P: [RoleKey, string, string, string, string | null][] = [
   ['procurement', 'Fabien Bertrand', 'Procurement & stock', 'fabien.bertrand@epc2i.fr', 'Controls & planning'],
   // R-044 (P-4, P-12 c): the Finance persona — the cost controller of the resource pool (no prototype persona).
   ['finance', 'Léa Marchand', 'Cost controller', 'lea.marchand@epc2i.fr', 'Controls & planning'],
-  ['client', 'Nadia Bensaïd', 'Client — Port authority', 'n.bensaid@port-lehavre.fr', null],
+  ['client', 'Nadia Bensaïd', 'Client — Port authority', 'n.bensaid@port-exemple.fr', null],
 ];
 
 export const PERSONAS: Persona[] = P.map(([role, name, title, email, department]) => ({
