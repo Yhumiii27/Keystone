@@ -178,6 +178,10 @@
   {
    "date": "2026-10-25",
    "text": "R-158 : cadrage des expéditions validé (vue projet, Incoterm du contrat, documents générés sauf factures, profil Logistique, Incoterms paramétrables) ; la filiale suit tout depuis Arche."
+  },
+  {
+   "date": "2026-10-25",
+   "text": "R-158 lot A : profil Logistique, Incoterms paramétrables, écran projet Expéditions avec contrôle du colisage."
   }
  ],
  "items": [
@@ -4699,7 +4703,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "9",
-    "note": "25 oct. 2026 : le responsable produit redemande le module (« il manque un module de gestion des expéditions du matériel vers la filiale ») ; cadrage rédigé (docs/delivery-9/cadrage-r158-expeditions.md) : écran projet Expéditions, chargements et colis, contrôle colisage ↔ nomenclature, douane (codes HS), documents (packing list, proforma) versés dans Codex, réception sur site et réserves, jalons expedition / arrivee_site, vue pub_expeditions pour la filiale ; 8 points à valider. Même jour : choix tranchés (cadrage § 5) — vue projet seulement, transport d’après l’Incoterm du contrat, Keystone génère tous les documents sauf les factures, contrôle colisage bloquant, écart à la réception = réserve, suivi filiale dans Arche, nouveau profil Logistique, transitaires externes sans accès, Incoterms 2020 paramétrables, conteneurs et contenus déclarés par EPC2i ; construction lancée."
+    "note": "25 oct. 2026 : le responsable produit redemande le module (« il manque un module de gestion des expéditions du matériel vers la filiale ») ; cadrage rédigé (docs/delivery-9/cadrage-r158-expeditions.md) : écran projet Expéditions, chargements et colis, contrôle colisage ↔ nomenclature, douane (codes HS), documents (packing list, proforma) versés dans Codex, réception sur site et réserves, jalons expedition / arrivee_site, vue pub_expeditions pour la filiale ; 8 points à valider. Même jour : choix tranchés (cadrage § 5) — vue projet seulement, transport d’après l’Incoterm du contrat, Keystone génère tous les documents sauf les factures, contrôle colisage bloquant, écart à la réception = réserve, suivi filiale dans Arche, nouveau profil Logistique, transitaires externes sans accès, Incoterms 2020 paramétrables, conteneurs et contenus déclarés par EPC2i ; construction lancée. Lot A fait (docs/delivery-9/notes-r158-shipments.md) : profil Logistique (10ᵉ), 11 Incoterms 2020 paramétrables (Paramètres) avec répartition vendeur / acheteur, Incoterm et lieu sur le contrat, écran projet Expéditions (EXP-nn, étapes d’après l’Incoterm, chargements et contenu déclarés, contrôle colisage ↔ nomenclature, synthèse par code SH), case « Colisage & documents douaniers » bloquée tant que le contrôle n’est pas soldé (migration 0061). Lot B : documents, réception sur site et réserves, jalons, pub_expeditions."
    }
   },
   {
