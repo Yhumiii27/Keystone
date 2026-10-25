@@ -17,3 +17,4 @@ import './purchasing';
 import './aftersales';
 import './resources';
 import './admin';
+import './catalogue';

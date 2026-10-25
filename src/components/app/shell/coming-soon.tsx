@@ -13,7 +13,7 @@ const SPEC: [string, ScreenId[]][] = [
   ['06-resources-hr.md', ['resources', 'presources', 'rates', 'skills', 'leave', 'hours']],
   ['07-risk-change-quality-ops.md', ['risks', 'changes', 'quality', 'itp', 'interfaces', 'commissioning', 'rex', 'fleet', 'sav']],
   ['08-supply-chain-approvals.md', ['procurement', 'orders', 'deliveries', 'stock', 'requests', 'approvals', 'myapprovals']],
-  ['09-engineering-plm.md', ['bom', 'plm', 'eco', 'drawings', 'pid', 'eng', 'eng-process', 'eng-meca', 'eng-elec', 'eng-auto', 'mtypes']],
+  ['09-engineering-plm.md', ['bom', 'plm', 'eco', 'drawings', 'pid', 'eng', 'eng-process', 'eng-meca', 'eng-elec', 'eng-auto', 'mtypes', 'catalogue']],
   ['10-site-docs-mywork-settings.md', ['settings', 'plumbing', 'site', 'docs', 'doctypes', 'mywork', 'task']],
 ];
 

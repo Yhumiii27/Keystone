@@ -146,18 +146,10 @@
 .areaCell { font-size: 12px; color: var(--color-neutral-400); white-space: nowrap; }
 .tableEmpty { font-size: 12.5px; color: var(--color-neutral-400); }
 
-/* ── R-186: phase flag (lot specific to an equipment) and machine catalogue ── */
+/* ── R-186: phase flag (lot specific to an equipment) and the link to the Machine catalogue screen ── */
 .phaseRowFlag { grid-template-columns: 22px minmax(0, 1fr) auto auto; }
 .phaseFlag { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--color-neutral-300); white-space: nowrap; }
 .phaseFlag input { accent-color: var(--color-accent); }
-:global(.card).catalogueCard { padding: 14px 16px; gap: 10px; overflow: auto; }
-.catalogueHint { font-size: 12px; color: var(--color-neutral-400); text-wrap: pretty; }
-.catalogueEntry { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--color-neutral-800); }
-.catalogueEntryHead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.catalogueCode { font-weight: 600; font-size: 13.5px; font-variant-numeric: tabular-nums; }
-.catalogueLabel { display: flex; flex-direction: column; line-height: 1.3; min-width: 180px; }
-.catalogueSub { font-size: 11px; color: var(--color-neutral-400); text-wrap: pretty; }
-.catalogueOptions { font-size: 11.5px; color: var(--color-neutral-300); min-width: 160px; }
-.catalogueActions { display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap; }
-.catalogueNum { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.confirmText { font-size: 13px; color: var(--color-neutral-200); text-wrap: pretty; margin: 0; }
+.catalogueLinkCard { gap: 6px; }
+.catalogueLinkRow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.catalogueLinkText { font-size: 12.5px; color: var(--color-neutral-300); text-wrap: pretty; min-width: 0; flex: 1 1 240px; }
