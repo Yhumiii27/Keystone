@@ -1,5 +1,5 @@
 // Columns of Keystone's pub_ views published or extended in delivery 9 (migrations 0038_share_followup, 0040_share_installed_base,
-// 0046_catalogue_share, 0050_capex_needs_share, 0052_internal_client_share, 0054_matrix_rex_clients_share, 0057_capex_milestone_share;
+// 0046_catalogue_share, 0050_capex_needs_share, 0052_internal_client_share, 0054_matrix_rex_clients_share, 0057_capex_milestone_share, 0060_engineering_pack_share;
 // docs/delivery-9/notes-share-views.md), in order: the contracts the readers (Crucible, Arche, Matrix) rely on. A column is never removed, renamed or moved; new ones go
 // at the end. Checked by src/server/db/share-views.test.ts (PGlite) and scripts/db-check.ts (also on PostgreSQL, --postgres).
 export const SHARE_VIEW_COLUMNS: Record<string, string[]> = {
@@ -41,6 +41,13 @@ export const SHARE_VIEW_COLUMNS: Record<string, string[]> = {
   ],
   // D16 v1 (0035_share) + Matrix D21 (0054_matrix_rex_clients_share): the subsidiary's code at the end.
   pub_clients: ['id', 'name', 'code3', 'filiale_code'],
+  // Arche K-08 (R-191, 0060_engineering_pack_share): EPC2i's share of the engineering pack, one row per project and family.
+  pub_pack_ingenierie: ['projet_code', 'famille', 'attendues', 'validees', 'poids', 'pct_pondere', 'maj_le'],
+};
+
+/** K-08 column types of pub_pack_ingenierie (information_schema data_type), in contract order. */
+export const PACK_VIEW_TYPES: Record<string, string> = {
+  projet_code: 'text', famille: 'text', attendues: 'integer', validees: 'integer', poids: 'numeric', pct_pondere: 'numeric', maj_le: 'timestamp with time zone',
 };
 
 /**
@@ -68,9 +75,9 @@ export const REPONSES_VIEW_TYPES: Record<string, string> = {
 
 /**
  * Number of Keystone's pub_ views (0035_share: 12, 0038_share_followup: 5, 0046_catalogue_share: 1, 0050_capex_needs_share: 1,
- * 0054_matrix_rex_clients_share: 1).
+ * 0054_matrix_rex_clients_share: 1, 0060_engineering_pack_share: 1).
  */
-export const SHARE_VIEW_COUNT = 20;
+export const SHARE_VIEW_COUNT = 21;
 
 /**
  * Arche K-11 (R-193): indexes on the source column of `maj_le` for the views whose `maj_le` is one column of a growing table, so

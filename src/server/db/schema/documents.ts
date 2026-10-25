@@ -7,7 +7,9 @@
 // The prototype synthesises part of the history (one revision every 21 days, approval dates counted back from the
 // document date, two fixed download entries per released document). The seed materialises that history as rows so
 // the screens read data, never formulas; a real Codex sync replaces them (OPEN QUESTION D-1, 10 OQ13).
-import { boolean, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { boolean, check, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import type { PackFamily } from '@/domain/engineering-pack';
 import type {
   ApproverRole, CodexDecision, CodexOutboxKind, CodexSyncStatus, Confidentiality, DepositStatus, DocFamily, DocLinkKind, DocRecipient,
   DocService, DocumentStatus,
@@ -30,7 +32,14 @@ export const documentTypes = pgTable('document_types', {
   /** Released documents of the type are shared with the client and need an acknowledgement. */
   isClientDeliverable: boolean('is_client_deliverable').notNull(),
   position: integer('position').notNull(),
-});
+  /**
+   * R-191: Keystone's classification of the type in the engineering pack (src/domain/engineering-pack.ts, PACK_DOCUMENT_TYPES:
+   * PID → pid, BOM → bom, GA → layout, SCH → electrique, FDS → analyse_fonctionnelle); null = not in the pack. Not a Codex field.
+   */
+  packFamily: text('pack_family').$type<PackFamily>(),
+}, (t) => [
+  check('document_types_pack_family_check', sql`${t.packFamily} is null or ${t.packFamily} in ('pid', 'bom', 'layout', 'electrique', 'analyse_fonctionnelle')`),
+]);
 
 /** Approval circuit of a type ("Author → Engineering lead → Project manager"): step 0 is the originator. */
 export const documentTypeCircuitSteps = pgTable(

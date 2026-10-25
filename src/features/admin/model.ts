@@ -12,6 +12,7 @@ import { IMPORTS_ENABLED } from '@/domain/ch4-defaults';
 import { DEFAULT_CCB_THRESHOLD_KEUR } from '@/domain/change-control';
 import { HOURS_VARIANCE_RULE, ratesMaskedActivity, ratesMaskedAudit } from '@/domain/hr';
 import { connectorStateTone } from '@/domain/connectors';
+import { PACK_FAMILY_LABELS, type PackFamily } from '@/domain/engineering-pack';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import { calendar, costType, locationType, stampText, type ActivityKind, type CalendarCode, type CostType, type LocationType } from '@/server/db/codes';
@@ -133,6 +134,8 @@ export interface MtDetailView {
   costTotal: string;
   refs: { analyticCode: string; name: string }[];
   projects: { code: string; name: string; sub: string; openHref: string | null }[];
+  /** R-191: the standard list of the engineering pack (the five families; label translated). */
+  pack: { family: PackFamily; label: string; weight: number; minExpected: number }[];
 }
 
 export interface MachineTypesView {
@@ -183,6 +186,7 @@ export function machineTypesView(input: { types: MachineTypeRow[]; projects: Pro
           openHref: row?.hasData ? screenHref('plan', { code: p.code }) : null,
         };
       }),
+      pack: (sel.pack ?? []).map((r) => ({ family: r.family, label: t(PACK_FAMILY_LABELS[r.family]), weight: r.weight, minExpected: r.minExpected })),
     },
   };
 }

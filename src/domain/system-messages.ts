@@ -154,6 +154,12 @@ const MESSAGES = {
     (p) => `Machine type ${p.type} · phase ${p.phase}: ${p.perEquipment}`,
     (p, f) => `Type de machine ${p.type} · phase ${f.data(p.phase)} : ${f.label(p.perEquipment)}`,
   ),
+  // R-191: the standard list of the engineering pack of a machine type (weights and minimums, "pid 20 % · min 1 · …").
+  'machineType.pack': def(
+    { type: 'ref', list: 'ref' },
+    (p) => `Machine type ${p.type} · engineering pack: ${p.list}`,
+    (p) => `Type de machine ${p.type} · pack ingénierie : ${p.list}`,
+  ),
 } as const;
 
 export type MessageKey = keyof typeof MESSAGES;

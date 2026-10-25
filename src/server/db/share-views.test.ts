@@ -25,7 +25,7 @@ beforeAll(async () => {
 }, 60_000);
 
 describe('share views of delivery 9 (0038_share_followup)', () => {
-  it('20 pub_ views (R-186: pub_catalogue_machines; R-187: pub_reponses_besoins; Matrix D22: pub_rex); each contract has its columns in order', async () => {
+  it('21 pub_ views (R-186: pub_catalogue_machines; R-187: pub_reponses_besoins; Matrix D22: pub_rex; R-191: pub_pack_ingenierie); each contract has its columns in order', async () => {
     const views = await rows<{ v: string }>(sql`select table_name as v from information_schema.views where table_schema = current_schema() and table_name like 'pub\_%' order by 1`);
     expect(views.map((r) => r.v)).toHaveLength(SHARE_VIEW_COUNT);
     for (const [view, cols] of Object.entries(SHARE_VIEW_COLUMNS)) {

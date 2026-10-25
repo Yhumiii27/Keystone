@@ -37,7 +37,7 @@ import { pendingMigrations } from './migrations';
 import { openDatabase } from './open';
 import { SeedChoiceRequiredError, migrateAndSeedPostgres, openPostgres, type PostgresHandle } from './postgres';
 import { readSeedRecord } from './seed/mode';
-import { REX_VIEW_TYPES, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COUNT } from './share-contracts';
+import { PACK_VIEW_TYPES, REX_VIEW_TYPES, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COUNT } from './share-contracts';
 import { refreshCapexMirror } from '@/server/integrations/capex/connector';
 import { SIMULATED_PUB_FILIALES } from '@/server/integrations/matrix/simulation';
 import { refreshSubsidiaryMirror } from '@/server/integrations/matrix/subsidiaries';
@@ -113,6 +113,14 @@ describe.skipIf(!ADMIN_URL)('PostgreSQL server (KEYSTONE_TEST_DATABASE_URL)', ()
     expect(cols.rows.reverse()).toEqual([{ c: 'client_interne', t: 'boolean' }, { c: 'filiale_code', t: 'text' }]);
     const nulls = await pg.pool.query<{ n: number }>('select count(*)::int as n from pub_projets where client_interne is null');
     expect(nulls.rows[0].n).toBe(0);
+    // R-191 (Arche K-08, 0058-0060): pub_pack_ingenierie in `keystone` with the K-08 types; the provisional standard list and the
+    // mapping of the document types are reference data of the production seed.
+    const pack = await pg.pool.query<{ c: string; t: string }>(`select column_name as c, data_type as t from information_schema.columns
+      where table_schema = 'keystone' and table_name = 'pub_pack_ingenierie' order by ordinal_position`);
+    expect(Object.fromEntries(pack.rows.map((r) => [r.c, r.t]))).toEqual(PACK_VIEW_TYPES);
+    const ref = await pg.pool.query<{ lists: number; types: number; mapped: number }>(`select (select count(*)::int from machine_type_pack_families) as lists,
+      (select count(*)::int from machine_types) as types, (select count(*)::int from document_types where pack_family is not null) as mapped`);
+    expect(ref.rows[0]).toEqual({ lists: 5 * ref.rows[0].types, types: ref.rows[0].types, mapped: 5 });
   });
 
   it('R-187 (Arche K-02): the capex connector reads arche.pub_capex and arche.pub_besoins_machines on the shared server', async () => {

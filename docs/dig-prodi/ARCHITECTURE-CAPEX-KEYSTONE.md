@@ -40,7 +40,7 @@ Vues publiées le 22 oct. 2026 (migration `0038_share_followup`, notes [`docs/de
 `pub_jalons_projets`, `pub_avancement_projets`, `pub_avenants`, `pub_reserves`, les colonnes ajoutées en fin de `pub_projets` et
 `pub_livrables`, et `pub_jalons` pour Crucible (R-195). Les droits de lecture d’`arche_app` et de `crucible_app` restent à poser
 dans Matrix (`partage/90-droits.sql`, rôles à créer dans le socle), comme la copie de ces vues dans `partage/30-keystone.sql`.
-Publiées depuis : `pub_catalogue_machines` (R-186, 24 oct. 2026), `pub_reponses_besoins` (R-187, 24 oct. 2026, avec le connecteur `capex` qui lit `arche.pub_capex` et `arche.pub_besoins_machines`). Reste à publier : `pub_pack_ingenierie` (R-191).
+Publiées depuis : `pub_catalogue_machines` (R-186, 24 oct. 2026), `pub_reponses_besoins` (R-187, 24 oct. 2026, avec le connecteur `capex` qui lit `arche.pub_capex` et `arche.pub_besoins_machines`), `pub_pack_ingenierie` (R-191, 25 oct. 2026, liste type provisoire 5 familles × 20 % en attendant C-9 ; `docs/delivery-9/notes-r191-engineering-pack.md`).
 
 Le **G2 du CAPEX** fait passer le besoin à « commandé » : Keystone crée alors le projet EPC2i (ou l’ajoute à un projet) et
 publie le lien dans `pub_reponses_besoins`. Le **G3 du CAPEX** lit les PV et les réserves de tous les projets EPC2i du CAPEX.

@@ -10,6 +10,7 @@ import { KpiGrid, KpiTile } from '@/components/app/Kpi';
 import { cx } from '@/components/ds/cx';
 import type { T } from '@/i18n/translate';
 import type { KpiView, SynthesisScreenView } from './model';
+import { EngineeringPackCard, type PackCardView } from './pack-card';
 import s from './eng.module.css';
 
 /** Discipline icons (ENG_DISC classes "ph ph-flow-arrow"…). */
@@ -31,9 +32,10 @@ export function EngKpis({ kpis }: { kpis: KpiView[] }) {
 }
 
 /** "No engineering register for this project yet — import the first list to start." */
-export function EngEmpty({ t }: { t: T }) {
+export function EngEmpty({ t, pack }: { t: T; pack?: PackCardView | null }) {
   return (
     <div className={s.page}>
+      {pack && <EngineeringPackCard view={pack} t={t} />}
       <EmptyState variant="boxed">{t('No engineering register for this project yet — import the first list to start.')}</EmptyState>
     </div>
   );
@@ -58,10 +60,12 @@ function Legend({ t }: { t: T }) {
   );
 }
 
-export function SynthesisBody({ view, t }: { view: SynthesisScreenView; t: T }) {
+export function SynthesisBody({ view, t, pack }: { view: SynthesisScreenView; t: T; pack?: PackCardView | null }) {
   return (
     <div className={s.page}>
       <EngKpis kpis={view.kpis} />
+      {/* R-191: EPC2i's share of the engineering pack and its % completeness (G2 target above 80 %). */}
+      {pack && <EngineeringPackCard view={pack} t={t} />}
 
       <div className={cx('card', 'elev-sm', s.cardMatrix)}>
         <div className={s.headTop}>
