@@ -1,12 +1,14 @@
 import 'server-only';
 // Machine catalogue DAL (R-186, AC-4; contract K-01 of the CAPEX application). One row per catalogue code and version
-// (machine_catalogue_entries); rules in src/domain/machine-catalogue.ts. Read by the Machine types screen (the entries of each
-// type), the equipment line forms (published versions) and the view pub_catalogue_machines (migration 0046). Written by the
-// portfolio director and the engineering lead only (choice 5 of the framing, 23 Oct 2026): the writers re-check the Machine
-// types workspace and the role, record the audit row (system messages, R-184) and, on publish and retire, an activity event.
+// (machine_catalogue_entries); rules in src/domain/machine-catalogue.ts. Read by the Machine catalogue screen (every entry, the
+// rows published to the CAPEX application and the equipment lines that chose a version), the Machine types screen (the count
+// behind its link), the equipment line forms (published versions) and the view pub_catalogue_machines (migration 0046). Written
+// by the portfolio director and the engineering lead only (choice 5 of the framing, 23 Oct 2026): the writers re-check the
+// Machine catalogue workspace and the role, record the audit row (system messages, R-184) and, on publish and retire, an
+// activity event.
 // A published version is frozen — here (only a draft is edited, published or discarded) and in the database (trigger
 // machine_catalogue_entries_frozen).
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import {
   CATALOGUE_EDITORS_ONLY, canEditCatalogue, catalogueActionBlocker, catalogueRef, latestVersion, nextCatalogueVersion, normaliseCatalogueCode,
   parseCatalogueContent, publishBlockers, supersededBy, CATALOGUE_CODE_RE, type CatalogueAction, type CatalogueContent, type CatalogueOption,
@@ -15,7 +17,7 @@ import {
 import { systemMessage } from '@/domain/system-messages';
 import { getDb } from '@/server/db/client';
 import { machineType, type MachineTypeCode } from '@/server/db/codes';
-import { machineCatalogueEntries, machineTypes, projectEquipments } from '@/server/db/schema';
+import { machineCatalogueEntries, machineTypes, projectEquipments, projects } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
 import { requireWorkspace, trace, whoIs, type Actor } from './ops-common';
 
@@ -61,6 +63,50 @@ export async function listCatalogue(typeCode?: string): Promise<CatalogueEntryRo
   return rows.map((r) => toRow(r.e, r.typeLabel, count(r.e.code, r.e.version)));
 }
 
+/** A row of pub_catalogue_machines as the CAPEX application reads it (published and retired versions; never a draft). */
+export interface CataloguePublicationRow {
+  code: string;
+  version: number;
+  statut: 'publie' | 'retire';
+  /** ISO timestamp (maj_le). */
+  majLe: string;
+}
+
+/** The rows of the shared view pub_catalogue_machines (code, version order) — what Arche reads, read back from the view itself. */
+export async function listCataloguePublication(): Promise<CataloguePublicationRow[]> {
+  const db = await getDb();
+  const res = await db.execute(sql`select code, version, statut, maj_le from pub_catalogue_machines order by code, version`);
+  return (res.rows as { code: string; version: number | string; statut: 'publie' | 'retire'; maj_le: Date | string }[]).map((r) => ({
+    code: r.code, version: Number(r.version), statut: r.statut, majLe: new Date(r.maj_le).toISOString(),
+  }));
+}
+
+/** A project's equipment line that chose a catalogue version (project_equipments.catalogue_code / catalogue_version). */
+export interface CatalogueUseRow {
+  code: string;
+  version: number;
+  projectCode: string;
+  projectName: string | null;
+  /** "EQ-01". */
+  ref: string;
+  quantity: number;
+}
+
+/** Every equipment line that references a catalogue version (project code, then line order). */
+export async function listCatalogueUses(): Promise<CatalogueUseRow[]> {
+  const db = await getDb();
+  const rows = await db
+    .select({
+      code: projectEquipments.catalogueCode, version: projectEquipments.catalogueVersion, projectCode: projects.code, projectName: projects.shortName,
+      ref: projectEquipments.ref, quantity: projectEquipments.quantity,
+    })
+    .from(projectEquipments)
+    .innerJoin(projects, eq(projects.id, projectEquipments.projectId))
+    .where(and(isNotNull(projectEquipments.catalogueCode), isNotNull(projectEquipments.catalogueVersion)))
+    .orderBy(asc(projects.code), asc(projectEquipments.position));
+  return rows.map((r) => ({ ...r, code: r.code!, version: r.version! }));
+}
+
 /** A catalogue version an equipment line may choose. */
 export interface CatalogueChoice {
   code: string;
@@ -90,9 +136,9 @@ export async function findCatalogueVersion(q: Q, code: string, version: number):
   return r ?? null;
 }
 
-/** The catalogue writers' rights: the Machine types workspace and, among its roles, the director and the engineering lead. */
+/** The catalogue writers' rights: the Machine catalogue workspace and, among its roles, the director and the engineering lead. */
 function requireCatalogueEditor(actor: Actor): void {
-  requireWorkspace('mtypes', actor, 'Machine types');
+  requireWorkspace('catalogue', actor, 'Machine catalogue');
   if (!canEditCatalogue(actor.role)) throw new Error(CATALOGUE_EDITORS_ONLY);
 }
 

@@ -946,6 +946,7 @@ Proposition : version tablette des écrans Chantier, Réserves et Livraisons ave
 
 ## 3. Mises à jour
 
+- 2026-10-25 — Catalogue machines : nouvelle catégorie du menu et écran dédié (/catalogue/machines) à la demande du responsable produit ; la section catalogue quitte l’écran Types de machine (60 écrans).
 - 2026-10-25 — Demandes de Matrix D21 et D22 faites : vue pub_rex des leçons apprises ; clients filiales reliés au code de filiale de Matrix (miroir de matrix.pub_filiales, filiale_code dans pub_clients).
 - 2026-10-24 — R-190 fait : client interne (filiale du groupe), portail fermé aux filiales, publié dans pub_projets.
 - 2026-10-24 — R-187 fait : besoins machines des filiales (connecteur Arche, réponses chiffrées, projet créé à la commande, vue pub_reponses_besoins).

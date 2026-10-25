@@ -158,6 +158,10 @@
   {
    "date": "2026-10-25",
    "text": "Demandes de Matrix D21 et D22 faites : vue pub_rex des leçons apprises ; clients filiales reliés au code de filiale de Matrix (miroir de matrix.pub_filiales, filiale_code dans pub_clients)."
+  },
+  {
+   "date": "2026-10-25",
+   "text": "Catalogue machines : nouvelle catégorie du menu et écran dédié (/catalogue/machines) à la demande du responsable produit ; la section catalogue quitte l’écran Types de machine (60 écrans)."
   }
  ],
  "items": [

@@ -1,0 +1,22 @@
+{
+  "The machine catalogue is read-only for you": "Le catalogue machines est en lecture seule pour vous",
+  "Offered to the subsidiaries": "Proposées aux filiales",
+  "One published version per entry": "Une version publiée par fiche",
+  "Drafts in progress": "Brouillons en cours",
+  "Not shared until published": "Non partagés avant publication",
+  "Retired versions": "Versions retirées",
+  "Kept for the needs that chose them": "Gardées pour les besoins qui les ont choisies",
+  "Project lines that chose a version": "Lignes de projet ayant choisi une version",
+  "Click an entry for its versions": "Cliquez sur une fiche pour voir ses versions",
+  "No catalogue entry matches these filters": "Aucune fiche catalogue ne correspond à ces filtres",
+  "Published to the CAPEX application": "Publié vers l’application CAPEX",
+  "Read-only · the rows of the shared view pub_catalogue_machines (published and retired versions; drafts are never shared)": "Lecture seule · les lignes de la vue partagée pub_catalogue_machines (versions publiées et retirées ; les brouillons ne sont jamais partagés)",
+  "Nothing published yet for this entry": "Rien n’est encore publié pour cette fiche",
+  "Projects’ equipment lines": "Lignes d’équipement des projets",
+  "Read-only · the lines that chose a version of this entry (Contract, Equipment card)": "Lecture seule · les lignes qui ont choisi une version de cette fiche (Contrat, carte Équipement)",
+  "No equipment line has chosen this entry yet": "Aucune ligne d’équipement n’a encore choisi cette fiche",
+  "The catalogue entries offered to the subsidiaries are managed on the Machine catalogue screen": "Les fiches catalogue proposées aux filiales se gèrent sur l’écran Catalogue machines",
+  "Open the machine catalogue": "Ouvrir le catalogue machines",
+  "Catalogue versions": "Versions du catalogue",
+  "versions published to the subsidiaries (CAPEX application)": "versions publiées aux filiales (application CAPEX)"
+}

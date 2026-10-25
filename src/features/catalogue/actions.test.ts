@@ -1,4 +1,5 @@
-// R-186 (AC-4, K-01): the machine catalogue Server Functions of the Machine types screen against an in-memory demo database —
+// R-186 (AC-4, K-01): the machine catalogue Server Functions of the Machine catalogue screen (owner, 25 Oct 2026: moved from the
+// Machine types screen) against an in-memory demo database —
 // rights (choice 5: the director and the engineering lead; the other roles of the screen read; outside the workspace refused),
 // validation in the viewer's language, versioning (new version, publish retiring the previous one, retire, discard), the audit
 // trail and activity feed, immutability of a published version (rule and database trigger), the view pub_catalogue_machines
@@ -9,7 +10,7 @@ import type { RoleKey } from '@/config/screens';
 
 const viewer = { role: 'director' as RoleKey, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
-vi.mock('next/navigation', () => ({ usePathname: () => '/admin/machine-types', useRouter: () => ({ push() {}, replace() {}, refresh() {} }), useSearchParams: () => new URLSearchParams() }));
+vi.mock('next/navigation', () => ({ usePathname: () => '/catalogue/machines', useRouter: () => ({ push() {}, replace() {}, refresh() {} }), useSearchParams: () => new URLSearchParams() }));
 vi.mock('@/server/session', async () => {
   const { makeT } = await import('@/i18n/translate');
   const { PERSONA_BY_ROLE } = await import('@/config/personas');
@@ -25,23 +26,23 @@ import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { I18nProvider } from '@/i18n/client';
 import { makeT, type Lang } from '@/i18n/translate';
-import { catalogueView } from './catalogue-model';
-import { CatalogueSection } from './catalogue-section';
+import { catalogueScreenView } from './model';
+import { CatalogueEntryDetail } from './entry-detail';
 import { revalidatePath } from 'next/cache';
 import { CATALOGUE_VIEW_TYPES, SHARE_VIEW_COLUMNS } from '@/server/db/share-contracts';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { auditEntries, machineCatalogueEntries, machineTypePhases } from '@/server/db/schema';
 import { DEMO_CATALOGUE } from '@/server/db/seed/machine-catalogue';
-import { listCatalogue, listCatalogueChoices } from '@/server/dal/machine-catalogue';
+import { listCatalogue, listCatalogueChoices, listCataloguePublication, listCatalogueUses } from '@/server/dal/machine-catalogue';
 import { getMachineType } from '@/server/dal/mtypes';
 import { listActivity } from '@/server/dal/notifications';
 import { addProjectEquipment, listProjectEquipments, updateProjectEquipment } from '@/server/dal/project-equipment';
-import { updateMachineTypeAction } from './actions';
+import { setMachineTypePhaseScopeAction, updateMachineTypeAction } from '@/features/admin/actions';
 import {
   createCatalogueEntryAction, discardCatalogueDraftAction, newCatalogueVersionAction, publishCatalogueVersionAction, retireCatalogueVersionAction,
-  setMachineTypePhaseScopeAction, updateCatalogueDraftAction,
-} from './catalogue-actions';
+  updateCatalogueDraftAction,
+} from './actions';
 
 const as = (role: RoleKey, lang: 'en' | 'fr' = 'en') => {
   viewer.role = role;
@@ -88,15 +89,18 @@ describe('demo catalogue and pub_catalogue_machines (K-01)', () => {
   });
 });
 
-describe('catalogue section of the Machine types screen', () => {
-  const render = async (lang: Lang, canEdit: boolean) =>
-    renderToStaticMarkup(h(I18nProvider, {
-      lang, children: h(CatalogueSection, { typeCode: 'EMP', typeLabel: 'EMP', view: catalogueView(await listCatalogue('EMP'), canEdit, makeT(lang), lang) }),
-    }));
+describe('entry detail of the Machine catalogue screen', () => {
+  const render = async (lang: Lang, canEdit: boolean) => {
+    const view = catalogueScreenView({
+      rows: await listCatalogue(), types: [{ code: 'EMP', label: 'EMP' }, { code: 'MEMU', label: 'MEMU' }, { code: 'SPUR', label: 'SPUR' }],
+      publication: await listCataloguePublication(), uses: await listCatalogueUses(), state: { type: null, status: 'all', entry: 'EMP-40T' }, canEdit, readsOnly: !canEdit,
+    }, makeT(lang), lang);
+    return renderToStaticMarkup(h(I18nProvider, { lang, children: h(CatalogueEntryDetail, { detail: view.detail!, canEdit }) }));
+  };
 
-  it('lists the versions of the type with their status, content and actions (director), in French', async () => {
+  it('lists the versions of the entry with their status, content and actions (director), in French', async () => {
     const html = await render('fr', true);
-    for (const s of ['Catalogue machines', 'Nouvelle fiche catalogue', 'EMP-40T', 'Brouillon', 'Publiée', 'Portique de manutention 40 t', 'Quai 40 t', '52 semaines', 'Publier', 'Modifier', 'TELE · Télécommande radio'])
+    for (const s of ['Fiche catalogue EMP-40T', 'Type de machine EMP', 'Brouillon', 'Publiée', 'Portique de manutention 40 t', 'Quai 40 t', '52 semaines', 'Publier', 'Modifier', 'TELE · Télécommande radio', 'Publié vers l’application CAPEX', 'EMP-40T v1', 'publie', 'Aucune ligne d’équipement n’a encore choisi cette fiche'])
       expect(html, s).toContain(s);
     // A draft pending: no "New version"; the published version can be retired.
     expect(html).not.toContain('Nouvelle version');
@@ -105,8 +109,8 @@ describe('catalogue section of the Machine types screen', () => {
 
   it('reads only for the other roles of the screen', async () => {
     const html = await render('en', false);
-    expect(html).toContain('Machine catalogue');
-    for (const s of ['New catalogue entry', 'Publish EMP-40T', 'Retire EMP-40T', 'Edit draft', 'New version']) expect(html, s).not.toContain(s);
+    expect(html).toContain('Catalogue entry EMP-40T');
+    for (const s of ['Publish EMP-40T', 'Retire EMP-40T', 'Edit draft', 'New version']) expect(html, s).not.toContain(s);
   });
 });
 
@@ -122,10 +126,13 @@ describe('rights (choice 5)', () => {
     expect(await newCatalogueVersionAction('MEMU-16')).toEqual({ error: 'Seuls le directeur et le responsable ingénierie modifient le catalogue machines' });
     for (const role of ['member', 'finance', 'procurement', 'depthead'] as RoleKey[]) {
       as(role);
-      expect(await discardCatalogueDraftAction('EMP-40T', 2)).toEqual({ error: 'Machine types are read-only for you' });
+      expect(await discardCatalogueDraftAction('EMP-40T', 2)).toEqual({ error: 'The machine catalogue is read-only for you' });
       // Invalid input: the read-only refusal first.
-      expect(await updateCatalogueDraftAction('nope', 'x', null)).toEqual({ error: 'Machine types are read-only for you' });
+      expect(await updateCatalogueDraftAction('nope', 'x', null)).toEqual({ error: 'The machine catalogue is read-only for you' });
     }
+    expect(revalidatePath).not.toHaveBeenCalled();
+    as('finance', 'fr');
+    expect(await createCatalogueEntryAction('EMP', { code: 'EMP-50T', label: 'X' })).toEqual({ error: 'Le catalogue machines est en lecture seule pour vous' });
     expect(revalidatePath).not.toHaveBeenCalled();
     expect(await status('EMP-40T')).toEqual([[2, 'draft'], [1, 'published']]);
   });
@@ -139,7 +146,7 @@ describe('versioning, audit and immutability', () => {
     expect(await createCatalogueEntryAction('SPUR', { code: 'EMP-40T', label: 'X' })).toEqual({ error: 'Ce code catalogue est déjà utilisé' });
     expect(await createCatalogueEntryAction('SPUR', { code: '-', label: 'X' })).toEqual({ error: 'Un code catalogue s’écrit comme EMP-40T (majuscules, chiffres et tirets)' });
     as('englead');
-    expect(await createCatalogueEntryAction('SPUR', { code: 'spur 3', label: 'Purification 3 lignes', variant: 'Standard' })).toEqual({ ok: true, toast: 'Catalogue draft saved' });
+    expect(await createCatalogueEntryAction('SPUR', { code: 'spur 3', label: 'Purification 3 lignes', variant: 'Standard' })).toEqual({ ok: true, toast: 'Catalogue draft saved', code: 'SPUR-3' });
     expect(await status('SPUR-3')).toEqual([[1, 'draft']]);
     expect(await publishCatalogueVersionAction('SPUR-3', 1)).toEqual({ error: 'Enter the indicative price before publishing' });
     expect(await updateCatalogueDraftAction('SPUR-3', 1, { label: 'Purification 3 lignes', indicativePriceKeur: '3100', leadTimeWeeks: '44', options: 'GEN | Groupe | 95' }))

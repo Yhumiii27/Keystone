@@ -64,7 +64,7 @@ describe('workspace roles (D5_SCREEN_ROLES mirrors ROLE_SCREENS)', () => {
     }
     for (const s of ['eng-process', 'eng-meca', 'eng-elec', 'eng-auto'] as ScreenId[]) expect(roles.filter((r) => canSee(r, s))).toEqual([...D5_SCREEN_ROLES.eng]);
     expect(Object.keys(D5_SCREEN_ROLES).sort()).toEqual(([
-      'client', 'commissioning', 'eng', 'fleet', 'itp', 'mtypes', 'pid', 'plumbing', 'quality', 'rex', 'sav', 'settings', 'site',
+      'catalogue', 'client', 'commissioning', 'eng', 'fleet', 'itp', 'mtypes', 'pid', 'plumbing', 'quality', 'rex', 'sav', 'settings', 'site',
     ] as D5Screen[]).sort());
   });
 });

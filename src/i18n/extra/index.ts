@@ -77,6 +77,7 @@ import d9EstimateClass from './d9-estimate-class.json';
 import d9CapexNeeds from './d9-capex-needs.json';
 import d9InternalClient from './d9-internal-client.json';
 import d9MatrixSubsidiaries from './d9-matrix-subsidiaries.json';
+import d9CatalogueScreen from './d9-catalogue-screen.json';
 
 export const EXTRA_FR: Record<string, string> = {
   ...common,
@@ -154,4 +155,5 @@ export const EXTRA_FR: Record<string, string> = {
   ...d9CapexNeeds,
   ...d9InternalClient,
   ...d9MatrixSubsidiaries,
+  ...d9CatalogueScreen,
 };

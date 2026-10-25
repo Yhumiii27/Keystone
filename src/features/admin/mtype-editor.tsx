@@ -6,7 +6,7 @@
 // fields), selects on change, list rows by sending the whole list. `mtCanEdit` (director, PM, engineering lead, quality
 // = the screen's workspace): other viewers get read-only fields and no add / remove / toggle buttons (the prototype
 // left the inputs and × buttons active, P-14).
-import { ArrowRight, CheckCircle, Plus, X } from '@phosphor-icons/react/dist/ssr';
+import { ArrowRight, CheckCircle, Package, Plus, X } from '@phosphor-icons/react/dist/ssr';
 import { useState, useTransition, type KeyboardEvent } from 'react';
 import { Button, ButtonLink, IconButton } from '@/components/ds/Button';
 import { cx } from '@/components/ds/cx';
@@ -16,12 +16,9 @@ import { useI18n } from '@/i18n/client';
 import { money } from '@/lib/format';
 import type { CalendarCode, CostType } from '@/server/db/codes';
 import {
-  removeRexReferenceAction, setMachineTypeCostCategoriesAction, setMachineTypeItpSystemsAction, setMachineTypePhasesAction, updateMachineTypeAction,
-  type AdminActionResult,
+  removeRexReferenceAction, setMachineTypeCostCategoriesAction, setMachineTypeItpSystemsAction, setMachineTypePhaseScopeAction, setMachineTypePhasesAction,
+  updateMachineTypeAction, type AdminActionResult,
 } from './actions';
-import { setMachineTypePhaseScopeAction } from './catalogue-actions';
-import type { CatalogueView } from './catalogue-model';
-import { CatalogueSection } from './catalogue-section';
 import type { EditableText, MtDetailView } from './model';
 import s from './admin.module.css';
 
@@ -56,7 +53,13 @@ const enterBlurs = (e: KeyboardEvent<HTMLInputElement>) => {
   if (e.key === 'Enter') e.currentTarget.blur();
 };
 
-export function MachineTypeEditor({ mt, canEdit, catalogue }: { mt: MtDetailView; canEdit: boolean; catalogue?: CatalogueView }) {
+/** The link to the Machine catalogue screen (owner, 25 Oct 2026): filtered on the type, with its number of catalogue entries. */
+export interface CatalogueLink {
+  href: string;
+  entries: number;
+}
+
+export function MachineTypeEditor({ mt, canEdit, catalogueLink }: { mt: MtDetailView; canEdit: boolean; catalogueLink?: CatalogueLink }) {
   const { t } = useI18n();
   const [pending, start] = useTransition();
   const save = (p: () => Promise<AdminActionResult>, onFail?: () => void) =>
@@ -93,7 +96,7 @@ export function MachineTypeEditor({ mt, canEdit, catalogue }: { mt: MtDetailView
         />
       </div>
       <CostCategories key={`cats-${mt.code}`} mt={mt} canEdit={canEdit} save={save} />
-      {catalogue && <CatalogueSection key={`catalogue-${mt.code}`} typeCode={mt.code} typeLabel={mt.displayCode} view={catalogue} />}
+      {catalogueLink && <CatalogueLinkCard link={catalogueLink} typeLabel={mt.displayCode} />}
       <div className={s.twoGrid}>
         <div className={cx('card', 'elev-sm', s.sectionCard)}>
           <span className={s.sectionLabel}>{t('Financial REX · reference projects')}</span>
@@ -436,6 +439,24 @@ function CostCategories({ mt, canEdit, save }: { mt: MtDetailView; canEdit: bool
         <span className={cx(s.right, s.tabular)}>{money(total, lang)}</span>
         <span className={s.spacer24} />
       </div>
+    </div>
+  );
+}
+
+/** The machine catalogue moved to its own screen: a short card linking to it, filtered on this type. */
+function CatalogueLinkCard({ link, typeLabel }: { link: CatalogueLink; typeLabel: string }) {
+  const { t } = useI18n();
+  return (
+    <div className={cx('card', 'elev-sm', s.sectionCard, s.catalogueLinkCard)}>
+      <span className={s.sectionLabel}>{t('Machine catalogue')}</span>
+      <span className={s.catalogueLinkRow}>
+        <span className={s.catalogueLinkText}>
+          {`${t('The catalogue entries offered to the subsidiaries are managed on the Machine catalogue screen')} · ${typeLabel} · ${t('Catalogue entries')} · ${link.entries}`}
+        </span>
+        <ButtonLink href={link.href} variant="secondary" size="sm" icon={Package} className={s.pushRight}>
+          {t('Open the machine catalogue')}
+        </ButtonLink>
+      </span>
     </div>
   );
 }

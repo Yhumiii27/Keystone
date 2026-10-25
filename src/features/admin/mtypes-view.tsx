@@ -4,12 +4,11 @@ import Link from 'next/link';
 import { KpiGrid, KpiTile } from '@/components/app/Kpi';
 import { cx } from '@/components/ds/cx';
 import type { T } from '@/i18n/translate';
-import { MachineTypeEditor } from './mtype-editor';
-import type { CatalogueView } from './catalogue-model';
+import { MachineTypeEditor, type CatalogueLink } from './mtype-editor';
 import type { MachineTypesView } from './model';
 import s from './admin.module.css';
 
-export function MachineTypesBody({ view, canEdit, catalogue, t }: { view: MachineTypesView; canEdit: boolean; catalogue?: CatalogueView; t: T }) {
+export function MachineTypesBody({ view, canEdit, catalogueLink, t }: { view: MachineTypesView; canEdit: boolean; catalogueLink?: CatalogueLink; t: T }) {
   return (
     <div className={s.root}>
       <KpiGrid>
@@ -37,7 +36,7 @@ export function MachineTypesBody({ view, canEdit, catalogue, t }: { view: Machin
             ))}
           </div>
         </nav>
-        {view.mt && <MachineTypeEditor mt={view.mt} canEdit={canEdit} catalogue={catalogue} />}
+        {view.mt && <MachineTypeEditor mt={view.mt} canEdit={canEdit} catalogueLink={catalogueLink} />}
       </div>
     </div>
   );
