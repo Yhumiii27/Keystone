@@ -8,7 +8,7 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-25 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 111 faits, 29 en cours, 57 à faire, sur 197 points.
+**Avancement** : 111 faits, 30 en cours, 56 à faire, sur 197 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
@@ -87,7 +87,7 @@ Décisions à prendre et données à fournir avant de pouvoir développer. Les q
 - **R-123** Statuer sur le journal client retiré et la notion de « décision client » — Réponse du responsable produit (DELIVERY-6 §8 D-5)
 - **R-141** Recueillir l’enquête de satisfaction client par le portail — Ouverture de l’accès client au portail (I-2b : pas d’accès client au lancement)
 - **R-142** Préciser l’onglet Planning du portail client et les PDF de planning — Réponses du responsable produit (DELIVERY-6 §8 S-9a)
-- **R-158** Cadrer puis construire le module Expédition & transport — Atelier de cadrage du périmètre avec le responsable produit (BACKLOG §1) ; partage des rôles logistique avec Sage X3 (A-1a) ; code HS exigé avant validation d’article (E-1b)
+- **R-158** Cadrer puis construire le module Expédition & transport — Validation des choix du cadrage docs/delivery-9/cadrage-r158-expeditions.md
 - **R-159** P1 · Relance fournisseurs et inspections usine (à valider) — Validation de la proposition par le responsable produit
 - **R-160** P2 · Conformité CE et dossier technique machine (à valider) — Validation de la proposition et du périmètre réglementaire par le responsable produit
 - **R-161** P3 · Réclamations contractuelles et pénalités (à valider) — Validation de la proposition par le responsable produit
@@ -907,9 +907,9 @@ isoOfDayOffset calcule une date fausse pour un décalage négatif : −1 jour ou
 
 ### 2.17 Nouveaux modules demandés ou proposés (à valider) (9 restants)
 
-**R-158 · Cadrer puis construire le module Expédition & transport** — *À décider · non commencé · effort XL*  
+**R-158 · Cadrer puis construire le module Expédition & transport** — *À décider · non commencé · effort XL* · **en cours (9)**  
 Module demandé mais à cadrer avec le responsable produit avant construction : plan d’expédition (lots, colis, conteneurs et remplissage), fret (mode, Incoterm, transitaire, ETD/ETA, jalons), coûts imputés au budget, documents versés dans Codex (facture, packing list, EUR.1, CMR, B/L ou LTA, déclaration d’export), synthèse douane par code HS avec alerte double usage, et contrôle nomenclature ↔ packing list bloquant le livrable « Colisage & documents douaniers ». Les données articles (code HS, restriction et famille de contrôle export) existent déjà et ne sont aujourd’hui qu’affichées ; le livrable d’étape n’est qu’une case à cocher.  
-*Attend : Atelier de cadrage du périmètre avec le responsable produit (BACKLOG §1) ; partage des rôles logistique avec Sage X3 (A-1a) ; code HS exigé avant validation d’article (E-1b) · Sources : BACKLOG.md §1, DELIVERY-6.md §9, CLAUDE.md, E-1b, A-1a*
+*Avancement : 25 oct. 2026 : le responsable produit redemande le module (« il manque un module de gestion des expéditions du matériel vers la filiale ») ; cadrage rédigé (docs/delivery-9/cadrage-r158-expeditions.md) : écran projet Expéditions, chargements et colis, contrôle colisage ↔ nomenclature, douane (codes HS), documents (packing list, proforma) versés dans Codex, réception sur site et réserves, jalons expedition / arrivee_site, vue pub_expeditions pour la filiale ; 8 points à valider. · Attend : Validation des choix du cadrage docs/delivery-9/cadrage-r158-expeditions.md · Sources : BACKLOG.md §1, DELIVERY-6.md §9, CLAUDE.md, E-1b, A-1a*
 
 **R-159 · P1 · Relance fournisseurs et inspections usine (à valider)** — *À décider · non commencé · effort L*  
 Proposition : avancement de fabrication par commande, jalons d’inspection et FAT fournisseurs, bons de libération et alertes de délai pour les commandes longues. Existent seulement les commandes (date attendue, activité qui en a besoin, drapeau « en retard » quand l’activité a démarré), les réceptions et annonces de livraison, et des points ITP d’étape FAT non reliés aux commandes ni aux fournisseurs.  
@@ -945,6 +945,7 @@ Proposition : version tablette des écrans Chantier, Réserves et Livraisons ave
 
 ## 3. Mises à jour
 
+- 2026-10-25 — R-158 (expéditions vers la filiale) : cadrage proposé, 8 points à valider par le responsable produit.
 - 2026-10-25 — R-191 fait : pack ingénierie (liste provisoire 5 familles × 20 %), % de complétude à la Synthèse ingénierie, vue pub_pack_ingenierie pour Arche.
 - 2026-10-25 — R-189 : dates de référence BL1 des jalons CAPEX publiées dans pub_jalons_projets (code de jalon CAPEX sur les jalons du planning).
 - 2026-10-25 — Catalogue machines : nouvelle catégorie du menu et écran dédié (/catalogue/machines) à la demande du responsable produit ; la section catalogue quitte l’écran Types de machine (60 écrans).
