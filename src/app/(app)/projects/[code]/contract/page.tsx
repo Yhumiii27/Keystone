@@ -6,7 +6,8 @@
 // Delivery 7: amounts in the contract's currency and the project's "Currency & budget rate" (C-9, R-075 — set by the
 // portfolio director and, since R-044, Finance; also on a project without contract), the payment rule (R-076), the amendments' signature cycle and own
 // milestones, the guarantees' release (R-079). Delivery 9 (R-185): the project's "Equipment" card (equipment lines); R-190: the
-// "Client" card (external client or group subsidiary — the director sets it).
+// "Client" card (external client or group subsidiary — the director sets it). R-158: the "Incoterm" card (the contract's Incoterm and
+// named place, the contract editors set it; the Shipments screen organises the transport from it).
 import { EmptyState } from '@/components/app/EmptyState';
 import { Stack } from '@/components/app/SectionCard';
 import { PageHeader } from '@/components/app/shell/page-header';
@@ -16,6 +17,8 @@ import {
   amendmentFormDef, bondFormDef, contractView, currencyView, editMilestoneFormDef, milestoneFormDef, releaseFormDef, signFormDef,
 } from '@/features/contract/model';
 import { EquipmentCard } from '@/features/contract/equipment-card';
+import { IncotermCard } from '@/features/contract/incoterm-card';
+import { getContractIncoterm, listIncoterms } from '@/server/dal/incoterms';
 import { canSetInternalClient } from '@/domain/internal-client';
 import { canSetBudgetRate, canSetCapexLink, canSetProjectEquipment } from '@/domain/rights';
 import { listCatalogueChoices } from '@/server/dal/machine-catalogue';
@@ -74,6 +77,8 @@ export default async function ContractPage({ params }: { params: Promise<{ code:
   const canEdit = ctx.canEdit('contract');
   const context = projectLabelText(ctx.project, lang);
   const currency = contract.sheet.currency;
+  const [incoterm, incoterms] = await Promise.all([getContractIncoterm(projectCode), canEdit ? listIncoterms() : Promise.resolve([])]);
+  const incotermCard = <IncotermCard value={incoterm} list={incoterms} code={projectCode} canEdit={canEdit} context={context} t={t} lang={lang} />;
   const forms = {
     amendment: amendmentFormDef(t, currency),
     bond: bondFormDef(t, currency),
@@ -90,7 +95,7 @@ export default async function ContractPage({ params }: { params: Promise<{ code:
   return (
     <>
       <PageHeader screen="contract" projectCode={projectCode} primary={primary} crumbExtra={contract.sheet.reference} />
-      <ContractScreen view={contractView(contract, t, lang)} code={projectCode} canEdit={canEdit} canSetRate={canSetRate} context={context} forms={forms} t={t} capexCard={<>{equipmentCard}{capexCard}{clientCard}</>} />
+      <ContractScreen view={contractView(contract, t, lang)} code={projectCode} canEdit={canEdit} canSetRate={canSetRate} context={context} forms={forms} t={t} capexCard={<>{incotermCard}{equipmentCard}{capexCard}{clientCard}</>} />
     </>
   );
 }

@@ -164,6 +164,14 @@ const CH4_COUNTS: Record<string, number> = {
   client_communications: 0, whatif_scenario_actions: 0,
 };
 
+/**
+ * R-158 lot A: the 11 Incoterms 2020 (both seeds) and the demo shipment EXP-01 of HLT-026 — EQ-02, the 7 seller's steps of DAP
+ * tracked, two 40′ HC containers with 4 content lines, the free item's gap justified (src/server/db/seed/shipments.ts).
+ */
+const R158_COUNTS: Record<string, number> = {
+  incoterms: 11, shipments: 1, shipment_equipments: 1, shipment_steps: 7, shipment_loads: 2, shipment_items: 4, shipment_gap_reasons: 1,
+};
+
 let failures = 0;
 function check(label: string, ok: boolean, detail?: unknown) {
   if (!ok) failures++;
@@ -384,6 +392,9 @@ async function main() {
   console.log('\nChapter 4 tables (golden row counts)');
   for (const [table, n] of Object.entries(CH4_COUNTS)) check(`${table} = ${n}`, counts[table] === n, counts[table]);
 
+  console.log('\nR-158 shipments (golden row counts)');
+  for (const [table, n] of Object.entries(R158_COUNTS)) check(`${table} = ${n}`, counts[table] === n, counts[table]);
+
   console.log('\nProjects');
   const list = await listProjects();
   check('17 projects', list.length === 17, list.length);
@@ -467,9 +478,10 @@ async function main() {
   const people = await listPeople();
   check('PMs cited by projects resolve to persons', PROTO_GEN.initialProjects.every((p) => people.some((x) => x.shortName === p.pm)));
   check('Marion Kerviel heads Engineering', (await getPersonByName('M. Kerviel'))?.department === 'Engineering');
-  // R-044: the prototype's 8 personas, then the Finance persona (Léa Marchand, not in the prototype).
-  check('9 users (personas)', same((await listUsers()).map((u) => [u.role, u.name, u.title]), [
+  // R-044: the prototype's 8 personas, then the Finance persona (Léa Marchand, not in the prototype); R-158: the Logistics persona.
+  check('10 users (personas)', same((await listUsers()).map((u) => [u.role, u.name, u.title]), [
     ...Object.entries(PROTO.PERSONAS as Record<string, [string, string]>).map(([r, [n, t]]) => [r, n, t]), ['finance', 'Léa Marchand', 'Cost controller'],
+    ['logistics', 'Camille Verdier', 'Logistics coordinator'],
   ]));
   check('zones + bounds', same((await listZones()).map((z) => [z.code, z.label, z.manager]), PROTO.ZONES) && same(Object.fromEntries((await listZones()).map((z) => [z.code, z.bounds])), PROTO.ZONE_BOUNDS));
   check('department capacities = ROLES', same((await listDepartmentCapacities()).map((d) => [d.department, d.capacityH, d.demandH]), PROTO.ROLES));

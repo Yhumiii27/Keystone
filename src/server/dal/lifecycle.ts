@@ -10,6 +10,7 @@ import type { RoleKey } from '@/config/screens';
 import { projectDataDate } from '@/domain/ch4-defaults';
 import { businessToday } from '@/server/clock';
 import { BL1_DELIVERABLE_MESSAGE, BL1_STAGE_DELIVERABLE, bl1TickRefused, hasBl1 } from '@/domain/baseline-policy';
+import { packingDeliverableRefusal } from './shipments';
 import { REVERT_BLOCKER_MESSAGE, isForcedStageDecider, revertBlocker, revertReason, FORCED_STAGE_COMMENT_MAX } from '@/domain/forced-stage';
 import { defaultEffectiveDate, effectiveDateError, type EffectiveDateBounds } from '@/domain/lifecycle';
 import { getDb } from '@/server/db/client';
@@ -278,6 +279,9 @@ export async function toggleStageDeliverable(projectCode: string, stage: StageCo
   const done = !before[stage]?.[position];
   // R-054 (L-2 "a"): « Planning BL1 posé » follows BL1, as in the register (setDeliverableAndAdvance).
   if (bl1TickRefused({ stage, position, done }, (await projectHasBl1(projectCode)).bl1)) throw new Error(BL1_DELIVERABLE_MESSAGE);
+  // R-158 (decision 4): « Colisage & documents douaniers » only once every shipment's packing list is validated.
+  const packing = await packingDeliverableRefusal(projectCode, { stage, position, done });
+  if (packing) throw new Error(packing);
   await setStageDeliverable(projectCode, stage, position, done);
   const after = await getStageChecklist(projectCode);
   const db = await getDb();

@@ -30,6 +30,8 @@ const REFERENCE_TABLES = [
   'project_templates', 'public_holidays', 'reference_values', 'score_axes', 'skills', 'stage_deliverable_defs', 'whatif_auto_levers', 'whatif_levers', 'zones',
   // R-178 (A-10): the premium multipliers and their first versions — placeholders to confirm; rate roles stay EPC2i's (0 rows).
   'rate_multipliers', 'rate_multiplier_rates',
+  // R-158 (decision 9): the 11 Incoterms 2020.
+  'incoterms',
 ].sort();
 
 describe('production seed (KEYSTONE_SEED=production)', () => {

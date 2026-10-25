@@ -8,6 +8,7 @@ import 'server-only';
 // Permission checks, input validation and revalidation belong to src/features/projects/actions.ts.
 import { and, asc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import { BL1_DELIVERABLE_MESSAGE, bl1TickRefused, hasBl1 } from '@/domain/baseline-policy';
+import { packingDeliverableRefusal } from './shipments';
 import { BUILTIN_CALENDAR_BY_CODE, WorkCalendar } from '@/domain/calendar';
 import { projectDataDate } from '@/domain/ch4-defaults';
 import { businessToday } from '@/server/clock';
@@ -159,6 +160,9 @@ export async function moveProjectStage(
 export async function setDeliverableAndAdvance(code: string, stage: StageCode, index: number, done: boolean, requestedBy?: string): Promise<StageCode | null> {
   // R-054 (L-2 "a"): « Planning BL1 posé » follows BL1 (re-checked here for every caller; a forced move is unchanged).
   if (bl1TickRefused({ stage, position: index, done }, (await projectHasBl1(code)).bl1)) throw new Error(BL1_DELIVERABLE_MESSAGE);
+  // R-158 (decision 4): « Colisage & documents douaniers » only once every shipment's packing list is validated (every caller).
+  const packing = await packingDeliverableRefusal(code, { stage, position: index, done });
+  if (packing) throw new Error(packing);
   await setStageDeliverable(code, stage, index, done);
   const [current, stages, checklists, inactive] = await Promise.all([getProjectStage(code), listStages(), listStageChecklists(), inactiveStageCodes()]);
   const s = stages.find((x) => x.code === stage);

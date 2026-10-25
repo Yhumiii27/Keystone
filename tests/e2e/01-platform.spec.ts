@@ -41,7 +41,7 @@ const GLOBAL = [
 const PROJECT = [
   'client', 'documents', 'contract', 'billing', 'plan', 'schedule', 'budget', 'hours', 'contingency', 'resources', 'meetings', 'stakeholders', 'interfaces',
   'engineering', 'engineering/process', 'engineering/mechanical', 'engineering/electrical', 'engineering/automation', 'pid', 'bom', 'risks', 'changes',
-  'quality', 'itp', 'site', 'commissioning', 'trends', 'closure', 'orders', 'deliveries',
+  'quality', 'itp', 'site', 'shipments', 'commissioning', 'trends', 'closure', 'orders', 'deliveries',
 ];
 
 test('every screen renders under the CSP without a violation or a browser error', async ({ page, context }) => {

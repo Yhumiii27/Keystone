@@ -91,7 +91,7 @@ describe('R-034 on a demo database: the X3 actions are simulated and say so', ()
       member: 'Stock is read-only for you', englead: 'Stock is read-only for you', quality: 'Simulated import (Sage X3 not connected)',
       procurement: 'Simulated import (Sage X3 not connected)', client: 'NEXT_REDIRECT',
       // R-044 (roles-rates-hr lot): Finance, the 9th persona, reads Stock only.
-      finance: 'Stock is read-only for you',
+      finance: 'Stock is read-only for you', logistics: 'Stock is read-only for you',
     });
     expect((await listAudit({ limit: 1 }))[0]).toMatchObject({ who: 'Fabien Bertrand', object: 'Sage X3', area: 'Stock' });
     expect((await listAudit({ limit: 1 }))[0].change).toMatch(/^simulated stock import \(Sage X3 not connected\) · \d+ lines · /);

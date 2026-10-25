@@ -55,7 +55,8 @@ describe('R-044 · the Finance persona', () => {
   it('a 9th demo user: Léa Marchand, role finance, Controls & planning, sign-in e-mail on the person', async () => {
     const u = (await listUsers()).find((x) => x.role === 'finance');
     expect(u).toMatchObject({ name: 'Léa Marchand', roles: ['finance'], title: 'Cost controller', client: null });
-    expect((await listUsers()).length).toBe(9);
+    // R-158: ten with the Logistics persona.
+    expect((await listUsers()).length).toBe(10);
     const [p] = await db.select({ email: persons.email }).from(persons).where(eq(persons.fullName, 'Léa Marchand'));
     expect(p.email).toBe('lea.marchand@epc2i.fr');
   });
@@ -182,7 +183,7 @@ describe('Server Functions × 9 personas', () => {
         continue;
       }
       const r = await setHoursVarianceAction('7');
-      const want = role === 'director' ? { ok: true } : { error: ['pm', 'depthead', 'englead', 'quality', 'procurement'].includes(role) ? 'Settings are edited by the portfolio director' : 'Settings are read-only for you' };
+      const want = role === 'director' ? { ok: true } : { error: ['pm', 'depthead', 'englead', 'quality', 'procurement', 'logistics'].includes(role) ? 'Settings are edited by the portfolio director' : 'Settings are read-only for you' };
       expect([role, r]).toEqual([role, want]);
     }
     expect(await readHoursVariance()).toBe(7);

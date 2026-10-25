@@ -7,7 +7,7 @@ import { PROTO, PROTO_GEN } from '@/server/prototype';
 import { clients, cities, countries, departmentCapacities, departments, persons, users, zones } from '../schema';
 import type { Tx } from '../types';
 import { must, newId, type SeedCtx } from './context';
-import { seedFinanceUser } from './users';
+import { seedFinanceUser, seedLogisticsUser } from './users';
 
 interface PersonDraft {
   id: string;
@@ -116,6 +116,9 @@ export async function seedOrganisation(tx: Tx, ctx: SeedCtx): Promise<void> {
   // R-044: the Finance persona (not in the prototype's PERSONAS) gets its user next.
   const finance = await seedFinanceUser(tx);
   if (finance) ctx.userByRole.set('finance', finance);
+  // R-158: the Logistics persona (no prototype person: created with its user).
+  const logistics = await seedLogisticsUser(tx);
+  if (logistics) ctx.userByRole.set('logistics', logistics);
 
   // Zones, countries, cities.
   await seedGeography(tx, (manager) => must(ctx.personByFull, manager, 'person'));

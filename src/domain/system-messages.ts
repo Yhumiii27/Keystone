@@ -160,6 +160,46 @@ const MESSAGES = {
     (p) => `Machine type ${p.type} · engineering pack: ${p.list}`,
     (p) => `Type de machine ${p.type} · pack ingénierie : ${p.list}`,
   ),
+  // R-158 lot A: the Incoterms of Settings (split "S S S S B …" in INCOTERM_STEPS order) and the contract's Incoterm.
+  'incoterm.added': def({ code: 'ref', split: 'ref' }, (p) => `Incoterm ${p.code} added · ${p.split}`, (p) => `Incoterm ${p.code} ajouté · ${p.split}`),
+  'incoterm.edited': def({ code: 'ref', split: 'ref' }, (p) => `Incoterm ${p.code} edited · ${p.split}`, (p) => `Incoterm ${p.code} modifié · ${p.split}`),
+  'incoterm.deleted': def({ code: 'ref' }, (p) => `Incoterm ${p.code} deleted`, (p) => `Incoterm ${p.code} supprimé`),
+  'incoterm.deactivated': def(
+    { code: 'ref', contracts: 'count' },
+    (p) => `Incoterm ${p.code} deactivated · used by ${p.contracts} contract(s)`,
+    (p, f) => `Incoterm ${p.code} désactivé · utilisé par ${f.plural(p.contracts, 'contrat', 'contrats')}`,
+  ),
+  'incoterm.reactivated': def({ code: 'ref' }, (p) => `Incoterm ${p.code} reactivated`, (p) => `Incoterm ${p.code} réactivé`),
+  'contract.incoterm': def(
+    { project: 'ref', incoterm: 'ref', place: 'data' },
+    (p) => `${p.project} · contract Incoterm: ${p.incoterm || 'none'}${p.place ? ` ${p.place}` : ''}`,
+    (p, f) => `${p.project} · Incoterm du contrat : ${p.incoterm || 'aucun'}${p.place ? ` ${f.data(p.place)}` : ''}`,
+  ),
+  // R-158 lot A: the shipments (Shipments screen). `what` / statuses / steps are Keystone labels (EN source strings).
+  'shipment.created': def({ project: 'ref', ref: 'ref', equipment: 'dataList' }, (p) => `${p.project} · shipment ${p.ref} created · ${p.equipment.join(', ')}`,
+    (p) => `${p.project} · expédition ${p.ref} créée · ${p.equipment.join(', ')}`),
+  'shipment.edited': def({ project: 'ref', ref: 'ref' }, (p) => `${p.project} · shipment ${p.ref} edited`, (p) => `${p.project} · expédition ${p.ref} modifiée`),
+  'shipment.removed': def({ project: 'ref', ref: 'ref' }, (p) => `${p.project} · shipment ${p.ref} removed`, (p) => `${p.project} · expédition ${p.ref} supprimée`),
+  'shipment.content': def(
+    { project: 'ref', ref: 'ref', what: 'label', item: 'data' },
+    (p) => `${p.project} · shipment ${p.ref} · ${p.what}${p.item ? ` · ${p.item}` : ''}`,
+    (p, f) => `${p.project} · expédition ${p.ref} · ${f.label(p.what)}${p.item ? ` · ${f.data(p.item)}` : ''}`,
+  ),
+  'shipment.gapJustified': def(
+    { project: 'ref', ref: 'ref', item: 'data', reason: 'data' },
+    (p) => `${p.project} · shipment ${p.ref} · gap justified · ${p.item} · ${p.reason}`,
+    (p, f) => `${p.project} · expédition ${p.ref} · écart justifié · ${f.data(p.item)} · ${f.data(p.reason)}`,
+  ),
+  'shipment.status': def(
+    { project: 'ref', ref: 'ref', from: 'label', to: 'label' },
+    (p) => `${p.project} · shipment ${p.ref} · status: ${p.from} → ${p.to}`,
+    (p, f) => `${p.project} · expédition ${p.ref} · statut : ${f.label(p.from)} → ${f.label(p.to)}`,
+  ),
+  'shipment.step': def(
+    { project: 'ref', ref: 'ref', step: 'label' },
+    (p) => `${p.project} · shipment ${p.ref} · step updated · ${p.step}`,
+    (p, f) => `${p.project} · expédition ${p.ref} · étape mise à jour · ${f.label(p.step)}`,
+  ),
 } as const;
 
 export type MessageKey = keyof typeof MESSAGES;

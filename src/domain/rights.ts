@@ -139,6 +139,24 @@ export const canSetCapexMilestone = (role: RoleKey, a: Pick<ProjectAccess, 'lead
 export const FINANCE_READ_ONLY_SCREENS: readonly ScreenId[] = ['budget', 'hours', 'billing'];
 export const financeReadOnly = (role: RoleKey, screen: ScreenId) => role === 'finance' && FINANCE_READ_ONLY_SCREENS.includes(screen);
 
+// ── R-158 · Logistics and the shipments (owner's decisions 1 and 7, 25 Oct 2026) ──────────────────────────────────
+
+/** R-158: Logistics reads the screens a shipment needs (BOM, Site, Schedule, Deliveries), even on a project whose team it is on. */
+export const LOGISTICS_READ_ONLY_SCREENS: readonly ScreenId[] = ['bom', 'site', 'schedule', 'deliveries'];
+export const logisticsReadOnly = (role: RoleKey, screen: ScreenId) => role === 'logistics' && LOGISTICS_READ_ONLY_SCREENS.includes(screen);
+
+/** A screen of the role's workspace the role only reads (Finance: Budget, Hours, Billing — R-044; Logistics — R-158). */
+export const roleReadOnly = (role: RoleKey, screen: ScreenId) => financeReadOnly(role, screen) || logisticsReadOnly(role, screen);
+
+/**
+ * R-158: who prepares and follows a project's shipments (Shipments screen: shipments, loads, content, packing control, transport
+ * steps, status) — the portfolio director and Logistics on every project (like Finance on the contract: EPC2i's logistics serves
+ * every project, not a named team), or one of the project's leads (PM of record, co-PM, deputy) whose workspace has the screen.
+ * The rest of the team and the other internal roles read; the client is refused the screen.
+ */
+export const canEditShipments = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) =>
+  role !== 'client' && canSee(role, 'shipments') && (role === 'director' || role === 'logistics' || a.lead);
+
 /** C-9 (R-044 default, DELIVERY-7 §8 open question): the project currency and budget rate — the director and Finance. */
 export const BUDGET_RATE_ROLES: readonly RoleKey[] = ['director', 'finance'];
 export const canSetBudgetRate = (role: string) => (BUDGET_RATE_ROLES as readonly string[]).includes(role);
@@ -198,6 +216,11 @@ export const canSeeSupplierPrices = (role: RoleKey) => SUPPLIER_PRICE_ROLES.incl
 export const PRICE_MASK = '•••';
 /** Hint shown where prices are masked (EN source). */
 export const PRICES_HIDDEN = 'Prices are visible to the director, the project managers and procurement';
+/**
+ * R-158: the customs values of a shipment (content lines, per-HS-code summary) come from the BOM valuation — ordered, last purchase
+ * or catalogue prices — so they follow NEW-D2-1, plus Logistics, which declares them (export declaration, insurance).
+ */
+export const canSeeShipmentValues = (role: RoleKey) => canSeeSupplierPrices(role) || role === 'logistics';
 // Hourly rates (task cost note, rate card, what-if helpers): `canSeeRates` in src/domain/hr.ts (director, PM, Finance — P-12 c);
 // editing the grid: `canEditRates` (director, Finance).
 

@@ -18,3 +18,4 @@ import './aftersales';
 import './resources';
 import './admin';
 import './catalogue';
+import './shipments';
