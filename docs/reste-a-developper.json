@@ -1,6 +1,6 @@
 {
  "generated": "2026-10-10",
- "updated": "2026-10-24",
+ "updated": "2026-10-25",
  "branch": "main-2a2fep",
  "history": [
   {
@@ -154,6 +154,10 @@
   {
    "date": "2026-10-24",
    "text": "R-190 fait : client interne (filiale du groupe), portail fermé aux filiales, publié dans pub_projets."
+  },
+  {
+   "date": "2026-10-25",
+   "text": "Demandes de Matrix D21 et D22 faites : vue pub_rex des leçons apprises ; clients filiales reliés au code de filiale de Matrix (miroir de matrix.pub_filiales, filiale_code dans pub_clients)."
   }
  ],
  "items": [

@@ -258,7 +258,8 @@ export const lessonsLearned = pgTable(
     position: integer('position').notNull(),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.number)],
+  // Matrix D22 (K-11 pattern): pub_rex.maj_le = updated_at, read incrementally by Matrix's unified REX.
+  (t) => [unique().on(t.projectId, t.number), index('lessons_learned_updated_at_idx').on(t.updatedAt)],
 );
 
 /** Project closure checklist (CLOSURE 3733: HLT-026 × 10). */

@@ -141,6 +141,13 @@ const RUNS: Record<JobName, () => Promise<JobOutcome>> = {
     const counts: Record<string, number> = r.state === 'done' ? { capex: r.capex, needs: r.needs, skipped: r.skipped } : {};
     return { summary: capexRefreshSummary(r), counts, warn: r.state === 'failed' || (r.state === 'done' && r.skipped > 0) };
   },
+  // ── Delivery 9 · Matrix D21: matrix.pub_filiales read into the subsidiaries mirror. A failed read keeps the mirror (warning).
+  'matrix-subsidiaries': async (): Promise<JobOutcome> => {
+    const { refreshSubsidiaryMirror, subsidiaryRefreshSummary } = await import('@/server/integrations/matrix/subsidiaries');
+    const r = await refreshSubsidiaryMirror();
+    const counts: Record<string, number> = r.state === 'done' ? { subsidiaries: r.subsidiaries, active: r.active, skipped: r.skipped } : {};
+    return { summary: subsidiaryRefreshSummary(r), counts, warn: r.state === 'failed' || (r.state === 'done' && r.skipped > 0) };
+  },
 };
 
 export const JOB_DEFINITIONS: readonly JobDefinition[] = JOB_SCHEDULES.map((s) => ({ ...s, run: RUNS[s.name] }));

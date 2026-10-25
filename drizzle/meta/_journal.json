@@ -372,6 +372,20 @@
       "when": 1792881166065,
       "tag": "0052_internal_client_share",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1792922143281,
+      "tag": "0053_matrix_subsidiaries",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1792922151447,
+      "tag": "0054_matrix_rex_clients_share",
+      "breakpoints": true
     }
   ]
 }

@@ -11,6 +11,7 @@ import type { ZoneKey } from '@/server/session';
 import { getCostControl, type CostControl } from './cost';
 import { listProjectEvms, type ProjectEvm } from './evm';
 import { healthThresholds } from './health-thresholds';
+import { assertClientCodeFree } from './internal-client';
 import { equipmentLinesByProject, insertEquipmentLines } from './project-equipment';
 import { getActivities, getMilestones, getScheduleBars, getScheduleControl, getWbs, toProtoActs, type ProtoAct, type ScheduleControl } from './planning';
 
@@ -242,7 +243,9 @@ export async function createProject(input: NewProjectInput): Promise<string> {
   return db.transaction(async (tx) => {
     const number = await nextProjectNumber(tx);
     const analytic = await nextAnalyticCode(input.client, tx);
-    const { code3 } = await clientCodeOf(input.client, tx);
+    const { code3, registered } = await clientCodeOf(input.client, tx);
+    // Matrix D21: a code proposed from the client's name may not be the code of a group subsidiary the client is not.
+    if (!registered) await assertClientCodeFree(tx, code3, input.client);
     const code = `${code3}-${number.slice(1)}`;
     let clientId: string | null = null;
     if (input.client) {

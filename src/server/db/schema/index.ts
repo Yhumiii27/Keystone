@@ -33,3 +33,4 @@ export * from './jobs';
 export * from './cost-control';
 export * from './share';
 export * from './capex';
+export * from './matrix';

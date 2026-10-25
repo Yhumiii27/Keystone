@@ -21,6 +21,7 @@ import { demoLeaveToShift, shiftDemoLeave } from './demo-leave';
 import { seedDocuments } from './documents';
 import { seedEngineering } from './engineering';
 import { demoCatalogueToBackfill, seedDemoCatalogue } from './machine-catalogue';
+import { demoMatrixSubsidiariesToBackfill, seedDemoMatrixSubsidiaries } from './matrix-subsidiaries';
 import { demoCapexNeedsToBackfill, demoInternalClientToBackfill, ensureArcheConnector, seedDemoCapexNeeds, seedDemoInternalClient } from './capex-needs';
 import { seedExecution } from './execution';
 import { seedOperations } from './operations';
@@ -96,6 +97,8 @@ async function seedDemoData(tx: Tx): Promise<void> {
   await seedDemoCatalogue(tx);
   // Delivery 9 (R-187): the subsidiaries' machine needs mirrored from Arche (simulated) and Keystone's answers.
   await seedDemoCapexNeeds(tx);
+  // Delivery 9 (Matrix D21): the group's subsidiaries mirrored from Matrix (simulated).
+  await seedDemoMatrixSubsidiaries(tx);
 }
 
 /**
@@ -182,6 +185,10 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
     // R-190: the demo subsidiary registered as an internal client (once: while no client is internal nor uses its name or codes).
     if (await demoInternalClientToBackfill(db)) {
       await db.transaction(async (tx) => { await seedDemoInternalClient(tx); }).catch((e) => logError('Delivery 9 demo internal client backfill', e, { component: 'seed' }));
+    }
+    // Matrix D21: the demo subsidiaries mirrored from Matrix (once: while the mirror is empty).
+    if (await demoMatrixSubsidiariesToBackfill(db)) {
+      await db.transaction(async (tx) => { await seedDemoMatrixSubsidiaries(tx); }).catch((e) => logError('Delivery 9 demo Matrix subsidiaries backfill', e, { component: 'seed' }));
     }
     // ── Delivery 8 · demo backfills · connectors ──
     // Databases seeded before delivery 7 adopt their (demo) record.

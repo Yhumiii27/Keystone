@@ -15,7 +15,7 @@ import { getTableName, is, sql } from 'drizzle-orm';
 import { PgTable } from 'drizzle-orm/pg-core';
 import { healthOf } from '@/domain/health';
 import { D7_ACTUAL, D7_HEALTH, D7_PROGRESS_PCT, D7_SPI } from '@/test/d7-cost-control';
-import { CATALOGUE_VIEW_TYPES, INTERNAL_MONEY_COLUMN, REPONSES_VIEW_TYPES, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COLUMNS, SHARE_VIEW_COUNT } from '@/server/db/share-contracts';
+import { CATALOGUE_VIEW_TYPES, INTERNAL_MONEY_COLUMN, REPONSES_VIEW_TYPES, REX_VIEW_TYPES, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COLUMNS, SHARE_VIEW_COUNT } from '@/server/db/share-contracts';
 import { refreshShareProgress } from '@/server/dal/share-progress';
 import { getCostControl, listChangeRequests } from '@/server/dal/cost';
 import { getStageChecklist, getStageHistory, listStages, toggleStageDeliverable } from '@/server/dal/lifecycle';
@@ -240,7 +240,7 @@ async function main() {
   console.log('\nShare views (pub_)');
   const views = await db.execute(sql`select table_name as v from information_schema.views where table_schema = current_schema() and table_name like 'pub\_%' order by 1`);
   const viewNames = (views.rows as { v: string }[]).map((r) => r.v);
-  check(`${SHARE_VIEW_COUNT} pub_ views (0035_share: 12, 0038_share_followup: 5 more, 0046_catalogue_share: 1 more, 0050_capex_needs_share: 1 more)`, viewNames.length === SHARE_VIEW_COUNT, viewNames);
+  check(`${SHARE_VIEW_COUNT} pub_ views (0035_share: 12, 0038_share_followup: 5 more, 0046_catalogue_share: 1 more, 0050_capex_needs_share: 1 more, 0054_matrix_rex_clients_share: 1 more)`, viewNames.length === SHARE_VIEW_COUNT, viewNames);
   for (const v of viewNames) {
     const r = await db.execute(sql`select count(*)::int as n from ${sql.identifier(v)}`);
     console.log(`  ${v.padEnd(34)} ${String((r.rows[0] as { n: number }).n).padStart(5)}`);
@@ -328,6 +328,23 @@ async function main() {
     subsidiaryChecked = true;
   }
   check('clients: a subsidiary code only on an internal client (database check, R-190)', subsidiaryChecked, subsidiaryChecked);
+  // Matrix D22 (0054_matrix_rex_clients_share): pub_rex at the common REX contract (names and types: Matrix's 96 refuses any other),
+  // the validated and applied lessons only (demo: HLT-026's LL-01, LL-02, LL-03; LL-04 proposed).
+  const rexTypes = (await db.execute(sql`select column_name as c, data_type as t from information_schema.columns where table_schema = current_schema()
+      and table_name = 'pub_rex' order by ordinal_position`)).rows as { c: string; t: string }[];
+  check('pub_rex: common REX contract column types (Matrix D22)', isDeepStrictEqual(Object.fromEntries(rexTypes.map((r) => [r.c, r.t])), REX_VIEW_TYPES), rexTypes);
+  const rex = (await db.execute(sql`select (select string_agg(projet_code || ':' || numero || ':' || statut, ',' order by projet_code, numero) from pub_rex) as rows,
+      (select count(*)::int from lessons_learned where status = 'proposed') as proposed`)).rows[0] as { rows: string | null; proposed: number };
+  check('pub_rex: validated and applied lessons only (demo: LL-01, LL-02, LL-03 of HLT-026; LL-04 proposed, not published)',
+    rex.rows === 'HLT-026:LL-01:validated,HLT-026:LL-02:applied,HLT-026:LL-03:validated' && rex.proposed === 1, rex);
+  // Matrix D21 (0053_matrix_subsidiaries, 0054_matrix_rex_clients_share): the subsidiaries mirrored from Matrix (demo: APM, SAI),
+  // pub_clients.filiale_code, and an internal client's code3 = its subsidiary's code.
+  const d21 = (await db.execute(sql`select (select string_agg(code || ':' || active::text, ',' order by code) from matrix_subsidiaries) as mirror,
+      (select string_agg(name || ':' || coalesce(code3, '-') || ':' || filiale_code, ',' order by name) from pub_clients where filiale_code is not null) as filiales,
+      (select count(*)::int from clients where subsidiary_code is not null and code3 is distinct from subsidiary_code) as misaligned`)).rows[0] as
+    { mirror: string | null; filiales: string | null; misaligned: number };
+  check('Matrix D21: subsidiaries mirror APM, SAI; pub_clients.filiale_code SAI (Sahel Agro Industries, code3 SAI); code3 = subsidiary code',
+    d21.mirror === 'APM:true,SAI:true' && d21.filiales === 'Sahel Agro Industries:SAI:SAI' && d21.misaligned === 0, d21);
   const idx = (await db.execute(sql`select indexname as i from pg_indexes where schemaname = current_schema() and indexname in
       (${sql.join(Object.values(SHARE_MAJ_LE_INDEXES).map((x) => sql`${x.index}`), sql`, `)})`)).rows as { i: string }[];
   check(`maj_le indexes (K-11): ${Object.values(SHARE_MAJ_LE_INDEXES).map((x) => x.index).join(', ')}`, idx.length === Object.keys(SHARE_MAJ_LE_INDEXES).length, idx.map((r) => r.i));

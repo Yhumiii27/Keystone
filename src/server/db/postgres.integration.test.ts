@@ -7,7 +7,9 @@
 // - shared-server layout (M-01): tables, journal and pub_ views in the schema `keystone`, nothing in `public`;
 // - Arche K-11 (R-193): the maj_le indexes are in `keystone` and an incremental read reaches them through the security_barrier views;
 // - Arche K-02 (R-187): the capex connector reads Arche's views arche.pub_capex and arche.pub_besoins_machines on the shared
-//   server (schema-qualified, from Keystone's connection in search_path=keystone) into its mirror.
+//   server (schema-qualified, from Keystone's connection in search_path=keystone) into its mirror;
+// - Matrix D21 / D22: the subsidiaries connector reads matrix.pub_filiales on the shared server; pub_rex and pub_clients
+//   (filiale_code) in `keystone`.
 import { randomBytes } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -35,8 +37,10 @@ import { pendingMigrations } from './migrations';
 import { openDatabase } from './open';
 import { SeedChoiceRequiredError, migrateAndSeedPostgres, openPostgres, type PostgresHandle } from './postgres';
 import { readSeedRecord } from './seed/mode';
-import { SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COUNT } from './share-contracts';
+import { REX_VIEW_TYPES, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COUNT } from './share-contracts';
 import { refreshCapexMirror } from '@/server/integrations/capex/connector';
+import { SIMULATED_PUB_FILIALES } from '@/server/integrations/matrix/simulation';
+import { refreshSubsidiaryMirror } from '@/server/integrations/matrix/subsidiaries';
 import { SIMULATED_PUB_BESOINS_MACHINES, SIMULATED_PUB_CAPEX } from '@/server/integrations/capex/simulation';
 import type { DB } from './types';
 
@@ -127,6 +131,24 @@ describe.skipIf(!ADMIN_URL)('PostgreSQL server (KEYSTONE_TEST_DATABASE_URL)', ()
     const mirror = await pg.pool.query<{ schema: string }>(`select table_schema as schema from information_schema.tables where table_name = 'capex_needs'`);
     expect(mirror.rows).toEqual([{ schema: 'keystone' }]);
     await admin('drop schema arche cascade', name);
+  });
+
+  it('Matrix D21 / D22: matrix.pub_filiales read on the shared server; pub_rex and pub_clients.filiale_code in "keystone"', async () => {
+    const lit = `'${JSON.stringify(SIMULATED_PUB_FILIALES).replace(/'/g, "''")}'::jsonb`;
+    await admin(`create schema matrix;
+      create view matrix.pub_filiales as select x->>'code' as code, x->>'nom' as nom, x->>'pays_iso2' as pays_iso2, x->>'zone_code' as zone_code,
+        x->>'devise' as devise, (x->>'ordre')::int as ordre, (x->>'actif')::boolean as actif from jsonb_array_elements(${lit}) x;`, name);
+    expect(await refreshSubsidiaryMirror({ source: 'server', db: pg.db })).toEqual({ state: 'done', source: 'server', subsidiaries: 2, active: 2, skipped: 0 });
+    const mirror = await pg.pool.query<{ schema: string; n: number }>(`select table_schema as schema, (select count(*)::int from matrix_subsidiaries) as n
+      from information_schema.tables where table_name = 'matrix_subsidiaries'`);
+    expect(mirror.rows).toEqual([{ schema: 'keystone', n: 2 }]);
+    await admin('drop schema matrix cascade', name);
+    const rex = await pg.pool.query<{ c: string; t: string }>(`select column_name as c, data_type as t from information_schema.columns
+      where table_schema = 'keystone' and table_name = 'pub_rex' order by ordinal_position`);
+    expect(Object.fromEntries(rex.rows.map((r) => [r.c, r.t]))).toEqual(REX_VIEW_TYPES);
+    const clientsView = await pg.pool.query<{ c: string }>(`select column_name as c from information_schema.columns
+      where table_schema = 'keystone' and table_name = 'pub_clients' order by ordinal_position`);
+    expect(clientsView.rows.map((r) => r.c)).toEqual(['id', 'name', 'code3', 'filiale_code']);
   });
 
   it('K-11: the maj_le indexes are in "keystone"; an incremental read of the view reaches them', async () => {

@@ -26,6 +26,7 @@ import {
   calendar, clientCode3, costType, machineType, type CalendarCode, type CostType, type MachineTypeCode, type StageCode, type TransitionMode,
 } from '@/server/db/codes';
 import { recordActivity, writeAudit } from '@/server/db/helpers';
+import { assertClientCodeFree } from './internal-client';
 import { databaseSeedMode } from '@/server/db/seed/mode';
 import {
   activities, activityLinks, baselines, cities, clients, costCategories, countries, itpPlanSystems, itpPlans, machineTypeCostCategories, machineTypeItpSystems, machineTypePhases, machineTypes,
@@ -442,6 +443,8 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
       if (!p) throw new Error('Unknown project manager');
       pmId = p.id;
     }
+    // Matrix D21: a code proposed from the client's name may not be the code of a group subsidiary the client is not.
+    if (!registered?.code3) await assertClientCodeFree(tx, clientCode3(client, null), client);
     const id = allocateProjectIdentity({
       code3: clientCode3(client, registered?.code3),
       numbers: existing.map((p) => p.number),

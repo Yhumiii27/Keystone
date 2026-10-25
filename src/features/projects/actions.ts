@@ -4,6 +4,7 @@
 // viewer's permission, writes through the DAL and revalidates every screen (stages show up on Home, Overview,
 // My projects, the shell…). Messages are English source strings (the client shows them with toast showEn).
 import { revalidatePath } from 'next/cache';
+import { RESERVED_CLIENT_CODE } from '@/domain/subsidiaries';
 import { effectiveDateError, isTransitionAllowed, moveError } from '@/domain/lifecycle';
 import { stage as stageCodec, type StageCode } from '@/server/db/codes';
 import { BL1_DELIVERABLE_MESSAGE, bl1TickRefused } from '@/domain/baseline-policy';
@@ -150,6 +151,8 @@ export async function createProjectAction(draft: NewProjectDraft): Promise<Creat
     refresh();
     return { ok: true, code: created.code, number: created.number, analytic: created.analytic, name: created.name };
   } catch (e) {
+    // Matrix D21: the client's proposed code is a group subsidiary's (an EN source string the wizard translates).
+    if (e instanceof Error && e.message === RESERVED_CLIENT_CODE) return { ok: false, error: RESERVED_CLIENT_CODE };
     logError('createProjectAction', e);
     return { ok: false, error: 'The project could not be created' };
   }
