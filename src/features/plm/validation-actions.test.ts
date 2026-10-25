@@ -133,14 +133,14 @@ describe('R-102 Server Functions', () => {
     expect(complete).toEqual({
       director: CHANGED, pm: SAME, depthead: 'The parts catalogue is read-only for you', member: 'The parts catalogue is read-only for you', englead: SAME, quality: SAME,
       procurement: SAME, client: 'NEXT_REDIRECT',
-      // R-044 (roles-rates-hr lot): Finance, the 9th persona, reads the catalogue only.
-      finance: 'The parts catalogue is read-only for you',
+      // R-044 (roles-rates-hr lot): Finance, the 9th persona, reads the catalogue only; so does Logistics (R-158).
+      finance: 'The parts catalogue is read-only for you', logistics: 'The parts catalogue is read-only for you',
     });
     expect(validate).toEqual({
       director: 'Export restriction not confirmed', pm: 'Only the engineering lead or the director validates a part', depthead: 'The parts catalogue is read-only for you',
       member: 'The parts catalogue is read-only for you', englead: 'Export restriction not confirmed', quality: 'Only the engineering lead or the director validates a part',
       procurement: 'Only the engineering lead or the director validates a part', client: 'NEXT_REDIRECT',
-      finance: 'The parts catalogue is read-only for you',
+      finance: 'The parts catalogue is read-only for you', logistics: 'The parts catalogue is read-only for you',
     });
     const [audit] = await listAudit({ limit: 1 });
     expect([audit.who, audit.object, audit.area, audit.change]).toEqual(['Marie Lefebvre', 'HST-BRK-DSC', 'PLM', 'record completed · export None']);

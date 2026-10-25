@@ -98,13 +98,13 @@ describe('canArbitrateConflict (D-6b a, default for contractors)', () => {
   it('a person of a department: the director and that department’s head; nobody else (the 9 personas)', () => {
     const headed: Record<string, string[]> = { depthead: ['Engineering'], quality: ['Quality'] };
     const out = Object.fromEntries(PERSONAS.map((p) => [p.role, canArbitrateConflict(p.role, { headed: headed[p.role] ?? [], lead: p.role === 'pm' }, ENGINEERING)]));
-    expect(out).toEqual({ director: true, pm: false, depthead: true, member: false, englead: false, quality: false, procurement: false, finance: false, client: false });
+    expect(out).toEqual({ director: true, pm: false, depthead: true, member: false, englead: false, quality: false, procurement: false, finance: false, logistics: false, client: false });
     expect(canArbitrateConflict('quality', { headed: ['Quality'], lead: false }, { department: 'Quality' })).toBe(true);
   });
 
   it('a contractor crew or a person without a department: the director and the project’s leads', () => {
     const out = Object.fromEntries(PERSONAS.map((p) => [p.role, canArbitrateConflict(p.role, { headed: ['Engineering'], lead: p.role === 'pm' || p.role === 'member' }, CREW)]));
-    expect(out).toEqual({ director: true, pm: true, depthead: false, member: true, englead: false, quality: false, procurement: false, finance: false, client: false });
+    expect(out).toEqual({ director: true, pm: true, depthead: false, member: true, englead: false, quality: false, procurement: false, finance: false, logistics: false, client: false });
     expect(canArbitrateConflict('client', { headed: [], lead: true }, CREW)).toBe(false);
     expect(canArbitrateConflict('admin' as never, { headed: ['Engineering'], lead: true }, ENGINEERING)).toBe(false);
   });

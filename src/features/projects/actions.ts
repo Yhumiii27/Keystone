@@ -8,6 +8,10 @@ import { RESERVED_CLIENT_CODE } from '@/domain/subsidiaries';
 import { effectiveDateError, isTransitionAllowed, moveError } from '@/domain/lifecycle';
 import { stage as stageCodec, type StageCode } from '@/server/db/codes';
 import { BL1_DELIVERABLE_MESSAGE, bl1TickRefused } from '@/domain/baseline-policy';
+import { PACKING_DELIVERABLE_MESSAGE, PACKING_DELIVERABLE_NO_SHIPMENT } from '@/domain/shipments';
+import { packingDeliverableRefusal } from '@/server/dal/shipments';
+
+const PACKING_DELIVERABLE_MESSAGES: readonly string[] = [PACKING_DELIVERABLE_MESSAGE, PACKING_DELIVERABLE_NO_SHIPMENT];
 import { StageChangeError, getStageChangeBounds, listStages, projectHasBl1 } from '@/server/dal/lifecycle';
 import {
   createWizardProject, getNewProjectSetup, getProjectStage, missingDeliverables, moveProjectStage, setDeliverableAndAdvance,
@@ -118,9 +122,16 @@ export async function setDeliverableAction(input: { code: string; stage: string;
       refresh();
       return { ok: false, error: BL1_DELIVERABLE_MESSAGE };
     }
+    // R-158 (decision 4): « Colisage & documents douaniers » waits for every shipment's validated packing list.
+    const packing = await packingDeliverableRefusal(code, { stage: input.stage, position: input.index, done: input.done });
+    if (packing) {
+      refresh();
+      return { ok: false, error: packing };
+    }
     await setDeliverableAndAdvance(code, input.stage, input.index, input.done, (await getViewer()).short);
   } catch (e) {
     if (e instanceof Error && e.message === BL1_DELIVERABLE_MESSAGE) return { ok: false, error: BL1_DELIVERABLE_MESSAGE };
+    if (e instanceof Error && PACKING_DELIVERABLE_MESSAGES.includes(e.message)) return { ok: false, error: e.message };
     logError('setDeliverableAction', e);
     return { ok: false, error: FAILED };
   }

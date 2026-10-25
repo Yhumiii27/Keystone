@@ -33,6 +33,8 @@ import { translateMessage } from '@/server/interchange/messages';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { canEditSettings, SETTINGS_DIRECTOR_ONLY } from '@/domain/settings-rules';
+import { INCOTERM_CODE_RE, normaliseIncotermCode, parseIncoterm } from '@/domain/incoterms';
+import { reactivateIncoterm, removeIncoterm, saveIncoterm } from '@/server/dal/incoterms';
 import { adminErrorT, machineTypeCreatedT, syncToastT } from './i18n';
 import { removedEntryToastT, settingsErrorT } from './settings-i18n';
 
@@ -402,4 +404,60 @@ export async function syncConnectorAction(name: unknown): Promise<AdminActionRes
     if (e instanceof ConnectorDisabledError) return { error: translateMessage(e.message, (await getI18n()).t) };
     return failure(e);
   }
+}
+
+// ── R-158 lot A (owner's decision 9): Settings › Incoterms ─────────────────────────────────────────────────────────────
+
+const INCOTERM_ERRORS = ['This Incoterm already exists', 'Unknown Incoterm', 'An Incoterm code is three letters', 'Enter the Incoterm’s name', 'Text too long'];
+
+async function incotermFailure(e: unknown): Promise<{ error: string }> {
+  const msg = e instanceof Error ? e.message : '';
+  return INCOTERM_ERRORS.includes(msg) ? fail(msg) : failure(e);
+}
+
+/** "Add Incoterm" (`mode` create) or "Edit" (update: the code is the row's) — the Settings editors (the portfolio director). */
+export async function saveIncotermAction(mode: unknown, values: unknown): Promise<AdminActionResult> {
+  const ok = await settingsEditor();
+  if ('error' in ok) return ok;
+  if ((mode !== 'create' && mode !== 'update') || !values || typeof values !== 'object') return fail('Invalid request');
+  const parsed = parseIncoterm(values as Record<string, unknown>);
+  if (!parsed.ok) return fail(parsed.error);
+  try {
+    await saveIncoterm(parsed.value, mode, ok.actor);
+  } catch (e) {
+    return incotermFailure(e);
+  }
+  refresh();
+  return { ok: true, toast: await tr(mode === 'create' ? 'Incoterm added' : 'Incoterm saved') };
+}
+
+/** "Remove": deleted when unused and added in Keystone, else deactivated (a standard or used Incoterm is kept). */
+export async function removeIncotermAction(code: unknown): Promise<AdminActionResult> {
+  const ok = await settingsEditor();
+  if ('error' in ok) return ok;
+  const c = normaliseIncotermCode(code);
+  if (!INCOTERM_CODE_RE.test(c)) return fail('Invalid request');
+  let mode: 'deleted' | 'deactivated';
+  try {
+    mode = await removeIncoterm(c, ok.actor);
+  } catch (e) {
+    return incotermFailure(e);
+  }
+  refresh();
+  return { ok: true, toast: await tr(mode === 'deleted' ? 'Incoterm deleted' : 'Incoterm deactivated') };
+}
+
+/** "Reactivate" a deactivated Incoterm. */
+export async function reactivateIncotermAction(code: unknown): Promise<AdminActionResult> {
+  const ok = await settingsEditor();
+  if ('error' in ok) return ok;
+  const c = normaliseIncotermCode(code);
+  if (!INCOTERM_CODE_RE.test(c)) return fail('Invalid request');
+  try {
+    await reactivateIncoterm(c, ok.actor);
+  } catch (e) {
+    return incotermFailure(e);
+  }
+  refresh();
+  return { ok: true, toast: await tr('Incoterm reactivated') };
 }

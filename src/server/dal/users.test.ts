@@ -34,11 +34,11 @@ describe('users', () => {
     setDb(await openDatabase());
   }, 60_000);
 
-  it('seeds the 9 personas as users (R-044: + Finance), one per person, with the e-mail and department of personas.ts', async () => {
+  it('seeds the 10 personas as users (R-044: + Finance; R-158: + Logistics), one per person, with the e-mail and department of personas.ts', async () => {
     const accounts = await listUserAccounts();
     expect(accounts).toHaveLength(PERSONAS.length);
-    expect(PERSONAS).toHaveLength(9);
-    expect(new Set(accounts.map((a) => a.personId)).size).toBe(9);
+    expect(PERSONAS).toHaveLength(10);
+    expect(new Set(accounts.map((a) => a.personId)).size).toBe(10);
     for (const p of PERSONAS) {
       const a = accounts.find((x) => x.personaRole === p.role)!;
       expect({ name: a.fullName, roles: a.roles, email: a.email, department: a.department, organisation: a.organisation, title: a.title }, p.role).toEqual({

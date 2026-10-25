@@ -157,3 +157,19 @@
 /* ── R-191: the engineering pack's standard list (family · weight % · minimum expected) ── */
 .packGrid { display: grid; grid-template-columns: minmax(140px, 1fr) 84px 84px; gap: 8px; align-items: center; }
 .packFoot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 6px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+
+/* R-158 lot A: Settings › Incoterms. */
+:global(.card).incoterms { margin-top: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.incotermsHead { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+.incotermList { display: flex; flex-direction: column; gap: 8px; }
+.incotermRow { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 8px; background: var(--color-neutral-900); }
+.incotermInactive { opacity: 0.6; }
+.incotermTop { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.incotermCode { font-size: 15px; font-weight: 700; color: var(--color-accent-300); letter-spacing: 0.04em; }
+.incotermName { font-size: 13px; font-weight: 600; color: var(--color-neutral-100); }
+.incotermActions { margin-left: auto; display: flex; gap: 4px; }
+.incotermDesc { font-size: 12.5px; color: var(--color-neutral-300); line-height: 1.45; margin: 0; text-wrap: pretty; }
+.incotermSplit { display: flex; flex-wrap: wrap; gap: 5px; }
+.incotermSeller, .incotermBuyer { font-size: 11px; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.incotermSeller { background: var(--color-accent-900); color: var(--color-accent-200); box-shadow: inset 0 0 0 1px var(--color-accent-800); }
+.incotermBuyer { background: var(--color-neutral-800); color: var(--color-neutral-400); }

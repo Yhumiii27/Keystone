@@ -18,6 +18,7 @@ Les guides décrivent la version de la **livraison 8**.
 | Responsable qualité | [qualite.md](qualite.md) | Gabriel Comte |
 | Achats & stock | [achats.md](achats.md) | Fabien Bertrand |
 | Finance | [finance.md](finance.md) | Léa Marchand |
+| Logistique | [logistique.md](logistique.md) | Camille Verdier |
 
 Le guide du **client** attend l’ouverture du portail client (I-2b, R-179). Les scénarios de recette de la bêta sont dans
 [recette-beta.md](recette-beta.md) ; l’exploitation (installation, sauvegardes, antivirus) dans

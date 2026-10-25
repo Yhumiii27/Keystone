@@ -8,8 +8,9 @@ import {
 
 describe('roles', () => {
   it('orders roles from the broadest workspace and drops unknown values', () => {
-    // R-044 (P-4, P-12 c): the Finance role, after procurement and before the team member.
-    expect(ROLE_PRIORITY).toEqual(['director', 'pm', 'depthead', 'englead', 'quality', 'procurement', 'finance', 'member', 'client']);
+    // R-044 (P-4, P-12 c): the Finance role, after procurement and before the team member; R-158: Logistics after Finance.
+    expect(ROLE_PRIORITY).toEqual(['director', 'pm', 'depthead', 'englead', 'quality', 'procurement', 'finance', 'logistics', 'member', 'client']);
+    expect(sortRoles(['member', 'logistics', 'finance'])).toEqual(['finance', 'logistics', 'member']);
     expect(sortRoles(['member', 'pm', 'admin', 'pm', 42, 'director', 'finance'])).toEqual(['director', 'pm', 'finance', 'member']);
     expect(isRoleKey('quality')).toBe(true);
     expect(isRoleKey('finance')).toBe(true);

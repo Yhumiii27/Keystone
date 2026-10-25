@@ -37,7 +37,8 @@ import { seedSettings, seedSettingsDefaults } from './settings';
 import { seedSite } from './site';
 import { seedStock } from './stock';
 import { demoReferentsToBackfill, seedDemoReferents } from './project-team';
-import { backfillDemoUsers, demoUsersToBackfill, financeUserToBackfill, seedFinanceUser } from './users';
+import { backfillDemoUsers, demoUsersToBackfill, financeUserToBackfill, logisticsUserToBackfill, seedFinanceUser, seedLogisticsUser } from './users';
+import { demoShipmentsToBackfill, seedDemoShipments, seedIncoterms } from './shipments';
 import { seedVigie, seedVigieQuality } from './vigie';
 import { seedWork } from './work';
 import { readSeedRecord, writeSeedRecord } from './mode';
@@ -99,6 +100,9 @@ async function seedDemoData(tx: Tx): Promise<void> {
   await seedDemoCapexNeeds(tx);
   // Delivery 9 (Matrix D21): the group's subsidiaries mirrored from Matrix (simulated).
   await seedDemoMatrixSubsidiaries(tx);
+  // Delivery 9 (R-158): the Incoterms (reference data) and the demo shipment of HLT-026 on a DAP contract.
+  await seedIncoterms(tx);
+  await seedDemoShipments(tx);
 }
 
 /**
@@ -126,6 +130,8 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
       await db.transaction(async (tx) => seedRateMultipliers(tx)).catch((e) => logError('Delivery 8 rate multipliers backfill', e, { component: 'seed' }));
       // R-187: Arche's connector row (idempotent: added once, never changed).
       await ensureArcheConnector(db).catch((e) => logError('Delivery 9 Arche connector backfill', e, { component: 'seed' }));
+      // R-158: the 11 Incoterms 2020 (idempotent: missing codes only, an edited row is never overwritten).
+      await db.transaction(async (tx) => { await seedIncoterms(tx); }).catch((e) => logError('Delivery 9 Incoterms backfill', e, { component: 'seed' }));
       return false;
     }
     const [{ c }] = await db.select({ c: sql<number>`count(*)::int` }).from(parts);
@@ -189,6 +195,15 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
     // Matrix D21: the demo subsidiaries mirrored from Matrix (once: while the mirror is empty).
     if (await demoMatrixSubsidiariesToBackfill(db)) {
       await db.transaction(async (tx) => { await seedDemoMatrixSubsidiaries(tx); }).catch((e) => logError('Delivery 9 demo Matrix subsidiaries backfill', e, { component: 'seed' }));
+    }
+    // R-158: the Incoterms (idempotent), the Logistics persona's person and user, and the demo shipment (once: while no shipment
+    // exists).
+    await db.transaction(async (tx) => { await seedIncoterms(tx); }).catch((e) => logError('Delivery 9 Incoterms backfill', e, { component: 'seed' }));
+    if (await logisticsUserToBackfill(db)) {
+      await db.transaction(async (tx) => { await seedLogisticsUser(tx); }).catch((e) => logError('Delivery 9 Logistics user backfill', e, { component: 'seed' }));
+    }
+    if (await demoShipmentsToBackfill(db)) {
+      await db.transaction(async (tx) => { await seedDemoShipments(tx); }).catch((e) => logError('Delivery 9 demo shipment backfill', e, { component: 'seed' }));
     }
     // ── Delivery 8 · demo backfills · connectors ──
     // Databases seeded before delivery 7 adopt their (demo) record.

@@ -67,7 +67,8 @@ describe('/admin/settings', () => {
     ] as const) {
       session.role = role;
       const p = parts(await SettingsPage());
-      expect(Object.keys(p)).toEqual(['PageHeader', 'SettingsBody']);
+      // R-158: the Incoterms card under the lists.
+      expect(Object.keys(p)).toEqual(['PageHeader', 'SettingsBody', 'IncotermsCard']);
       expect(p.PageHeader.props.screen).toBe('settings');
       if (canEdit) expect(primaryName(p)).toBe('ResetSettingsButton');
       else expect(p.PageHeader.props.primary, role).toBeUndefined();

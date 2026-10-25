@@ -93,7 +93,7 @@ describe('R-037 — recordMinutesReadAction (Server Function)', () => {
     }
     // J. Wagner and M. Kerviel had read already; R. Aubert organised; the others were not invited — only N. Bensaïd records.
     // Finance (R-044), the 9th persona, was not invited either.
-    expect(recorded).toEqual({ director: false, pm: false, depthead: false, member: false, englead: false, quality: false, procurement: false, finance: false, client: true });
+    expect(recorded).toEqual({ director: false, pm: false, depthead: false, member: false, englead: false, quality: false, procurement: false, finance: false, logistics: false, client: true });
     expect(await readOf(ext)).toEqual({ 'R. Aubert': null, 'M. Kerviel': '2026-09-25', 'J. Wagner': '2026-09-29', 'N. Bensaïd': '2026-09-25' }); // R-013: read on the business date
   });
 

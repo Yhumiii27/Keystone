@@ -10,6 +10,7 @@
 // - departments and zones without heads or managers, countries and cities;
 // - leave types, the skills matrix columns, the what-if levers, the scoring axes and the departments' demand rates;
 // - the engineering disciplines (no lead), consistency rules, import tools and column mapping;
+// - R-158: the 11 Incoterms 2020 with their split of responsibilities (Settings › Incoterms);
 // - R-178: the five premium multipliers of the rate grid, as PLACEHOLDER factors for the direction to confirm (A-10 — shown
 //   and editable on Rate cards; src/domain/rate-defaults.ts), first versions from 1 Jan 2026.
 // Clients, suppliers, storage locations, rate roles and people are entered by EPC2i (or arrive through sign-in and connectors).
@@ -23,6 +24,7 @@ import { seedPortfolioReference } from './portfolio';
 import { seedPrioritisationReference } from './prioritisation';
 import { seedRateMultipliers, seedResourceReference } from './resources';
 import { seedSettings } from './settings';
+import { seedIncoterms } from './shipments';
 import { calendars } from '../schema';
 
 /** Lead shown for a discipline without a lead (production). */
@@ -41,4 +43,6 @@ export async function seedReferenceData(tx: Tx): Promise<void> {
   await seedPrioritisationReference(tx, ctx);
   await seedEngineeringReference(tx, () => ({ leadName: NO_LEAD, leadPersonId: null }));
   await seedMachineTypeAggregate(tx);
+  // R-158 (owner's decision 9): the 11 Incoterms 2020.
+  await seedIncoterms(tx);
 }

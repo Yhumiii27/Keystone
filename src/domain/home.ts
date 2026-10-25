@@ -834,6 +834,62 @@ export function procurementHome(i: ProcurementInput): HomeView {
   };
 }
 
+// ── Logistics (R-158 lot A, owner's decision 7) ─────────────────────────────────────────────────────────────
+
+export interface LogisticsShipment {
+  ref: string;
+  /** EN status label ("Prepared"). */
+  statusLabel: string;
+  status: string;
+  /** Equipment line refs ("EQ-02"). */
+  equipment: string[];
+  eta: string | null;
+  /** Gaps of the packing control without a reason, items without HS code. */
+  openGaps: number;
+  missingHs: number;
+  /** Seller's steps whose planned date has passed without an actual date. */
+  lateSteps: number;
+}
+
+export interface LogisticsInput {
+  persona: Persona;
+  today: string;
+  project: CurrentProject;
+  shipments: LogisticsShipment[];
+}
+
+/**
+ * The Logistics Home (no prototype Home: Logistics prepares and follows the shipments): the current project's shipments — to
+ * validate, on the way, late steps — and the packing gaps to clear. No money (the customs values stay on the Shipments screen).
+ */
+export function logisticsHome(i: LogisticsInput): HomeView {
+  const code = i.project.code;
+  const open = i.shipments.filter((s) => s.status !== 'closed');
+  const drafts = i.shipments.filter((s) => s.status === 'draft').length;
+  const onTheWay = i.shipments.filter((s) => s.status === 'picked_up' || s.status === 'in_transit').length;
+  const late = i.shipments.reduce((n, s) => n + s.lateSteps, 0);
+  const href = () => homeHref('shipments', { code });
+  return {
+    ...greeting(i.persona, i.today),
+    kpis: [
+      kpi('Shipments', i.shipments.length, i.project.name, false),
+      kpi('Packing lists to validate', drafts, 'Packing control against the BOM', drafts > 0),
+      kpi('On the way', onTheWay, 'Picked up or in transit', false),
+      kpi('Late transport steps', late, 'Planned date passed', late > 0),
+    ],
+    left: {
+      title: 'Shipments to act on',
+      rows: open.map((s) => row(s.ref, s.eta ? `${s.equipment.join(', ')} · ${displayOfIso(s.eta)}` : s.equipment.join(', '), s.statusLabel, s.status === 'draft' ? TAG.accent : TAG.neutral, href())),
+    },
+    right: {
+      title: 'Packing gaps to clear',
+      rows: i.shipments
+        .filter((s) => s.openGaps > 0 || s.missingHs > 0)
+        .map((s) => row(s.ref, s.equipment.join(', '), s.missingHs ? { tpl: '{n} without HS code', p: { n: s.missingHs } } : { tpl: '{n} gaps to justify', p: { n: s.openGaps } }, TAG.accent, href())),
+    },
+  };
+}
+
 // ── Client ───────────────────────────────────────────────────────────────────────────────────────────────
 
 export interface ClientInput {

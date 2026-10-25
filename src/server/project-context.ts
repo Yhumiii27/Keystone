@@ -8,6 +8,8 @@ import 'server-only';
 //   (L-4b, P-9a, P-9b) follow `isLead` (PMs and deputies, and the director).
 // - R-044 (P-4): the Contract is edited by the director, Finance (every project) and the project's leads whose workspace has
 //   it (`canEditContract`); Finance reads Budget, Hours and Billing even on its teams (`financeReadOnly`).
+// - R-158: the Shipments are edited by the director, Logistics (every project) and the project's leads (`canEditShipments`);
+//   Logistics reads the BOM, Site, Schedule and Deliveries (`roleReadOnly`).
 // - R-042 (P-1, P-10a): a client is refused — sent to their home — on any screen outside their workspace and on another
 //   organisation's project, by these two helpers (so pages, Server Functions and Route Handlers that use them all refuse);
 //   internal roles keep the read-only view outside their workspace.
@@ -16,7 +18,7 @@ import { cache } from 'react';
 import { screenHref, type ScreenId } from '@/config/screens';
 import { PROJECT_EDITABLE, isOutside } from '@/components/app/shell/nav-model';
 import {
-  canEditContract, clientRefusedProject, clientRefusedScreen, financeReadOnly, projectAccess, type ProjectAccess, type TeamMember,
+  canEditContract, canEditShipments, clientRefusedProject, clientRefusedScreen, projectAccess, roleReadOnly, type ProjectAccess, type TeamMember,
 } from '@/domain/rights';
 import { listProjectTeams } from '@/server/dal/project-team';
 import { getProject, listProjects, type ProjectRow } from '@/server/dal/projects';
@@ -134,7 +136,9 @@ export const getProjectContext = cache(async (code: string, screen?: ScreenId): 
   const canEdit = (s: ScreenId | undefined = screen) => {
     if (!s) return !readOnly;
     if (s === 'contract') return canEditContract(viewer.role, access);
-    if (financeReadOnly(viewer.role, s)) return false;
+    // R-158: the shipments follow `canEditShipments` (Logistics and the director on every project, the project's leads).
+    if (s === 'shipments') return canEditShipments(viewer.role, access);
+    if (roleReadOnly(viewer.role, s)) return false;
     return !out(s) && !(readOnly && PROJECT_EDITABLE.includes(s));
   };
   return {

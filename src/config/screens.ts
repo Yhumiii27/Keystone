@@ -5,7 +5,8 @@
 // the registry without loading the icon components.
 
 // R-044 (P-4, P-12 c, C-9): 'finance' — contract, billing (read), the rate grid and the budget rate.
-export type RoleKey = 'director' | 'pm' | 'depthead' | 'member' | 'englead' | 'quality' | 'procurement' | 'finance' | 'client';
+// R-158 (owner's decision 7, 25 Oct 2026): 'logistics' — prepares and follows the shipments (Shipments screen, every project).
+export type RoleKey = 'director' | 'pm' | 'depthead' | 'member' | 'englead' | 'quality' | 'procurement' | 'finance' | 'logistics' | 'client';
 
 export type ScreenId =
   | 'home' | 'myprojects' | 'client' | 'mywork' | 'task' | 'myapprovals' | 'docs'
@@ -13,7 +14,7 @@ export type ScreenId =
   | 'contract' | 'billing' | 'plan' | 'schedule' | 'budget' | 'hours' | 'contingency' | 'presources'
   | 'meetings' | 'stakeholders' | 'interfaces'
   | 'eng' | 'eng-process' | 'eng-meca' | 'eng-elec' | 'eng-auto' | 'pid' | 'bom'
-  | 'risks' | 'changes' | 'quality' | 'itp' | 'site' | 'commissioning' | 'trends' | 'rex'
+  | 'risks' | 'changes' | 'quality' | 'itp' | 'site' | 'shipments' | 'commissioning' | 'trends' | 'rex'
   | 'plm' | 'eco' | 'drawings' | 'catalogue' | 'procurement' | 'orders' | 'deliveries' | 'stock' | 'fleet' | 'sav'
   | 'resources' | 'requests' | 'approvals' | 'whatif' | 'skills' | 'leave' | 'rates'
   | 'settings' | 'mtypes' | 'doctypes' | 'plumbing';
@@ -85,6 +86,8 @@ export const SCREENS: ScreenDef[] = [
   S({ id: 'itp', title: 'Inspection & test plan · punch list', navLabel: 'Inspections & punch list', nav: 'project', group: 'Control', scope: 'project', slug: 'itp', built: true }),
   // Project › Site & handover
   S({ id: 'site', title: 'Site — readiness, mobilisation & execution', navLabel: 'Site (chantier)', nav: 'project', group: 'Site & handover', scope: 'project', slug: 'site', built: true }),
+  // R-158 (owner's decision 1, 25 Oct 2026): the project's shipments of its equipment to the site — a project view only.
+  S({ id: 'shipments', title: 'Shipments — packing, transport & customs', navLabel: 'Shipments', nav: 'project', group: 'Site & handover', scope: 'project', slug: 'shipments', built: true }),
   S({ id: 'commissioning', title: 'Commissioning & handover dossier', navLabel: 'Commissioning & handover', nav: 'project', group: 'Site & handover', scope: 'project', slug: 'commissioning', built: true }),
   // Project › Project review
   S({ id: 'trends', title: 'Trends & status report', navLabel: 'Trends & status', nav: 'project', group: 'Project review', scope: 'project', slug: 'trends', built: true }),

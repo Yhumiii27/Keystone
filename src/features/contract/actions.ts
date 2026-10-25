@@ -23,6 +23,8 @@ import { canSetBudgetRate, canSetCapexLink, canSetProjectEquipment } from '@/dom
 import { parseCapexLink } from '@/domain/capex-link';
 import { canSetInternalClient, parseInternalClient } from '@/domain/internal-client';
 import { setCapexLink } from '@/server/dal/capex-link';
+import { INCOTERM_CODE_RE, INCOTERM_PLACE_MAX, normaliseIncotermCode } from '@/domain/incoterms';
+import { setContractIncoterm } from '@/server/dal/incoterms';
 import { setProjectClientInternal } from '@/server/dal/internal-client';
 import { refreshSubsidiaryMirror, subsidiaryRefreshSummary } from '@/server/integrations/matrix/subsidiaries';
 import { addProjectEquipment, removeProjectEquipment, updateProjectEquipment } from '@/server/dal/project-equipment';
@@ -481,4 +483,26 @@ export async function removeEquipmentAction(code: string, ref: string): Promise<
   }
   refresh();
   return { ok: true };
+}
+
+/**
+ * R-158 (owner's decision 2): the contract's Incoterm and named place (Contract screen, "Incoterm" card) — the contract editors
+ * (P-4: the director, Finance, the project's leads; re-checked by the DAL). `incoterm` empty clears it.
+ */
+export async function setContractIncotermAction(code: string, values: Record<string, string>): Promise<FormDialogResult> {
+  const ok = await editable(code, 'contract');
+  if ('error' in ok) return ok;
+  const v = strings(values);
+  const incoterm = normaliseIncotermCode(v.incoterm ?? '');
+  if (incoterm && !INCOTERM_CODE_RE.test(incoterm)) return { error: await tr('Invalid request') };
+  const place = (v.place ?? '').trim();
+  if (place.length > INCOTERM_PLACE_MAX) return { error: await tr('Text too long') };
+  try {
+    await setContractIncoterm(ok.code, incoterm || null, place || null, ok.viewer);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : '';
+    return { error: await tr(['Unknown Incoterm', 'The contract is read-only for you', 'No contract registered for this project', 'Text too long'].includes(msg) ? msg : 'The change could not be saved') };
+  }
+  refresh();
+  return { toast: await tr('Contract Incoterm saved') };
 }

@@ -81,19 +81,19 @@ beforeEach(() => {
 describe('R-117 · punch photos follow the stored origin', () => {
   it('adding to an item raised on site needs the Site edit right, whatever register the request claims', async () => {
     // Site editors on HLT-026's team: director, PM (of record), member (Julien Wagner); the department head is off the team (R-041).
-    const site = { director: 200, pm: 200, depthead: 403, member: 200, englead: 403, quality: 403, procurement: 403, finance: 403, client: 403 };
+    const site = { director: 200, pm: 200, depthead: 403, member: 200, englead: 403, quality: 403, procurement: 403, finance: 403, logistics: 403, client: 403 };
     expect(await perRole(async () => (await upload(SITE_ITEM_FORGED)).status)).toEqual(site);
     expect(await perRole(async () => (await upload(SITE_ITEM)).status)).toEqual(site);
     // An item raised by an inspection follows Inspections & punch list, even when the request claims "site".
     expect(await perRole(async () => (await upload(ITP_ITEM_FORGED)).status)).toEqual({
-      director: 200, pm: 200, depthead: 403, member: 403, englead: 200, quality: 200, procurement: 403, finance: 403, client: 403,
+      director: 200, pm: 200, depthead: 403, member: 403, englead: 200, quality: 200, procurement: 403, finance: 403, logistics: 403, client: 403,
     });
   });
 
   it('seeing: internal viewers see both; the client sees the inspection item’s photos only, never the Site item’s (X-15)', async () => {
     const [sitePhoto] = (await listProjectPhotos('HLT-026', 'punch_item')).get('P-06')!;
     const [itpPhoto] = (await listProjectPhotos('HLT-026', 'punch_item')).get('P-02')!;
-    const internal = { director: 200, pm: 200, depthead: 200, member: 200, englead: 200, quality: 200, procurement: 200, finance: 200 };
+    const internal = { director: 200, pm: 200, depthead: 200, member: 200, englead: 200, quality: 200, procurement: 200, finance: 200, logistics: 200 };
     expect(await perRole(async () => (await image(sitePhoto.id)).status)).toEqual({ ...internal, client: 403 });
     expect(await perRole(async () => (await image(itpPhoto.id)).status)).toEqual({ ...internal, client: 200 });
     // The gate itself: a forged owner resolves to the stored origin.
@@ -114,7 +114,7 @@ describe('R-117 · punch photos follow the stored origin', () => {
     }
     expect(out).toEqual({
       director: 'ok', pm: 'ok', depthead: 'Photos are read-only for you', member: 'ok', englead: 'Photos are read-only for you', quality: 'Photos are read-only for you',
-      procurement: 'Photos are read-only for you', finance: 'Photos are read-only for you', client: 'Photos are read-only for you',
+      procurement: 'Photos are read-only for you', finance: 'Photos are read-only for you', logistics: 'Photos are read-only for you', client: 'Photos are read-only for you',
     });
   });
 

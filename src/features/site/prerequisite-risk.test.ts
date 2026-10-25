@@ -128,7 +128,7 @@ describe('R-121 · "Raise as a risk"', () => {
     }
     // Owner, 17 Oct 2026 (second round): offered before J-15 too — HT (needed 1 Dec since the test above, J-15 = 16 Nov) is
     // pending and not late at 19 Oct; the confirmed and signed lines are not offered.
-    expect(out).toEqual({ director: [QUAI, HT], pm: [QUAI, HT], depthead: [], member: [], englead: [], quality: [], procurement: [], finance: [] });
+    expect(out).toEqual({ director: [QUAI, HT], pm: [QUAI, HT], depthead: [], member: [], englead: [], quality: [], procurement: [], finance: [], logistics: [] });
     as('pm');
     const v = (await pageView({ prereq: String(QUAI) })).ready!;
     // Owner: the PM of record — owner's answer of 17 Oct 2026 (R-121 Q3): the PM is on every "New risk" owner list, so the

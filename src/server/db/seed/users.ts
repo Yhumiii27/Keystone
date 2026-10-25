@@ -3,7 +3,7 @@
 // have none. Idempotent: only users with a persona role and no roles yet are touched.
 import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { PERSONA_BY_ROLE, isRole } from '@/config/personas';
-import { persons, users } from '../schema';
+import { departments, persons, users } from '../schema';
 import type { DB, Tx } from '../types';
 
 /** Persona users still without roles (seeded before migration 0007). */
@@ -55,5 +55,46 @@ export async function seedFinanceUser(tx: Tx): Promise<string | null> {
 /** The Finance persona's user is missing on this (demo) database. */
 export async function financeUserToBackfill(q: DB | Tx): Promise<boolean> {
   const [u] = await q.select({ id: users.id }).from(users).where(eq(users.personaRole, 'finance'));
+  return !u;
+}
+
+// ── Delivery 9 (R-158): the Logistics persona's person and user ───────────────────────────────────────────────────────
+
+/**
+ * The demo person and user of the Logistics persona (Camille Verdier, "Logistics coordinator", Controls & planning —
+ * src/config/personas.ts; owner's decision 7 of 25 Oct 2026). The prototype has no such person: it is created here (not in the
+ * resource pool), on a fresh demo seed after the persona users, and once on a demo database seeded earlier. Idempotent: nothing
+ * happens when the persona user exists, or when the person already has a user (a real account signed in with Entra ID).
+ * Returns the new user's id, null when nothing was created.
+ */
+export async function seedLogisticsUser(tx: Tx): Promise<string | null> {
+  const persona = PERSONA_BY_ROLE.logistics;
+  const [existing] = await tx.select({ id: users.id }).from(users).where(eq(users.personaRole, 'logistics'));
+  if (existing) return null;
+  let [p] = await tx.select({ id: persons.id, departmentId: persons.departmentId }).from(persons).where(eq(persons.fullName, persona.name));
+  if (!p) {
+    const [dept] = persona.department ? await tx.select({ id: departments.id }).from(departments).where(eq(departments.name, persona.department)) : [];
+    const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${persons.sortOrder}), 0)::int` }).from(persons);
+    [p] = await tx
+      .insert(persons)
+      .values({
+        fullName: persona.name, shortName: persona.short, initials: persona.initials, jobTitle: persona.title, departmentId: dept?.id ?? null,
+        email: persona.email, sortOrder: pos + 1,
+      })
+      .returning({ id: persons.id, departmentId: persons.departmentId });
+  }
+  const [own] = await tx.select({ id: users.id }).from(users).where(eq(users.personId, p.id));
+  if (own) return null;
+  const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${users.sortOrder}), 0)::int` }).from(users);
+  const [u] = await tx
+    .insert(users)
+    .values({ personaRole: 'logistics', roles: ['logistics'], personId: p.id, title: persona.title, email: persona.email, departmentId: p.departmentId, sortOrder: pos + 1 })
+    .returning({ id: users.id });
+  return u.id;
+}
+
+/** The Logistics persona's user is missing on this (demo) database. */
+export async function logisticsUserToBackfill(q: DB | Tx): Promise<boolean> {
+  const [u] = await q.select({ id: users.id }).from(users).where(eq(users.personaRole, 'logistics'));
   return !u;
 }

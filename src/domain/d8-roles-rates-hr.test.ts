@@ -27,8 +27,8 @@ const viewerOf = (role: RoleKey): RightsViewer => {
 };
 
 describe('R-044 · the Finance role and persona', () => {
-  it('nine personas; Léa Marchand, Cost controller, Controls & planning; label and priority', () => {
-    expect(PERSONAS).toHaveLength(9);
+  it('nine personas (ten with Logistics, R-158); Léa Marchand, Cost controller, Controls & planning; label and priority', () => {
+    expect(PERSONAS).toHaveLength(10);
     expect(PERSONA_BY_ROLE.finance).toMatchObject({ name: 'Léa Marchand', title: 'Cost controller', short: 'L. Marchand', email: 'lea.marchand@epc2i.fr', department: 'Controls & planning', organisation: null });
     expect(ROLE_LABEL.finance).toBe('Finance');
   });

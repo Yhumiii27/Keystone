@@ -6,7 +6,7 @@ import {
   ChartLine, ChartLineUp, ChatsCircle, CheckSquare, ClipboardText, ClockCountdown, Coins, Cpu, CraneTower, Cube,
   CurrencyEur, Database, FileText, FlowArrow, FolderUser, Folders, Gear, GearSix, GitBranch, GitPullRequest,
   GlobeHemisphereWest, GraduationCap, Handshake, HardHat, House, Key, Lightning, ListChecks, Package, PaperPlaneTilt, PiggyBank,
-  PlugsConnected, Receipt, Scales, SealCheck, ShieldWarning, ShoppingCart, SquaresFour, Stamp, Strategy, TreeStructure,
+  PlugsConnected, Receipt, Scales, SealCheck, ShieldWarning, ShippingContainer, ShoppingCart, SquaresFour, Stamp, Strategy, TreeStructure,
   Truck, UserList, UsersFour, UsersThree, Warehouse, Wrench,
 } from '@phosphor-icons/react/dist/ssr';
 import type { ScreenId } from './screens';
@@ -47,6 +47,7 @@ export const SCREEN_ICONS: Partial<Record<ScreenId, Icon>> = {
   quality: SealCheck,
   itp: ClipboardText,
   site: HardHat,
+  shipments: ShippingContainer,
   commissioning: Key,
   trends: ChartLine,
   rex: GraduationCap,

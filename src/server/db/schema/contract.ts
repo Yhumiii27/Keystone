@@ -13,6 +13,7 @@ import { changeRequests } from './change';
 import { documents } from './documents';
 import { clients } from './organisation';
 import { projects } from './portfolio';
+import { incoterms } from './shipments';
 
 /** Client contract of a project (CONTRACTS 3713 — HLT-026 only). The contract sheet fields are editable. */
 export const contracts = pgTable('contracts', {
@@ -47,6 +48,12 @@ export const contracts = pgTable('contracts', {
   warranty: text('warranty').notNull(),
   governingLaw: text('governing_law').notNull(),
   scope: text('scope').notNull(),
+  /**
+   * R-158 (owner's decision 2): the contract's Incoterm and its named place ("DAP" + "Dakar — site"); the shipments organise
+   * the seller's steps from it. Null = not set yet.
+   */
+  incotermId: uuid('incoterm_id').references(() => incoterms.id),
+  incotermPlace: text('incoterm_place'),
   ...timestamps,
 });
 

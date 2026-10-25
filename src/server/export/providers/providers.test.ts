@@ -34,10 +34,10 @@ beforeAll(async () => {
 }, 60_000);
 
 describe('every screen has an export provider', () => {
-  it('registry covers the 60 screens, each with tables', () => {
+  it('registry covers the 61 screens, each with tables', () => {
     const missing = SCREENS.filter((s) => !getExportProvider(s.id)?.table).map((s) => s.id);
     expect(missing).toEqual([]);
-    expect(SCREENS.length).toBe(60);
+    expect(SCREENS.length).toBe(61);
   });
 
   it.each(SCREENS.map((s) => s.id))('%s: Excel opens and the CSV has the main table (director, HLT-026)', async (screen) => {
