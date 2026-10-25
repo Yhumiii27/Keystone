@@ -7,9 +7,11 @@ import 'server-only';
 import { and, asc, eq } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import { calendar, costType, machineType, type CalendarCode, type CostType, type MachineTypeCode } from '@/server/db/codes';
-import { machineTypeCostCategories, machineTypeItpSystems, machineTypePhases, machineTypes, projects, rexReferences } from '@/server/db/schema';
+import { machineTypeCostCategories, machineTypeItpSystems, machineTypePackFamilies, machineTypePhases, machineTypes, projects, rexReferences } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
+import { PROVISIONAL_PACK, normalisePackRows, packStandardError, type PackStandardRow } from '@/domain/engineering-pack';
 import { systemMessage } from '@/domain/system-messages';
+import { packStandards } from './engineering-pack';
 import { touchCatalogueOfType } from './machine-catalogue';
 import { requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
 
@@ -44,18 +46,21 @@ export interface MachineTypeRow {
   rexReferences: { analyticCode: string; projectName: string; year: string; pattern: string }[];
   /** Projects of this type (register order): code, name, stage — R-185: by main type (the first equipment line's), as the prototype. */
   projects: { code: string; name: string; number: string | null }[];
+  /** R-191: the standard list of the engineering pack (the five families in contract order). */
+  pack: PackStandardRow[];
 }
 
 /** Every machine type (MACHINE_TYPES order, custom types after). */
 export async function listMachineTypes(): Promise<MachineTypeRow[]> {
   const db = await getDb();
-  const [types, phases, cats, itp, refs, projs] = await Promise.all([
+  const [types, phases, cats, itp, refs, projs, packs] = await Promise.all([
     db.select().from(machineTypes).orderBy(asc(machineTypes.sortOrder)),
     db.select().from(machineTypePhases).orderBy(asc(machineTypePhases.position)),
     db.select().from(machineTypeCostCategories).orderBy(asc(machineTypeCostCategories.position)),
     db.select().from(machineTypeItpSystems).orderBy(asc(machineTypeItpSystems.position)),
     db.select().from(rexReferences).orderBy(asc(rexReferences.position)),
     db.select({ code: projects.code, name: projects.name, number: projects.number, mt: projects.machineTypeCode }).from(projects).orderBy(asc(projects.sortOrder)),
+    packStandards(db),
   ]);
   return types.map((t) => {
     const c = cats.filter((x) => x.machineTypeCode === t.code).map((x) => ({ name: x.name, type: x.costType, typeLabel: costType.label(x.costType), budgetKeur: x.budgetKeur }));
@@ -68,6 +73,7 @@ export async function listMachineTypes(): Promise<MachineTypeRow[]> {
       depositPct: t.depositPct, deliveryPct: t.deliveryPct, acceptancePct: t.acceptancePct, termsOk: t.depositPct + t.deliveryPct + t.acceptancePct === 100,
       rexReferences: refs.filter((r) => r.machineTypeCode === t.code).map((r) => ({ analyticCode: r.analyticCode, projectName: r.projectName, year: r.year, pattern: r.pattern })),
       projects: projs.filter((p) => p.mt === t.code).map((p) => ({ code: p.code, name: p.name, number: p.number })),
+      pack: packs.get(t.code) ?? normalisePackRows([]),
     };
   });
 }
@@ -213,6 +219,36 @@ export async function setMachineTypeCostCategories(code: string, cats: { name: s
   });
 }
 
+/** "pid 20 % · min 1 · bom 20 % · min 1 …" — the audit text of a standard list. */
+const packText = (rows: readonly PackStandardRow[]) => rows.map((r) => `${r.family} ${r.weight} % · min ${r.minExpected}`).join(' · ');
+
+/**
+ * R-191: replaces the standard list of the engineering pack of a type — the five families, whole weights totalling 100 % and the
+ * minimum number of documents expected (src/domain/engineering-pack.ts). Applies at once to every project of the type (the pack
+ * is measured, not instantiated): the rows' updated_at moves pub_pack_ingenierie.maj_le.
+ */
+export async function setMachineTypePack(code: string, rows: readonly PackStandardRow[], actor: Actor): Promise<void> {
+  MT(actor);
+  const error = packStandardError(rows);
+  if (error) throw new Error(error);
+  const next = normalisePackRows(rows);
+  const db = await getDb();
+  await db.transaction(async (tx) => {
+    const t = await loadType(tx, code);
+    const before = (await packStandards(tx, [t.code])).get(t.code) ?? normalisePackRows([]);
+    if (packText(before) === packText(next)) return;
+    const now = new Date();
+    await tx.delete(machineTypePackFamilies).where(eq(machineTypePackFamilies.machineTypeCode, t.code));
+    await tx.insert(machineTypePackFamilies).values(next.map((r) => ({ machineTypeCode: t.code, family: r.family, weight: r.weight, minExpected: r.minExpected, updatedAt: now })));
+    await tx.update(machineTypes).set({ updatedAt: now }).where(eq(machineTypes.code, t.code));
+    await trace(tx, await whoIs(tx, actor), {
+      objectRef: `Machine type ${t.label}`, area: 'Settings', entityType: 'machine_type',
+      message: systemMessage('machineType.pack', { type: t.label, list: packText(next) }),
+      before: { pack: before }, after: { pack: next },
+    });
+  });
+}
+
 /** Removes a reference project from the financial REX of a machine type. */
 export async function removeRexReference(code: string, analyticCode: string, actor: Actor): Promise<void> {
   MT(actor);
@@ -268,6 +304,9 @@ export async function createMachineType(input: NewMachineTypeInput, actor: Actor
       if (ca.length) await tx.insert(machineTypeCostCategories).values(ca.map((x) => ({ ...x, machineTypeCode: code })));
       if (it.length) await tx.insert(machineTypeItpSystems).values(it.map((x) => ({ ...x, machineTypeCode: code })));
     } else await tx.insert(machineTypeItpSystems).values({ machineTypeCode: code, position: 0, name: 'General' });
+    // R-191: the engineering pack of the template copied, else the provisional standard list (five families × 20 %).
+    const basePack = base ? (await packStandards(tx, [base.code])).get(base.code) : undefined;
+    await tx.insert(machineTypePackFamilies).values((basePack ?? PROVISIONAL_PACK).map((r) => ({ machineTypeCode: code, family: r.family, weight: r.weight, minExpected: r.minExpected })));
     await trace(tx, await whoIs(tx, actor), {
       objectRef: `Machine type ${code}`, change: `created · ${label} · from ${base ? base.label : 'Blank'}`, area: 'Settings', entityType: 'machine_type',
       activity: { text: `${code} · Machine type created`, kind: 'change' },

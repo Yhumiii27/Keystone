@@ -4,6 +4,7 @@
 // aggregate edited on the Machine types screen (NP_TEMPLATES phases / cost categories / description / calendar,
 // ITP_TEMPLATES systems). The prototype keys the register and the P&ID to HLT-026 (PID.code; ENG_* are Harbor Line's).
 import { eq } from 'drizzle-orm';
+import { PROVISIONAL_PACK } from '@/domain/engineering-pack';
 import { isPerEquipmentPhase } from '@/domain/project-equipment';
 import { PROTO } from '@/server/prototype';
 import {
@@ -12,7 +13,7 @@ import {
 } from '../codes';
 import {
   engChanges, engChecks, engColumnMappings, engConsistencyRules, engDisciplines, engImportDeltas, engImportTools, engInputs, engOutputs, machineTypeCostCategories,
-  machineTypeItpSystems, machineTypePhases, machineTypes, pidSheets, pidTags, pidValidationSteps,
+  machineTypeItpSystems, machineTypePackFamilies, machineTypePhases, machineTypes, pidSheets, pidTags, pidValidationSteps,
 } from '../schema';
 import type { Tx } from '../types';
 import { must, personIdOrNull, type SeedCtx } from './context';
@@ -99,5 +100,9 @@ export async function seedMachineTypeAggregate(tx: Tx): Promise<void> {
       })));
     const systems = itp[mt] ?? [];
     if (systems.length) await tx.insert(machineTypeItpSystems).values(systems.map((name, position) => ({ machineTypeCode: code, position, name })));
+    // R-191: the provisional standard list of the engineering pack (five families × 20 %, pending C-9) — reference data of both
+    // seeds, the same as migration 0059 writes on older databases (kept when the Delivery 5 backfill runs the aggregate again).
+    await tx.insert(machineTypePackFamilies).values(PROVISIONAL_PACK.map((r) => ({ machineTypeCode: code, family: r.family, weight: r.weight, minExpected: r.minExpected })))
+      .onConflictDoNothing();
   }
 }

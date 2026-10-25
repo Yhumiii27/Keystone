@@ -153,3 +153,7 @@
 .catalogueLinkCard { gap: 6px; }
 .catalogueLinkRow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .catalogueLinkText { font-size: 12.5px; color: var(--color-neutral-300); text-wrap: pretty; min-width: 0; flex: 1 1 240px; }
+
+/* ── R-191: the engineering pack's standard list (family · weight % · minimum expected) ── */
+.packGrid { display: grid; grid-template-columns: minmax(140px, 1fr) 84px 84px; gap: 8px; align-items: center; }
+.packFoot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 6px; font-size: 12.5px; font-variant-numeric: tabular-nums; }

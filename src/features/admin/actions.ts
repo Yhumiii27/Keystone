@@ -18,10 +18,11 @@ import { isoOfDisplayDate, locationType, type CalendarCode, type CostType } from
 import { listAdminConnectors, syncAdminConnector } from '@/server/dal/admin-connectors';
 import { ConnectorDisabledError } from '@/server/dal/integrations';
 import {
-  createMachineType, getMachineType, removeRexReference, setMachineTypeCostCategories, setMachineTypeItpSystems, setMachineTypePhaseScope, setMachineTypePhases,
-  updateMachineType,
+  createMachineType, getMachineType, removeRexReference, setMachineTypeCostCategories, setMachineTypeItpSystems, setMachineTypePack, setMachineTypePhaseScope,
+  setMachineTypePhases, updateMachineType,
   type MachineTypePatch,
 } from '@/server/dal/mtypes';
+import { PACK_FAMILIES, PACK_INVALID_ERROR, isPackFamily, packStandardError, type PackStandardRow } from '@/domain/engineering-pack';
 import type { Actor } from '@/server/dal/ops-common';
 import {
   CCB_THRESHOLD_ERROR, HOURS_VARIANCE_RANGE, addLocation, addReferenceValue, getHealthThresholds, removeLocation, removeReferenceValue, resetSettings, setCcbThreshold, setHealthThresholds, setHoursVariance,
@@ -313,6 +314,41 @@ export async function setMachineTypeCostCategoriesAction(code: unknown, cats: un
   }
   refresh();
   return { ok: true };
+}
+
+/** A whole number typed in a field ("20", 20) — null for anything else ("", "12.5", "abc"). */
+const wholeNumber = (v: unknown): number | null => {
+  if (typeof v === 'number') return Number.isInteger(v) ? v : null;
+  if (typeof v !== 'string' || !/^\s*\d{1,3}\s*$/.test(v)) return null;
+  return Number(v.trim());
+};
+
+/**
+ * R-191: the standard list of the engineering pack — `{ family, weight, minExpected }[]` (the five families, weights and minimums
+ * as typed). Same rights as the rest of the type editor; refused unless the weights total 100 %.
+ */
+export async function setMachineTypePackAction(code: unknown, rows: unknown): Promise<AdminActionResult> {
+  const ok = await editor('mtypes');
+  if ('error' in ok) return ok;
+  const mt = await knownType(code);
+  if (!mt || !Array.isArray(rows) || rows.length > PACK_FAMILIES.length) return fail('Invalid request');
+  const parsed: PackStandardRow[] = [];
+  for (const r of rows) {
+    if (!r || typeof r !== 'object' || !isPackFamily(r.family)) return fail('Invalid request');
+    const weight = wholeNumber(r.weight);
+    const minExpected = wholeNumber(r.minExpected);
+    if (weight === null || minExpected === null) return fail(PACK_INVALID_ERROR);
+    parsed.push({ family: r.family, weight, minExpected });
+  }
+  const error = packStandardError(parsed);
+  if (error) return fail(error);
+  try {
+    await setMachineTypePack(mt, parsed, ok.actor);
+  } catch (e) {
+    return failure(e);
+  }
+  refresh();
+  return { ok: true, toast: await tr('Engineering pack saved') };
 }
 
 /** Removes a reference project from the financial REX. */

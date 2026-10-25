@@ -15,7 +15,7 @@ import { getTableName, is, sql } from 'drizzle-orm';
 import { PgTable } from 'drizzle-orm/pg-core';
 import { healthOf } from '@/domain/health';
 import { D7_ACTUAL, D7_HEALTH, D7_PROGRESS_PCT, D7_SPI } from '@/test/d7-cost-control';
-import { CATALOGUE_VIEW_TYPES, INTERNAL_MONEY_COLUMN, REPONSES_VIEW_TYPES, REX_VIEW_TYPES, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COLUMNS, SHARE_VIEW_COUNT } from '@/server/db/share-contracts';
+import { CATALOGUE_VIEW_TYPES, INTERNAL_MONEY_COLUMN, PACK_VIEW_TYPES, REPONSES_VIEW_TYPES, REX_VIEW_TYPES, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COLUMNS, SHARE_VIEW_COUNT } from '@/server/db/share-contracts';
 import { refreshShareProgress } from '@/server/dal/share-progress';
 import { getCostControl, listChangeRequests } from '@/server/dal/cost';
 import { getStageChecklist, getStageHistory, listStages, toggleStageDeliverable } from '@/server/dal/lifecycle';
@@ -240,7 +240,7 @@ async function main() {
   console.log('\nShare views (pub_)');
   const views = await db.execute(sql`select table_name as v from information_schema.views where table_schema = current_schema() and table_name like 'pub\_%' order by 1`);
   const viewNames = (views.rows as { v: string }[]).map((r) => r.v);
-  check(`${SHARE_VIEW_COUNT} pub_ views (0035_share: 12, 0038_share_followup: 5 more, 0046_catalogue_share: 1 more, 0050_capex_needs_share: 1 more, 0054_matrix_rex_clients_share: 1 more)`, viewNames.length === SHARE_VIEW_COUNT, viewNames);
+  check(`${SHARE_VIEW_COUNT} pub_ views (0035_share: 12, 0038_share_followup: 5 more, 0046_catalogue_share: 1 more, 0050_capex_needs_share: 1 more, 0054_matrix_rex_clients_share: 1 more, 0060_engineering_pack_share: 1 more)`, viewNames.length === SHARE_VIEW_COUNT, viewNames);
   for (const v of viewNames) {
     const r = await db.execute(sql`select count(*)::int as n from ${sql.identifier(v)}`);
     console.log(`  ${v.padEnd(34)} ${String((r.rows[0] as { n: number }).n).padStart(5)}`);
@@ -306,6 +306,20 @@ async function main() {
     frozen = true;
   }
   check('machine_catalogue_entries: a published version is frozen (trigger)', frozen, frozen);
+  // Arche K-08 (R-191, 0058_engineering_pack, 0059_engineering_pack_backfill, 0060_engineering_pack_share): the pack view's types, the
+  // provisional standard list (5 families × 20 % on every machine type), the five mapped document types and the demo values.
+  const packTypes = (await db.execute(sql`select column_name as c, data_type as t from information_schema.columns where table_schema = current_schema()
+      and table_name = 'pub_pack_ingenierie' order by ordinal_position`)).rows as { c: string; t: string }[];
+  check('pub_pack_ingenierie: K-08 column types', isDeepStrictEqual(Object.fromEntries(packTypes.map((r) => [r.c, r.t])), PACK_VIEW_TYPES), packTypes);
+  const pack = (await db.execute(sql`select
+      (select count(*)::int from machine_type_pack_families where weight = 20 and min_expected = 1) as provisional,
+      (select count(*)::int from machine_types) as types,
+      (select string_agg(code || ':' || pack_family, ',' order by code) from document_types where pack_family is not null) as mapped,
+      (select string_agg(distinct projet_code || ':' || pct_pondere::text, ',') from pub_pack_ingenierie where projet_code in ('HLT-026', 'NDC-031')) as demo,
+      (select count(distinct pct_pondere)::int from pub_pack_ingenierie group by projet_code order by 1 desc limit 1) as pct_per_project`)).rows[0] as Record<string, unknown>;
+  check('pub_pack_ingenierie: provisional list 5 × 20 % on every type, PID/BOM/GA/SCH/FDS mapped, HLT-026 40 %, NDC-031 20 %, one % per project (R-191)',
+    pack.provisional === 5 * (pack.types as number) && pack.mapped === 'BOM:bom,FDS:analyse_fonctionnelle,GA:layout,PID:pid,SCH:electrique'
+    && pack.demo === 'HLT-026:40.0,NDC-031:20.0' && pack.pct_per_project === 1, pack);
   // Arche K-02 / K-03 / K-10 (R-187, 0049_capex_needs, 0050_capex_needs_share): the answers' view types and the demo answers.
   const repTypes = (await db.execute(sql`select column_name as c, data_type as t from information_schema.columns where table_schema = current_schema()
       and table_name = 'pub_reponses_besoins' order by ordinal_position`)).rows as { c: string; t: string }[];
