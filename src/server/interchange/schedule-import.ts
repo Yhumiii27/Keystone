@@ -14,6 +14,7 @@ import 'server-only';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { BUILTIN_CALENDARS, WorkCalendar, holidaysOf, type CalendarDef } from '@/domain/calendar';
 import { DEFAULT_PROJECT_CALENDAR, nextBaselineCode } from '@/domain/ch4-defaults';
+import { autoCapexMilestoneCodes } from '@/domain/capex-milestones';
 import { businessToday } from '@/server/clock';
 import { yearOfIso } from '@/domain/clock';
 import { detectCycle } from '@/domain/cpm';
@@ -810,11 +811,16 @@ async function writeProjectHeader(tx: Tx, s: ImportedSchedule, projectId: string
     note: `Imported from ${s.format === 'mspdi' ? 'MS Project' : 'Primavera P6'}`,
   });
   if (miles.length) {
+    // R-189: the CAPEX milestone codes the name rule gives without ambiguity (src/domain/capex-milestones.ts).
+    const capex = autoCapexMilestoneCodes(miles.map((a) => ({ id: a.id, name: a.name, capexCode: null })));
     await tx.insert(milestones).values(
       miles.map((a, position) => {
         const status: MilestoneStatus =
           a.percentComplete >= 100 ? 'done' : a.finishDate && a.baselineFinishDate && a.finishDate > a.baselineFinishDate ? 'late' : a.critical ? 'at_risk' : 'on_track';
-        return { projectId, position, name: a.name, baselineMonth: rel(a.baselineFinishDate ?? a.finishDate), forecastMonth: rel(a.finishDate), status, activityId: a.id };
+        return {
+          projectId, position, name: a.name, baselineMonth: rel(a.baselineFinishDate ?? a.finishDate), forecastMonth: rel(a.finishDate), status, activityId: a.id,
+          capexMilestoneCode: capex.get(a.id) ?? null,
+        };
       }),
     );
   }

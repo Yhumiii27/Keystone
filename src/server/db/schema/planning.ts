@@ -1,7 +1,9 @@
 // Planning (docs/spec/11 §3.3, docs/spec/05 §0.5 / §1 / §2): WBS nodes, activities, logic links, resource
 // assignments, milestones, schedule bars (TASKS), pipeline stage plans and the project control header
 // (the display figures of projectData()).
-import { boolean, date, index, integer, jsonb, pgTable, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { boolean, check, date, index, integer, jsonb, pgTable, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import type { CapexMilestoneCode } from '@/domain/capex-milestones';
 import type { CalendarCode, ConstraintType, LinkType, MilestoneStatus, PipelineWindow } from '../codes';
 import { id, keur, months, num, timestamps } from './_common';
 import { departments, persons } from './organisation';
@@ -153,18 +155,34 @@ export const activityAssignments = pgTable('activity_assignments', {
 });
 
 /** Milestones (HMILES 3122 / generated MILES). Months are fractional offsets from the project start. */
-export const milestones = pgTable('milestones', {
-  id: id(),
-  projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
-  position: integer('position').notNull(),
-  name: text('name').notNull(),
-  baselineMonth: months('baseline_month').notNull(),
-  forecastMonth: months('forecast_month').notNull(),
-  status: text('status').$type<MilestoneStatus>().notNull(),
-  activityId: uuid('activity_id').references(() => activities.id),
-  /** Last change (R-195: `maj_le` of pub_jalons, read by Crucible); set by the schedule's milestone roll-up. */
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+export const milestones = pgTable(
+  'milestones',
+  {
+    id: id(),
+    projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+    position: integer('position').notNull(),
+    name: text('name').notNull(),
+    baselineMonth: months('baseline_month').notNull(),
+    forecastMonth: months('forecast_month').notNull(),
+    status: text('status').$type<MilestoneStatus>().notNull(),
+    activityId: uuid('activity_id').references(() => activities.id),
+    /** Last change (R-195: `maj_le` of pub_jalons, read by Crucible); set by the schedule's milestone roll-up. */
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * R-189 (Arche K-04): the CAPEX milestone this schedule milestone is (`commande` … `fin_garantie`, src/domain/capex-milestones.ts),
+     * one per project; null = none. Set by the name rule (seed, import, 0056 backfill) when unambiguous, corrected by the leads on
+     * the Schedule screen. pub_jalons_projets publishes the milestone's BL1 date as `reference_le`.
+     */
+    capexMilestoneCode: text('capex_milestone_code').$type<CapexMilestoneCode>(),
+  },
+  (t) => [
+    unique('milestones_project_capex_code_unique').on(t.projectId, t.capexMilestoneCode),
+    check(
+      'milestones_capex_milestone_code_check',
+      sql`${t.capexMilestoneCode} in ('commande', 'fin_etudes', 'fat', 'expedition', 'arrivee_site', 'sat', 'pv_reception', 'fin_garantie')`,
+    ),
+  ],
+);
 
 /**
  * Schedule bars (HTASKS 3113 / generated TASKS): one bar per work package, as shown on the Schedule screen.

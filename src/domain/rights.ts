@@ -128,6 +128,13 @@ export const canSetCapexLink = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) =
  */
 export const canSetProjectEquipment = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) => canSetCapexLink(role, a);
 
+/**
+ * R-189 (Arche K-04): which schedule milestone is which CAPEX milestone (Schedule screen) — the same people as the CAPEX link: the
+ * director and the project's leads who see the Schedule screen; not Finance, not the client.
+ */
+export const canSetCapexMilestone = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) =>
+  role === 'director' || (a.lead && role !== 'client' && role !== 'finance' && canSee(role, 'schedule'));
+
 /** R-044: Finance reads Budget, Hours and Billing, even on a project whose team it is on (billing gate unchanged). */
 export const FINANCE_READ_ONLY_SCREENS: readonly ScreenId[] = ['budget', 'hours', 'billing'];
 export const financeReadOnly = (role: RoleKey, screen: ScreenId) => role === 'finance' && FINANCE_READ_ONLY_SCREENS.includes(screen);

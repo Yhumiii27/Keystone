@@ -1,0 +1,3 @@
+ALTER TABLE "milestones" ADD COLUMN "capex_milestone_code" text;--> statement-breakpoint
+ALTER TABLE "milestones" ADD CONSTRAINT "milestones_project_capex_code_unique" UNIQUE("project_id","capex_milestone_code");--> statement-breakpoint
+ALTER TABLE "milestones" ADD CONSTRAINT "milestones_capex_milestone_code_check" CHECK ("milestones"."capex_milestone_code" in ('commande', 'fin_etudes', 'fat', 'expedition', 'arrivee_site', 'sat', 'pv_reception', 'fin_garantie'));

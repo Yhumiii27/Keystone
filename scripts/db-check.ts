@@ -274,6 +274,15 @@ async function main() {
   check('HLT-026 shared: SPI 0.82, 5400 k€ contract, 120 k€ signed amendments, 2970 k€ invoiced, AV-01 signed / AV-02 proposed, ordered 14 Jan 2026',
     followup.spi === D7_SPI['HLT-026'] && followup.contrat === 5400 && followup.avenants === 120 && followup.facture === 2970
     && followup.avenants_hlt === 'AV-01:signe,AV-02:propose' && followup.commande === '2026-01-14', followup);
+  // R-189 (Arche K-04; 0055-0057): the CAPEX code of the schedule milestones (one per project, the eight codes) and the BL1 date.
+  const bl1 = (await db.execute(sql`select
+      (select string_agg(p.code || ':' || m.capex_milestone_code, ',' order by p.code) from milestones m join projects p on p.id = m.project_id
+        where m.capex_milestone_code is not null) as tags,
+      (select reference_le::text from pub_jalons_projets where projet_code = 'HLT-026' and jalon_code = 'pv_reception') as hlt_pv,
+      (select count(*)::int from pub_jalons_projets where reference_le is not null) as with_reference,
+      (select count(*)::int from pg_constraint where conname in ('milestones_project_capex_code_unique', 'milestones_capex_milestone_code_check')) as constraints`)).rows[0] as Record<string, unknown>;
+  check('pub_jalons_projets.reference_le: BL1 date of the tagged milestone — HLT-026 « Handover » = PV de réception, 18 Dec 2026 (R-189)',
+    bl1.tags === 'HLT-026:pv_reception,MSR-012:pv_reception,NDC-031:sat,WSA-044:sat' && bl1.hlt_pv === '2026-12-18' && bl1.with_reference === 4 && bl1.constraints === 2, bl1);
   // Arche K-07 / K-11 (R-193; 0039_share_maj_le_indexes, 0040_share_installed_base).
   const parc = (await db.execute(sql`select
       (select count(*)::int from (select distinct number, name, project_code, site_text, type_machine_code, livree_le, maj_le from pub_parc_machines) d) as distinct_rows,

@@ -70,7 +70,10 @@ describe('share views of delivery 9 (0038_share_followup)', () => {
     );
     expect(v).toHaveLength(8 * n);
     expect([...new Set(v.map((r) => r.jalon_code))]).toEqual(['commande', 'fin_etudes', 'fat', 'expedition', 'arrivee_site', 'sat', 'pv_reception', 'fin_garantie']);
-    expect(v.every((r) => r.reference_le === null)).toBe(true);
+    // R-189: reference_le is the BL1 date of the schedule milestone tagged with the code (was null for every row before R-189).
+    expect(v.filter((r) => r.reference_le).map((r) => [r.projet_code, r.jalon_code, r.reference_le]).sort()).toEqual([
+      ['HLT-026', 'pv_reception', '2026-12-18'], ['MSR-012', 'pv_reception', '2026-11-01'], ['NDC-031', 'sat', '2027-04-01'], ['WSA-044', 'sat', '2027-07-01'],
+    ]);
     const hlt = Object.fromEntries(v.filter((r) => r.projet_code === 'HLT-026').map((r) => [r.jalon_code, r]));
     // The contract signed on 14 Jan 2026 is the order.
     expect(hlt.commande).toMatchObject({ prevu_le: '2026-01-14', reel_le: '2026-01-14' });
@@ -79,6 +82,44 @@ describe('share views of delivery 9 (0038_share_followup)', () => {
     expect(hlt.sat.reel_le).toBeNull();
     // A reached milestone's planned date defaults to its actual date.
     for (const r of v) if (r.reel_le && !r.prevu_le) throw new Error(`${r.projet_code} ${r.jalon_code}: reached without a planned date`);
+  });
+
+  it('pub_jalons_projets: reference_le and the schedule fallback of the tagged milestone (R-189)', async () => {
+    const one = async (code: string, jalon: string) =>
+      (await rows<{ prevu_le: string | null; reference_le: string | null; reel_le: string | null; maj_le: string }>(
+        sql`select prevu_le::text, reference_le::text, reel_le::text, maj_le::text from pub_jalons_projets where projet_code = ${code} and jalon_code = ${jalon}`,
+      ))[0];
+    const tags = await rows<{ code: string; name: string; capex: string }>(
+      sql`select p.code, m.name, m.capex_milestone_code as capex from milestones m join projects p on p.id = m.project_id where m.capex_milestone_code is not null order by 1`,
+    );
+    // The seed tags the unambiguous demo milestones by their names (RCF-019's « Commissioning & handover complete » is SAT and PV: untagged).
+    expect(tags.map((r) => [r.code, r.name, r.capex])).toEqual([
+      ['HLT-026', 'Handover', 'pv_reception'], ['MSR-012', 'Acceptance & handover complete', 'pv_reception'], ['NDC-031', 'Commissioning & IST complete', 'sat'],
+      ['WSA-044', 'Commissioning complete', 'sat'],
+    ]);
+    // Not anchored yet: the milestone's positions read as the Schedule shows them (HLT-026 « Handover »: baseline 18 Dec, forecast 13 Jan).
+    // A module's planned date wins (the PV deliverables of HLT-026); NDC-031 has no SAT planned elsewhere: the schedule's forecast.
+    expect(await one('HLT-026', 'pv_reception')).toMatchObject({ prevu_le: '2027-01-14', reference_le: '2026-12-18', reel_le: null });
+    expect(await one('NDC-031', 'sat')).toMatchObject({ prevu_le: '2027-04-04', reference_le: '2027-04-01', reel_le: null });
+    // Anchored on an activity: its current finish, its BL1 finish (baseline_activities), its actual finish once complete.
+    const [act] = await rows<{ id: string; finish: string; bl1: string }>(sql`
+      select a.id, a.finish_date::text as finish, ba.finish_date::text as bl1 from activities a
+      join projects p on p.id = a.project_id
+      join baselines b on b.project_id = p.id and b.code = 'BL1'
+      join baseline_activities ba on ba.baseline_id = b.id and ba.activity_code = a.code
+      where p.code = 'NDC-031' and a.finish_actual and ba.finish_date is not null order by a.position limit 1`);
+    const before = await one('NDC-031', 'sat');
+    await db.execute(sql`update milestones set activity_id = ${act.id} where capex_milestone_code = 'sat' and project_id = (select id from projects where code = 'NDC-031')`);
+    expect(await one('NDC-031', 'sat')).toMatchObject({ prevu_le: act.finish, reference_le: act.bl1, reel_le: act.finish });
+    // A project whose BL1 is still proposed (or has none) publishes no reference.
+    await db.execute(sql`update baselines set state = 'proposed' where code = 'BL1' and project_id = (select id from projects where code = 'NDC-031')`);
+    expect((await one('NDC-031', 'sat')).reference_le).toBeNull();
+    await db.execute(sql`update baselines set state = 'current' where code = 'BL1' and project_id = (select id from projects where code = 'NDC-031')`);
+    await db.execute(sql`update milestones set activity_id = null where capex_milestone_code = 'sat' and project_id = (select id from projects where code = 'NDC-031')`);
+    expect(await one('NDC-031', 'sat')).toMatchObject({ prevu_le: before.prevu_le, reference_le: before.reference_le });
+    // The database keeps one milestone per code and project, and only the eight codes.
+    await expect(db.execute(sql`update milestones set capex_milestone_code = 'pv_reception' where name = 'Systems energised'`)).rejects.toThrow();
+    await expect(db.execute(sql`update milestones set capex_milestone_code = 'handover' where name = 'Systems energised'`)).rejects.toThrow();
   });
 
   it('pub_avancement_projets: progress and SPI from the share-progress job (null before its first run), sales amounts in k€', async () => {
