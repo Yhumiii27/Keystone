@@ -67,8 +67,9 @@ new job rather than a step of an existing one: no existing job has the same rhyt
 ## 3. `pub_jalons_projets`: mapping of the CAPEX milestones to Keystone's data
 
 One row per project and code. `reel_le` is null while not reached; `prevu_le` is the planned date of the module that plans it,
-else the actual date (a reached milestone is "planned" at its actual date); `reference_le` (BL1) is **null for every code** —
-see § 5. A stage "reached" = the first transition into that stage *or a later one* that still stands (`stage_transitions`: not
+else the actual date (a reached milestone is "planned" at its actual date); `reference_le` (BL1) was **null for every code** —
+see § 5 (since 25 Oct 2026, R-189: the BL1 date of the schedule milestone tagged with the code, which also backs up `prevu_le` /
+`reel_le` when no module dates them — `notes-r189-reference-dates.md`). A stage "reached" = the first transition into that stage *or a later one* that still stands (`stage_transitions`: not
 a revert, not rejected, not reverted), so a skipped stage still dates the next milestone.
 
 | `jalon_code` | `prevu_le` | `reel_le` | `maj_le` source |
@@ -105,6 +106,8 @@ HLT-026 and RCF-019 carry a stage history; the other projects publish nulls for 
 1. **BL1 dates of the CAPEX milestones** (`reference_le` null): Keystone's schedule milestones carry no CAPEX milestone code. A
    code on each schedule milestone (`commande` … `fin_garantie`, chosen by the PM) would give `prevu_le` (its activity's finish),
    `reference_le` (BL1 finish of that activity) and `reel_le` (actual finish) from the schedule. A new field: owner's approval.
+   **Done on 25 Oct 2026 (owner launched R-189)**: `milestones.capex_milestone_code`, set by a name rule and by the leads on the
+   Schedule screen, and `reference_le` filled (migrations 0055–0057) — see [`notes-r189-reference-dates.md`](notes-r189-reference-dates.md).
 2. **`fat` and `expedition`** share one stage boundary (entry into Expédition); an actual FAT date would need the FAT ITP results
    (`result_on` of FAT-stage inspections) — possible later, to confirm with Arche.
 3. **Multi-equipment (R-185)**: every view is per project; with several machines per project, the CAPEX milestones and the

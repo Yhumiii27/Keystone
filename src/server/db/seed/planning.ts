@@ -1,5 +1,6 @@
 // Planning seed: materialises projectData() (HLT_PD + the 5 generated projects) — WBS nodes, activities,
 // links, milestones, schedule bars, the project control header — plus A1250_RES.
+import { autoCapexMilestoneCodes } from '@/domain/capex-milestones';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
 import { isoOfDemoDate, milestoneStatus, parseConstraint, splitActual, type LinkType } from '../codes';
 import { activities, activityAssignments, activityLinks, milestones, projectControls, scheduleBars, wbsNodes } from '../schema';
@@ -80,11 +81,12 @@ export async function seedPlanning(tx: Tx, ctx: SeedCtx): Promise<void> {
     );
     if (links.length) await tx.insert(activityLinks).values(links);
 
-    await tx.insert(milestones).values(
-      (pd.MILES as [string, number, number, string][]).map(([name, baselineMonth, forecastMonth, status], position) => ({
-        id: newId(), projectId, position, name, baselineMonth, forecastMonth, status: milestoneStatus.code(status),
-      })),
-    );
+    // R-189: the CAPEX milestone codes the name rule gives without ambiguity (same rule as 0056_capex_milestone_backfill).
+    const mileRows = (pd.MILES as [string, number, number, string][]).map(([name, baselineMonth, forecastMonth, status], position) => ({
+      id: newId(), projectId, position, name, baselineMonth, forecastMonth, status: milestoneStatus.code(status),
+    }));
+    const capex = autoCapexMilestoneCodes(mileRows.map((m) => ({ id: m.id, name: m.name, capexCode: null })));
+    await tx.insert(milestones).values(mileRows.map((m) => ({ ...m, capexMilestoneCode: capex.get(m.id) ?? null })));
 
     // Schedule bars: one per work package (matched by name, else by order).
     const wpByName = new Map(nodeRows.filter((n) => n.level === 1).map((n) => [n.name, n.id!]));

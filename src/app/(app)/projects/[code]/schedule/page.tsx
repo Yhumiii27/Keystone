@@ -8,7 +8,9 @@ import { PageHeader } from '@/components/app/shell/page-header';
 import { CardTitle } from '@/components/ds/Card';
 import { stageEstimateClass } from '@/domain/estimate-class';
 import { scheduleView } from '@/domain/schedule-gantt';
+import { canSetCapexMilestone } from '@/domain/rights';
 import { RebaselineButton } from '@/features/schedule/rebaseline-button';
+import { listCapexMilestones } from '@/server/dal/capex-milestones';
 import { ScheduleView } from '@/features/schedule/schedule-view';
 import { getScheduleData } from '@/server/dal/schedule';
 import { getProjectContext } from '@/server/project-context';
@@ -24,7 +26,7 @@ export default async function SchedulePage({
 }) {
   const [{ code }, sp] = await Promise.all([params, searchParams]);
   const ctx = await getProjectContext(code, 'schedule');
-  const [{ t, lang }, data] = await Promise.all([getI18n(), getScheduleData(ctx.project.code)]);
+  const [{ t, lang }, data, capexRows] = await Promise.all([getI18n(), getScheduleData(ctx.project.code), listCapexMilestones(ctx.project.code)]);
   const baselineParam = Array.isArray(sp.baseline) ? sp.baseline[0] : sp.baseline;
   const showBaseline = baselineParam !== '0' && baselineParam !== 'off';
 
@@ -35,7 +37,15 @@ export default async function SchedulePage({
     <>
       <PageHeader screen="schedule" projectCode={ctx.project.code} primary={primary} />
       {data ? (
-        <ScheduleView view={scheduleView(data)} showBaseline={showBaseline} />
+        <ScheduleView
+          view={scheduleView(data)}
+          showBaseline={showBaseline}
+          // R-189: which milestone is which CAPEX milestone (its BL1 date is published to Arche); set by the project's leads.
+          capex={{
+            rows: capexRows.map((r) => ({ id: r.id, capexCode: r.capexCode })),
+            editCode: canSetCapexMilestone(ctx.viewer.role, ctx.access) && ctx.canEdit('schedule') ? ctx.project.code : undefined,
+          }}
+        />
       ) : (
         <SectionCard gap={10}>
           <CardTitle>{t('Schedule — baseline vs forecast')}</CardTitle>

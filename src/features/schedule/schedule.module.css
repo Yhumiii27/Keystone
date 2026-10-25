@@ -17,5 +17,7 @@
 }
 .msText { display: flex; flex-direction: column; line-height: 1.3; }
 .msSub { font-size: 11.5px; color: var(--color-neutral-400); }
+/* R-189: CAPEX milestone select under the milestone's dates. */
+.msCapex { display: flex; margin-top: 4px; max-width: 220px; }
 .msSlip { font-variant-numeric: tabular-nums; color: var(--color-neutral-300); }
 .msSlipAlert { color: var(--color-accent-300); }

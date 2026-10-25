@@ -4,6 +4,9 @@ import { PERSONA_BY_ROLE } from '@/config/personas';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import { revalidatePath } from 'next/cache';
 import { BL1_TICKED, canSnapshotFreely } from '@/domain/baseline-policy';
+import { parseCapexMilestoneCode } from '@/domain/capex-milestones';
+import { canSetCapexMilestone } from '@/domain/rights';
+import { UnknownMilestoneError, setMilestoneCapexCode } from '@/server/dal/capex-milestones';
 import { BaselinePolicyError, createBaselineSnapshot, listProjectBaselines } from '@/server/dal/baselines';
 import { listChangeRequestDetails } from '@/server/dal/changes';
 import { getProject } from '@/server/dal/projects';
@@ -60,4 +63,30 @@ export async function rebaselineSchedule(code: string, values: Record<string, st
   revalidatePath(`/projects/${project.code}`, 'layout');
   // R-054 (L-2 "a"): a BL1 made current here ticked « Planning BL1 posé » — said only when the tick changed.
   return { toast: `${name} · ${t(REBASELINE_RESULT)} · ${res.code}${res.bl1Ticked ? ` · ${t(BL1_TICKED)}` : ''}` };
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * R-189 (Arche K-04): which CAPEX milestone a schedule milestone is (Schedule screen, milestone list) — '' clears. The director
+ * and the project's leads (`canSetCapexMilestone`) on a project whose schedule they may edit. A code held by another milestone of
+ * the project moves to this one. Audited; pub_jalons_projets then publishes this milestone's BL1 date as `reference_le`.
+ */
+export async function setCapexMilestoneAction(code: string, milestoneId: string, capexCode: string): Promise<{ ok: true } | { error: string }> {
+  const { t } = await getI18n();
+  if (typeof code !== 'string' || !code || typeof milestoneId !== 'string' || !UUID_RE.test(milestoneId) || typeof capexCode !== 'string') return { error: t('Invalid request') };
+  const project = await getProject(code);
+  if (!project) return { error: t('Unknown project') };
+  const ctx = await getProjectContext(project.code, 'schedule');
+  if (!canSetCapexMilestone(ctx.viewer.role, ctx.access) || !ctx.canEdit('schedule')) return { error: t('Only the project’s leads and the director set the CAPEX milestones') };
+  const parsed = parseCapexMilestoneCode(capexCode);
+  if (!parsed.ok) return { error: t(parsed.error) };
+  try {
+    await setMilestoneCapexCode(project.code, milestoneId, parsed.value, { name: ctx.viewer.name, role: ctx.viewer.role });
+  } catch (e) {
+    if (e instanceof UnknownMilestoneError) return { error: t('Unknown milestone') };
+    return { error: t('The change could not be saved') };
+  }
+  revalidatePath(`/projects/${project.code}`, 'layout');
+  return { ok: true };
 }

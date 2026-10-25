@@ -1,5 +1,5 @@
 // Columns of Keystone's pub_ views published or extended in delivery 9 (migrations 0038_share_followup, 0040_share_installed_base,
-// 0046_catalogue_share, 0050_capex_needs_share, 0052_internal_client_share, 0054_matrix_rex_clients_share;
+// 0046_catalogue_share, 0050_capex_needs_share, 0052_internal_client_share, 0054_matrix_rex_clients_share, 0057_capex_milestone_share;
 // docs/delivery-9/notes-share-views.md), in order: the contracts the readers (Crucible, Arche, Matrix) rely on. A column is never removed, renamed or moved; new ones go
 // at the end. Checked by src/server/db/share-views.test.ts (PGlite) and scripts/db-check.ts (also on PostgreSQL, --postgres).
 export const SHARE_VIEW_COLUMNS: Record<string, string[]> = {
@@ -11,6 +11,8 @@ export const SHARE_VIEW_COLUMNS: Record<string, string[]> = {
     'client_interne', 'filiale_code',
   ],
   pub_livrables: ['project_code', 'number', 'title', 'status', 'type', 'accepte_le', 'maj_le'],
+  // R-189 (0038_share_followup; 0057_capex_milestone_share): reference_le = the BL1 date of the schedule milestone tagged with the
+  // CAPEX code (milestones.capex_milestone_code), null without a BL1 or a tagged milestone; the columns are unchanged.
   pub_jalons_projets: ['projet_code', 'jalon_code', 'prevu_le', 'reference_le', 'reel_le', 'maj_le'],
   pub_avancement_projets: [
     'projet_code', 'date_situation', 'avancement_physique_pct', 'spi', 'fin_prevue_le', 'montant_contrat_keur', 'montant_avenants_keur', 'facture_keur', 'maj_le',

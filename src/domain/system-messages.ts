@@ -76,6 +76,13 @@ const MESSAGES = {
     (p) => `CAPEX link: ${p.from} → ${p.to}`,
     (p) => `Rattachement CAPEX : ${p.from} → ${p.to}`,
   ),
+  // R-189 (Arche K-04): the CAPEX milestone a schedule milestone is, set on the Schedule screen (labels of
+  // src/domain/capex-milestones.ts; 'Not a CAPEX milestone' = none).
+  'milestone.capexCode': def(
+    { milestone: 'data', from: 'label', to: 'label' },
+    (p) => `CAPEX milestone of ${p.milestone}: ${p.from} → ${p.to}`,
+    (p, f) => `Jalon CAPEX de ${f.data(p.milestone)} : ${f.label(p.from)} → ${f.label(p.to)}`,
+  ),
   // R-190: the project's client flagged as a group subsidiary (internal client) or back to external ('—' = subsidiary code not known).
   'client.internalSet': def(
     { client: 'data', subsidiary: 'ref' },
