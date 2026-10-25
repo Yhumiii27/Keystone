@@ -24,6 +24,7 @@ import { parseCapexLink } from '@/domain/capex-link';
 import { canSetInternalClient, parseInternalClient } from '@/domain/internal-client';
 import { setCapexLink } from '@/server/dal/capex-link';
 import { setProjectClientInternal } from '@/server/dal/internal-client';
+import { refreshSubsidiaryMirror, subsidiaryRefreshSummary } from '@/server/integrations/matrix/subsidiaries';
 import { addProjectEquipment, removeProjectEquipment, updateProjectEquipment } from '@/server/dal/project-equipment';
 import { setProjectBudgetRate } from '@/server/dal/currency';
 import { getProject } from '@/server/dal/projects';
@@ -366,12 +367,31 @@ export async function setInternalClientAction(code: string, isInternal: boolean,
     await setProjectClientInternal(project.code, parsed.value, { name: ctx.viewer.name, role: ctx.viewer.role });
   } catch (e) {
     const message = e instanceof Error ? e.message : '';
-    if (message === 'This project has no registered client') return { error: await tr(message) };
+    if (message === 'This project has no registered client' || message === 'Choose a subsidiary published by Matrix') return { error: await tr(message) };
     if (message.startsWith('Subsidiary ')) return { error: await tr('This subsidiary is already another client') };
+    // D21: the client takes its subsidiary's code as code3 — refused when another client already has that code.
+    if (message.startsWith('Code ')) return { error: await tr('This subsidiary’s code is already the code of another client') };
     return { error: await tr('The change could not be saved') };
   }
   refresh();
   return { ok: true };
+}
+
+/**
+ * Matrix D21: "Refresh the list" of the "Client" card — reads Matrix's subsidiaries (matrix.pub_filiales) again into the mirror.
+ * The director only, on a project whose Contract they may edit (the card's editor). Nothing is written but the read-only mirror.
+ */
+export async function refreshSubsidiariesAction(code: string): Promise<ContractEditResult> {
+  if (typeof code !== 'string' || !code) return { error: await tr('Invalid request') };
+  const project = await getProject(code);
+  if (!project) return { error: await tr('Unknown project') };
+  const ctx = await getProjectContext(project.code, 'contract');
+  if (!canSetInternalClient(ctx.viewer.role) || !ctx.canEdit('contract')) return { error: await tr('Only the director sets whether the client is a group subsidiary') };
+  const r = await refreshSubsidiaryMirror();
+  refresh();
+  if (r.state === 'done') return { ok: true };
+  if (r.state === 'failed') return { error: `${await tr('Matrix’s subsidiaries could not be read')} — ${r.error}` };
+  return { error: await tr(subsidiaryRefreshSummary(r)) };
 }
 
 /** Fields of an equipment line as the "Equipment" card sends them (strings; the DAL parses them again). */

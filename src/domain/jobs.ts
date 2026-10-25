@@ -49,6 +49,8 @@ export type JobName =
   // ── Delivery 9 · R-187 (Arche K-02): Arche's views pub_capex and pub_besoins_machines read into the capex mirror, every 15
   // minutes (Arche reads Keystone's views at the same pace).
   | 'capex-needs'
+  // ── Delivery 9 · Matrix D21: Matrix's view pub_filiales (the group's subsidiaries) read into the subsidiaries mirror, hourly.
+  | 'matrix-subsidiaries'
   ;
 
 export interface JobSchedule {
@@ -109,6 +111,9 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
   // ── Delivery 9 · R-187: the subsidiaries' machine needs read from Arche every 15 minutes (nothing with ARCHE_SOURCE=off, the
   // connector disabled by IT, or the simulation on a non-demo database).
   { name: 'capex-needs', everyMs: 15 * MIN, leaseMs: 10 * MIN, firstDelayMs: 70_000 },
+  // ── Delivery 9 · Matrix D21: the group's subsidiaries read from Matrix every hour (the list changes rarely; nothing with
+  // MATRIX_SOURCE=off, or the simulation on a non-demo database).
+  { name: 'matrix-subsidiaries', everyMs: HOUR, leaseMs: 10 * MIN, firstDelayMs: 75_000 },
 ];
 
 export const JOB_NAMES: readonly JobName[] = JOB_SCHEDULES.map((j) => j.name);

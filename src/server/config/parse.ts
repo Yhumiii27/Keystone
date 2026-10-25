@@ -58,6 +58,13 @@ export type ClamdTarget = { socket: string } | { host: string; port: number };
  */
 export const ARCHE_SOURCES = ['server', 'simulation', 'off'] as const;
 export type ArcheSource = (typeof ARCHE_SOURCES)[number];
+/**
+ * Matrix D21: where the subsidiaries connector reads Matrix's view matrix.pub_filiales (the group's subsidiaries): `server` = on
+ * the shared PostgreSQL server (Keystone's role only SELECTs it), `simulation` = the demo subsidiaries (a demo database only),
+ * `off` = no read.
+ */
+export const MATRIX_SOURCES = ['server', 'simulation', 'off'] as const;
+export type MatrixSource = (typeof MATRIX_SOURCES)[number];
 /** Arche's local address on the owner's Mac (Arche CLAUDE.md: port 3400). */
 export const DEFAULT_ARCHE_URL = 'http://localhost:3400';
 
@@ -100,6 +107,11 @@ export interface KeystoneConfig {
    * connector reads (ARCHE_SOURCE; default `server` with DATABASE_URL, else `simulation`).
    */
   arche: { url: string; source: ArcheSource };
+  /**
+   * Matrix D21: where the subsidiaries connector reads matrix.pub_filiales (MATRIX_SOURCE; default `server` with DATABASE_URL,
+   * else `simulation`).
+   */
+  matrix: { source: MatrixSource };
   ai: { anthropicApiKeySet: boolean; enabled: boolean; model: string | null; fallbacks: boolean };
   /** Secret values present in the environment: the logger masks them wherever they appear. */
   secrets: string[];
@@ -232,6 +244,12 @@ const VARS = {
     .transform((v) => v.toLowerCase())
     .pipe(z.enum(ARCHE_SOURCES, { message: 'must be "server", "simulation" or "off"' }))
     .optional(),
+  // Matrix D21: where the group's subsidiaries (matrix.pub_filiales) are read.
+  MATRIX_SOURCE: z
+    .string()
+    .transform((v) => v.toLowerCase())
+    .pipe(z.enum(MATRIX_SOURCES, { message: 'must be "server", "simulation" or "off"' }))
+    .optional(),
 } as const;
 
 export type ConfigVariable = keyof typeof VARS;
@@ -351,6 +369,9 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
   // R-187: Arche's views are read on the shared server only (a PGlite database has no arche schema).
   if (v.ARCHE_SOURCE === 'server' && !v.DATABASE_URL) errors.push({ variable: 'ARCHE_SOURCE', message: 'is "server" but DATABASE_URL is not set (Arche’s views are read on the shared PostgreSQL server)' });
   const archeSource: ArcheSource = v.ARCHE_SOURCE && !(v.ARCHE_SOURCE === 'server' && !v.DATABASE_URL) ? v.ARCHE_SOURCE : v.DATABASE_URL ? 'server' : 'simulation';
+  // Matrix D21: matrix.pub_filiales is read on the shared server only (a PGlite database has no matrix schema).
+  if (v.MATRIX_SOURCE === 'server' && !v.DATABASE_URL) errors.push({ variable: 'MATRIX_SOURCE', message: 'is "server" but DATABASE_URL is not set (Matrix’s subsidiaries are read on the shared PostgreSQL server)' });
+  const matrixSource: MatrixSource = v.MATRIX_SOURCE && !(v.MATRIX_SOURCE === 'server' && !v.DATABASE_URL) ? v.MATRIX_SOURCE : v.DATABASE_URL ? 'server' : 'simulation';
   if (production && !v.ARCHE_URL) warnings.push({ variable: 'ARCHE_URL', message: 'is not set: links open Arche on localhost' });
 
   // Demo mode in production (R-038): "View as" with no sign-in, the director by default. Refused with the production data
@@ -418,6 +439,7 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
       cursus: { apiUrl: v.CURSUS_API_URL ?? null, apiKey: cursusApiKey, eventsKey: cursusEventsKey, directory: v.CURSUS_DIRECTORY === 'on' },
       vigie: { apiUrl: v.VIGIE_API_URL ?? null, apiKey: v.VIGIE_API_KEY ?? null },
       arche: { url: v.ARCHE_URL ?? DEFAULT_ARCHE_URL, source: archeSource },
+      matrix: { source: matrixSource },
       ai: { anthropicApiKeySet: !!anthropic, enabled: !!anthropic && v.KEYSTONE_AI !== 'off', model: v.KEYSTONE_AI_MODEL ?? null, fallbacks: v.KEYSTONE_AI_FALLBACKS !== 'off' },
       secrets: [...new Set(secrets)],
     },

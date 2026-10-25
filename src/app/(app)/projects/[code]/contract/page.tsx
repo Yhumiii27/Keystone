@@ -36,14 +36,19 @@ export default async function ContractPage({ params }: { params: Promise<{ code:
   const canSetClient = canSetInternalClient(ctx.viewer.role) && ctx.canEdit('contract');
   const [{ t, lang }, contract, capexLink, equipment, types, catalogue, client, subsidiaries] = await Promise.all([
     getI18n(), getContract(projectCode), getCapexLink(projectCode), listProjectEquipments(projectCode), listMachineTypeOptions(), listCatalogueChoices(),
-    getProjectClient(projectCode), canSetClient ? listSubsidiaries() : Promise.resolve([]),
+    getProjectClient(projectCode), canSetClient ? listSubsidiaries() : Promise.resolve(null),
   ]);
   // C-9: the portfolio director and Finance (R-044) set the project's currency and budget rate.
   const canSetRate = canSetBudgetRate(ctx.viewer.role) && ctx.canEdit('contract');
   // R-190: the director and the project's leads set its CAPEX link (also on a project without contract).
   const capexCard = <CapexLinkCard link={capexLink} code={projectCode} canEdit={canSetCapexLink(ctx.viewer.role, ctx.access) && ctx.canEdit('contract')} t={t} />;
-  // R-190: the project's client, external or a group subsidiary; the director sets it (also on a project without contract).
-  const clientCard = <ProjectClientCard client={client} code={projectCode} canEdit={canSetClient} subsidiaries={subsidiaries} t={t} lang={lang} />;
+  // R-190: the project's client, external or a group subsidiary; the director sets it (also on a project without contract), among
+  // Matrix's subsidiaries (D21; the CAPEX mirror's while Matrix publishes none).
+  const clientCard = (
+    <ProjectClientCard
+      client={client} code={projectCode} canEdit={canSetClient} subsidiaries={subsidiaries?.list ?? []} subsidiarySource={subsidiaries?.source ?? 'matrix'} t={t} lang={lang}
+    />
+  );
   // R-185: the project's equipment lines; the director and the project's leads edit them (also on a project without contract).
   const equipmentCard = (
     <EquipmentCard

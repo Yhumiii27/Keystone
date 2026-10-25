@@ -30,6 +30,7 @@ import { markBl1Deliverable } from '@/server/dal/lifecycle';
 import type { ImportPreviewRow } from '@/server/dal/import-jobs';
 import { INTERCHANGE_DEFAULTS } from './defaults';
 import { fmt } from './messages';
+import { assertClientCodeFree } from '@/server/dal/internal-client';
 import { longDateText, monthIndex, monthText, planDateText, round1, round2, type ImportedActivity, type ImportedCalendar, type ImportedSchedule, type IsoDate } from './model';
 
 type Q = DB | Tx;
@@ -619,6 +620,8 @@ async function createImportedProject(tx: Tx, s: ImportedSchedule, plan: Schedule
     client ? tx.select({ id: clients.id, code3: clients.code3 }).from(clients).where(eq(clients.name, client)) : Promise.resolve([]),
     tx.select({ min: sql<number>`coalesce(min(${projects.sortOrder}), 1)::int` }).from(projects),
   ]);
+  // Matrix D21: a code proposed from the client's name may not be the code of a group subsidiary the client is not.
+  if (!registered?.code3) await assertClientCodeFree(tx, clientCode3(client, null), client);
   const ident = allocateProjectIdentity({
     code3: clientCode3(client, registered?.code3), numbers: existing.map((p) => p.number), codes: existing.map((p) => p.code), analytics: existing.map((p) => p.analytic),
   });

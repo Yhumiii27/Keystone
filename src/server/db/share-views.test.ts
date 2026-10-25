@@ -12,8 +12,8 @@ import { completeIntervention, planIntervention } from '@/server/dal/claims';
 import { refreshShareProgress } from '@/server/dal/share-progress';
 import { setDb } from './client';
 import { openDatabase } from './open';
-import { clients, contractAmendments, contracts, machines, milestones, projects, punchItems } from './schema';
-import { INTERNAL_MONEY_COLUMN, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COLUMNS, SHARE_VIEW_COUNT } from './share-contracts';
+import { clients, contractAmendments, contracts, lessonsLearned, machines, milestones, projects, punchItems } from './schema';
+import { INTERNAL_MONEY_COLUMN, REX_VIEW_TYPES, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COLUMNS, SHARE_VIEW_COUNT } from './share-contracts';
 import type { DB } from './types';
 
 let db: DB;
@@ -25,7 +25,7 @@ beforeAll(async () => {
 }, 60_000);
 
 describe('share views of delivery 9 (0038_share_followup)', () => {
-  it('19 pub_ views (R-186: pub_catalogue_machines; R-187: pub_reponses_besoins); each contract has its columns in order', async () => {
+  it('20 pub_ views (R-186: pub_catalogue_machines; R-187: pub_reponses_besoins; Matrix D22: pub_rex); each contract has its columns in order', async () => {
     const views = await rows<{ v: string }>(sql`select table_name as v from information_schema.views where table_schema = current_schema() and table_name like 'pub\_%' order by 1`);
     expect(views.map((r) => r.v)).toHaveLength(SHARE_VIEW_COUNT);
     for (const [view, cols] of Object.entries(SHARE_VIEW_COLUMNS)) {
@@ -147,6 +147,36 @@ describe('share views of delivery 9 (0038_share_followup)', () => {
     const [r] = await rows<{ client_interne: boolean; filiale_code: string }>(sql`select client_interne, filiale_code from pub_projets where code = 'RCF-019'`);
     expect(r).toEqual({ client_interne: true, filiale_code: 'HTR' });
     await db.update(clients).set({ isInternal: false, subsidiaryCode: null }).where(eq(clients.name, 'Health trust'));
+  });
+
+  it('pub_rex (Matrix D22): the validated and applied lessons at the common REX contract; a proposed lesson is not published', async () => {
+    const types = await rows<{ c: string; t: string }>(sql`select column_name as c, data_type as t from information_schema.columns where table_schema = current_schema() and table_name = 'pub_rex' order by ordinal_position`);
+    expect(Object.fromEntries(types.map((r) => [r.c, r.t]))).toEqual(REX_VIEW_TYPES);
+    const v = await rows<Record<string, string | null>>(sql`select ref_source, outil, projet_code, capex_code, numero, categorie, titre, statut, portee, auteur from pub_rex order by numero`);
+    // HLT-026's demo lessons: LL-01 validated, LL-02 applied, LL-03 validated, LL-04 proposed (not published).
+    expect(v.map((r) => [r.projet_code, r.numero, r.categorie, r.statut])).toEqual([
+      ['HLT-026', 'LL-01', 'procurement', 'validated'], ['HLT-026', 'LL-02', 'engineering', 'applied'], ['HLT-026', 'LL-03', 'site', 'validated'],
+    ]);
+    const [ll01] = await db.select({ id: lessonsLearned.id }).from(lessonsLearned).where(eq(lessonsLearned.number, 'LL-01'));
+    expect(v[0]).toMatchObject({
+      // The project's CAPEX link (set on HLT-026 by the pub_projets test above).
+      ref_source: `lessons_learned:${ll01.id}`, outil: 'keystone', capex_code: 'CPX-SAI-2026-01', auteur: null, portee: 'Purchasing procedure PRO-QMS-021',
+      titre: 'LL-01 · Steel mill capacity slipped 3 weeks with no early warning',
+    });
+    // A long finding is cut at 80 characters in the title (the full text stays in constat).
+    expect(v[1].titre).toBe('LL-02 · P&ID rev D released while electrical and automation still consumed rev C');
+    // Validating the proposed lesson publishes it.
+    await db.update(lessonsLearned).set({ status: 'validated', updatedAt: new Date() }).where(eq(lessonsLearned.number, 'LL-04'));
+    const [ll04] = await rows<{ capex_code: string; titre: string }>(sql`select capex_code, titre from pub_rex where numero = 'LL-04'`);
+    expect(ll04).toEqual({ capex_code: 'CPX-SAI-2026-01', titre: 'LL-04 · Client decides on hold points only in steering committee' });
+    await db.update(lessonsLearned).set({ status: 'proposed' }).where(eq(lessonsLearned.number, 'LL-04'));
+  });
+
+  it('pub_clients (Matrix D21): filiale_code at the end — the internal client’s subsidiary code, null for an external client', async () => {
+    const v = await rows<{ name: string; code3: string | null; filiale_code: string | null }>(sql`select name, code3, filiale_code from pub_clients order by name`);
+    const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(clients);
+    expect(v).toHaveLength(n);
+    expect(v.filter((r) => r.filiale_code)).toEqual([{ name: 'Sahel Agro Industries', code3: 'SAI', filiale_code: 'SAI' }]);
   });
 
   it('pub_parc_machines: machine type, delivery date and last change at the end, one row per machine for Arche (K-07)', async () => {

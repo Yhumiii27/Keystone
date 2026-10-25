@@ -66,20 +66,25 @@ describe('setInternalClientAction (R-190)', () => {
     expect(await setInternalClientAction('HLT-026', true, 'S4I')).toEqual({ error: 'Choose a subsidiary code of three capital letters' });
     // SAI is the demo's internal client Sahel Agro Industries.
     expect(await setInternalClientAction('HLT-026', true, 'SAI')).toEqual({ error: 'This subsidiary is already another client' });
+    // Matrix D21: Matrix publishes the subsidiaries (demo: APM, SAI) — another code is refused.
+    expect(await setInternalClientAction('HLT-026', true, 'PAG')).toEqual({ error: 'Choose a subsidiary published by Matrix' });
     expect(await getProjectClient('HLT-026')).toMatchObject({ isInternal: false, subsidiaryCode: null });
   });
 
   it('the director flags the client: every project of the client in pub_projets (maj_le moved), audited, in the activity feed', async () => {
     const before = await shared();
     expect(before.map((r) => [r.code, r.client_interne, r.filiale_code])).toEqual([['HLT-026', false, null], ['PRS-038', false, null], ['QFR-015', false, null]]);
-    expect(await setInternalClientAction('HLT-026', true, 'pag')).toEqual({ ok: true });
-    expect(await getProjectClient('HLT-026')).toMatchObject({ name: 'Port authority', isInternal: true, subsidiaryCode: 'PAG' });
+    expect(await setInternalClientAction('HLT-026', true, 'apm')).toEqual({ ok: true });
+    expect(await getProjectClient('HLT-026')).toMatchObject({ name: 'Port authority', isInternal: true, subsidiaryCode: 'APM' });
     const after = await shared();
-    expect(after.map((r) => [r.code, r.client_interne, r.filiale_code])).toEqual([['HLT-026', true, 'PAG'], ['PRS-038', true, 'PAG'], ['QFR-015', true, 'PAG']]);
+    expect(after.map((r) => [r.code, r.client_interne, r.filiale_code])).toEqual([['HLT-026', true, 'APM'], ['PRS-038', true, 'APM'], ['QFR-015', true, 'APM']]);
     expect(after.every((r, i) => String(r.maj_le) !== String(before[i].maj_le))).toBe(true);
-    expect((await listAudit())[0]).toMatchObject({ object: 'Port authority', change: 'Client Port authority marked internal · group subsidiary PAG' });
-    expect((await listActivity()).some((e) => e.what === 'Client Port authority marked internal · group subsidiary PAG')).toBe(true);
-    expect((await listSubsidiaries()).map((s) => s.code)).toEqual(['APM', 'PAG', 'SAI']);
+    expect((await listAudit())[0]).toMatchObject({ object: 'Port authority', change: 'Client Port authority marked internal · group subsidiary APM' });
+    expect((await listActivity()).some((e) => e.what === 'Client Port authority marked internal · group subsidiary APM')).toBe(true);
+    // Matrix D21: the subsidiaries offered are Matrix's; the client's code3 takes the subsidiary's code (was HAV), in pub_clients too.
+    expect(await listSubsidiaries()).toEqual({ source: 'matrix', list: [{ code: 'APM', name: 'Atlas Process Maroc' }, { code: 'SAI', name: 'Sahel Agro Industries' }] });
+    const db = await getDb();
+    expect((await db.execute(sql`select code3, filiale_code from pub_clients where name = 'Port authority'`)).rows).toEqual([{ code3: 'APM', filiale_code: 'APM' }]);
   });
 
   it('the client portal is closed to an internal client (R-179, I-2b): no project, no current project', async () => {
@@ -93,6 +98,8 @@ describe('setInternalClientAction (R-190)', () => {
     expect(await resolveCurrentProject('HLT-026', PORT)).toBe('HLT-026');
     expect((await listAudit())[0]).toMatchObject({ change: 'Client Port authority marked external' });
     const db = await getDb();
+    // D21: the subsidiary's code is reserved to it — the former client's code3 is removed with the subsidiary code.
+    expect((await db.execute(sql`select code3, filiale_code from pub_clients where name = 'Port authority'`)).rows).toEqual([{ code3: null, filiale_code: null }]);
     await expect(db.update(clients).set({ subsidiaryCode: 'PAG' }).where(eq(clients.name, 'Port authority'))).rejects.toThrow();
   });
 
@@ -103,6 +110,8 @@ describe('setInternalClientAction (R-190)', () => {
     const who = { actorName: 'Hélène Marchetti', actorPersonId: null };
     expect(await db.transaction((tx) => markNeedSubsidiaryClient(tx, ndc.id, 'CPX-APM-2026-01', who))).toBe(true);
     expect(await getProjectClient('NDC-031')).toMatchObject({ name: 'Atlas Process Maroc', isInternal: true, subsidiaryCode: 'APM' });
+    const [atlas] = await db.select({ code3: clients.code3 }).from(clients).where(eq(clients.id, clientId));
+    expect(atlas.code3).toBe('APM');
     expect(await db.transaction((tx) => markNeedSubsidiaryClient(tx, ndc.id, 'CPX-APM-2026-01', who))).toBe(false);
     // Another client (not the subsidiary) is left as it is.
     const [rcf] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, 'RCF-019'));

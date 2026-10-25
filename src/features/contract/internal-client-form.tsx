@@ -6,7 +6,7 @@ import { useId, useState, useTransition } from 'react';
 import { Button } from '@/components/ds/Button';
 import { Field, Select } from '@/components/ds/Field';
 import { showToast } from '@/components/ds/Toast';
-import { setInternalClientAction } from './actions';
+import { refreshSubsidiariesAction, setInternalClientAction } from './actions';
 import s from './contract.module.css';
 
 export interface InternalClientFormProps {
@@ -15,7 +15,11 @@ export interface InternalClientFormProps {
   subsidiaryCode: string;
   /** Known subsidiaries: value = code, label = "SAI · Sahel Agro Industries". */
   subsidiaries: { value: string; label: string }[];
-  labels: { kind: string; external: string; internal: string; subsidiary: string; unknown: string; save: string; saved: string };
+  labels: {
+    kind: string; external: string; internal: string; subsidiary: string; unknown: string; save: string; saved: string;
+    /** Matrix D21: where the list comes from, and its refresh button. */
+    source: string; refresh: string; refreshed: string;
+  };
 }
 
 export function InternalClientForm({ code, isInternal, subsidiaryCode, subsidiaries, labels }: InternalClientFormProps) {
@@ -60,6 +64,27 @@ export function InternalClientForm({ code, isInternal, subsidiaryCode, subsidiar
       <Button type="submit" variant="secondary" size="xs" disabled={pending || !changed} aria-busy={pending || undefined} nowrap>
         {labels.save}
       </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="xs"
+        title={labels.source}
+        disabled={pending}
+        nowrap
+        onClick={() =>
+          startTransition(async () => {
+            try {
+              const r = await refreshSubsidiariesAction(code);
+              showToast('error' in r ? r.error : labels.refreshed);
+            } catch (err) {
+              showToast(err instanceof Error ? err.message : String(err));
+            }
+          })
+        }
+      >
+        {labels.refresh}
+      </Button>
+      <span className={s.meta}>{labels.source}</span>
     </form>
   );
 }

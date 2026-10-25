@@ -84,3 +84,18 @@ describe('ARCHE_URL, ARCHE_SOURCE (R-187)', () => {
     expect(formatIssues(parse(withoutUrl).warnings)).toEqual(['ARCHE_URL is not set: links open Arche on localhost']);
   });
 });
+
+// Matrix D21: the subsidiaries connector — where matrix.pub_filiales is read.
+describe('MATRIX_SOURCE (Matrix D21)', () => {
+  const PG = 'postgres://keystone_app:secret@db:5432/epc2i';
+  it('default: read on the shared server with DATABASE_URL, else the demo simulation; "server" without DATABASE_URL is an error', () => {
+    expect(parse({}).config.matrix).toEqual({ source: 'simulation' });
+    expect(parse({ DATABASE_URL: PG }).config.matrix).toEqual({ source: 'server' });
+    expect(parse({ DATABASE_URL: PG, MATRIX_SOURCE: 'OFF' }).config.matrix).toEqual({ source: 'off' });
+    const noDb = parse({ MATRIX_SOURCE: 'server' });
+    expect([formatIssues(noDb.errors), noDb.config.matrix.source]).toEqual([
+      ['MATRIX_SOURCE is "server" but DATABASE_URL is not set (Matrix’s subsidiaries are read on the shared PostgreSQL server)'], 'simulation',
+    ]);
+    expect(formatIssues(parse({ MATRIX_SOURCE: 'http' }).errors)).toEqual(['MATRIX_SOURCE must be "server", "simulation" or "off"']);
+  });
+});

@@ -120,9 +120,10 @@ export function InternalClientTag({ t }: { t: T }) {
  * "Client" card (R-190, Arche K-05): the project's registered client, external or a group subsidiary (internal client — it follows
  * the project in the CAPEX application, never in the client portal), published in pub_projets; the editor for the director.
  */
-export function ProjectClientCard({ client, code, canEdit, subsidiaries, t, lang }: {
+export function ProjectClientCard({ client, code, canEdit, subsidiaries, subsidiarySource = 'matrix', t, lang }: {
   client: { name: string; isInternal: boolean; subsidiaryCode: string | null } | null; code: string; canEdit: boolean;
-  subsidiaries: { code: string; name: string }[]; t: T; lang: Lang;
+  /** Matrix D21: the subsidiaries offered, and where they come from (Matrix, or the CAPEX application while Matrix has none). */
+  subsidiaries: { code: string; name: string }[]; subsidiarySource?: 'matrix' | 'capex'; t: T; lang: Lang;
 }) {
   if (!client) return null;
   const options = subsidiaries.map((x) => ({ value: x.code, label: `${x.code} · ${dataText(x.name, lang)}` }));
@@ -152,6 +153,8 @@ export function ProjectClientCard({ client, code, canEdit, subsidiaries, t, lang
           labels={{
             kind: t('Client type'), external: t('External client'), internal: t('Internal client (group subsidiary)'), subsidiary: t('Subsidiary'),
             unknown: t('Not known yet'), save: t('Save client type'), saved: t('Client type saved'),
+            source: subsidiarySource === 'matrix' ? t('Subsidiaries published by Matrix') : t('Subsidiaries of the CAPEX application (Matrix publishes none yet)'),
+            refresh: t('Refresh the list'), refreshed: t('Subsidiaries list refreshed'),
           }}
         />
       )}
