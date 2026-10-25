@@ -18,7 +18,8 @@ import { isoOfDisplayDate, locationType, type CalendarCode, type CostType } from
 import { listAdminConnectors, syncAdminConnector } from '@/server/dal/admin-connectors';
 import { ConnectorDisabledError } from '@/server/dal/integrations';
 import {
-  createMachineType, getMachineType, removeRexReference, setMachineTypeCostCategories, setMachineTypeItpSystems, setMachineTypePhases, updateMachineType,
+  createMachineType, getMachineType, removeRexReference, setMachineTypeCostCategories, setMachineTypeItpSystems, setMachineTypePhaseScope, setMachineTypePhases,
+  updateMachineType,
   type MachineTypePatch,
 } from '@/server/dal/mtypes';
 import type { Actor } from '@/server/dal/ops-common';
@@ -271,6 +272,16 @@ export async function setMachineTypePhasesAction(code: unknown, phases: unknown)
   const list = textList(phases);
   if (!mt || !list) return invalid('mtypes');
   return run('mtypes', (actor) => setMachineTypePhases(mt, list, actor));
+}
+
+/**
+ * R-185 / R-186: a standard phase specific to an equipment (generated once per equipment line) or common to the project — same
+ * rights as the rest of the type editor (moved here from the catalogue Server Functions when the catalogue got its own screen).
+ */
+export async function setMachineTypePhaseScopeAction(code: unknown, position: unknown, perEquipment: unknown): Promise<AdminActionResult> {
+  const mt = await knownType(code);
+  if (!mt || typeof position !== 'number' || !Number.isInteger(position) || position < 0 || position > 200 || typeof perEquipment !== 'boolean') return invalid('mtypes');
+  return run('mtypes', (actor) => setMachineTypePhaseScope(mt, position, perEquipment, actor));
 }
 
 /** ITP systems ("Add system" appends "New system"; rename; remove): the whole list in order. */

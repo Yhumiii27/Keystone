@@ -350,6 +350,7 @@ const STATIC_EXTRA: Partial<Record<ScreenId, string>> = {
   client: 'read-only except decisions and issues',
   doctypes: 'one circuit and one retention rule per type',
   mtypes: 'one template per product range · planning, costs, ITP, REX',
+  catalogue: 'versions published to the subsidiaries (CAPEX application)',
   myapprovals: 'one queue for every decision assigned to me',
   docs: 'numbered, tagged, versioned',
   trends: 'weekly snapshots',

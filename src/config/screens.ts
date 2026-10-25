@@ -14,11 +14,11 @@ export type ScreenId =
   | 'meetings' | 'stakeholders' | 'interfaces'
   | 'eng' | 'eng-process' | 'eng-meca' | 'eng-elec' | 'eng-auto' | 'pid' | 'bom'
   | 'risks' | 'changes' | 'quality' | 'itp' | 'site' | 'commissioning' | 'trends' | 'rex'
-  | 'plm' | 'eco' | 'drawings' | 'procurement' | 'orders' | 'deliveries' | 'stock' | 'fleet' | 'sav'
+  | 'plm' | 'eco' | 'drawings' | 'catalogue' | 'procurement' | 'orders' | 'deliveries' | 'stock' | 'fleet' | 'sav'
   | 'resources' | 'requests' | 'approvals' | 'whatif' | 'skills' | 'leave' | 'rates'
   | 'settings' | 'mtypes' | 'doctypes' | 'plumbing';
 
-export type SectionKey = 'portfolio' | 'project' | 'tech' | 'stock' | 'sav' | 'res' | 'admin';
+export type SectionKey = 'portfolio' | 'project' | 'tech' | 'catalogue' | 'stock' | 'sav' | 'res' | 'admin';
 
 export interface ScreenDef {
   id: ScreenId;
@@ -93,6 +93,9 @@ export const SCREENS: ScreenDef[] = [
   S({ id: 'plm', title: 'PLM — parts catalogue', navLabel: 'Parts (PLM)', nav: 'tech', scope: 'global', slug: 'reference/parts', built: true }),
   S({ id: 'eco', title: 'Engineering change orders', navLabel: 'Change orders (ECO)', nav: 'tech', scope: 'global', slug: 'reference/eco', built: true }),
   S({ id: 'drawings', title: 'Drawings — PDM vault', navLabel: 'Drawings', nav: 'tech', scope: 'global', slug: 'reference/drawings', built: true }),
+  // Machine catalogue (owner, 25 Oct 2026: Keystone owns the catalogue, AC-4 — a section of its own, only to manage it). Placed
+  // right after Technical reference: the catalogue is built on the machine types and read by the engineering roles.
+  S({ id: 'catalogue', title: 'Machine catalogue', navLabel: 'Machine catalogue', nav: 'catalogue', scope: 'global', slug: 'catalogue/machines', built: true }),
   // Purchasing & stock
   S({ id: 'procurement', title: 'Sourcing, invoices & suppliers', navLabel: 'Sourcing & invoices', nav: 'stock', scope: 'global', slug: 'purchasing/sourcing', built: true }),
   S({ id: 'orders', title: 'Purchase orders', navLabel: 'Purchase orders', nav: 'stock', scope: 'project', slug: 'orders', built: true }),
@@ -123,6 +126,7 @@ export const SECTIONS: { key: SectionKey; label: string }[] = [
   { key: 'portfolio', label: 'Portfolio' },
   { key: 'project', label: 'Project' },
   { key: 'tech', label: 'Technical reference' },
+  { key: 'catalogue', label: 'Machine catalogue' },
   { key: 'stock', label: 'Purchasing & stock' },
   { key: 'sav', label: 'Warranty & after-sales' },
   { key: 'res', label: 'Resources' },

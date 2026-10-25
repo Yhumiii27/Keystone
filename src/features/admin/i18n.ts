@@ -232,6 +232,8 @@ export function adminErrorT(message: string, t: T, lang: Lang): string | null {
 }
 
 const KNOWN = new Set([
+  // R-185 / R-186: the "Per equipment" flag of a standard phase.
+  'Unknown phase',
   'Settings are read-only for you', 'Machine types are read-only for you', 'Activity & integrations is read-only for you', 'Invalid request',
   'Entry is required', 'Location is required', 'Unknown list', 'Unknown entry', 'Invalid location type', 'A holiday reads "14 Jul · Fête nationale"',
   'Enter a threshold between 0 and 2', '"Off track below" must be lower than "At risk below"', 'Code already used', 'Code is required', 'Code is too long',

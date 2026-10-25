@@ -1111,6 +1111,7 @@ export const D5_SCREEN_ROLES = {
   client: ['director', 'client'],
   settings: ['director', 'pm', 'depthead', 'englead', 'quality', 'procurement'],
   mtypes: ['director', 'pm', 'englead', 'quality'],
+  catalogue: ['director', 'pm', 'englead', 'quality'],
   plumbing: ['director', 'pm'],
 } as const satisfies Record<string, readonly string[]>;
 export type D5Screen = keyof typeof D5_SCREEN_ROLES;
