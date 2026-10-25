@@ -166,6 +166,10 @@
   {
    "date": "2026-10-25",
    "text": "R-189 : dates de référence BL1 des jalons CAPEX publiées dans pub_jalons_projets (code de jalon CAPEX sur les jalons du planning)."
+  },
+  {
+   "date": "2026-10-25",
+   "text": "R-191 fait : pack ingénierie (liste provisoire 5 familles × 20 %), % de complétude à la Synthèse ingénierie, vue pub_pack_ingenierie pour Arche."
   }
  ],
  "items": [
@@ -5522,7 +5526,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "Livraison 9",
-    "note": "Livraison 9, lot « share-views » (docs/delivery-9/notes-share-views.md, migration 0038_share_followup) : pub_jalons_projets (8 jalons par projet : commande, fin d’études, FAT, expédition, arrivée site, SAT, PV, fin de garantie, rapprochés des étapes, de l’ITP, de la mise en service, des PV et de la garantie), pub_avancement_projets (côté vente seulement : avancement physique et SPI tenus par la tâche horaire share-progress, fin prévue, contrat, avenants signés et facturé en k€ ; aucun coût interne, taux, CPI, EAC ni marge — testé), pub_avenants (brouillons exclus), pub_reserves ; pub_livrables + type, accepte_le, maj_le en fin de vue ; colonnes vérifiées par db-check (aussi sur PostgreSQL). Reste : droits d’arche_app et copie des vues dans Matrix (demande à déposer après validation), dates BL1 des jalons (reference_le vide : code de jalon CAPEX sur les jalons du planning, à valider), pub_pack_ingenierie (R-191). Index maj_le (K-11) faits le 23 oct. 2026 (notes § 8). 25 oct. 2026 : dates BL1 des jalons faites (docs/delivery-9/notes-r189-reference-dates.md) — milestones.capex_milestone_code (8 codes, règle de noms prudente, reprise 0056, correction sur la carte « Jalons » du Planning), reference_le = date du jalon dans la BL1, pub_jalons_projets recréée à colonnes identiques (0055-0057). Reste : pub_pack_ingenierie (R-191, liste type du pack) et réponse P-05."
+    "note": "Livraison 9, lot « share-views » (docs/delivery-9/notes-share-views.md, migration 0038_share_followup) : pub_jalons_projets (8 jalons par projet : commande, fin d’études, FAT, expédition, arrivée site, SAT, PV, fin de garantie, rapprochés des étapes, de l’ITP, de la mise en service, des PV et de la garantie), pub_avancement_projets (côté vente seulement : avancement physique et SPI tenus par la tâche horaire share-progress, fin prévue, contrat, avenants signés et facturé en k€ ; aucun coût interne, taux, CPI, EAC ni marge — testé), pub_avenants (brouillons exclus), pub_reserves ; pub_livrables + type, accepte_le, maj_le en fin de vue ; colonnes vérifiées par db-check (aussi sur PostgreSQL). Reste : droits d’arche_app et copie des vues dans Matrix (demande à déposer après validation), dates BL1 des jalons (reference_le vide : code de jalon CAPEX sur les jalons du planning, à valider), pub_pack_ingenierie (R-191). Index maj_le (K-11) faits le 23 oct. 2026 (notes § 8). 25 oct. 2026 : dates BL1 des jalons faites (docs/delivery-9/notes-r189-reference-dates.md) — milestones.capex_milestone_code (8 codes, règle de noms prudente, reprise 0056, correction sur la carte « Jalons » du Planning), reference_le = date du jalon dans la BL1, pub_jalons_projets recréée à colonnes identiques (0055-0057). Reste : pub_pack_ingenierie (R-191, liste type du pack) et réponse P-05. 25 oct. 2026 : pub_pack_ingenierie publiée (R-191). Reste : réponse P-05."
    }
   },
   {
@@ -5558,7 +5562,7 @@
    "kind": "fonction_manquante",
    "priority": "a_decider",
    "status": "non_commence",
-   "waiting_on": "Liste type du pack ingénierie (CDC, point C-9)",
+   "waiting_on": "",
    "effort": "M",
    "sources": [
     "Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0)",
@@ -5569,8 +5573,9 @@
     "src/domain/documents.ts"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire."
+    "state": "fait",
+    "delivery": "9",
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. 25 oct. 2026 : fait avec la liste provisoire validée par le responsable produit (docs/delivery-9/notes-r191-engineering-pack.md) — 5 familles × 20 % par type de machine (P&ID, nomenclature, implantation, électrique, analyse fonctionnelle), modifiables sur l’écran Types de machine ; pièces = documents de l’index Codex par type de document, validées = diffusées ; carte « Pack ingénierie · part EPC2i » sur la Synthèse ingénierie (cible > 80 %) ; vue pub_pack_ingenierie (migrations 0058-0060). Reste : la vraie liste type (C-9)."
    }
   },
   {

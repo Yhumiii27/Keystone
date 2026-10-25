@@ -33,7 +33,7 @@ Format d'une entrée :
 - Validé par Guillaume le : 2026-10-22
 
 ## [2026-10-22] Arche → Keystone — Vues de suivi des projets pour les jalons CAPEX (R-189, R-191)
-- Statut : ACCEPTÉE — fait : pub_jalons_projets, pub_avancement_projets, pub_avenants, pub_reserves, pub_livrables + 3 colonnes ; dates BL1 des jalons (reference_le, 25/10) ; reste : pub_pack_ingenierie (attend R-191)
+- Statut : FAITE — pub_jalons_projets, pub_avancement_projets, pub_avenants, pub_reserves, pub_livrables + 3 colonnes ; dates BL1 des jalons (reference_le, 25/10), pub_pack_ingenierie (R-191, liste type provisoire, 25/10)
 - Demande : (K-04) publier `pub_jalons_projets`, `pub_avancement_projets` (côté vente seulement : aucun coût interne, taux ni marge), `pub_avenants`, `pub_reserves` ; (K-06) ajouter en fin de `pub_livrables` les colonnes `type`, `accepte_le`, `maj_le` ; (K-08) publier `pub_pack_ingenierie`.
 - Justification : trois critères des jalons d'Arche en dépendent — K3 « SAT EPC2i planifiés », G3 « réserves A/B levées et PV de réception acceptés », G2 « pack d'ingénierie au-dessus du seuil » — ainsi que le suivi des projets EPC2i sur la page du CAPEX (livraisons 5 et 6 d'Arche). Sans ces vues, ces critères sont forcés avec motif et la page n'affiche aucun suivi en production.
 - Détails techniques : schéma `keystone`, `WITH (security_barrier)`, lecteur `arche_app` ; Arche filtre par `projet_code`.
