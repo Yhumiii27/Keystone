@@ -87,7 +87,7 @@ Décisions à prendre et données à fournir avant de pouvoir développer. Les q
 - **R-123** Statuer sur le journal client retiré et la notion de « décision client » — Réponse du responsable produit (DELIVERY-6 §8 D-5)
 - **R-141** Recueillir l’enquête de satisfaction client par le portail — Ouverture de l’accès client au portail (I-2b : pas d’accès client au lancement)
 - **R-142** Préciser l’onglet Planning du portail client et les PDF de planning — Réponses du responsable produit (DELIVERY-6 §8 S-9a)
-- **R-158** Cadrer puis construire le module Expédition & transport — Validation des choix du cadrage docs/delivery-9/cadrage-r158-expeditions.md
+- **R-158** Cadrer puis construire le module Expédition & transport — —
 - **R-159** P1 · Relance fournisseurs et inspections usine (à valider) — Validation de la proposition par le responsable produit
 - **R-160** P2 · Conformité CE et dossier technique machine (à valider) — Validation de la proposition et du périmètre réglementaire par le responsable produit
 - **R-161** P3 · Réclamations contractuelles et pénalités (à valider) — Validation de la proposition par le responsable produit
@@ -235,7 +235,7 @@ Choisir si les rôles (directeur, CP, chef de service, achats, qualité, futur r
 
 **R-179 · Choisir la connexion des clients avant d'ouvrir le portail** — *À décider · attend le responsable produit · effort M*  
 Le responsable produit a retenu « pas d'accès client au lancement » (I-2b) ; le portail est construit mais le client n'est qu'un profil de démonstration rattaché à une organisation codée en dur. Avant d'ouvrir le portail, décider du mode de connexion des clients (invités Entra B2B ou lien par e-mail), de leur rattachement à une organisation et des conditions d'utilisation, puis le brancher.  
-*Attend : Décision du responsable produit et de la DSI sur la date d'ouverture du portail et le mode de connexion client · Sources : I-2b, 00 §8.12, 00 §10 I-2, P-10c, DELIVERY-6.md §4 (Client portal), §8 P-1*
+*Avancement :  25 oct. 2026 (responsable produit) : tout ce à quoi la filiale (client interne) accédait dans Keystone remonte désormais dans Arche par les vues pub_, plus dans Keystone ; le portail Keystone ne concerne plus que les clients externes. · Attend : Décision du responsable produit et de la DSI sur la date d'ouverture du portail et le mode de connexion client · Sources : I-2b, 00 §8.12, 00 §10 I-2, P-10c, DELIVERY-6.md §4 (Client portal), §8 P-1*
 
 **R-051 · Ajouter la délégation des validations à un suppléant sur une période** — *Plus tard · non commencé · effort M*  
 L’approbateur déclare un suppléant et des dates ; pendant cette période, ses validations (documents, demandes, commandes, Mes validations) sont routées vers le suppléant, et les décisions sont tracées à son nom.  
@@ -909,7 +909,7 @@ isoOfDayOffset calcule une date fausse pour un décalage négatif : −1 jour ou
 
 **R-158 · Cadrer puis construire le module Expédition & transport** — *À décider · non commencé · effort XL* · **en cours (9)**  
 Module demandé mais à cadrer avec le responsable produit avant construction : plan d’expédition (lots, colis, conteneurs et remplissage), fret (mode, Incoterm, transitaire, ETD/ETA, jalons), coûts imputés au budget, documents versés dans Codex (facture, packing list, EUR.1, CMR, B/L ou LTA, déclaration d’export), synthèse douane par code HS avec alerte double usage, et contrôle nomenclature ↔ packing list bloquant le livrable « Colisage & documents douaniers ». Les données articles (code HS, restriction et famille de contrôle export) existent déjà et ne sont aujourd’hui qu’affichées ; le livrable d’étape n’est qu’une case à cocher.  
-*Avancement : 25 oct. 2026 : le responsable produit redemande le module (« il manque un module de gestion des expéditions du matériel vers la filiale ») ; cadrage rédigé (docs/delivery-9/cadrage-r158-expeditions.md) : écran projet Expéditions, chargements et colis, contrôle colisage ↔ nomenclature, douane (codes HS), documents (packing list, proforma) versés dans Codex, réception sur site et réserves, jalons expedition / arrivee_site, vue pub_expeditions pour la filiale ; 8 points à valider. · Attend : Validation des choix du cadrage docs/delivery-9/cadrage-r158-expeditions.md · Sources : BACKLOG.md §1, DELIVERY-6.md §9, CLAUDE.md, E-1b, A-1a*
+*Avancement : 25 oct. 2026 : le responsable produit redemande le module (« il manque un module de gestion des expéditions du matériel vers la filiale ») ; cadrage rédigé (docs/delivery-9/cadrage-r158-expeditions.md) : écran projet Expéditions, chargements et colis, contrôle colisage ↔ nomenclature, douane (codes HS), documents (packing list, proforma) versés dans Codex, réception sur site et réserves, jalons expedition / arrivee_site, vue pub_expeditions pour la filiale ; 8 points à valider. Même jour : choix tranchés (cadrage § 5) — vue projet seulement, transport d’après l’Incoterm du contrat, Keystone génère tous les documents sauf les factures, contrôle colisage bloquant, écart à la réception = réserve, suivi filiale dans Arche, nouveau profil Logistique, transitaires externes sans accès, Incoterms 2020 paramétrables, conteneurs et contenus déclarés par EPC2i ; construction lancée. · Sources : BACKLOG.md §1, DELIVERY-6.md §9, CLAUDE.md, E-1b, A-1a*
 
 **R-159 · P1 · Relance fournisseurs et inspections usine (à valider)** — *À décider · non commencé · effort L*  
 Proposition : avancement de fabrication par commande, jalons d’inspection et FAT fournisseurs, bons de libération et alertes de délai pour les commandes longues. Existent seulement les commandes (date attendue, activité qui en a besoin, drapeau « en retard » quand l’activité a démarré), les réceptions et annonces de livraison, et des points ITP d’étape FAT non reliés aux commandes ni aux fournisseurs.  
@@ -945,6 +945,7 @@ Proposition : version tablette des écrans Chantier, Réserves et Livraisons ave
 
 ## 3. Mises à jour
 
+- 2026-10-25 — R-158 : cadrage des expéditions validé (vue projet, Incoterm du contrat, documents générés sauf factures, profil Logistique, Incoterms paramétrables) ; la filiale suit tout depuis Arche.
 - 2026-10-25 — R-158 (expéditions vers la filiale) : cadrage proposé, 8 points à valider par le responsable produit.
 - 2026-10-25 — R-191 fait : pack ingénierie (liste provisoire 5 familles × 20 %), % de complétude à la Synthèse ingénierie, vue pub_pack_ingenierie pour Arche.
 - 2026-10-25 — R-189 : dates de référence BL1 des jalons CAPEX publiées dans pub_jalons_projets (code de jalon CAPEX sur les jalons du planning).

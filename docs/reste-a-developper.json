@@ -174,6 +174,10 @@
   {
    "date": "2026-10-25",
    "text": "R-158 (expéditions vers la filiale) : cadrage proposé, 8 points à valider par le responsable produit."
+  },
+  {
+   "date": "2026-10-25",
+   "text": "R-158 : cadrage des expéditions validé (vue projet, Incoterm du contrat, documents générés sauf factures, profil Logistique, Incoterms paramétrables) ; la filiale suit tout depuis Arche."
   }
  ],
  "items": [
@@ -4675,7 +4679,7 @@
    "kind": "fonction_manquante",
    "priority": "a_decider",
    "status": "non_commence",
-   "waiting_on": "Validation des choix du cadrage docs/delivery-9/cadrage-r158-expeditions.md",
+   "waiting_on": "",
    "effort": "XL",
    "sources": [
     "BACKLOG.md §1",
@@ -4695,7 +4699,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "9",
-    "note": "25 oct. 2026 : le responsable produit redemande le module (« il manque un module de gestion des expéditions du matériel vers la filiale ») ; cadrage rédigé (docs/delivery-9/cadrage-r158-expeditions.md) : écran projet Expéditions, chargements et colis, contrôle colisage ↔ nomenclature, douane (codes HS), documents (packing list, proforma) versés dans Codex, réception sur site et réserves, jalons expedition / arrivee_site, vue pub_expeditions pour la filiale ; 8 points à valider."
+    "note": "25 oct. 2026 : le responsable produit redemande le module (« il manque un module de gestion des expéditions du matériel vers la filiale ») ; cadrage rédigé (docs/delivery-9/cadrage-r158-expeditions.md) : écran projet Expéditions, chargements et colis, contrôle colisage ↔ nomenclature, douane (codes HS), documents (packing list, proforma) versés dans Codex, réception sur site et réserves, jalons expedition / arrivee_site, vue pub_expeditions pour la filiale ; 8 points à valider. Même jour : choix tranchés (cadrage § 5) — vue projet seulement, transport d’après l’Incoterm du contrat, Keystone génère tous les documents sauf les factures, contrôle colisage bloquant, écart à la réception = réserve, suivi filiale dans Arche, nouveau profil Logistique, transitaires externes sans accès, Incoterms 2020 paramétrables, conteneurs et contenus déclarés par EPC2i ; construction lancée."
    }
   },
   {
@@ -5269,7 +5273,8 @@
    "id": "R-179",
    "verdict": "ajout_critique",
    "progress": {
-    "state": "a_faire"
+    "state": "a_faire",
+    "note": " 25 oct. 2026 (responsable produit) : tout ce à quoi la filiale (client interne) accédait dans Keystone remonte désormais dans Arche par les vues pub_, plus dans Keystone ; le portail Keystone ne concerne plus que les clients externes."
    }
   },
   {

@@ -54,3 +54,22 @@ cycle de vie, risque et vue `pub_expeditions` (demande à Matrix pour la copie e
 6. **Filiale** : suivi dans l’application CAPEX par une vue `pub_expeditions` sans valeurs, sans accès dans Keystone (recommandé) ?
 7. **Qui prépare les expéditions** : y a-t-il un rôle « logistique / supply chain » chez EPC2i (nouveau profil), ou le chef de projet et l’acheteur ?
 8. **Données à fournir** : transitaires habituels, Incoterms pratiqués, modèles de packing list / facture proforma d’EPC2i.
+
+## 5. Décisions du responsable produit (25 oct. 2026)
+
+1. **Pas de vue portefeuille** : une vue projet seulement (écran « Expéditions » du projet).
+2. **Le transport s’organise d’après l’Incoterm du contrat du projet** : le contrat porte son Incoterm ; les étapes à la
+   charge d’EPC2i (emballage, chargement, dédouanement export, transport principal, assurance, dédouanement import,
+   déchargement, livraison site) en découlent.
+3. **Keystone génère tous les documents nécessaires, sauf les factures** (facture commerciale, facture douane / proforma) :
+   packing list, liste de colisage par conteneur, bon de livraison, marquage des colis, lettre de voiture CMR,
+   instructions d’expédition au transitaire (pour le B/L ou la LTA), demande de certificat d’origine / EUR.1 et données
+   de la déclaration d’export ; formats standard d’EPC2i fournis plus tard (modèles génériques en attendant).
+4. **Le contrôle du colisage bloque** la case « Colisage & documents douaniers » tant qu’il n’est pas soldé.
+5. **Un écart à la réception crée une réserve** (sur l’équipement).
+6. **La filiale suit dans Arche, rien dans Keystone** — et c’est vrai pour tous les points où la filiale (client interne)
+   avait accès à Keystone : ces éléments remontent dans Arche par les vues `pub_`, plus dans Keystone.
+7. **Un profil « Logistique » existe** chez EPC2i : nouveau profil Keystone qui prépare et suit les expéditions.
+8. **Les transitaires sont des externes sans accès** : EPC2i saisit elle-même dans Keystone ce qu’il faut noter.
+9. **Incoterms paramétrables** depuis l’administration ; tous les Incoterms 2020 créés au départ, avec une description.
+10. **Packing lists** : EPC2i déclare le nombre de conteneurs et leur contenu ; formats standard fournis plus tard.
