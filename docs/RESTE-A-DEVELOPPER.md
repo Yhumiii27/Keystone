@@ -1,6 +1,6 @@
 # Keystone PM — reste à développer
 
-Inventaire initial du 2026-10-10, mis à jour le 2026-10-25 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
+Inventaire initial du 2026-10-10, mis à jour le 2026-10-26 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
 
 **Méthode.** Onze relectures indépendantes ont croisé les 195 décisions produit (`docs/DECISIONS.md`), les écarts et questions ouvertes de `DELIVERY-1.md` à `DELIVERY-6.md`, `docs/BACKLOG.md`, les marqueurs du code (TODO, simulations, constantes du prototype), la spécification fonctionnelle (`docs/spec/`) et la préparation à la production. Chaque point a ensuite été vérifié dans le code, catégorie par catégorie : ce qui existait déjà a été écarté (153 candidats), les doublons fusionnés, puis un contrôle de complétude a ajouté ce qui manquait. Le détail, avec les preuves relevées dans le code pour chaque point, est dans `docs/reste-a-developper.json` ; ce document et la page sont produits par `npm run remaining:page`.
 
@@ -8,28 +8,28 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-25 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 111 faits, 30 en cours, 56 à faire, sur 197 points.
+**Avancement** : 112 faits, 30 en cours, 55 à faire, sur 197 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
 | Bloquant production | 16 | ≈ 106 |
-| Prochaine étape | 22 | ≈ 184 |
+| Prochaine étape | 21 | ≈ 172 |
 | À décider | 28 | ≈ 223 |
 | Plus tard | 20 | ≈ 74 |
-| **Total** | **86** | **≈ 586** |
+| **Total** | **85** | **≈ 574** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
-| Non commencé | 35 |
+| Non commencé | 34 |
 | Partiel | 11 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
 
 | Domaine | Bloquant production | Prochaine étape | À décider | Plus tard | Restants | Faits |
 |---|---:|---:|---:|---:|---:|---:|
-| Plateforme et mise en production | 7 | 5 | 0 | 2 | 14 | 11 |
+| Plateforme et mise en production | 7 | 4 | 0 | 2 | 13 | 12 |
 | Authentification, utilisateurs et droits | 1 | 0 | 2 | 1 | 4 | 13 |
 | Intégrations avec les autres systèmes | 5 | 6 | 3 | 5 | 19 | 6 |
 | Projets, cycle de vie et modèles par type de machine | 0 | 1 | 2 | 1 | 4 | 5 |
@@ -121,7 +121,7 @@ Décisions à prendre et données à fournir avant de pouvoir développer. Les q
 
 ## 2. Liste détaillée par domaine
 
-### 2.1 Plateforme et mise en production (14 restants, 11 faits)
+### 2.1 Plateforme et mise en production (13 restants, 12 faits)
 
 **R-003 · Héberger une instance multi-utilisateur (bêta puis production)** — *Bloquant production · partiel · effort M* · **en cours (Livraison 8)**  
 La PR #1 (ouverte, non fusionnée) apporte un Dockerfile Coolify : un seul conteneur next start sur le port 3000, PGlite et fichiers sur un volume /data. Il reste à la rebaser sur la livraison 6, construire et tester l’image, ajouter NEXT_PUBLIC_CODEX_URL aux arguments de build, configurer TLS et domaine, et protéger l’accès tant que l’authentification manque. Ensuite viennent la préproduction et la production avec PostgreSQL et un worker ; leur cible (Azure, serveur interne ou cloud) reste à décider.  
@@ -158,10 +158,6 @@ Pièces jointes, transcriptions, fichiers d’import et futures photos sont écr
 **R-015 · Notifier les événements clés aux personnes concernées (X-6a)** — *Prochaine étape · partiel · effort M* · **en cours (Livraison 8)**  
 Créer les notifications choisies : CR soumise, NCR, livraison refusée, ECO à approuver, mention @, tâche assignée, facture bloquée, alerte d’indicateur. Elles doivent aller à l’approbateur, au demandeur, au responsable ou à la personne citée, et non à tout un rôle. Le ciblage par personne n’a de sens qu’avec de vrais comptes, car la table users n’a qu’un utilisateur par rôle.  
 *Avancement : Livraison 8 : avis des demandes de modification, des réceptions refusées, des tâches affectées et des réunions faits ; d’autres avis restent à faire. · Attend : Comptes utilisateurs réels (R-038, R-039) pour cibler des personnes plutôt que des rôles · Sources : X-6a, 01 §5.5, OQ19, 00 §7.7, DELIVERY-2.md §5, §7*
-
-**R-017 · Tenir la charge avec de vrais volumes de données** — *Prochaine étape · non commencé · effort L*  
-Ajouter les index manquants sur les clés étrangères, paginer les grandes listes, éviter les lectures complètes de tables et mettre en cache les ~20 badges du menu calculés à chaque page, dont certains interrogent Cursus. Valider par un test de charge sur un jeu réaliste.  
-*Sources : 00 Phase 9 (performance)*
 
 **R-177 · Rédiger le guide utilisateur, former par rôle et organiser le support** — *Prochaine étape · non commencé · effort M* · **en cours (Livraison 8)**  
 Il n'existe aucune documentation pour les utilisateurs : le README et docs/ s'adressent aux développeurs. Avant la bêta multi-utilisateur, préparer un guide par rôle (8 profils), des scénarios de recette pour les bêta-testeurs, une formation, un canal de support et un dossier d'exploitation pour la DSI (déploiement, configuration des connecteurs, restauration).  
@@ -214,6 +210,10 @@ La branche main-2a2fep (livraisons 1–6) a 30 commits d’avance sur origin/mai
 **~~R-016 · Mettre en place l’intégration continue et versionner les tests de bout en bout~~** — *Prochaine étape · partiel · effort M* · **fait (Livraison 7)**  
 Créer un pipeline CI (typecheck, lint, vitest, build) sur chaque PR, puis un pipeline de déploiement. Versionner les 14 scénarios Playwright et la matrice des routes (3 520 requêtes) de la livraison 6, exécutés hors du dépôt, et supprimer les worktrees d’agents qui obligent à passer --ignore-pattern au lint.  
 *Sources : DELIVERY-6.md §1, 00 §8.14*
+
+**~~R-017 · Tenir la charge avec de vrais volumes de données~~** — *Prochaine étape · non commencé · effort L* · **fait (9)**  
+Ajouter les index manquants sur les clés étrangères, paginer les grandes listes, éviter les lectures complètes de tables et mettre en cache les ~20 badges du menu calculés à chaque page, dont certains interrogent Cursus. Valider par un test de charge sur un jeu réaliste.  
+*Avancement : 26 oct. 2026 (docs/delivery-9/notes-r017-volumes.md) : jeu agrandi (npm run load:seed : 150 projets, 30 000 activités, 20 000 documents, 8 000 commandes, 50 000 lignes d’audit, 500 personnes), mesures (npm run load:measure, load:check), 72 index (migration 0062), points chauds corrigés (calendriers, listes IN, valeur acquise, coffre documentaire, approbations, badges sans appel Cursus / Vigie), cache de lecture (versionedRead exact, badges ttlRead 30 s ; KEYSTONE_READ_CACHE=off), pagination ?page= (coffre, piste d’audit). Tous les écrans mesurés < 300 ms à chaud en PGlite, < 150 ms sur PostgreSQL. Reste : coût après écriture de l’accueil directeur (1–2 s), suggestions de rééquilibrage à calculer dans le worker. · Sources : 00 Phase 9 (performance)*
 
 **~~R-175 · Analyser par antivirus les fichiers déposés dans Keystone~~** — *Prochaine étape · non commencé · effort S* · **fait (Livraison 8)**  
 Les pièces jointes des tâches, transcriptions et imports sont contrôlés sur l'extension, la taille et la signature, mais pas analysés par un antivirus, alors que docx, xlsx, zip, msg et eml sont acceptés et ensuite téléchargés par d'autres utilisateurs. Brancher une analyse (ClamAV ou service de l'hébergeur) au dépôt, avec mise en quarantaine.  
@@ -945,6 +945,7 @@ Proposition : version tablette des écrans Chantier, Réserves et Livraisons ave
 
 ## 3. Mises à jour
 
+- 2026-10-26 — R-017 fait : tenue de la charge avec de vrais volumes (index, points chauds, cache des badges, pagination).
 - 2026-10-25 — R-158 lot A : profil Logistique, Incoterms paramétrables, écran projet Expéditions avec contrôle du colisage.
 - 2026-10-25 — R-158 : cadrage des expéditions validé (vue projet, Incoterm du contrat, documents générés sauf factures, profil Logistique, Incoterms paramétrables) ; la filiale suit tout depuis Arche.
 - 2026-10-25 — R-158 (expéditions vers la filiale) : cadrage proposé, 8 points à valider par le responsable produit.

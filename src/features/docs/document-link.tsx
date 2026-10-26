@@ -6,7 +6,7 @@
 import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
 import { QMS } from '@/domain/documents';
-import { listVaultDocuments } from '@/server/dal/documents';
+import { getVaultDocument } from '@/server/dal/documents';
 import { getLastProject } from '@/server/session';
 import { docHref } from './links';
 
@@ -23,7 +23,7 @@ export interface DocumentLinkProps {
 }
 
 export async function DocumentLink({ code, project, children, className, style, title }: DocumentLinkProps) {
-  const doc = (await listVaultDocuments()).find((d) => d.number === code);
+  const doc = await getVaultDocument(code);
   if (!doc)
     return (
       <span className={className} style={style} title={title}>

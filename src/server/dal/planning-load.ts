@@ -9,7 +9,7 @@ import 'server-only';
 // R-084 (absences): each person's weekly capacity — 40 h less their absence days (`leave_entries`, every source: Cursus and
 // the seeded rows; Settings public holidays never count as a day off) — rule `personWeekCapacities`.
 import { cache } from 'react';
-import { and, asc, eq, gte, inArray, isNotNull, lte } from 'drizzle-orm';
+import { and, asc, eq, gt, gte, isNotNull, lt, lte } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { addCalendarDays, type WorkCalendar } from '@/domain/calendar';
 import { DEFAULT_PROJECT_CALENDAR, projectCalendarCode } from '@/domain/ch4-defaults';
@@ -17,9 +17,10 @@ import {
   personWeekCapacities, planningLoad, unassignedActivitiesAt, undeclaredActivities, type PlanActivity, type PlanAssignment, type PlanningLoad,
 } from '@/domain/planning-load';
 import { WHATIF_RULES } from '@/domain/whatif';
+import { versionedRead } from '@/server/cache/read-cache';
 import { getDb } from '@/server/db/client';
 import { activities, activityAssignments, departments, leaveEntries, persons, projects, rateRoles } from '@/server/db/schema';
-import { loadWorkCalendars } from './calendars';
+import { loadWorkCalendarsOf } from './calendars';
 import { settingsHolidayRows } from './settings-lists';
 
 /** Name of a person as the pool names them (full name, else short name). */
@@ -47,9 +48,12 @@ async function capacities(weeks: readonly string[]): Promise<Record<string, numb
   return personWeekCapacities(rows, weeks, new Set(holidays.map((h) => h.date)));
 }
 
-/** Working calendars of each project (by code), Settings holidays applied. Also read by the Cursus task push (R-180). */
+/**
+ * Working calendars of each project (by code), Settings holidays applied. Also read by the Cursus task push (R-180). R-017: in
+ * three reads for every project (it read the calendars once per project).
+ */
 export async function calendarsOf(codes: readonly string[]) {
-  return new Map(await Promise.all([...new Set(codes)].map(async (c) => [c, await loadWorkCalendars(c)] as const)));
+  return loadWorkCalendarsOf(codes);
 }
 
 /** An activity's working calendar: its own, else its project's, else the default project calendar. */
@@ -61,6 +65,7 @@ async function planFacts(from: string, to: string): Promise<{ acts: PlanActivity
   const db = await getDb();
   const owner = alias(persons, 'owner');
   const odept = alias(departments, 'odept');
+  const inWindow = and(isNotNull(activities.startDate), isNotNull(activities.finishDate), lte(activities.startDate, to), gte(activities.finishDate, from));
   const rows = await db
     .select({
       id: activities.id, code: activities.code, name: activities.name, start: activities.startDate, finish: activities.finishDate, dur: activities.durationDays,
@@ -70,7 +75,7 @@ async function planFacts(from: string, to: string): Promise<{ acts: PlanActivity
     .innerJoin(projects, eq(projects.id, activities.projectId))
     .leftJoin(owner, eq(owner.id, activities.ownerPersonId))
     .leftJoin(odept, eq(odept.id, owner.departmentId))
-    .where(and(isNotNull(activities.startDate), isNotNull(activities.finishDate), lte(activities.startDate, to), gte(activities.finishDate, from)));
+    .where(inWindow);
   if (!rows.length) return { acts: [], asg: [], names: {} };
   const adept = alias(departments, 'adept');
   const who = alias(persons, 'who');
@@ -81,10 +86,12 @@ async function planFacts(from: string, to: string): Promise<{ acts: PlanActivity
       external: rateRoles.isExternal,
     })
     .from(activityAssignments)
+    // R-017: the activities of the window by a join on the same conditions (an IN list of thousands of ids was the slowest part).
+    .innerJoin(activities, eq(activities.id, activityAssignments.activityId))
     .leftJoin(who, eq(who.id, activityAssignments.personId))
     .leftJoin(rateRoles, eq(rateRoles.id, who.rateRoleId))
     .leftJoin(adept, eq(adept.id, activityAssignments.departmentId))
-    .where(inArray(activityAssignments.activityId, rows.map((r) => r.id)))
+    .where(inWindow)
     .orderBy(asc(activityAssignments.position));
   const cals = await calendarsOf(rows.map((r) => r.project));
   const byId = new Map(rows.map((r) => [r.id, r]));
@@ -106,12 +113,17 @@ async function planFacts(from: string, to: string): Promise<{ acts: PlanActivity
   };
 }
 
-/** Memoised per request on the weeks asked (several readers of one page share it). */
+/**
+ * Memoised per request on the weeks asked (several readers of one page share it), and across requests while the database has
+ * not changed (R-017: it reads every activity dated in the window across the portfolio; exact, src/server/cache/read-cache.ts).
+ */
 const loadOf = cache(async (key: string): Promise<PlanningLoadData> => {
   const weeks = key ? key.split(',') : [];
   if (!weeks.length) return { weeks: [], people: {}, personProjects: {}, trades: [], names: {}, capacity: {} };
-  const [{ acts, asg, names }, capacity] = await Promise.all([planFacts(weeks[0], addCalendarDays(weeks[weeks.length - 1], 6)), capacities(weeks)]);
-  return { ...planningLoad(acts, asg, weeks, WHATIF_RULES.ownerHoursPerDay), names, capacity };
+  return versionedRead(`planning-load|${key}`, async () => {
+    const [{ acts, asg, names }, capacity] = await Promise.all([planFacts(weeks[0], addCalendarDays(weeks[weeks.length - 1], 6)), capacities(weeks)]);
+    return { ...planningLoad(acts, asg, weeks, WHATIF_RULES.ownerHoursPerDay), names, capacity };
+  });
 });
 
 /**
@@ -137,21 +149,25 @@ export interface UndeclaredActivity {
 /** Activities that need work (of one project, or every project; plan order) with their assignments' quantities. */
 async function staffingFacts(projectCode?: string) {
   const db = await getDb();
-  const rows = await db
+  // R-017: the activities that need work are filtered in SQL, and their assignments read by a join on the same condition (an IN
+  // list of every open activity id could pass PostgreSQL's 65 535 parameters on a large portfolio).
+  const needsWork = and(projectCode ? eq(projects.code, projectCode) : undefined, gt(activities.durationDays, 0), lt(activities.percentComplete, 100));
+  const open = await db
     .select({
       id: activities.id, project: projects.code, code: activities.code, name: activities.name, start: activities.startDate, finish: activities.finishDate,
       durationDays: activities.durationDays, percentComplete: activities.percentComplete, owner: activities.ownerPersonId,
     })
     .from(activities)
     .innerJoin(projects, eq(projects.id, activities.projectId))
-    .where(projectCode ? eq(projects.code, projectCode) : undefined)
+    .where(needsWork)
     .orderBy(asc(projects.sortOrder), asc(activities.position));
-  const open = rows.filter((r) => r.durationDays > 0 && r.percentComplete < 100);
   if (!open.length) return { open, asg: [] };
   const list = await db
     .select({ id: activityAssignments.activityId, units: activityAssignments.resourceCount, hoursPerDay: activityAssignments.hoursPerDay, plannedHours: activityAssignments.plannedHours })
     .from(activityAssignments)
-    .where(inArray(activityAssignments.activityId, open.map((r) => r.id)));
+    .innerJoin(activities, eq(activities.id, activityAssignments.activityId))
+    .innerJoin(projects, eq(projects.id, activities.projectId))
+    .where(needsWork);
   const byId = new Map(open.map((r) => [r.id, r]));
   const asg = list.flatMap((d) => {
     const r = byId.get(d.id);

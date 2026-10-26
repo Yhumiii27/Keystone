@@ -2,7 +2,7 @@
 // Drawing; screens 09 §1 BOM, §5 Drawings): project BOM lines, the assembly configured per project, revision
 // comparisons and the drawings mirrored from the SolidWorks PDM vault. ECOs are owned by Vigie (see vigie.ts): rows
 // here cite them by their number only.
-import { boolean, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { boolean, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid, index } from 'drizzle-orm/pg-core';
 import type { BomScope, DrawingState, RevisionDiffKind, VaultSyncScope, VaultSyncSource } from '../codes';
 import { id, num, timestamps } from './_common';
 import { parts } from './catalogue';
@@ -77,7 +77,7 @@ export const revisionDiffLines = pgTable('revision_diff_lines', {
   qtyTo: num('qty_to'),
   kind: text('kind').$type<RevisionDiffKind>().notNull(),
   position: integer('position').notNull(),
-});
+}, (t) => [index('revision_diff_lines_diff_id_idx').on(t.diffId)]);
 
 /**
  * Drawings of the SolidWorks PDM vault linked to catalogue parts (DRAWINGS 3439, 13 rows) — a read-only mirror:

@@ -26,7 +26,7 @@ import { getDb } from '@/server/db/client';
 import { REQUEST_STATUS_TAG, addDaysIso, ecoType, fmtDOfIso, requestStatus, taskStatus } from '@/server/db/codes';
 import { projects as projectsTable } from '@/server/db/schema';
 import type { ZoneKey } from '@/server/session';
-import { getCostControl, listChangeRequests } from './cost';
+import { getCostControl, listChangeRequestsOf } from './cost';
 import { listDrawings } from './drawings';
 import { listEcos } from './eco';
 import { loggedThisWeek } from './kpis';
@@ -203,16 +203,14 @@ async function evmAndSchedule(code: string): Promise<{ evm: EvmSeries | null; sc
 }
 
 async function changeRequestsOf(projects: ProjectRow[]): Promise<ChangeRequest[]> {
-  const names = (await lookups()).projectNames;
-  const lists = await Promise.all(
-    projects.map(async (p) =>
-      (await listChangeRequests(p.code)).map((c) => ({
-        code: p.code, projectName: names[p.shortCode] ?? p.name, id: c.id, title: c.title, amount: c.amount, days: c.days, date: c.date,
-        status: c.status, chain: c.chain,
-      })),
-    ),
+  // R-017: the requests of every project in three reads (they were read project by project).
+  const [names, byProject] = await Promise.all([lookups().then((l) => l.projectNames), listChangeRequestsOf(projects.map((p) => p.code))]);
+  return projects.flatMap((p) =>
+    (byProject.get(p.code) ?? []).map((c) => ({
+      code: p.code, projectName: names[p.shortCode] ?? p.name, id: c.id, title: c.title, amount: c.amount, days: c.days, date: c.date,
+      status: c.status, chain: c.chain,
+    })),
   );
-  return lists.flat();
 }
 
 /** Department led by the viewer; the prototype default is Engineering. */

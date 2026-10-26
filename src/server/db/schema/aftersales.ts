@@ -1,7 +1,7 @@
 // Installed base and after-sales (docs/spec/11 §3.7 Machine / MachineConfiguration / MachinePartRevision, WarrantyClaim /
 // Intervention; screens 07 §2.8–2.9, part record "Installed base" 09 §2.2). Keystone owns them. The ECO pins of the
 // as-maintained configuration come from the Vigie ECO mirror (effectivity targets of type machine), never from here.
-import { date, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { date, index, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { ClaimCoverage, ClaimStatus, InterventionStatus, InterventionType, MachineTypeCode, NcrSeverity, WarrantyStatus } from '../codes';
 import { id, keur, num, timestamps } from './_common';
 import { clients, persons } from './organisation';
@@ -37,7 +37,7 @@ export const machines = pgTable('machines', {
   generation: text('generation'),
   position: integer('position').notNull(),
   ...timestamps,
-});
+}, (t) => [index('machines_project_id_idx').on(t.projectId)]);
 
 /** As-maintained configuration: the revision of each tracked part fitted on a machine (AS_MAINT 3722: 6 machines). */
 export const machinePartRevisions = pgTable(
@@ -79,7 +79,7 @@ export const warrantyClaims = pgTable('warranty_claims', {
   closedOn: date('closed_on', { mode: 'string' }),
   position: integer('position').notNull(),
   ...timestamps,
-});
+}, (t) => [index('warranty_claims_machine_id_idx').on(t.machineId)]);
 
 /** Field interventions (INTERVENTIONS 3731: 6). The seed's type text "Corrective · WC-014" is split into type + claim. */
 export const interventions = pgTable('interventions', {
@@ -107,4 +107,4 @@ export const interventions = pgTable('interventions', {
   partRef: text('part_ref'),
   partRevision: text('part_revision'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [index('interventions_claim_id_idx').on(t.claimId), index('interventions_machine_id_idx').on(t.machineId)]);

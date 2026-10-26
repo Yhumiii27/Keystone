@@ -1,0 +1,4 @@
+/* Pager of the server-paginated lists (R-017). */
+.pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 2px 0; }
+.label { font-size: 12px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+.spacer { min-width: 1px; }

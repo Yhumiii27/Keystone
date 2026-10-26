@@ -29,7 +29,7 @@ export const notifications = pgTable('notifications', {
   /** Bell-panel order (NOTIFS order; new notifications are prepended with a lower value). */
   sortOrder: integer('sort_order').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [index('notifications_project_id_idx').on(t.projectId)]);
 
 /** Delivery of a notification to a user, with the per-user read state (replaces `state.readNotifs`). */
 export const notificationRecipients = pgTable(
@@ -39,7 +39,7 @@ export const notificationRecipients = pgTable(
     userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     readAt: timestamp('read_at', { withTimezone: true }),
   },
-  (t) => [primaryKey({ columns: [t.notificationId, t.userId] })],
+  (t) => [primaryKey({ columns: [t.notificationId, t.userId] }), index('notification_recipients_user_id_idx').on(t.userId)],
 );
 
 /** Cross-project activity feed (ACTIVITY 3557), newest first. Actors are persons or systems (Lucca, System, Sage X3). */
@@ -63,6 +63,7 @@ export const activityEvents = pgTable('activity_events', {
 }, (t) => [
   /** Share D18 (Matrix): keystone.pub_journal is read by period. */
   index('activity_events_occurred_at_idx').on(t.occurredAt),
+  index('activity_events_project_id_idx').on(t.projectId),
 ]);
 
 /**
@@ -99,4 +100,5 @@ export const auditEntries = pgTable('audit_entries', {
 }, (t) => [
   /** Share D18 (Matrix): keystone.pub_journal is read by period. */
   index('audit_entries_occurred_at_idx').on(t.occurredAt),
+  index('audit_entries_project_id_idx').on(t.projectId),
 ]);

@@ -4,6 +4,7 @@ import 'server-only';
 // loads over the 8-week window from the data date, and the portfolio director's approval queue (items older than N days).
 // Health thresholds from Settings (A-13). Computed at the portfolio data date.
 import { businessToday } from '@/server/clock';
+import { versionedRead } from '@/server/cache/read-cache';
 import { PERSONA_BY_ROLE } from '@/config/personas';
 import { weekMondayOf } from '@/domain/kpis';
 import { LOAD_WINDOW_WEEKS, weekStartsFrom } from '@/domain/load-window';
@@ -12,7 +13,7 @@ import { ALERT_RULE_DEFAULTS, portfolioAlertRules, type AlertApproval, type Aler
 import { isoWeekOf } from '@/server/db/codes';
 import { dataText } from '@/i18n/data-text';
 import { makeT, type Lang } from '@/i18n/translate';
-import { APPROVAL_PROVIDERS } from '@/server/approvals';
+import { APPROVAL_PROVIDERS, safeCandidates } from '@/server/approvals';
 import type { ApprovalContext } from '@/server/approvals/types';
 import { getContract } from './contract';
 import { healthThresholds } from './health-thresholds';
@@ -59,10 +60,13 @@ async function directorQueue(projects: readonly ProjectRow[], lang: Lang, today:
       return [];
     }
   };
+  // R-017: each project-bound kind is asked for its candidate projects only (one query per kind).
+  const perProject = APPROVAL_PROVIDERS.filter((p) => p.scope === 'project');
+  const candidates = await Promise.all(perProject.map((p) => safeCandidates(p, base)));
   const items = (
     await Promise.all([
       ...APPROVAL_PROVIDERS.filter((p) => p.scope === 'global').map((p) => safe(p, base)),
-      ...projects.flatMap((project) => APPROVAL_PROVIDERS.filter((p) => p.scope === 'project').map((p) => safe(p, { ...base, project }))),
+      ...projects.flatMap((project) => perProject.filter((_, i) => candidates[i]?.has(project.code) ?? true).map((p) => safe(p, { ...base, project }))),
     ])
   ).flat();
   const seen = new Set<string>();
@@ -81,7 +85,14 @@ async function directorQueue(projects: readonly ProjectRow[], lang: Lang, today:
  * alerts by zone).
  */
 export async function getPortfolioAlerts(lang: Lang, on?: string): Promise<PortfolioAlert[]> {
-  const [all, sched, health, asOf] = await Promise.all([listProjects(), listScheduleSummaries(), healthThresholds(), on ?? businessToday()]);
+  // R-017: they read every project in execution (contract, schedule, approvals) — computed once per database version, language
+  // and date (exact, src/server/cache/read-cache.ts); they are the portfolio director's whatever the viewer.
+  const asOf = on ?? (await businessToday());
+  return versionedRead(`portfolio-alerts|${lang}|${asOf}`, () => computePortfolioAlerts(lang, asOf));
+}
+
+async function computePortfolioAlerts(lang: Lang, asOf: string): Promise<PortfolioAlert[]> {
+  const [all, sched, health] = await Promise.all([listProjects(), listScheduleSummaries(), healthThresholds()]);
   const t = makeT(lang);
   const rows = all.filter(inExecution);
   const projects: AlertProject[] = await Promise.all(rows.map(async (p) => {

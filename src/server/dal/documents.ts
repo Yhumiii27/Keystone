@@ -10,7 +10,9 @@ import 'server-only';
 // Delivery 7 (P-7b = a, D-1b = a, P-7c = a; R-124, R-106): circuit decisions and the start of an engineering
 // deliverable's circuit are recorded in the Codex outbox (src/server/integrations/codex) and shown "pending sync with
 // Codex" over the mirrored circuit; the status and the approval proof change only when Codex answers.
-import { and, asc, desc, eq, inArray, isNull, notInArray, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, notInArray, or, sql, type SQL } from 'drizzle-orm';
+import type { AnyPgColumn } from 'drizzle-orm/pg-core';
+import { versionedRead } from '@/server/cache/read-cache';
 import { cache } from 'react';
 import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
@@ -189,7 +191,12 @@ interface VaultBundle {
   entries: Map<string, CodexOutboxEntry[]>;
 }
 
-async function loadVault(q: Awaited<ReturnType<typeof getDb>> | Tx, where?: ReturnType<typeof eq>): Promise<VaultBundle> {
+/**
+ * The vault records matching `where` (on `documents`; every record when omitted) with what their rows show. R-017: the
+ * related rows are read by a sub-select on the same condition — they were read by an IN list of every record id, which on a
+ * vault of 20 000 records sent 20 000 parameters per read (PostgreSQL accepts 65 535 at most).
+ */
+async function loadVault(q: Awaited<ReturnType<typeof getDb>> | Tx, where?: SQL): Promise<VaultBundle> {
   const docRows = await q
     .select({ d: documents, projectCode: projects.code })
     .from(documents)
@@ -198,16 +205,21 @@ async function loadVault(q: Awaited<ReturnType<typeof getDb>> | Tx, where?: Retu
     .orderBy(asc(documents.sortOrder));
   const ids = docRows.map((r) => r.d.id);
   const none = ids.length === 0;
+  const scoped = (col: AnyPgColumn) => (where ? inArray(col, q.select({ id: documents.id }).from(documents).where(where)) : undefined);
   const [types, steps, approvals, links, acks, revs, whoRows, entries] = await Promise.all([
     q.select().from(documentTypes),
     q.select().from(documentTypeCircuitSteps).orderBy(asc(documentTypeCircuitSteps.position)),
-    none ? [] : q.select().from(documentApprovals).where(inArray(documentApprovals.documentId, ids)).orderBy(asc(documentApprovals.stepPosition)),
-    none ? [] : q.select().from(documentLinks).where(inArray(documentLinks.documentId, ids)).orderBy(asc(documentLinks.position)),
-    none ? [] : q.select().from(documentAcknowledgements).where(inArray(documentAcknowledgements.documentId, ids)),
-    none ? [] : q.select({ documentId: documentRevisions.documentId, withdrawnOn: documentRevisions.withdrawnOn }).from(documentRevisions).where(inArray(documentRevisions.documentId, ids)),
+    none ? [] : q.select().from(documentApprovals).where(scoped(documentApprovals.documentId)).orderBy(asc(documentApprovals.stepPosition)),
+    none ? [] : q.select().from(documentLinks).where(scoped(documentLinks.documentId)).orderBy(asc(documentLinks.position)),
+    none ? [] : q.select().from(documentAcknowledgements).where(scoped(documentAcknowledgements.documentId)),
+    none ? [] : q.select({ documentId: documentRevisions.documentId, withdrawnOn: documentRevisions.withdrawnOn }).from(documentRevisions).where(scoped(documentRevisions.documentId)),
     q.select({ role: documentApproverAssignments.role, short: persons.shortName }).from(documentApproverAssignments)
       .innerJoin(persons, eq(persons.id, documentApproverAssignments.personId)).where(isNull(documentApproverAssignments.projectId)),
-    none ? [] : openCodexEntries(q, ids),
+    // The open Codex entries are few: all of them, kept for the records read.
+    none ? [] : openCodexEntries(q).then((all) => {
+      const wanted = new Set(ids);
+      return all.filter((e) => wanted.has(e.documentId));
+    }),
   ]);
   const group = <T extends { documentId: string }>(xs: T[]) => {
     const m = new Map<string, T[]>();
@@ -271,22 +283,62 @@ function toVault(b: VaultBundle, d: VaultBundle['docs'][number]): VaultDocument 
   };
 }
 
-/** Every vault record, all projects: Keystone-created records first, then the Codex (DOCS) order. Memoised per request. */
-export const listVaultDocuments = cache(async (): Promise<VaultDocument[]> => {
+/** The vault records matching `where`, in vault order (R-017: each reader asks for the records it shows). */
+async function vaultWhere(where?: SQL): Promise<VaultDocument[]> {
   const db = await getDb();
-  const b = await loadVault(db);
+  const b = await loadVault(db, where);
   return b.docs.map((d) => toVault(b, d));
-});
+}
+
+/**
+ * Every vault record, all projects: Keystone-created records first, then the Codex (DOCS) order. Memoised per request, and
+ * across requests while the database has not changed (R-017: the "All projects" vault and the exports read every record;
+ * exact, src/server/cache/read-cache.ts). The other readers below read only the records they need.
+ */
+export const listVaultDocuments = cache(async (): Promise<VaultDocument[]> => versionedRead('vault|all', () => vaultWhere(), { shared: true }));
+
+/** Id of a project by code (null when unknown). */
+async function projectIdOf(projectCode: string): Promise<string | null> {
+  const db = await getDb();
+  const [p] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, projectCode));
+  return p?.id ?? null;
+}
 
 /** Records in the scope of a project: its own documents plus the company QMS documents (`inScope`, scope "Current project"). */
-export async function listProjectDocuments(projectCode: string): Promise<VaultDocument[]> {
-  return (await listVaultDocuments()).filter((d) => d.project === projectCode || d.project === QMS);
+export const listProjectDocuments = cache(async (projectCode: string): Promise<VaultDocument[]> => {
+  const id = await projectIdOf(projectCode);
+  return vaultWhere(id ? or(eq(documents.projectId, id), isNull(documents.projectId)) : isNull(documents.projectId));
+});
+
+/** The project's own records (no QMS record); none for an unknown project. */
+export async function listOwnProjectDocuments(projectCode: string): Promise<VaultDocument[]> {
+  const id = await projectIdOf(projectCode);
+  return id ? vaultWhere(eq(documents.projectId, id)) : [];
 }
 
 /** Released client-deliverable documents of a project (client portal "Documents", `cpVaultDocs`). */
 export async function listSharedDocuments(projectCode: string): Promise<VaultDocument[]> {
-  return (await listVaultDocuments()).filter((d) => d.shared && d.project === projectCode);
+  const id = await projectIdOf(projectCode);
+  if (!id) return [];
+  // `sharedWithClient` keeps the final word (client-deliverable type); the status and confidentiality narrow the read.
+  return (await vaultWhere(and(eq(documents.projectId, id), eq(documents.status, 'released'), eq(documents.confidentiality, 'client')))).filter((d) => d.shared);
 }
+
+/** Records linked to a PLM article or tagged with its reference (the part record drawer). */
+export async function listPartDocuments(ref: string): Promise<VaultDocument[]> {
+  const db = await getDb();
+  const linked = db.select({ id: documentLinks.documentId }).from(documentLinks).where(eq(documentLinks.targetRef, ref));
+  return (await vaultWhere(or(inArray(documents.id, linked), sql`${ref} = any(${documents.tags})`))).filter((d) => d.links.some((l) => l.ref === ref) || d.tags.includes(ref));
+}
+
+/** One vault record by number (null when unknown) — the drawer's actions, document links (R-017: no longer the whole vault). */
+export const getVaultDocument = cache(async (number: string): Promise<VaultDocument | null> => (await vaultWhere(eq(documents.number, number)))[0] ?? null);
+
+/**
+ * Records in "Release proposed", all projects — the only ones with a circuit step open in Keystone (`codexCircuitState`): the
+ * Documents badge and the Codex documents of My approvals. Memoised per request.
+ */
+export const listReleaseProposedDocuments = cache(async (): Promise<VaultDocument[]> => vaultWhere(eq(documents.status, 'release_proposed')));
 
 /**
  * Documents with a circuit step open for a decision, all projects (sidebar "Documents · Codex" badge). Delivery 7: a
@@ -294,7 +346,7 @@ export async function listSharedDocuments(projectCode: string): Promise<VaultDoc
  * counted (nobody can approve it in Keystone).
  */
 export async function countDocumentsAwaitingApproval(): Promise<number> {
-  return (await listVaultDocuments()).filter((d) => d.canApprove).length;
+  return (await listReleaseProposedDocuments()).filter((d) => d.canApprove).length;
 }
 
 // ── Document record (drawer) ───────────────────────────────────────────────────────────────────────────

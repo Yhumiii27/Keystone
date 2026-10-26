@@ -31,4 +31,15 @@ export interface ApprovalProvider {
   items(ctx: ApprovalContext): Promise<ApprovalItem[]>;
   /** The viewer's decisions on this kind ("Decided this week"); 0 when the kind keeps no trace of them. */
   decided(ctx: ApprovalContext): Promise<number>;
+  /**
+   * R-017 (project-bound kinds): the codes of the projects where `items` can return something for this viewer, read in one
+   * query (a superset: `items` still decides); `items` is then asked for those projects only when the badges or the alerts
+   * cover the whole portfolio. Omitted = every project.
+   */
+  candidates?(ctx: ApprovalContext): Promise<ReadonlySet<string>>;
+  /**
+   * R-017 (project-bound kinds): the item count of every project of `codes` in a few reads — the shell's per-project badges use
+   * it instead of `items` project by project (the count `items(ctx).length` would give; absent = 0). Omitted = `items`.
+   */
+  countByProject?(ctx: ApprovalContext, codes: readonly string[]): Promise<ReadonlyMap<string, number>>;
 }

@@ -4,6 +4,7 @@
 import { ArrowsClockwise, BookmarkSimple, Folders, Funnel, Tag as TagIcon } from '@phosphor-icons/react/dist/ssr';
 import { FilterBar, FilterChips, FilterGroup, FilterLabel } from '@/components/app/Filter';
 import { KpiGrid, KpiTile } from '@/components/app/Kpi';
+import { Pager } from '@/components/app/Pager';
 import { SearchField } from '@/components/app/SearchField';
 import { Stack } from '@/components/app/SectionCard';
 import { Segmented } from '@/components/ds/Segmented';
@@ -72,6 +73,7 @@ export function DocsVault({ project, view, canEdit, codexHref, t }: DocsVaultPro
       </FilterBar>
 
       <VaultTable project={project} title={view.title} rows={view.rows} empty={view.empty} codexLink={!!codexHref} />
+      <Pager view={view.pager} />
     </Stack>
   );
 }

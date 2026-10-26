@@ -50,3 +50,6 @@ FR_RULES.push(
 
 // R-188: the Portfolio overview's "Uncertainty gap" sub-line ("2 not at class E10").
 FR_RULES.push([/^(\d+) not at class E10$/, '$1 hors classe E10']);
+
+// R-017: the pager of the long lists (documents vault, audit trail), "Page 2 of 7".
+FR_RULES.push([/^Page (\d+) of (\d+)$/, 'Page $1 sur $2']);

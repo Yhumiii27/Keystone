@@ -4,7 +4,7 @@ import 'server-only';
 // open ECO of each NCR part (Vigie ECO mirror, `ecoOpenFor`), the project's purchase orders carrying that part, and the
 // project's Codex index records (the deliverable's issued document). Projects without data get empty lists.
 import { businessToday } from '@/server/clock';
-import { listVaultDocuments } from './documents';
+import { listOwnProjectDocuments } from './documents';
 import { openEcoByPart } from './eco';
 import { ncrClosureDates, projectDataDateOf } from './kpis';
 import { listPurchaseOrders } from './purchasing';
@@ -46,7 +46,7 @@ export async function getQualityScreen(projectCode: string): Promise<QualityScre
   const [ecos, orders, docs] = await Promise.all([
     parts.length ? openEcoByPart() : Promise.resolve({} as Record<string, string>),
     parts.length ? listPurchaseOrders(projectCode) : Promise.resolve([]),
-    deliverables.length ? listVaultDocuments() : Promise.resolve([]),
+    deliverables.length ? listOwnProjectDocuments(projectCode) : Promise.resolve([]),
   ]);
   const ecoByPart: Record<string, string> = {};
   const ordersByPart: Record<string, string[]> = {};

@@ -2,7 +2,7 @@
 // hours; 05 §4 what-if levelling): weekly allocations, the dated rate grid (roles, multipliers and their versions — R-083),
 // skills and certifications,
 // leave (received from Cursus) and public holidays, Lucca hours imports, what-if levers and scenarios.
-import { boolean, date, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { boolean, date, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { HoursMatching, LeaveType, RateMultiplierKey, WhatIfActionKind, WhatIfLeverCode, WhatIfPriority } from '../codes';
 import { id, keur, num, timestamps } from './_common';
 import { departments, persons } from './organisation';
@@ -26,7 +26,7 @@ export const allocations = pgTable(
     loadPct: num('load_pct').notNull(),
     projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }),
   },
-  (t) => [unique().on(t.personId, t.weekStart, t.projectId).nullsNotDistinct()],
+  (t) => [unique().on(t.personId, t.weekStart, t.projectId).nullsNotDistinct(), index('allocations_project_id_idx').on(t.projectId)],
 );
 
 // ── Rates ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -158,7 +158,7 @@ export const leaveEntries = pgTable('leave_entries', {
   source: text('source').notNull().default('cursus'),
   /** Replacement key of the absence (Cursus's absence id, else "<matricule>|<start>|<end>"); null for the demo seed. */
   externalId: text('external_id'),
-});
+}, (t) => [index('leave_entries_person_id_idx').on(t.personId), index('leave_entries_start_date_end_date_idx').on(t.startDate, t.endDate)]);
 
 /** Public holidays (SETTINGS0.holidays 3467, France 2026; HOLIDAYS 3461 = those on a weekday of the 8-week window). */
 export const publicHolidays = pgTable(
@@ -205,7 +205,7 @@ export const hoursLines = pgTable('hours_lines', {
   plannedH: num('planned_h').notNull(),
   declaredH: num('declared_h').notNull(),
   position: integer('position').notNull(),
-});
+}, (t) => [index('hours_lines_import_id_idx').on(t.importId)]);
 
 /** Hours declared without a planned task ("To assign"). */
 export const unassignedHours = pgTable('unassigned_hours', {
@@ -219,7 +219,7 @@ export const unassignedHours = pgTable('unassigned_hours', {
   assignedWbsNodeId: uuid('assigned_wbs_node_id').references(() => wbsNodes.id, { onDelete: 'set null' }),
   assignedAt: timestamp('assigned_at', { withTimezone: true }),
   position: integer('position').notNull(),
-});
+}, (t) => [index('unassigned_hours_import_id_idx').on(t.importId)]);
 
 // ── What-if levelling ──────────────────────────────────────────────────────────────────────────────────
 
@@ -317,4 +317,4 @@ export const whatIfScenarioActions = pgTable('whatif_scenario_actions', {
   /** EN source label ("Overtime 10 h/d on A1250"). */
   label: text('label').notNull().default(''),
   ...timestamps,
-});
+}, (t) => [index('whatif_scenario_actions_scenario_id_idx').on(t.scenarioId)]);
