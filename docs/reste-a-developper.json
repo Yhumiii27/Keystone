@@ -186,6 +186,10 @@
   {
    "date": "2026-10-26",
    "text": "R-017 fait : tenue de la charge avec de vrais volumes (index, points chauds, cache des badges, pagination)."
+  },
+  {
+   "date": "2026-10-26",
+   "text": "R-158 fait : lot B des expéditions (documents générés et versés dans Codex, réception sur site et réserves, jalons, pub_expeditions)."
   }
  ],
  "items": [
@@ -4707,9 +4711,9 @@
     "docs/DELIVERY-6.md §9 « Not built, by decision »"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "9",
-    "note": "25 oct. 2026 : le responsable produit redemande le module (« il manque un module de gestion des expéditions du matériel vers la filiale ») ; cadrage rédigé (docs/delivery-9/cadrage-r158-expeditions.md) : écran projet Expéditions, chargements et colis, contrôle colisage ↔ nomenclature, douane (codes HS), documents (packing list, proforma) versés dans Codex, réception sur site et réserves, jalons expedition / arrivee_site, vue pub_expeditions pour la filiale ; 8 points à valider. Même jour : choix tranchés (cadrage § 5) — vue projet seulement, transport d’après l’Incoterm du contrat, Keystone génère tous les documents sauf les factures, contrôle colisage bloquant, écart à la réception = réserve, suivi filiale dans Arche, nouveau profil Logistique, transitaires externes sans accès, Incoterms 2020 paramétrables, conteneurs et contenus déclarés par EPC2i ; construction lancée. Lot A fait (docs/delivery-9/notes-r158-shipments.md) : profil Logistique (10ᵉ), 11 Incoterms 2020 paramétrables (Paramètres) avec répartition vendeur / acheteur, Incoterm et lieu sur le contrat, écran projet Expéditions (EXP-nn, étapes d’après l’Incoterm, chargements et contenu déclarés, contrôle colisage ↔ nomenclature, synthèse par code SH), case « Colisage & documents douaniers » bloquée tant que le contrôle n’est pas soldé (migration 0061). Lot B : documents, réception sur site et réserves, jalons, pub_expeditions."
+    "note": "25 oct. 2026 : le responsable produit redemande le module (« il manque un module de gestion des expéditions du matériel vers la filiale ») ; cadrage rédigé (docs/delivery-9/cadrage-r158-expeditions.md) : écran projet Expéditions, chargements et colis, contrôle colisage ↔ nomenclature, douane (codes HS), documents (packing list, proforma) versés dans Codex, réception sur site et réserves, jalons expedition / arrivee_site, vue pub_expeditions pour la filiale ; 8 points à valider. Même jour : choix tranchés (cadrage § 5) — vue projet seulement, transport d’après l’Incoterm du contrat, Keystone génère tous les documents sauf les factures, contrôle colisage bloquant, écart à la réception = réserve, suivi filiale dans Arche, nouveau profil Logistique, transitaires externes sans accès, Incoterms 2020 paramétrables, conteneurs et contenus déclarés par EPC2i ; construction lancée. Lot A fait (docs/delivery-9/notes-r158-shipments.md) : profil Logistique (10ᵉ), 11 Incoterms 2020 paramétrables (Paramètres) avec répartition vendeur / acheteur, Incoterm et lieu sur le contrat, écran projet Expéditions (EXP-nn, étapes d’après l’Incoterm, chargements et contenu déclarés, contrôle colisage ↔ nomenclature, synthèse par code SH), case « Colisage & documents douaniers » bloquée tant que le contrôle n’est pas soldé (migration 0061). Lot B : documents, réception sur site et réserves, jalons, pub_expeditions. 26 oct. 2026 : lot B fait — 8 documents générés sans facture (packing list, par conteneur, bon de livraison, marquage, CMR, instructions d’expédition, demande d’origine / EUR.1, déclaration d’export ; gabarits génériques remplaçables), versés dans Codex (type SHP, outbox de dépôt), réception sur site chargement par chargement (écart → réserve : endommagé A, manquant B), jalons expedition / arrivee_site de pub_jalons_projets nourris par les expéditions, vue pub_expeditions sans valeurs pour Arche, alerte retard de fret avec « Ouvrir un risque » (migrations 0063-0064). Reste : formats standard EPC2i, API de dépôt Codex, copie des vues dans Matrix."
    }
   },
   {
