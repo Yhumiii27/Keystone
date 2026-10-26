@@ -26,6 +26,7 @@ import { dueTodayBadge, workingDayOf } from '@/domain/tasks';
 import { mapCrumbExtra } from '@/domain/worldmap';
 import { approvalCountsByProject } from '@/server/approvals';
 import { businessToday } from '@/server/clock';
+import { ttlRead } from '@/server/cache/read-cache';
 import { getDb } from '@/server/db/client';
 import { ncrSeverity, ncrStatus } from '@/server/db/codes';
 import { changeRequests, meetings as meetingsTable, projects as projectsTable } from '@/server/db/schema';
@@ -91,21 +92,40 @@ async function approvalsDeptOf(who: PersonaRef) {
   return depts.find((d) => d.name === name) ?? null;
 }
 
+/**
+ * R-017 — the shell's badges are computed on every page: they are cached in this process for SHELL_BADGES_TTL_MS
+ * (src/server/cache/read-cache.ts `ttlRead`), and dropped as soon as this process writes (every Server Function writes before it
+ * calls revalidatePath), so a viewer's own change shows on the next page; another instance's writes show within the TTL.
+ * Two entries: the badges that do not depend on the viewer (counts of every project, the global module counts), shared by
+ * every viewer, and the viewer's own (My tasks, Resource requests, Approvals, My approvals per project), keyed by everything
+ * the viewer's rights depend on (`viewerKey`) — never served to another viewer.
+ */
+export const SHELL_BADGES_TTL_MS = 30_000;
+
+/** Cache key of a viewer: every field of the viewer the badges (and their rights) depend on. */
+export const viewerKey = (v: Persona) =>
+  JSON.stringify([v.role, v.roles, v.name, v.short, v.organisation, v.department, v.personId, v.userId, v.email]);
+
+/** Global badges that do not depend on the viewer (every project's records). */
+interface SharedGlobalBadges { docs: string; eco: string; invoices: number; stock: string; sav: string; plumbing: string }
+
+async function sharedGlobalBadges(): Promise<SharedGlobalBadges> {
+  const [docs, eco, invoices, stock, sav, plumbing] = await Promise.all([
+    docsBadge(), safe(ecoNavBadge, ''), countInvoicesToResolve(), stockNavBadge(), savNavBadge(), safe(plumbingNavBadge, ''),
+  ]);
+  return { docs, eco, invoices, stock, sav, plumbing };
+}
+
 /** Badges that do not depend on the current project. */
-async function globalBadges(viewer: Persona): Promise<Badges> {
+async function globalBadges(viewer: Persona, shared: SharedGlobalBadges): Promise<Badges> {
   const role = viewer.role;
-  const [mine, rescheduled, dept, docs, eco, invoices, stock, sav, plumbing, today] = await Promise.all([
+  const [mine, rescheduled, dept, today] = await Promise.all([
     listTasks({ person: viewer.name }),
     listResourceRequests({ status: 'reschedule', ...(seesAllRequests(role) ? {} : { requestedBy: viewer.short }) }),
     approvalsDeptOf(viewer),
-    docsBadge(),
-    safe(ecoNavBadge, ''),
-    countInvoicesToResolve(),
-    stockNavBadge(),
-    savNavBadge(),
-    safe(plumbingNavBadge, ''),
     businessToday(),
   ]);
+  const { docs, eco, invoices, stock, sav, plumbing } = shared;
   return {
     // My tasks: the viewer's open tasks due today (line 5106; the prototype counted Hélène Sauvage's for everyone, 00 §7.16).
     mywork: dueTodayBadge(
@@ -192,16 +212,35 @@ async function clientMeetingsToWriteByProject(): Promise<Record<string, number>>
   return out;
 }
 
-async function projectBadgeInputs(who: PersonaRef, codes: string[]): Promise<ProjectBadgeInputs> {
-  const viewer = personaOf(who);
-  const [approvals, risks, changes, meetings, interfaces, billing, deliveries, orders, eng, pid, quality, itp, site, projects] = await Promise.all([
-    approvalCountsByProject(viewer, codes), riskBadges(), changesInReview(),
-    viewer.role === 'client' ? clientMeetingsToWriteByProject() : meetingsToWriteByProject(), lateInterfacesByProject(), lateBillingMilestonesByProject(), receiptsQcPendingByProject(),
-    posAwaitingApprovalByProject(), engNavBadgesByProject(), pidBadgeByProject(), safe(criticalOpenNcrsByProject, {}), openPunchAByProject(),
-    safe(siteBadgeByProject, {}), listProjects(),
+/** The project inputs that do not depend on the viewer (the client's Meetings count is the external meetings'). */
+type SharedProjectInputs = Omit<ProjectBadgeInputs, 'approvals' | 'meetings' | 'withData'> & {
+  meetings: Record<string, number>; clientMeetings: Record<string, number>; withData: string[];
+};
+
+async function sharedProjectInputs(): Promise<SharedProjectInputs> {
+  const [risks, changes, meetings, clientMeetings, interfaces, billing, deliveries, orders, eng, pid, quality, itp, site, projects] = await Promise.all([
+    riskBadges(), changesInReview(), meetingsToWriteByProject(), clientMeetingsToWriteByProject(), lateInterfacesByProject(), lateBillingMilestonesByProject(),
+    receiptsQcPendingByProject(), posAwaitingApprovalByProject(), engNavBadgesByProject(), pidBadgeByProject(), safe(criticalOpenNcrsByProject, {}),
+    openPunchAByProject(), safe(siteBadgeByProject, {}), listProjects(),
   ]);
-  const withData = new Set(projects.filter((p) => p.hasData).map((p) => p.code));
-  return { approvals, risks, changes, meetings, interfaces, billing, deliveries, orders, eng, pid, quality, itp, site, withData };
+  const withData = projects.filter((p) => p.hasData).map((p) => p.code);
+  return { risks, changes, meetings, clientMeetings, interfaces, billing, deliveries, orders, eng, pid, quality, itp, site, withData };
+}
+
+/** The shared inputs of the shell, cached for every viewer (R-017, see SHELL_BADGES_TTL_MS). */
+async function sharedShellInputs(): Promise<{ global: SharedGlobalBadges; projects: SharedProjectInputs }> {
+  const today = await businessToday();
+  return ttlRead(`shell-shared|${today}`, SHELL_BADGES_TTL_MS, async () => {
+    const [global, projects] = await Promise.all([sharedGlobalBadges(), sharedProjectInputs()]);
+    return { global, projects };
+  });
+}
+
+async function projectBadgeInputs(who: PersonaRef, codes: string[], shared?: SharedProjectInputs): Promise<ProjectBadgeInputs> {
+  const viewer = personaOf(who);
+  const [approvals, base] = await Promise.all([approvalCountsByProject(viewer, codes), shared ?? sharedProjectInputs()]);
+  const { clientMeetings, withData, ...rest } = base;
+  return { ...rest, approvals, meetings: viewer.role === 'client' ? clientMeetings : base.meetings, withData: new Set(withData) };
 }
 
 function badgesOf(code: string, inp: ProjectBadgeInputs): Badges {
@@ -241,7 +280,7 @@ function badgesFor(role: RoleKey, b: Badges): Badges {
 
 /** Badges of the project-dependent entries (Project section, orders, deliveries, My approvals) of one project. */
 export async function projectBadges(who: PersonaRef, code: string): Promise<Badges> {
-  return badgesFor(personaOf(who).role, badgesOf(code, await projectBadgeInputs(who, [code])));
+  return badgesFor(personaOf(who).role, badgesOf(code, await projectBadgeInputs(who, [code], (await sharedShellInputs()).projects)));
 }
 
 // ── Sidebar data ──────────────────────────────────────────────────────────
@@ -262,11 +301,18 @@ export interface ShellNavData {
  */
 export async function getShellNav(who: PersonaRef): Promise<ShellNavData> {
   const viewer = personaOf(who);
+  const today = await businessToday();
+  // R-017: cached per viewer for SHELL_BADGES_TTL_MS, dropped when this process writes (see SHELL_BADGES_TTL_MS).
+  return ttlRead(`shell-viewer|${viewerKey(viewer)}|${today}`, SHELL_BADGES_TTL_MS, () => computeShellNav(viewer));
+}
+
+async function computeShellNav(viewer: Persona): Promise<ShellNavData> {
   const client = viewer.role === 'client';
   // R-042 (P-10a): a client's sidebar and project switcher list their organisation's projects only.
   const projects = (await listProjects()).filter((p) => !clientRefusedProject(viewer, p));
   const codes = projects.map((p) => p.code);
-  const [global, inputs] = await Promise.all([client ? ({} as Badges) : globalBadges(viewer), projectBadgeInputs(viewer, codes)]);
+  const shared = await sharedShellInputs();
+  const [global, inputs] = await Promise.all([client ? ({} as Badges) : globalBadges(viewer, shared.global), projectBadgeInputs(viewer, codes, shared.projects)]);
   return {
     projects: projects.map((p) => ({ code: p.code, label: projectLabel(p), hasData: p.hasData })),
     globalBadges: global,

@@ -7,6 +7,7 @@ import 'server-only';
 import { changeRequestItems } from '@/domain/approvals';
 import { yearOfIso } from '@/domain/clock';
 import { listChangeRequestDetails } from '@/server/dal/changes';
+import { projectsWithPendingChangeSteps } from '@/server/dal/approval-candidates';
 import type { ApprovalProvider } from './types';
 
 export const changeRequestProvider: ApprovalProvider = {
@@ -23,4 +24,6 @@ export const changeRequestProvider: ApprovalProvider = {
     const crs = await listChangeRequestDetails(project.code);
     return crs.reduce((n, cr) => n + cr.chain.filter((s) => s.decidedAt && s.decidedBy === viewer.name && (s.decision === 'ok' || s.decision === 'rejected')).length, 0);
   },
+  // An item needs a pending step (currentStep): the projects with a change request holding one.
+  candidates: () => projectsWithPendingChangeSteps(),
 };

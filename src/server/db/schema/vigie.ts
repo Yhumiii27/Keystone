@@ -8,7 +8,7 @@
 // (their approval-key decision, step advancement) until Vigie acknowledges it. Creation, editing, dispositions,
 // interchangeability, effectivity, release and the workflow itself happen in Vigie's database, never here: no
 // Keystone writer touches the mirror tables except the connector's refresh.
-import { boolean, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { boolean, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid, index } from 'drizzle-orm/pg-core';
 import type {
   EcoApproverKey, EcoDecision, EcoDisposition, EcoProgressKind, EcoStatus, EcoTargetType, EcoType, HseItemKind, HseStatus, Interchangeability, NcrProgressKind,
   NcrSeverity, NcrSource, NcrStatus, NcrVerificationDecision, VigieSyncStatus,
@@ -151,7 +151,7 @@ export const vigieEcoProgress = pgTable('vigie_eco_progress', {
   vigieRef: text('vigie_ref'),
   /** Set while a delivery is in flight (R-010: two deliveries never send the same entry); cleared by the result. */
   claimedAt: timestamp('claimed_at', { withTimezone: true }),
-});
+}, (t) => [index('vigie_eco_progress_eco_id_idx').on(t.ecoId)]);
 
 // ── Non-conformities (NCR) — Vigie mirror (user decision: Vigie owns project NCRs, the 8D, causes and action plans) ──
 
@@ -241,7 +241,7 @@ export const vigieNcrProgress = pgTable('vigie_ncr_progress', {
   vigieRef: text('vigie_ref'),
   /** Set while a delivery is in flight (R-010); cleared by the result. */
   claimedAt: timestamp('claimed_at', { withTimezone: true }),
-});
+}, (t) => [index('vigie_ncr_progress_ncr_id_idx').on(t.ncrId)]);
 
 // ── Site HSE — Vigie mirror (prevention plans, inductions, permits, near-miss register) ───────────────────
 

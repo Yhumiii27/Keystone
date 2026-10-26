@@ -16,6 +16,7 @@ import type { ActivityIcon } from '@/domain/admin';
 import type { T } from '@/i18n/translate';
 import type { ImportKind } from '@/server/db/codes';
 import { auditExportHref } from './links';
+import { Pager } from '@/components/app/Pager';
 import type { ImportIcon, PlumbingView } from './model';
 import { ConnectorActions, DropZone } from './plumbing-islands';
 import s from './admin.module.css';
@@ -141,6 +142,7 @@ function Connectors({ view, canEdit, t }: { view: PlumbingView; canEdit: boolean
           </tbody>
         </table>
       </TableScroll>
+      <Pager view={view.auditPager} />
     </section>
   );
 }

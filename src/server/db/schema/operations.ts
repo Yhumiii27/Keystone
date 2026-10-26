@@ -216,7 +216,7 @@ export const satPlans = pgTable('sat_plans', {
   plannedByName: text('planned_by_name').notNull(),
   plannedByPersonId: uuid('planned_by_person_id').references(() => persons.id),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [index('sat_plans_project_id_idx').on(t.projectId)]);
 
 /** Handover dossier (DOE) items (COMMISSIONING.dossier: HLT-026 × 8) with their Codex document type and document. */
 export const handoverItems = pgTable(

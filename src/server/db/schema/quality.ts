@@ -88,4 +88,4 @@ export const deliverableReviews = pgTable('deliverable_reviews', {
   decidedByPersonId: uuid('decided_by_person_id').references(() => persons.id),
   comments: text('comments'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [index('deliverable_reviews_deliverable_id_idx').on(t.deliverableId)]);

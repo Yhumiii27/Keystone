@@ -431,6 +431,21 @@ export async function canApprovePurchaseOrders(projectCode: string, actorName: s
   return !!p && leadsProject(db, p.id, a.personId);
 }
 
+/**
+ * R-017: of `codes`, the projects whose purchase orders `actorName` may approve (`canApprovePurchaseOrders`), the actor read
+ * once — every project for the portfolio director, else the projects they lead.
+ */
+export async function purchaseOrderApprovableProjects(actorName: string, codes: readonly string[]): Promise<Set<string>> {
+  const db = await getDb();
+  const a = await actorOf(db, actorName);
+  if (a.roles.includes('director')) return new Set(codes);
+  if (!codes.length) return new Set();
+  const rows = await db.select({ id: projects.id, code: projects.code }).from(projects).where(inArray(projects.code, [...codes]));
+  const out = new Set<string>();
+  for (const p of rows) if (await leadsProject(db, p.id, a.personId)) out.add(p.code);
+  return out;
+}
+
 // ── RFQs ───────────────────────────────────────────────────────────────────────────────────────────────
 
 export interface RfqQuoteRow {

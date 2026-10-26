@@ -23,6 +23,7 @@ import { itpHref } from '@/features/itpcom/model';
 import { ordersHref } from '@/features/orders/links';
 import { deliverableHref } from '@/features/quality/links';
 import { documentsHref, type DocsQuery } from './links';
+import { pageSlice, pagerView, type PagerView } from '@/domain/pagination';
 
 const tag = (tone: string) => `tag ${tone}`;
 
@@ -36,10 +37,17 @@ export interface DocsState {
   q: string;
   /** `?doc=` (open drawer). */
   doc: string | null;
+  /** R-017: `?page=` of the vault list (1 when absent). */
+  page?: number;
 }
 
-/** Search params of the vault kept when a chip, the scope or the drawer changes. */
-export const keepQuery = (s: DocsState): DocsQuery => ({ scope: s.scope, view: s.view, fam: s.family, status: s.status, q: s.q || null });
+/**
+ * Search params of the vault kept when a chip, the scope or the drawer changes. The page is kept (opening a record keeps the
+ * page it is on); a filter chip or the scope goes back to page 1.
+ */
+export const keepQuery = (s: DocsState): DocsQuery => ({
+  scope: s.scope, view: s.view, fam: s.family, status: s.status, q: s.q || null, page: s.page && s.page > 1 ? String(s.page) : null,
+});
 
 export interface KpiView {
   label: string;
@@ -90,6 +98,8 @@ export interface VaultView {
   rows: VaultRowView[];
   /** "No document matches" under the empty table, else null. */
   empty: string | null;
+  /** R-017: the pager when the list holds more than one page (PAGE_SIZE rows), else null. */
+  pager: PagerView | null;
 }
 
 
@@ -109,7 +119,9 @@ export interface VaultInput {
 }
 
 export function vaultView({ project, docs, sync, state }: VaultInput, t: T, lang: Lang): VaultView {
-  const keep = keepQuery(state);
+  // R-017: a filter chip or the scope goes back to page 1; the rows and the pager keep the page.
+  const keep = { ...keepQuery(state), page: null };
+  const keepPage = keepQuery(state);
   const href = (q: DocsQuery) => documentsHref(project, q);
   const display = (d: VaultDocument) => `${exactT(d.title, lang)} ${t(d.typeLabel)} ${exactT(d.tagsText, lang)}`;
   const { scoped, list } = vaultList(docs, { scope: state.scope, project, view: state.view, family: state.family, status: state.status, q: state.q }, display);
@@ -130,10 +142,13 @@ export function vaultView({ project, docs, sync, state }: VaultInput, t: T, lang
     { value: 'all', label: t('All statuses'), count: scoped.length, href: href({ ...keep, status: null }) },
     ...statusCounts(scoped).map((c) => ({ value: c.status as string, label: t(documentStatus.label(c.status)), count: c.count, href: href({ ...keep, status: c.status }) })),
   ];
-  const rows = list.map((d) => {
+  // R-017: the list is shown PAGE_SIZE rows at a time (`?page=`); counts, KPIs and the title cover the whole list.
+  const { rows: shown, window } = pageSlice(list, state.page ?? 1);
+  const rows = shown.map((d) => {
     const open = state.doc === d.number;
-    return vaultRowView(d, href({ ...keep, doc: open ? null : d.number }), open, t, lang);
+    return vaultRowView(d, href({ ...keepPage, page: window.page > 1 ? String(window.page) : null, doc: open ? null : d.number }), open, t, lang);
   });
+  const pager = pagerView(window.page, window.pages, (n) => href({ ...keepPage, page: n > 1 ? String(n) : null, doc: state.doc }), t);
   return {
     // R-021: Codex is a mock until its connector exists — "Mock index · 412 records", no sync time.
     sync: sync ? codexIndexLineT(sync, codexConnectorMode(), t, lang) : '',
@@ -147,6 +162,7 @@ export function vaultView({ project, docs, sync, state }: VaultInput, t: T, lang
     title: `${t('Vault')} · ${t(countText(list.length, scoped.length))}`,
     rows,
     empty: rows.length ? null : t('No document matches'),
+    pager,
   };
 }
 

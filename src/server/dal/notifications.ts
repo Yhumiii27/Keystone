@@ -183,8 +183,15 @@ export interface AuditRow {
   messageParams: Record<string, unknown> | null;
 }
 
-/** Audit trail, newest first. */
-export async function listAudit(opts: { limit?: number; projectCode?: string } = {}): Promise<AuditRow[]> {
+/** Number of audit entries (R-017: the pager of the audit trail). */
+export async function countAudit(): Promise<number> {
+  const db = await getDb();
+  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(auditEntries);
+  return n;
+}
+
+/** Audit trail, newest first; R-017: `offset` for its pages (the export reads every entry). */
+export async function listAudit(opts: { limit?: number; offset?: number; projectCode?: string } = {}): Promise<AuditRow[]> {
   const db = await getDb();
   const rows = await db
     .select({ a: auditEntries, code: projects.code, email: users.email })
@@ -192,8 +199,10 @@ export async function listAudit(opts: { limit?: number; projectCode?: string } =
     .leftJoin(projects, eq(projects.id, auditEntries.projectId))
     .leftJoin(users, eq(users.id, auditEntries.actorUserId))
     .where(opts.projectCode ? eq(projects.code, opts.projectCode) : undefined)
-    .orderBy(desc(auditEntries.occurredAt))
-    .limit(opts.limit ?? 500);
+    // The id breaks the ties of one instant, so the pages never repeat or skip an entry.
+    .orderBy(desc(auditEntries.occurredAt), desc(auditEntries.id))
+    .limit(opts.limit ?? 500)
+    .offset(opts.offset ?? 0);
   return rows.map(({ a, code, email }) => ({
     occurredAt: a.occurredAt.toISOString(), when: stampText(a.occurredAt), who: a.actorName, object: a.objectRef, change: a.change, area: a.area, projectCode: code,
     userEmail: email, reason: a.reason, before: a.before, after: a.after, messageKey: a.messageKey, messageParams: a.messageParams,

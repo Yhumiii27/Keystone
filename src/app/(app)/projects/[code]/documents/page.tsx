@@ -15,7 +15,8 @@ import { depositHref } from '@/features/docs/links';
 import { depositView, drawerView, keepQuery, vaultView, type DocsState } from '@/features/docs/model';
 import { DocsVault } from '@/features/docs/vault';
 import { DEPOSIT_TYPES } from '@/server/db/codes';
-import { getCodexSyncState, getDocumentRecord, listDocumentTypes, listVaultDocuments } from '@/server/dal/documents';
+import { getCodexSyncState, getDocumentRecord, listDocumentTypes, listProjectDocuments, listVaultDocuments } from '@/server/dal/documents';
+import { pageOf } from '@/domain/pagination';
 import { codexHomeUrl } from '@/server/integrations/codex/links';
 import { canDepositInCodex, canSyncCodex } from '@/domain/rights';
 import { clientProjectCodes, getProjectContext } from '@/server/project-context';
@@ -37,12 +38,15 @@ export default async function DocumentsPage({ params, searchParams }: { params: 
     status: parseStatus(first(sp.status)),
     q: (first(sp.q) ?? '').slice(0, 120),
     doc: first(sp.doc) || null,
+    page: pageOf(sp.page),
   };
   const deposit = canEdit ? first(sp.deposit) || null : null;
 
   const [{ t, lang }, allDocs, sync, found, types, ownCodes] = await Promise.all([
     getI18n(),
-    listVaultDocuments(),
+    // R-017: "Current project" reads the project's records and the QMS ones only; "All projects" — and the deposit dialog, whose
+    // number preview skips every number in use — the whole vault (cached while the database is unchanged).
+    state.scope === 'all' || deposit ? listVaultDocuments() : listProjectDocuments(project),
     getCodexSyncState(),
     state.doc ? getDocumentRecord(state.doc) : Promise.resolve(null),
     deposit ? listDocumentTypes() : Promise.resolve(null),

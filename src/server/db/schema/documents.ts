@@ -8,7 +8,7 @@
 // document date, two fixed download entries per released document). The seed materialises that history as rows so
 // the screens read data, never formulas; a real Codex sync replaces them (OPEN QUESTION D-1, 10 OQ13).
 import { sql } from 'drizzle-orm';
-import { boolean, check, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { boolean, check, date, index, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { PackFamily } from '@/domain/engineering-pack';
 import type {
   ApproverRole, CodexDecision, CodexOutboxKind, CodexSyncStatus, Confidentiality, DepositStatus, DocFamily, DocLinkKind, DocRecipient,
@@ -99,7 +99,7 @@ export const documents = pgTable('documents', {
   /** Vault order: DOCS order; Keystone-created records are prepended with a lower value. */
   sortOrder: integer('sort_order').notNull(),
   ...timestamps,
-});
+}, (t) => [index('documents_project_id_idx').on(t.projectId), index('documents_status_idx').on(t.status)]);
 
 /** Revisions A … current (synthetic history in the seed: one revision every 21 days). */
 export const documentRevisions = pgTable(
@@ -148,7 +148,7 @@ export const documentLinks = pgTable('document_links', {
   /** "D-016", "EL-VFD-200", "PO-2026-118", "P-01", "CR-004". */
   targetRef: text('target_ref').notNull(),
   position: integer('position').notNull(),
-});
+}, (t) => [index('document_links_document_id_idx').on(t.documentId)]);
 
 /** Client acknowledgement of a released client-deliverable revision (`engOv.ack[id|rev]`). Absent row = pending. */
 export const documentAcknowledgements = pgTable(
@@ -259,4 +259,4 @@ export const codexDocumentOutbox = pgTable('codex_document_outbox', {
   codexRef: text('codex_ref'),
   /** Codex reflected the entry (step signed, status moved on) or a new revision superseded it. */
   closedAt: timestamp('closed_at', { withTimezone: true }),
-});
+}, (t) => [index('codex_document_outbox_document_id_idx').on(t.documentId)]);

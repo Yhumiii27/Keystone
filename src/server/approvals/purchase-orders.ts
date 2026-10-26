@@ -6,7 +6,8 @@ import 'server-only';
 import { yearOfIso } from '@/domain/clock';
 import { poApprovalItems } from '@/domain/orders';
 import { fmtDOfIso } from '@/server/db/codes';
-import { poApprovalQueue, poDecidedCount } from '@/server/dal/purchasing';
+import { poApprovalQueue, poDecidedCount, posAwaitingApprovalByProject, purchaseOrderApprovableProjects } from '@/server/dal/purchasing';
+import { projectsWithOrdersAwaitingApproval } from '@/server/dal/approval-candidates';
 import type { ApprovalProvider } from './types';
 
 export const purchaseOrderProvider: ApprovalProvider = {
@@ -20,5 +21,13 @@ export const purchaseOrderProvider: ApprovalProvider = {
   // Prototype term kept by the data layer: the project's orders in status Ordered, for its approvers only.
   async decided({ viewer, project }) {
     return project ? poDecidedCount(project.code, viewer.name) : 0;
+  },
+  // The projects with an order awaiting approval (the approver check stays in `items`).
+  candidates: () => projectsWithOrdersAwaitingApproval(),
+  // The orders awaiting approval of the projects the viewer approves for (`poApprovalQueue`), counted in SQL.
+  async countByProject({ viewer }, codes) {
+    const waiting = await posAwaitingApprovalByProject();
+    const allowed = await purchaseOrderApprovableProjects(viewer.name, codes.filter((c) => waiting[c]));
+    return new Map([...allowed].map((c) => [c, waiting[c]] as const));
   },
 };

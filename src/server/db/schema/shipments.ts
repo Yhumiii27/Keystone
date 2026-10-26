@@ -4,7 +4,7 @@
 // documents (Codex), the site reception and pub_expeditions on these tables.
 // Relative imports only (drizzle-kit loads these files directly; type-only imports are erased).
 import { sql } from 'drizzle-orm';
-import { boolean, check, date, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { boolean, check, date, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { IncotermModes, IncotermSplit } from '@/domain/incoterms';
 import type { LoadType, ShipmentMode, ShipmentStatus } from '@/domain/shipments';
 import { eur, id, num, timestamps } from './_common';
@@ -76,7 +76,7 @@ export const shipments = pgTable('shipments', {
 export const shipmentEquipments = pgTable('shipment_equipments', {
   shipmentId: uuid('shipment_id').notNull().references(() => shipments.id, { onDelete: 'cascade' }),
   equipmentId: uuid('equipment_id').notNull().references(() => projectEquipments.id, { onDelete: 'cascade' }),
-}, (t) => [primaryKey({ columns: [t.shipmentId, t.equipmentId] })]);
+}, (t) => [primaryKey({ columns: [t.shipmentId, t.equipmentId] }), index('shipment_equipments_equipment_id_idx').on(t.equipmentId)]);
 
 /** Tracking of a transport step EPC2i organises (the seller's steps of the contract's Incoterm). */
 export const shipmentSteps = pgTable('shipment_steps', {
@@ -135,6 +135,7 @@ export const shipmentItems = pgTable('shipment_items', {
 }, (t) => [
   check('shipment_items_kind_check', sql`(${t.partId} is not null) or (${t.description} is not null)`),
   check('shipment_items_quantity_check', sql`${t.quantity} > 0`),
+  index('shipment_items_load_id_idx').on(t.loadId),
 ]);
 
 /** The reason given for a packing-control gap (decision 4), valid for the difference it was given for (`delta`). */

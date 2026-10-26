@@ -6,14 +6,16 @@
 // "Labor cost to date" (R-086, R-2 a): the labour categories (cost type Labor) of the projects in execution (A-3) of the zone
 // chosen on the zone screens (ks-zone; all zones when none), named in the sub-line — no longer the current project's figure
 // (06 OQ2). Chapter 4: unmet demand and peak weeks computed (A-12); the suggestions are the portfolio's best what-if levers,
-// "Apply" drafts a request (R-3, S-7).
+// "Apply" drafts a request (R-3, S-7). R-017: that card is streamed (Suspense), computed after the rest of the page is sent.
 import { PageHeader } from '@/components/app/shell/page-header';
 import { NewRequestButton } from '@/features/requests/new-request-button';
 import { resourcesView } from '@/features/resources/model';
 import { ResourcesView } from '@/features/resources/resources-view';
-import { readOnlyIn, suggestionInputs } from '@/features/resources/suggestions';
+import { Suspense } from 'react';
+import { PortfolioSuggestions } from '@/features/resources/portfolio-suggestions';
+import { readOnlyIn } from '@/features/resources/suggestions';
 import { listResourceRequests } from '@/server/dal/requests';
-import { getCapacityDemand, getLoadWindow, getPortfolioLaborCost, getWeekProjectSplit, getRebalancingSuggestions, getResourcePool } from '@/server/dal/resources';
+import { getCapacityDemand, getLoadWindow, getPortfolioLaborCost, getWeekProjectSplit, getResourcePool } from '@/server/dal/resources';
 import { LoadWindowNav } from '@/features/resources/window-nav';
 import { screenHref } from '@/config/screens';
 import { zoneLabel } from '@/server/dal/shell';
@@ -24,7 +26,7 @@ import { myWorkAccess } from '@/server/dal/mywork-data';
 export default async function ResourcesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const [sp, access] = await Promise.all([searchParams, getScreenAccess('resources')]);
   const win = await getLoadWindow(sp.week, sp.view);
-  const [{ t, lang }, scope, pool, weekSplit, departments, pending, zone, suggestions] = await Promise.all([
+  const [{ t, lang }, scope, pool, weekSplit, departments, pending, zone] = await Promise.all([
     getI18n(),
     getProjectScope(),
     getResourcePool(win.weeks),
@@ -32,7 +34,6 @@ export default async function ResourcesPage({ searchParams }: { searchParams: Pr
     getCapacityDemand(win.weeks),
     listResourceRequests({ status: 'pending' }),
     getZone(),
-    getRebalancingSuggestions(),
   ]);
   const [labor, zoneText] = await Promise.all([getPortfolioLaborCost(zone), zoneLabel(zone)]);
   const work = await myWorkAccess(access.viewer);
@@ -51,7 +52,8 @@ export default async function ResourcesPage({ searchParams }: { searchParams: Pr
       labor: labor.projects.length ? { budget: labor.budget, actual: labor.actual } : null,
       zoneLabel: zoneText,
       openRequests: pending.length,
-      suggestions: suggestionInputs(suggestions, { portfolio: true, canEdit: access.canEdit, readOnly: readOnlyIn(scope.pool, scope.readOnly) }),
+      // R-017: the suggestions card is streamed (`suggestionsSlot` below), off the page's critical path.
+      suggestions: null,
     },
     t,
     lang,
@@ -65,6 +67,11 @@ export default async function ResourcesPage({ searchParams }: { searchParams: Pr
         canEdit={access.canEdit}
         windowIsCurrent={win.isCurrent}
         windowNav={<LoadWindowNav window={win} path={screenHref('resources')} t={t} lang={lang} />}
+        suggestionsSlot={
+          <Suspense fallback={null}>
+            <PortfolioSuggestions canEdit={access.canEdit} readOnly={readOnlyIn(scope.pool, scope.readOnly)} t={t} lang={lang} />
+          </Suspense>
+        }
       />
     </>
   );

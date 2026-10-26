@@ -14,7 +14,8 @@ import { plumbingView, visibleImportFormats } from '@/features/admin/model';
 import { PlumbingBody } from '@/features/admin/plumbing-view';
 import { listAdminConnectors } from '@/server/dal/admin-connectors';
 import { getPlumbingCounts, listImportFormats } from '@/server/dal/integrations';
-import { countUnreadNotifications, listActivity, listAudit } from '@/server/dal/notifications';
+import { countAudit, countUnreadNotifications, listActivity, listAudit } from '@/server/dal/notifications';
+import { PAGE_SIZE, pageOf, pageWindow } from '@/domain/pagination';
 import { importKindsOf } from '@/server/interchange/rights';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n } from '@/server/session';
@@ -24,17 +25,22 @@ const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v
 
 export default async function IntegrationsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
+  const display = parsePlumbView(first(sp.view));
+  // R-017: the audit trail by pages of PAGE_SIZE entries, newest first (`?page=`; the CSV export has every entry).
+  const auditWindow = display === 'audit' ? pageWindow(await countAudit(), pageOf(sp.page)) : null;
   const [{ t, lang }, access, activity, connectors, imports, audit, counts] = await Promise.all([
-    getI18n(), getScreenAccess('plumbing'), listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), getPlumbingCounts(),
+    getI18n(), getScreenAccess('plumbing'), listActivity(), listAdminConnectors(), listImportFormats(),
+    listAudit({ limit: auditWindow?.limit ?? PAGE_SIZE, offset: auditWindow?.offset ?? 0 }), getPlumbingCounts(),
   ]);
   // The unread count and its persona title are the viewer's.
   const unread = await countUnreadNotifications(access.viewer);
   const view = plumbingView(
     {
-      view: parsePlumbView(first(sp.view)),
+      view: display,
       source: parseActivitySource(first(sp.source), activity.map((a) => a.kind)),
       activity, connectors, imports: visibleImportFormats(imports), audit, counts, unread, personaTitle: access.viewer.title,
       ratesVisible: canSeeRates(access.viewer.role),
+      ...(auditWindow ? { auditPage: { page: auditWindow.page, pages: auditWindow.pages } } : {}),
     },
     t, lang,
   );

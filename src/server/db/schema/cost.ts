@@ -1,6 +1,6 @@
 // Cost control (docs/spec/11 §3.5, docs/spec/04 §1.8): cost categories, work-package budgets, commercial
 // offer quotes, cost streams and the monthly EVM series (PV / EV / AC) of projectData().
-import { integer, pgTable, primaryKey, text, unique, uuid } from 'drizzle-orm/pg-core';
+import { index, integer, pgTable, primaryKey, text, unique, uuid } from 'drizzle-orm/pg-core';
 import type { CostType } from '../codes';
 import { id, keur, timestamps } from './_common';
 import { wbsNodes } from './planning';
@@ -43,7 +43,7 @@ export const wpBudgets = pgTable('wp_budgets', {
   eacKeur: keur('eac_keur').notNull(),
   position: integer('position').notNull(),
   ...timestamps,
-});
+}, (t) => [index('wp_budgets_project_id_idx').on(t.projectId)]);
 
 /** Commercial-offer supplier quotes (HLT_OFFER 3097 / generated OFFER). Months index chartMonths. */
 export const offerQuotes = pgTable('offer_quotes', {
@@ -64,7 +64,7 @@ export const offerQuotes = pgTable('offer_quotes', {
   deliveryMonth: integer('delivery_month').notNull(),
   acceptanceMonth: integer('acceptance_month'),
   leadWeeks: integer('lead_weeks').notNull(),
-});
+}, (t) => [index('offer_quotes_project_id_idx').on(t.projectId)]);
 
 /** Other cost streams (HLT_STREAMS 3098 / generated STREAMS): name + basis; monthly values when known. */
 export const costStreams = pgTable('cost_streams', {
@@ -73,7 +73,7 @@ export const costStreams = pgTable('cost_streams', {
   position: integer('position').notNull(),
   name: text('name').notNull(),
   basis: text('basis').notNull(),
-});
+}, (t) => [index('cost_streams_project_id_idx').on(t.projectId)]);
 
 export const costStreamPeriods = pgTable(
   'cost_stream_periods',
