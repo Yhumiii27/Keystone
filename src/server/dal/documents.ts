@@ -25,6 +25,7 @@ import { demoFloor, findPerson, nameOf, recordActivity, writeAudit } from '@/ser
 import {
   circuitNoteText, codexCircuitState, isEngineeringDeliverable, type CircuitState, type CodexDecision, type CodexSyncStatus,
 } from '@/domain/codex-approvals';
+import { nextRevisionLetter } from '@/domain/shipping-documents';
 import { closeCodexEntries, insertCodexEntry, openCodexEntries, type CodexOutboxEntry } from '@/server/integrations/codex/outbox';
 import { codexConnectorMode } from '@/server/integrations/codex/config';
 import { readCodexIndex } from '@/server/integrations/codex/connector';
@@ -794,6 +795,66 @@ export async function createMinutesDocument(
     .returning({ id: documents.id });
   await insertFirstRevision(tx, doc.id, 'MIN', on, input.authorPersonId, input.authorName, true);
   return doc.id;
+}
+
+/**
+ * R-158 lot B — the index record of a document Keystone generated and files in Codex (a shipping document): a new record
+ * (`TYPE-PROJ-SEQ`, rev A) or, when `existingId` is given, a new revision of that record (B, C…; the previous one withdrawn on
+ * `on`, its open Codex entries superseded). Released at `on` (the file is issued as generated; its single-step circuit — the
+ * author — signed), Internal, prepended to the vault ("New"), linked to its source. Runs inside the caller's transaction.
+ */
+export async function fileGeneratedDocument(
+  tx: Tx,
+  input: {
+    typeCode: string; projectId: string; projectCode: string; title: string; authorPersonId: string | null; authorName: string; tags: string[];
+    links: { kind: DocLinkKind; ref: string }[]; existingId?: string | null;
+  },
+  on: string,
+): Promise<{ id: string; number: string; revision: string; created: boolean }> {
+  const [prev] = input.existingId ? await tx.select().from(documents).where(eq(documents.id, input.existingId)) : [];
+  if (prev) {
+    const revision = nextRevisionLetter(prev.currentRevision);
+    const [{ maxPos }] = await tx.select({ maxPos: sql<number>`coalesce(max(${documentRevisions.position}), -1)::int` }).from(documentRevisions).where(eq(documentRevisions.documentId, prev.id));
+    await tx.update(documentRevisions).set({ withdrawnOn: on }).where(and(eq(documentRevisions.documentId, prev.id), isNull(documentRevisions.withdrawnOn)));
+    await closeCodexEntries(tx, (await openCodexEntries(tx, [prev.id])).map((e) => e.id));
+    await tx.update(documents).set({
+      currentRevision: revision, status: 'released', issuedOn: on, title: input.title, authorPersonId: input.authorPersonId, authorName: input.authorName,
+      lastWithdrawnRevision: prev.currentRevision, lastWithdrawnOn: on, isNew: true, updatedAt: new Date(),
+    }).where(eq(documents.id, prev.id));
+    await tx.insert(documentRevisions).values({ documentId: prev.id, revision, position: maxPos + 1, issuedOn: on, authorPersonId: input.authorPersonId, authorName: input.authorName, withdrawnOn: null, workingVersions: 1 });
+    await insertApprovals(tx, prev.id, revision, input.typeCode, on, input.authorPersonId, input.authorName, true);
+    return { id: prev.id, number: prev.number, revision, created: false };
+  }
+  const number = await depositNumber(tx, { typeCode: input.typeCode, project: input.projectCode });
+  const [{ minOrder }] = await tx.select({ minOrder: sql<number>`coalesce(min(${documents.sortOrder}), 1)::int` }).from(documents);
+  const [doc] = await tx
+    .insert(documents)
+    .values({
+      number, typeCode: input.typeCode, title: input.title, projectId: input.projectId, service: 'pm', currentRevision: 'A', status: 'released', issuedOn: on,
+      authorPersonId: input.authorPersonId, authorName: input.authorName, confidentiality: 'internal', tags: input.tags, recipients: [], isNew: true, sortOrder: minOrder - 1,
+    })
+    .returning({ id: documents.id });
+  await insertFirstRevision(tx, doc.id, input.typeCode, on, input.authorPersonId, input.authorName, true);
+  if (input.links.length) await tx.insert(documentLinks).values(input.links.map((l, position) => ({ documentId: doc.id, kind: l.kind, targetRef: l.ref, position })));
+  return { id: doc.id, number, revision: 'A', created: true };
+}
+
+/** The approval proof of `revision` (the type's circuit; step 0 the author, every step signed when released). */
+async function insertApprovals(tx: Tx, documentId: string, revision: string, typeCode: string, on: string, authorId: string | null, authorName: string, released: boolean) {
+  const steps = await tx.select().from(documentTypeCircuitSteps).where(eq(documentTypeCircuitSteps.typeCode, typeCode)).orderBy(asc(documentTypeCircuitSteps.position));
+  if (!steps.length) return;
+  const who = await tx
+    .select({ role: documentApproverAssignments.role, personId: persons.id, short: persons.shortName })
+    .from(documentApproverAssignments)
+    .innerJoin(persons, eq(persons.id, documentApproverAssignments.personId))
+    .where(isNull(documentApproverAssignments.projectId));
+  await tx.insert(documentApprovals).values(steps.map((s) => {
+    const w = who.find((x) => x.role === s.role);
+    return {
+      documentId, revision, stepPosition: s.position, role: s.role, approverPersonId: s.position === 0 ? authorId : (w?.personId ?? null),
+      approverName: s.position === 0 ? authorName : (w?.short ?? null), signedOn: s.position === 0 || released ? on : null,
+    };
+  }));
 }
 
 // ── Lifecycle writers ──────────────────────────────────────────────────────────────────────────────────

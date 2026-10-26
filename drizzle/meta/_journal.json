@@ -442,6 +442,20 @@
       "when": 1792969802746,
       "tag": "0062_load_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1792976110933,
+      "tag": "0063_shipments_reception",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1792976113260,
+      "tag": "0064_shipments_share",
+      "breakpoints": true
     }
   ]
 }

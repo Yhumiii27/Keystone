@@ -1,5 +1,6 @@
 // Columns of Keystone's pub_ views published or extended in delivery 9 (migrations 0038_share_followup, 0040_share_installed_base,
-// 0046_catalogue_share, 0050_capex_needs_share, 0052_internal_client_share, 0054_matrix_rex_clients_share, 0057_capex_milestone_share, 0060_engineering_pack_share;
+// 0046_catalogue_share, 0050_capex_needs_share, 0052_internal_client_share, 0054_matrix_rex_clients_share, 0057_capex_milestone_share, 0060_engineering_pack_share,
+// 0064_shipments_share;
 // docs/delivery-9/notes-share-views.md), in order: the contracts the readers (Crucible, Arche, Matrix) rely on. A column is never removed, renamed or moved; new ones go
 // at the end. Checked by src/server/db/share-views.test.ts (PGlite) and scripts/db-check.ts (also on PostgreSQL, --postgres).
 export const SHARE_VIEW_COLUMNS: Record<string, string[]> = {
@@ -43,7 +44,22 @@ export const SHARE_VIEW_COLUMNS: Record<string, string[]> = {
   pub_clients: ['id', 'name', 'code3', 'filiale_code'],
   // Arche K-08 (R-191, 0060_engineering_pack_share): EPC2i's share of the engineering pack, one row per project and family.
   pub_pack_ingenierie: ['projet_code', 'famille', 'attendues', 'validees', 'poids', 'pct_pondere', 'maj_le'],
+  // R-158 lot B (0064_shipments_share): the shipments, for the subsidiary in Arche (decision 6) — no value, price or forwarder.
+  pub_expeditions: [
+    'projet_code', 'expedition_ref', 'equipements', 'statut', 'mode', 'incoterm', 'incoterm_lieu', 'origine', 'destination', 'etd', 'eta', 'depart_reel_le',
+    'arrivee_reelle_le', 'receptionnee_le', 'nb_chargements', 'nb_reserves_ouvertes', 'maj_le',
+  ],
 };
+
+/** R-158 lot B: column types of pub_expeditions (information_schema data_type), in contract order. */
+export const EXPEDITIONS_VIEW_TYPES: Record<string, string> = {
+  projet_code: 'text', expedition_ref: 'text', equipements: 'text', statut: 'text', mode: 'text', incoterm: 'text', incoterm_lieu: 'text', origine: 'text',
+  destination: 'text', etd: 'date', eta: 'date', depart_reel_le: 'date', arrivee_reelle_le: 'date', receptionnee_le: 'date', nb_chargements: 'integer',
+  nb_reserves_ouvertes: 'integer', maj_le: 'timestamp with time zone',
+};
+
+/** R-158 lot B: what pub_expeditions never carries — a value, a price or the forwarder (an external party's contact data). */
+export const EXPEDITIONS_FORBIDDEN_COLUMN = /(valeur|value|prix|price|eur|montant|amount|transitaire|forwarder|contact)/i;
 
 /** K-08 column types of pub_pack_ingenierie (information_schema data_type), in contract order. */
 export const PACK_VIEW_TYPES: Record<string, string> = {
@@ -75,9 +91,9 @@ export const REPONSES_VIEW_TYPES: Record<string, string> = {
 
 /**
  * Number of Keystone's pub_ views (0035_share: 12, 0038_share_followup: 5, 0046_catalogue_share: 1, 0050_capex_needs_share: 1,
- * 0054_matrix_rex_clients_share: 1, 0060_engineering_pack_share: 1).
+ * 0054_matrix_rex_clients_share: 1, 0060_engineering_pack_share: 1, 0064_shipments_share: 1).
  */
-export const SHARE_VIEW_COUNT = 21;
+export const SHARE_VIEW_COUNT = 22;
 
 /**
  * Arche K-11 (R-193): indexes on the source column of `maj_le` for the views whose `maj_le` is one column of a growing table, so
@@ -92,6 +108,8 @@ export const SHARE_MAJ_LE_INDEXES: Record<string, { table: string; index: string
   pub_reponses_besoins: { table: 'need_answers', index: 'need_answers_updated_at_idx' },
   // Matrix D22 (0053_matrix_subsidiaries): the unified REX's incremental read.
   pub_rex: { table: 'lessons_learned', index: 'lessons_learned_updated_at_idx' },
+  // R-158 lot B (0063_shipments_reception): Arche's incremental read of the shipments.
+  pub_expeditions: { table: 'shipments', index: 'shipments_updated_at_idx' },
 };
 
 

@@ -4,7 +4,8 @@
 // the director, Logistics, the project's leads; the client is sent home), validates the untrusted input with the domain parsers
 // (src/domain/shipment-input.ts), writes through the Shipments DAL with the viewer as the actor (the DAL re-checks the right and
 // the shipment's status, records the audit row and the activity event), then revalidates the app (the Shipments screen, the
-// lifecycle deliverable of the register).
+// lifecycle deliverable of the register). Lot B: the site reception (the shipment editors and the site team, `canRecordReception`),
+// the manual closure, the filing of the shipping documents in Codex and the freight-delay risk (a lead who edits the risks).
 import { revalidatePath } from 'next/cache';
 import {
   isGapKey, isUuid, parseGapReason, parseItemForm, parseLoadForm, parseShipmentForm, parseStepForm,
@@ -18,6 +19,20 @@ import type { Actor } from '@/server/dal/ops-common';
 import { getProject } from '@/server/dal/projects';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { canRecordReception } from '@/domain/rights';
+import { FORM_CATEGORIES, parseNewRisk } from '@/domain/risk';
+import { orderedOptions } from '@/domain/settings-rules';
+import {
+  CLOSE_REASON_MAX, FREIGHT_RISK_LEADS_ONLY, FREIGHT_RISK_NOT_LATE, freightDelayDays, freightRiskTrigger, parseItemReception, parseLoadReception,
+} from '@/domain/shipment-reception';
+import { isShippingDocKind } from '@/domain/shipping-documents';
+import { displayOfIso } from '@/server/db/codes';
+import { riskOwnerOptions } from '@/server/dal/risks-screen';
+import { riskCategoryOptions } from '@/server/dal/settings-lists';
+import { RECEPTION_ERRORS, closeShipment, completeReception, pointItem, pointLoad, raiseFreightRisk } from '@/server/dal/shipment-reception';
+import { FILING_ERRORS, fileShippingDocument } from '@/server/dal/shipment-documents';
+import { getProjectShipments } from '@/server/dal/shipments';
+import { RISK_RESULT } from '@/features/risks/forms';
 
 export type ShipmentActionResult = { ok: true; toast?: string; ref?: string } | { error: string };
 
@@ -171,4 +186,117 @@ export async function setShipmentStepAction(code: unknown, ref: unknown, step: u
   const r = await parsed(code, parseStepForm(step, strings(values)));
   if ('error' in r) return r;
   return run(r.code, isRef(ref), (c, a) => setShipmentStep(c, ref as string, r.value, a), 'Step saved');
+}
+
+// ── Lot B: site reception, documents filed in Codex, freight-delay risk ────────────────────────────────────────────
+
+/** The project and the viewer as actor, after checking the viewer may point the reception (`canRecordReception`). */
+async function receiver(code: unknown): Promise<{ code: string; actor: Actor } | { error: string }> {
+  if (typeof code !== 'string' || !code || code.length > 40) return { error: await tr('Invalid request') };
+  const project = await getProject(code);
+  if (!project) return { error: await tr('Unknown project') };
+  const ctx = await getProjectContext(project.code, 'shipments');
+  if (!canRecordReception(ctx.viewer.role, ctx.access)) return { error: await tr('The reception is read-only for you') };
+  return { code: project.code, actor: { name: ctx.viewer.name, role: ctx.viewer.role } };
+}
+
+async function receptionFailure(e: unknown): Promise<{ error: string }> {
+  const msg = e instanceof Error ? e.message : '';
+  const known = [...RECEPTION_ERRORS, ...SHIPMENT_ERRORS, ...FILING_ERRORS] as readonly string[];
+  return { error: await tr(known.includes(msg) ? msg : 'The change could not be saved') };
+}
+
+async function receptionRun(code: string, write: (code: string, actor: Actor) => Promise<unknown>, toast: string, actor: Actor): Promise<ShipmentActionResult> {
+  try {
+    await write(code, actor);
+  } catch (e) {
+    return receptionFailure(e);
+  }
+  refresh();
+  return { ok: true, toast: await tr(toast) };
+}
+
+/** "Point the load" (received, missing, damaged) once the shipment has arrived. */
+export async function pointLoadAction(code: unknown, ref: unknown, number: unknown, values: unknown): Promise<ShipmentActionResult> {
+  const ok = await receiver(code);
+  if ('error' in ok) return ok;
+  const p = parseLoadReception(strings(values));
+  if (!p.ok) return { error: await tr(p.error) };
+  if (!isRef(ref) || !isLoadNumber(number)) return { error: await tr('Invalid request') };
+  const { t } = await getI18n();
+  return receptionRun(ok.code, (c, a) => pointLoad(c, ref, number, p.value, a, t), 'Reception recorded', ok.actor);
+}
+
+/** "Point the content line": quantities received, missing, damaged (their sum = the quantity shipped). */
+export async function pointItemAction(code: unknown, ref: unknown, id: unknown, values: unknown): Promise<ShipmentActionResult> {
+  const ok = await receiver(code);
+  if ('error' in ok) return ok;
+  if (!isRef(ref) || !isUuid(id)) return { error: await tr('Invalid request') };
+  const data = await getProjectShipments(ok.code);
+  const item = data?.shipments.find((s) => s.ref === ref)?.loads.flatMap((l) => l.items).find((i) => i.id === id);
+  if (!item) return { error: await tr('Unknown item') };
+  const p = parseItemReception(strings(values), item.quantity);
+  if (!p.ok) return { error: await tr(p.error) };
+  const { t } = await getI18n();
+  return receptionRun(ok.code, (c, a) => pointItem(c, ref, id, p.value, a, t), 'Reception recorded', ok.actor);
+}
+
+/** "Complete the reception" → received on site. */
+export async function completeReceptionAction(code: unknown, ref: unknown): Promise<ShipmentActionResult> {
+  const ok = await receiver(code);
+  if ('error' in ok) return ok;
+  if (!isRef(ref)) return { error: await tr('Invalid request') };
+  return receptionRun(ok.code, (c, a) => completeReception(c, ref, a), 'Reception completed', ok.actor);
+}
+
+/** "Close shipment" by hand (a shipment editor), with a reason while punch items are open. */
+export async function closeShipmentAction(code: unknown, ref: unknown, values: unknown): Promise<ShipmentActionResult> {
+  const ok = await editor(code);
+  if ('error' in ok) return ok;
+  if (!isRef(ref)) return { error: await tr('Invalid request') };
+  const reason = (strings(values).reason ?? '').trim();
+  if (reason.length > CLOSE_REASON_MAX) return { error: await tr('Text is too long') };
+  return receptionRun(ok.code, (c, a) => closeShipment(c, ref, reason || null, a), 'Shipment closed', ok.actor);
+}
+
+/** "File in Codex": the shipping document generated and deposited (a shipment editor). */
+export async function fileShippingDocumentAction(code: unknown, ref: unknown, kind: unknown): Promise<ShipmentActionResult> {
+  const ok = await editor(code);
+  if ('error' in ok) return ok;
+  if (!isRef(ref) || !isShippingDocKind(kind)) return { error: await tr('Invalid request') };
+  const i18n = await getI18n();
+  let filed: { number: string; revision: string };
+  try {
+    filed = await fileShippingDocument(ok.code, ref, kind, ok.actor, i18n);
+  } catch (e) {
+    return receptionFailure(e);
+  }
+  refresh();
+  return { ok: true, toast: `${filed.number} · ${i18n.t('rev')} ${filed.revision} · ${i18n.t('Filed in Codex')}` };
+}
+
+/** "Create a risk" from the freight-delay warning (a lead of the project who edits the risk register; never automatic). */
+export async function raiseFreightRiskAction(code: unknown, ref: unknown, values: unknown): Promise<ShipmentActionResult> {
+  if (typeof code !== 'string' || !code || code.length > 40 || !isRef(ref)) return { error: await tr('Invalid request') };
+  const project = await getProject(code);
+  if (!project) return { error: await tr('Unknown project') };
+  const ctx = await getProjectContext(project.code, 'shipments');
+  if (!ctx.isLead || !ctx.canEdit('risks')) return { error: await tr(FREIGHT_RISK_LEADS_ONLY) };
+  const data = await getProjectShipments(project.code);
+  const s = data?.shipments.find((x) => x.ref === ref);
+  if (!data || !s) return { error: await tr('Unknown shipment') };
+  if (!data.need || freightDelayDays(s, data.need) == null) return { error: await tr(FREIGHT_RISK_NOT_LATE) };
+  const [team, cats] = await Promise.all([riskOwnerOptions(project.code), riskCategoryOptions()]);
+  const parsed = parseNewRisk(strings(values), team, orderedOptions(cats.active, FORM_CATEGORIES).map((c) => c.code));
+  if (!parsed.ok) return { error: await tr(parsed.error) };
+  const { t } = await getI18n();
+  const trigger = freightRiskTrigger(ref, t(displayOfIso(s.eta!)), data.need, t(displayOfIso(data.need.date)), t);
+  let number: string;
+  try {
+    number = await raiseFreightRisk(project.code, ref, parsed.value, trigger, { name: ctx.viewer.name, role: ctx.viewer.role });
+  } catch (e) {
+    return receptionFailure(e);
+  }
+  refresh();
+  return { ok: true, toast: `${number} · ${await tr(RISK_RESULT)}` };
 }

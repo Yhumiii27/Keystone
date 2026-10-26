@@ -37,7 +37,7 @@ import { pendingMigrations } from './migrations';
 import { openDatabase } from './open';
 import { SeedChoiceRequiredError, migrateAndSeedPostgres, openPostgres, type PostgresHandle } from './postgres';
 import { readSeedRecord } from './seed/mode';
-import { PACK_VIEW_TYPES, REX_VIEW_TYPES, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COUNT } from './share-contracts';
+import { EXPEDITIONS_VIEW_TYPES, PACK_VIEW_TYPES, REX_VIEW_TYPES, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COUNT } from './share-contracts';
 import { refreshCapexMirror } from '@/server/integrations/capex/connector';
 import { SIMULATED_PUB_FILIALES } from '@/server/integrations/matrix/simulation';
 import { refreshSubsidiaryMirror } from '@/server/integrations/matrix/subsidiaries';
@@ -121,6 +121,10 @@ describe.skipIf(!ADMIN_URL)('PostgreSQL server (KEYSTONE_TEST_DATABASE_URL)', ()
     const ref = await pg.pool.query<{ lists: number; types: number; mapped: number }>(`select (select count(*)::int from machine_type_pack_families) as lists,
       (select count(*)::int from machine_types) as types, (select count(*)::int from document_types where pack_family is not null) as mapped`);
     expect(ref.rows[0]).toEqual({ lists: 5 * ref.rows[0].types, types: ref.rows[0].types, mapped: 5 });
+    // R-158 lot B (0063-0064): pub_expeditions in `keystone` with its types.
+    const exp = await pg.pool.query<{ c: string; t: string }>(`select column_name as c, data_type as t from information_schema.columns
+      where table_schema = 'keystone' and table_name = 'pub_expeditions' order by ordinal_position`);
+    expect(Object.fromEntries(exp.rows.map((r) => [r.c, r.t]))).toEqual(EXPEDITIONS_VIEW_TYPES);
   });
 
   it('R-187 (Arche K-02): the capex connector reads arche.pub_capex and arche.pub_besoins_machines on the shared server', async () => {

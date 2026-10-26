@@ -60,7 +60,8 @@ describe('Incoterms 2020 (decision 9)', () => {
 
 describe('shipment statuses and steps', () => {
   it('advances one status at a time from prepared; draft goes through the packing-list validation', () => {
-    expect(SHIPMENT_STATUSES.map(nextShipmentStatus)).toEqual([null, 'picked_up', 'in_transit', 'arrived', 'received', 'closed', null]);
+    // R-158 lot B: arrived → received through the site reception, received → closed with the last punch item (or by hand).
+    expect(SHIPMENT_STATUSES.map(nextShipmentStatus)).toEqual([null, 'picked_up', 'in_transit', 'arrived', null, null, null]);
     expect(SHIPMENT_STATUSES.filter(contentEditable)).toEqual(['draft', 'prepared']);
     expect([nextShipmentRef([]), nextShipmentRef(['EXP-01', 'EXP-07', 'X']), nextShipmentRef(['EXP-99'])]).toEqual(['EXP-01', 'EXP-08', 'EXP-100']);
   });

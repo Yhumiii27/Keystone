@@ -9,7 +9,8 @@ import { INCOTERM_STEPS, type IncotermSplit, type IncotermStep } from './incoter
 
 /**
  * draft → prepared (packing list validated) → picked up → in transit → arrived → received (site reception, lot B) → closed.
- * Lot A moves "prepared" only through the packing-list validation and its reopening; the later statuses one step at a time.
+ * Lot A moves "prepared" only through the packing-list validation and its reopening; the later statuses one step at a time up to
+ * "arrived". Lot B: "received" through the site reception (src/domain/shipment-reception.ts), "closed" with the last punch item.
  */
 export const SHIPMENT_STATUSES = ['draft', 'prepared', 'picked_up', 'in_transit', 'arrived', 'received', 'closed'] as const;
 export type ShipmentStatus = (typeof SHIPMENT_STATUSES)[number];
@@ -25,9 +26,13 @@ export const SHIPMENT_STATUS_TONE: Record<ShipmentStatus, 'accent' | 'outline' |
 /** The loads and their content are edited while the shipment is not picked up (a change on a prepared one reopens it). */
 export const contentEditable = (s: ShipmentStatus) => s === 'draft' || s === 'prepared';
 
-/** "Advance" target of a status: prepared → picked up → … → closed; none for draft (validate the packing list) and closed. */
+/**
+ * "Advance" target of a status: prepared → picked up → in transit → arrived; none for draft (validate the packing list), arrived
+ * (lot B: the site reception makes it "received"), received (closed with its last punch item, or by hand with "Close shipment")
+ * and closed.
+ */
 export function nextShipmentStatus(s: ShipmentStatus): ShipmentStatus | null {
-  if (s === 'draft' || s === 'closed') return null;
+  if (s === 'draft' || s === 'arrived' || s === 'received' || s === 'closed') return null;
   return SHIPMENT_STATUSES[SHIPMENT_STATUSES.indexOf(s) + 1] ?? null;
 }
 /** EN source label of the "Advance" button. */

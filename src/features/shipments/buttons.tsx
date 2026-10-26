@@ -3,7 +3,7 @@
 // direct actions (validate, reopen, advance, remove — the removals after a confirmation). Shown to the shipment editors only;
 // the Server Functions re-check everything and answer a toast or an error.
 import {
-  ArrowRight, ArrowCounterClockwise, CheckCircle, NotePencil, PencilSimple, Plus, SealCheck, Trash,
+  ArrowRight, ArrowCounterClockwise, Archive, CheckCircle, ClipboardText, CloudArrowUp, Lock, NotePencil, PencilSimple, Plus, SealCheck, ShieldWarning, Trash,
 } from '@phosphor-icons/react/dist/ssr';
 import type { Icon } from '@phosphor-icons/react';
 import { useState, useTransition } from 'react';
@@ -14,8 +14,9 @@ import { Dialog } from '@/components/ds/Dialog';
 import { DialogActions } from '@/components/ds/DialogParts';
 import { showToast } from '@/components/ds/Toast';
 import {
-  addItemAction, addLoadAction, advanceShipmentAction, createShipmentAction, justifyGapAction, removeItemAction, removeLoadAction, removeShipmentAction,
-  reopenPackingAction, setShipmentStepAction, updateItemAction, updateLoadAction, updateShipmentAction, validatePackingAction, type ShipmentActionResult,
+  addItemAction, addLoadAction, advanceShipmentAction, closeShipmentAction, completeReceptionAction, createShipmentAction, fileShippingDocumentAction, justifyGapAction,
+  pointItemAction, pointLoadAction, raiseFreightRiskAction, removeItemAction, removeLoadAction, removeShipmentAction, reopenPackingAction, setShipmentStepAction,
+  updateItemAction, updateLoadAction, updateShipmentAction, validatePackingAction, type ShipmentActionResult,
 } from './actions';
 
 /** What a dialog / action applies to (serialisable). */
@@ -37,17 +38,25 @@ const FORMS = {
   editItem: (code: string, x: ShipmentTarget, v: FormValues) => updateItemAction(code, x.ref, x.id, v),
   justify: (code: string, x: ShipmentTarget, v: FormValues) => justifyGapAction(code, x.ref, x.key, v),
   step: (code: string, x: ShipmentTarget, v: FormValues) => setShipmentStepAction(code, x.ref, x.step, v),
+  // Lot B: reception pointing, manual closure, freight-delay risk (the "New risk" form, translated by the dialog).
+  pointLoad: (code: string, x: ShipmentTarget, v: FormValues) => pointLoadAction(code, x.ref, x.number, v),
+  pointItem: (code: string, x: ShipmentTarget, v: FormValues) => pointItemAction(code, x.ref, x.id, v),
+  close: (code: string, x: ShipmentTarget, v: FormValues) => closeShipmentAction(code, x.ref, v),
+  risk: (code: string, x: ShipmentTarget, v: FormValues) => raiseFreightRiskAction(code, x.ref, v),
 } as const;
 
 const FORM_ICONS: Record<keyof typeof FORMS, Icon> = {
   create: Plus, edit: PencilSimple, addLoad: Plus, editLoad: PencilSimple, addItem: Plus, editItem: PencilSimple, justify: NotePencil, step: PencilSimple,
+  pointLoad: ClipboardText, pointItem: ClipboardText, close: Lock, risk: ShieldWarning,
 };
 
 const asDialog = (r: ShipmentActionResult) => ('error' in r ? { error: r.error } : { toast: r.toast });
 
-export function ShipmentFormButton({ kind, code, target = {}, context, form, label, values, variant = 'ghost', size = 'mini', ariaLabel }: {
+export function ShipmentFormButton({ kind, code, target = {}, context, form, label, values, variant = 'ghost', size = 'mini', ariaLabel, translate = false }: {
   kind: keyof typeof FORMS; code: string; target?: ShipmentTarget; context: string; form: FormDef; label: string; values?: FormValues;
   variant?: ButtonVariant; size?: ButtonSize; ariaLabel?: string;
+  /** The definition is in English (the "New risk" form): the dialog translates it. */
+  translate?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -56,7 +65,7 @@ export function ShipmentFormButton({ kind, code, target = {}, context, form, lab
         {label}
       </Button>
       <FormDialog
-        {...form} open={open} onClose={() => setOpen(false)} context={context} initialValues={values}
+        {...form} translate={translate} open={open} onClose={() => setOpen(false)} context={context} initialValues={values}
         onSubmit={async (v) => asDialog(await FORMS[kind](code, target, v))}
       />
     </>
@@ -70,10 +79,13 @@ const RUNS = {
   remove: (code: string, x: ShipmentTarget) => removeShipmentAction(code, x.ref),
   removeLoad: (code: string, x: ShipmentTarget) => removeLoadAction(code, x.ref, x.number),
   removeItem: (code: string, x: ShipmentTarget) => removeItemAction(code, x.ref, x.id),
+  // Lot B: complete the reception; file a shipping document in Codex (`key` = the document kind).
+  complete: (code: string, x: ShipmentTarget) => completeReceptionAction(code, x.ref),
+  file: (code: string, x: ShipmentTarget) => fileShippingDocumentAction(code, x.ref, x.key),
 } as const;
 
 const RUN_ICONS: Record<keyof typeof RUNS, Icon> = {
-  validate: SealCheck, reopen: ArrowCounterClockwise, advance: ArrowRight, remove: Trash, removeLoad: Trash, removeItem: Trash,
+  validate: SealCheck, reopen: ArrowCounterClockwise, advance: ArrowRight, remove: Trash, removeLoad: Trash, removeItem: Trash, complete: Archive, file: CloudArrowUp,
 };
 
 /** A direct action; with `confirm`, after a confirmation dialog. `disabledReason` disables it (shown as its title). */

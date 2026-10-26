@@ -42,5 +42,12 @@ en retard, écarts de colisage à solder.
 5. **Organiser le transport** d’après l’Incoterm du contrat : les étapes à la charge d’EPC2i (emballage, chargement,
    dédouanement export, transport principal, assurance, livraison site… selon l’Incoterm) se planifient et se datent
    (« Modifier » sur l’étape) ; celles de l’acheteur sont affichées sans suivi.
-6. **Suivre** : « Marquer enlevée » (départ réel), « Marquer en transit », « Marquer arrivée » (arrivée réelle). La réception
-   sur site et les documents d’expédition (packing list, CMR…) arrivent avec le lot B.
+6. **Suivre** : « Marquer enlevée » (départ réel), « Marquer en transit », « Marquer arrivée » (arrivée réelle). Une alerte
+   « Retard de fret » s’affiche si l’ETA dépasse la date de besoin sur site (le chef de projet peut ouvrir un risque).
+7. **Documents d’expédition** : liste de colisage, liste par conteneur, bon de livraison, marquage des colis, lettre de voiture
+   CMR, instructions au transitaire, demande de certificat d’origine / EUR.1, données de la déclaration d’export (jamais de
+   facture) — « PDF » pour les télécharger, « Verser dans Codex » pour les classer (un nouvel indice à chaque versement).
+8. **Réception sur site** (expédition arrivée ; avec l’équipe chantier) : « Pointer le chargement » puis chaque ligne (reçu,
+   manquant, endommagé). Chaque écart ouvre une réserve sur la liste des réserves (endommagé : A, manquant : B par défaut). « Solder
+   la réception » quand tout est pointé ; l’expédition se clôture d’elle-même à la levée de sa dernière réserve, ou par
+   « Clôturer l’expédition » (motif obligatoire si des réserves restent ouvertes).

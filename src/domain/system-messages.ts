@@ -200,6 +200,22 @@ const MESSAGES = {
     (p) => `${p.project} · shipment ${p.ref} · step updated · ${p.step}`,
     (p, f) => `${p.project} · expédition ${p.ref} · étape mise à jour · ${f.label(p.step)}`,
   ),
+  // R-158 lot B: the site reception, the documents filed in Codex and the freight-delay risk.
+  'shipment.reception': def(
+    { project: 'ref', ref: 'ref', what: 'label', item: 'data' },
+    (p) => `${p.project} · shipment ${p.ref} · reception · ${p.what}${p.item ? ` · ${p.item}` : ''}`,
+    (p, f) => `${p.project} · expédition ${p.ref} · réception · ${f.label(p.what)}${p.item ? ` · ${f.data(p.item)}` : ''}`,
+  ),
+  'shipment.documentFiled': def(
+    { project: 'ref', ref: 'ref', document: 'label', number: 'ref', revision: 'ref' },
+    (p) => `${p.project} · shipment ${p.ref} · ${p.document} filed in Codex · ${p.number} rev ${p.revision}`,
+    (p, f) => `${p.project} · expédition ${p.ref} · ${f.label(p.document)} versé dans Codex · ${p.number} ind. ${p.revision}`,
+  ),
+  'shipment.riskRaised': def(
+    { project: 'ref', ref: 'ref', risk: 'ref' },
+    (p) => `${p.project} · shipment ${p.ref} · freight delay · risk ${p.risk} raised`,
+    (p) => `${p.project} · expédition ${p.ref} · retard de fret · risque ${p.risk} ouvert`,
+  ),
 } as const;
 
 export type MessageKey = keyof typeof MESSAGES;
