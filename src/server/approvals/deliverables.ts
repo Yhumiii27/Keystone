@@ -24,4 +24,6 @@ export const deliverableProvider: ApprovalProvider = {
   async decided(ctx) {
     return ctx.viewer.role === 'client' ? deliverableDecidedCount(actorOf(ctx)) : 0;
   },
+  // Only the client contact's projects.
+  candidates: async (ctx) => new Set(ctx.viewer.clientProjects),
 };

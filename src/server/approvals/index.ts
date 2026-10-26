@@ -109,13 +109,48 @@ export async function approvalCountsByProject(viewer: Persona, codes: string[]):
   const globals = providers.filter((p) => p.scope === 'global');
   const perProject = providers.filter((p) => p.scope === 'project');
   const global = (await Promise.all(globals.map((p) => safeCount(p, base)))).reduce((a, n) => a + n, 0);
+  // R-017: a kind that counts in SQL (`countByProject`) counts every project at once; the others are asked for their candidate
+  // projects only (one query per kind), not for every project.
+  const batched = perProject.filter((p) => p.countByProject);
+  const itemised = perProject.filter((p) => !p.countByProject);
+  const [counts, candidates] = await Promise.all([
+    Promise.all(batched.map((p) => safeCountByProject(p, base, codes))),
+    Promise.all(itemised.map((p) => safeCandidates(p, base))),
+  ]);
   const out: Record<string, number> = {};
   await Promise.all(
     codes.map(async (code) => {
+      const fromSql = counts.reduce((a, m) => a + (m.get(code) ?? 0), 0);
+      const asked = itemised.filter((_, i) => candidates[i]?.has(code) ?? true);
+      if (!asked.length) {
+        out[code] = global + fromSql;
+        return;
+      }
       const found = await getProject(code);
       const ctx = { ...base, project: found && clientRefusedProject(viewer, found) ? null : found };
-      out[code] = global + (await Promise.all(perProject.map((p) => safeCount(p, ctx)))).reduce((a, n) => a + n, 0);
+      out[code] = global + fromSql + (await Promise.all(asked.map((p) => safeCount(p, ctx)))).reduce((a, n) => a + n, 0);
     }),
   );
   return out;
+}
+
+/** Counts of a provider's `countByProject` (R-017); a failing provider counts 0 (the sidebar must never break). */
+async function safeCountByProject(p: ApprovalProvider, ctx: ApprovalContext, codes: readonly string[]): Promise<ReadonlyMap<string, number>> {
+  try {
+    return await p.countByProject!(ctx, codes);
+  } catch (e) {
+    logError('Approvals provider', e, { provider: p.kind });
+    return new Map();
+  }
+}
+
+/** Candidate projects of a project-bound provider (R-017); null = every project (no `candidates`, or it failed). */
+export async function safeCandidates(p: ApprovalProvider, ctx: ApprovalContext): Promise<ReadonlySet<string> | null> {
+  if (!p.candidates) return null;
+  try {
+    return await p.candidates(ctx);
+  } catch (e) {
+    logError('Approvals provider candidates', e, { provider: p.kind });
+    return null;
+  }
 }

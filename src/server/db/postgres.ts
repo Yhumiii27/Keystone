@@ -14,6 +14,7 @@ import { MIGRATION_LOCK_NAME, SERVER_CONNECTION_OPTIONS, WRITE_LOCK_NAME, markSe
 import { seedIfEmpty } from './seed';
 import { readSeedRecord } from './seed/mode';
 import { withWriteLockedTransactions } from './transactions';
+import { writeLogger } from './write-generation';
 import type { DB } from './types';
 import type { SeedMode } from '@/server/config/parse';
 
@@ -43,7 +44,8 @@ export async function openPostgres(opts: PostgresOptions): Promise<PostgresHandl
   });
   // An idle connection dropped by the server must not crash the process: the pool replaces it.
   pool.on('error', (err) => log.error('PostgreSQL pool connection error', { component: 'db', err }));
-  const raw = drizzle({ client: pool, schema });
+  // R-017: the logger bumps the write generation on every write statement (src/server/cache/read-cache.ts).
+  const raw = drizzle({ client: pool, schema, logger: writeLogger });
   return { db: markServerDatabase(withWriteLockedTransactions<DB>(raw, WRITE_LOCK_NAME)), pool, close: () => pool.end() };
 }
 

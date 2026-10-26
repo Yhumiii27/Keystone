@@ -41,6 +41,16 @@ const as = (role: string, lang = 'en', project?: string) => {
 const Provider = I18nProvider as ComponentType<{ lang: 'en' | 'fr'; children?: ReactNode }>;
 const html = (body: ReactElement, lang: 'en' | 'fr' = 'en') => renderToStaticMarkup(createElement(Provider, { lang }, body));
 const resources = async (sp: Record<string, string> = {}) => parts(await ResourcesPage({ searchParams: Promise.resolve(sp) }));
+/**
+ * R-017: Resources streams its "Suggested rebalancing" card (`suggestionsSlot`: an async Server Component in a Suspense boundary);
+ * the page as sent once the card has streamed = the body without the slot, then the card resolved as React resolves it.
+ */
+const streamed = async (body: ReactElement<Props>) => {
+  const slot = (body.props as { suggestionsSlot?: ReactElement<{ children: ReactElement }> }).suggestionsSlot!;
+  const card = slot.props.children as ReactElement<Record<string, unknown>>;
+  const resolved = await (card.type as (p: Record<string, unknown>) => Promise<ReactElement | null>)(card.props);
+  return createElement(body.type as ComponentType<Record<string, unknown>>, { ...(body.props as Record<string, unknown>), suggestionsSlot: resolved });
+};
 const presources = async (code: string, sp: Record<string, string> = {}) => parts(await ProjectResourcesPage({ params: Promise.resolve({ code }), searchParams: Promise.resolve(sp) }));
 // R-085 (R-7 a): the screens show 8 weeks from the Monday of the business date's week (21 Sep 2026 on the demo date). The
 // prototype's window — the seeded allocation weeks, 28 Sep – 16 Nov 2026 — is `?week=2026-09-28`: the tests that compare
@@ -107,11 +117,11 @@ describe('Resources page', () => {
     const { header, body } = await resources();
     expect(body.props.canEdit).toBe(false);
     expect(header.props.primary).toBeUndefined();
-    expect(html(body)).not.toContain('>Apply<');
+    expect(html(await streamed(body))).not.toContain('>Apply<');
   });
 
   it('renders the heatmap, legend, capacity bars and suggestions (EN)', async () => {
-    const out = html((await resources(PROTO)).body);
+    const out = html(await streamed((await resources(PROTO)).body));
     for (const s of [
       // R-085: the prototype's window is not the current one — "8 weeks" and the window navigation.
       'Allocation — 8 weeks', 'Sep 28 – Nov 16, 2026', 'href="/resources?week=2026-10-05"',
@@ -132,7 +142,7 @@ describe('Resources page', () => {
 
   it('renders in French', async () => {
     as('director', 'fr');
-    const out = html((await resources()).body, 'fr');
+    const out = html(await streamed((await resources()).body), 'fr');
     // R-086: the portfolio's labour cost (all zones), named in French.
     for (const s of ['Affectation — 8 prochaines semaines', 'Taux d’occupation', '28 sept.', 'Moy.', 'Capacité vs demande', 'Ingénierie', 'Rééquilibrage suggéré', 'Appliquer', '2,51 M€', '70 % du budget main-d’œuvre · Toutes zones'])
       expect(out).toContain(s);

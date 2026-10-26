@@ -63,6 +63,36 @@ export async function loadWorkCalendars(projectCode?: string | null, q?: Q): Pro
   return Object.fromEntries(rows.map((r) => [r.code, new WorkCalendar(r, { settingsHolidays: holidays, exceptions: r.exceptions })]));
 }
 
+/**
+ * `loadWorkCalendars` of several projects in three reads (R-017: the planning load used to read the calendars once per project
+ * of the portfolio). Project code → WorkCalendars by code (company calendars + that project's imported ones); the company
+ * calendars are the same objects for every project (WorkCalendar is immutable once built).
+ */
+export async function loadWorkCalendarsOf(projectCodes: readonly string[], q?: Q): Promise<Map<string, Record<string, WorkCalendar>>> {
+  const db = q ?? (await getDb());
+  const codes = [...new Set(projectCodes)];
+  const [rows, ex, holidays] = await Promise.all([
+    db.select({ c: calendars, projectCode: projects.code }).from(calendars).leftJoin(projects, eq(projects.id, calendars.projectId))
+      .orderBy(asc(calendars.position), asc(calendars.code)),
+    db.select().from(calendarExceptions).orderBy(asc(calendarExceptions.date)),
+    settingsHolidayDates(db),
+  ]);
+  const build = (c: typeof calendars.$inferSelect) => new WorkCalendar(
+    { code: c.code, name: c.name, workDays: c.workDays, hoursPerDay: c.hoursPerDay, holidaySet: c.holidaySet, useSettingsHolidays: c.useSettingsHolidays },
+    { settingsHolidays: holidays, exceptions: ex.filter((e) => e.calendarCode === c.code).map((e) => ({ date: e.date, working: e.working, name: e.name })) },
+  );
+  const company = rows.filter((r) => !r.c.projectId).map((r) => [r.c.code, build(r.c)] as const);
+  const wanted = new Set(codes);
+  const own = new Map<string, (readonly [string, WorkCalendar])[]>();
+  for (const r of rows) if (r.c.projectId && r.projectCode && wanted.has(r.projectCode)) own.set(r.projectCode, [...(own.get(r.projectCode) ?? []), [r.c.code, build(r.c)] as const]);
+  // Same order as listCalendars (position, code) — company and project calendars interleaved as stored.
+  const order = new Map(rows.map((r, i) => [r.c.code, i]));
+  return new Map(codes.map((code) => {
+    const list = [...company, ...(own.get(code) ?? [])].sort((a, b) => (order.get(a[0]) ?? 0) - (order.get(b[0]) ?? 0));
+    return [code, Object.fromEntries(list)] as const;
+  }));
+}
+
 /** The project's calendar code (S-2 default when none is set). */
 export async function getProjectCalendarCode(code: string, q?: Q): Promise<string> {
   const db = q ?? (await getDb());

@@ -40,7 +40,7 @@ export const wbsNodes = pgTable(
     /** R-185: the equipment line a work package specific to an equipment belongs to (wizard); null = common to the project. */
     equipmentId: uuid('equipment_id').references(() => projectEquipments.id, { onDelete: 'set null' }),
   },
-  (t) => [unique().on(t.projectId, t.code)],
+  (t) => [unique().on(t.projectId, t.code), index('wbs_nodes_parent_id_idx').on(t.parentId)],
 );
 
 /** Activities (ACTS rows with an id). Dates are kept as the prototype's display strings plus ISO dates. */
@@ -105,7 +105,7 @@ export const activities = pgTable(
     /** R-185: the equipment line of an activity of a lot specific to an equipment (wizard); null = common to the project. */
     equipmentId: uuid('equipment_id').references(() => projectEquipments.id, { onDelete: 'set null' }),
   },
-  (t) => [unique().on(t.projectId, t.code)],
+  (t) => [unique().on(t.projectId, t.code), index('activities_wbs_node_id_idx').on(t.wbsNodeId), index('activities_owner_person_id_idx').on(t.ownerPersonId)],
 );
 
 /** Logic links (`p` = [[predId, type, lag]] on the successor). */
@@ -123,7 +123,7 @@ export const activityLinks = pgTable(
     /** Chapter 4 (S-1): the link drives the successor's early date (last "Reschedule"). */
     isDriving: boolean('is_driving').notNull().default(false),
   },
-  (t) => [unique().on(t.successorId, t.predecessorId)],
+  (t) => [unique().on(t.successorId, t.predecessorId), index('activity_links_project_id_idx').on(t.projectId), index('activity_links_predecessor_id_idx').on(t.predecessorId)],
 );
 
 /** Activity resource assignments (A1250_RES 3227). */
@@ -152,7 +152,7 @@ export const activityAssignments = pgTable('activity_assignments', {
   departmentId: uuid('department_id').references(() => departments.id),
   /** Resource UID in the imported file. */
   externalUid: text('external_uid'),
-});
+}, (t) => [index('activity_assignments_activity_id_idx').on(t.activityId), index('activity_assignments_person_id_idx').on(t.personId)]);
 
 /** Milestones (HMILES 3122 / generated MILES). Months are fractional offsets from the project start. */
 export const milestones = pgTable(
@@ -181,6 +181,7 @@ export const milestones = pgTable(
       'milestones_capex_milestone_code_check',
       sql`${t.capexMilestoneCode} in ('commande', 'fin_etudes', 'fat', 'expedition', 'arrivee_site', 'sat', 'pv_reception', 'fin_garantie')`,
     ),
+    index('milestones_activity_id_idx').on(t.activityId),
   ],
 );
 
@@ -201,7 +202,7 @@ export const scheduleBars = pgTable('schedule_bars', {
   forecastEnd: months('forecast_end').notNull(),
   percentComplete: integer('percent_complete').notNull(),
   critical: boolean('critical').notNull(),
-});
+}, (t) => [index('schedule_bars_project_id_idx').on(t.projectId)]);
 
 /** Pipeline stage plan (PIPE_PLAN 3665): windows in month offsets from Jan 2026. */
 export const pipelineStagePlans = pgTable('pipeline_stage_plans', {
@@ -211,7 +212,7 @@ export const pipelineStagePlans = pgTable('pipeline_stage_plans', {
   window: text('window').$type<PipelineWindow>().notNull(),
   startMonth: months('start_month').notNull(),
   endMonth: months('end_month').notNull(),
-});
+}, (t) => [index('pipeline_stage_plans_project_id_idx').on(t.projectId)]);
 
 /**
  * Project control header — the figures and display strings of projectData() (HLT_PD 3308 / generated,

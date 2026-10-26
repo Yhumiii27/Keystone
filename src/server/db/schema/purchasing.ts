@@ -2,7 +2,7 @@
 // quotation with their quotes and award, purchase orders and their lines, goods receipts with incoming quality control,
 // and supplier invoices checked by the 3-way match. Amounts are full euros (`*_eur`). Sage X3 is the accounting
 // reference: `x3_*` columns carry the ERP references once pushed.
-import { date, integer, pgTable, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { date, index, integer, pgTable, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { AwardRule, Incoterm, PoOrigin, PoStatus, ReceiptAttachmentKind, ReceiptStatus, RfqStatus, SupplierGrade, SupplierInvoiceStatus } from '../codes';
 import { eur, id, num, timestamps } from './_common';
 import { parts } from './catalogue';
@@ -107,7 +107,7 @@ export const purchaseOrders = pgTable('purchase_orders', {
   /** Order of the project's list (genPOs order; new orders appended). */
   position: integer('position').notNull(),
   ...timestamps,
-});
+}, (t) => [index('purchase_orders_project_id_idx').on(t.projectId), index('purchase_orders_needed_for_activity_id_idx').on(t.neededForActivityId), index('purchase_orders_status_idx').on(t.status)]);
 
 /** Order lines (`lines: [ref, ordered qty, received qty]`). */
 export const poLines = pgTable(
@@ -156,7 +156,7 @@ export const goodsReceipts = pgTable('goods_receipts', {
   /** Order of the project's list (genDeliv order; announced receipts appended). */
   position: integer('position').notNull(),
   ...timestamps,
-});
+}, (t) => [index('goods_receipts_project_id_idx').on(t.projectId), index('goods_receipts_po_id_idx').on(t.poId)]);
 
 /** Receipt lines (`lines: [ref, ordered, delivered, accepted, rejected, location]`). */
 export const receiptLines = pgTable(
@@ -187,7 +187,7 @@ export const receiptAttachments = pgTable('receipt_attachments', {
   addedByPersonId: uuid('added_by_person_id').references(() => persons.id),
   position: integer('position').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [index('receipt_attachments_receipt_id_idx').on(t.receiptId)]);
 
 /**
  * Supplier invoices (INVOICES 3531) checked against the order and the goods receipt (3-way match `match3` 4663).
@@ -225,4 +225,4 @@ export const supplierInvoices = pgTable('supplier_invoices', {
   pushedToApAt: timestamp('pushed_to_ap_at', { withTimezone: true }),
   position: integer('position').notNull(),
   ...timestamps,
-});
+}, (t) => [index('supplier_invoices_po_id_idx').on(t.poId)]);

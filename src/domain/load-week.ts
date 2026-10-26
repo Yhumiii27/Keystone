@@ -51,17 +51,64 @@ export interface WeekAssignment {
  * working days. 0 for an undated activity, or an assignment counted neither way (equipment days, material tonnes).
  */
 export function assignmentHoursInWeek(a: Omit<WeekAssignment, 'project' | 'person'>, weekStart: IsoDate): number {
-  if (!a.start || !a.finish || a.finish < a.start) return 0;
-  const weekEnd = addCalendarDays(weekStart, 6);
-  const from = a.start > weekStart ? a.start : weekStart;
-  const to = a.finish < weekEnd ? a.finish : weekEnd;
-  let inWeek = 0;
-  for (let d = from; d <= to; d = addCalendarDays(d, 1)) if (a.calendar.isWorkDay(d)) inWeek++;
+  return hoursOfWorkDays(a, activityWorkDays(a, [weekStart]), 0);
+}
+
+/**
+ * Working days of an activity, for `assignmentHoursInWeek` over several weeks (R-017: the planning load spreads every assignment
+ * of the portfolio over the load window; the days of an activity are now counted once for all its assignments and weeks, with
+ * the same result). `inWeek[i]` = working days of the activity in the week starting `weeks[i]`; `all()` = its working days from
+ * start to finish (counted on first use, then kept).
+ */
+export interface ActivityWorkDays {
+  inWeek: number[];
+  all: () => number;
+}
+
+export function activityWorkDays(a: Pick<WeekAssignment, 'start' | 'finish' | 'calendar'>, weeks: readonly IsoDate[]): ActivityWorkDays {
+  if (!a.start || !a.finish || a.finish < a.start) return { inWeek: weeks.map(() => 0), all: () => 0 };
+  const start = a.start;
+  const finish = a.finish;
+  const count = workDaysCounter(a.calendar);
+  const inWeek = weeks.map((weekStart) => {
+    const weekEnd = addCalendarDays(weekStart, 6);
+    const from = start > weekStart ? start : weekStart;
+    const to = finish < weekEnd ? finish : weekEnd;
+    return from <= to ? count(from, to) : 0;
+  });
+  let all: number | null = null;
+  return { inWeek, all: () => (all ??= count(start, finish)) };
+}
+
+/**
+ * Working days of `calendar` from `from` to `to` (inclusive, from ≤ to): by the calendar's working-day ordinals when it has them
+ * (WorkCalendar: two binary searches), else day by day (the same count).
+ */
+function workDaysCounter(calendar: Pick<WorkCalendar, 'isWorkDay'> & Partial<Pick<WorkCalendar, 'ordinal'>>): (from: IsoDate, to: IsoDate) => number {
+  const dayByDay = (from: IsoDate, to: IsoDate) => {
+    let n = 0;
+    for (let d = from; d <= to; d = addCalendarDays(d, 1)) if (calendar.isWorkDay(d)) n++;
+    return n;
+  };
+  const ordinal = calendar.ordinal?.bind(calendar);
+  if (!ordinal) return dayByDay;
+  return (from, to) => {
+    try {
+      return ordinal(addCalendarDays(to, 1)) - ordinal(from);
+    } catch {
+      // Before the calendar epoch or beyond its last year: counted day by day.
+      return dayByDay(from, to);
+    }
+  };
+}
+
+/** Hours an assignment puts on the week `i` of `days` (the rule of `assignmentHoursInWeek`). */
+export function hoursOfWorkDays(a: Pick<WeekAssignment, 'units' | 'hoursPerDay' | 'plannedHours'>, days: ActivityWorkDays, i: number): number {
+  const inWeek = days.inWeek[i];
   if (!inWeek) return 0;
   if (a.units != null && a.hoursPerDay != null && a.units > 0 && a.hoursPerDay > 0) return round1(inWeek * a.units * a.hoursPerDay);
   if (a.plannedHours == null || a.plannedHours <= 0) return 0;
-  let all = 0;
-  for (let d = a.start; d <= a.finish; d = addCalendarDays(d, 1)) if (a.calendar.isWorkDay(d)) all++;
+  const all = days.all();
   return all ? round1((a.plannedHours * inWeek) / all) : 0;
 }
 

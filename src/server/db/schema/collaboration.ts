@@ -5,7 +5,7 @@
 //
 // People are cited by short name in the prototype and some are external ("K. Lindqvist (Nordvolt)", "Infrastructure
 // BU"): every person reference keeps the displayed name and links the person when one is known.
-import { boolean, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { boolean, date, index, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type {
   ClientQuestionState, MeetingLineOrigin, MeetingLineType, MeetingSeries, MeetingStatus, MeetingType, RaciCode, StakeholderType, TranscriptAnalyzer,
   TranscriptProposalStatus, TranscriptProposalType, TranscriptSource,
@@ -47,7 +47,7 @@ export const meetings = pgTable('meetings', {
   /** MEETINGS order 1…n; created meetings come first, in creation order (`createdSortOrder`, MTG-130 → −999870). */
   sortOrder: integer('sort_order').notNull(),
   ...timestamps,
-});
+}, (t) => [index('meetings_project_id_idx').on(t.projectId)]);
 
 /** Invitees, attendance and read receipts of the minutes (`invited`, `present`, `read`). */
 export const meetingParticipants = pgTable(
@@ -177,7 +177,7 @@ export const clientQuestions = pgTable('client_questions', {
   state: text('state').$type<ClientQuestionState>().notNull(),
   answer: text('answer'),
   ...timestamps,
-});
+}, (t) => [index('client_questions_project_id_idx').on(t.projectId)]);
 
 /** Stakeholder register (STAKEHOLDERS 3714: HLT-026 × 8). Stale when the last contact is more than 30 days old. */
 export const stakeholders = pgTable('stakeholders', {
@@ -202,7 +202,7 @@ export const stakeholders = pgTable('stakeholders', {
   /** Register order (added stakeholders are appended). */
   position: integer('position').notNull(),
   ...timestamps,
-});
+}, (t) => [index('stakeholders_project_id_idx').on(t.projectId)]);
 
 /** RACI matrix of a project (RACI 3715: HLT-026, 6 columns × 7 rows). Columns are dynamic. */
 export const raciMatrices = pgTable('raci_matrices', {

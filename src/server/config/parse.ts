@@ -95,6 +95,11 @@ export interface KeystoneConfig {
    * R-121: automatic reminders arrive in the morning (src/domain/jobs.ts).
    */
   remindersAt: string;
+  /**
+   * R-017: the in-process read caches (src/server/cache/read-cache.ts — the derived figures exact while the database is
+   * unchanged, the shell's badges for 30 s); KEYSTONE_READ_CACHE=off reads everything from the database (diagnosis).
+   */
+  readCache: boolean;
   log: { level: LogLevel; format: LogFormat };
   /**
    * Cursus: API URL and key Keystone sends (outbound); `eventsKey` = the key Cursus must present to Keystone's events endpoint
@@ -186,6 +191,8 @@ const VARS = {
     .string()
     .transform((v, ctx) => parseTimeOfDay(v) ?? (ctx.addIssue({ code: 'custom', message: 'must be a time of day HH:MM (Europe/Paris), e.g. 07:00' }), z.NEVER))
     .optional(),
+  // R-017: the in-process read caches, on unless "off".
+  KEYSTONE_READ_CACHE: onOff.optional(),
   LOG_LEVEL: z.enum(LOG_LEVELS, { message: `must be one of ${LOG_LEVELS.join(', ')}` }).optional(),
   LOG_FORMAT: z.enum(LOG_FORMATS, { message: 'must be "json" or "pretty"' }).optional(),
   NEXT_PUBLIC_CODEX_URL: httpUrl.optional(),
@@ -435,6 +442,7 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
       seedExplicit: v.KEYSTONE_SEED != null,
       clock: v.KEYSTONE_CLOCK ?? null,
       remindersAt: v.KEYSTONE_REMINDERS_AT ?? DEFAULT_REMINDERS_AT,
+      readCache: v.KEYSTONE_READ_CACHE !== 'off',
       log: { level: v.LOG_LEVEL ?? 'info', format: v.LOG_FORMAT ?? (production ? 'json' : 'pretty') },
       cursus: { apiUrl: v.CURSUS_API_URL ?? null, apiKey: cursusApiKey, eventsKey: cursusEventsKey, directory: v.CURSUS_DIRECTORY === 'on' },
       vigie: { apiUrl: v.VIGIE_API_URL ?? null, apiKey: v.VIGIE_API_KEY ?? null },

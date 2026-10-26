@@ -17,7 +17,7 @@ import { CardTitle } from '@/components/ds/Card';
 import { cx } from '@/components/ds/cx';
 import type { T } from '@/i18n/translate';
 import { ApplySuggestionButton } from './apply-button';
-import type { ResourcesView as View } from './model';
+import type { SuggestionView, ResourcesView as View } from './model';
 import s from './resources.module.css';
 
 export interface ResourcesViewProps {
@@ -31,9 +31,14 @@ export interface ResourcesViewProps {
   windowNav?: ReactNode;
   /** R-085: the heatmap shows the current window ("next 8 weeks"); false = another window ("8 weeks"). Default true. */
   windowIsCurrent?: boolean;
+  /**
+   * R-017: the "Suggested rebalancing" card streamed by the page (Resources: the portfolio's what-if levers, computed after the
+   * rest of the page is sent — never on its critical path); omitted = the card of `view.suggestions`.
+   */
+  suggestionsSlot?: ReactNode;
 }
 
-export function ResourcesView({ view, t, projectName, canEdit, windowNav, windowIsCurrent = true }: ResourcesViewProps) {
+export function ResourcesView({ view, t, projectName, canEdit, windowNav, windowIsCurrent = true, suggestionsSlot }: ResourcesViewProps) {
   const title = t(view.weekRows ? 'Allocation — week' : windowIsCurrent ? 'Allocation — next 8 weeks' : 'Allocation — 8 weeks');
   return (
     <div className={s.body}>
@@ -177,32 +182,37 @@ export function ResourcesView({ view, t, projectName, canEdit, windowNav, window
               ))}
             </section>
           )}
-          {view.suggestions && (
-            <section className={cx('card', 'elev-sm', s.card, s.suggestionsCard)} aria-label={t('Suggested rebalancing')}>
-              <div className={s.sugHead}>
-                <Sparkle className={s.sugIcon} aria-hidden />
-                <CardTitle>{t('Suggested rebalancing')}</CardTitle>
-              </div>
-              {view.suggestions.map((g) => (
-                <div key={`${g.projectCode}:${g.leverCode}`} className={s.sug}>
-                  <span className={s.sugTitle} title={g.hint}>
-                    {g.title}
-                  </span>
-                  <div className={s.sugFoot}>
-                    <span className={s.sugImpact}>{g.impact}</span>
-                    {g.requested ? (
-                      <span className="tag tag-outline">{g.requested}</span>
-                    ) : (
-                      canEdit && g.canApply && <ApplySuggestionButton title={g.title} projectCode={g.projectCode} lever={g.leverCode} />
-                    )}
-                  </div>
-                </div>
-              ))}
-            </section>
-          )}
+          {suggestionsSlot !== undefined ? suggestionsSlot : view.suggestions && <SuggestionsCard suggestions={view.suggestions} canEdit={canEdit} t={t} />}
         </div>
       </div>
     </div>
+  );
+}
+
+/** "Suggested rebalancing" card (R-3 / S-7): the ranked what-if levers, "Apply" drafts a resource request. */
+export function SuggestionsCard({ suggestions, canEdit, t }: { suggestions: SuggestionView[]; canEdit: boolean; t: T }) {
+  return (
+    <section className={cx('card', 'elev-sm', s.card, s.suggestionsCard)} aria-label={t('Suggested rebalancing')}>
+      <div className={s.sugHead}>
+        <Sparkle className={s.sugIcon} aria-hidden />
+        <CardTitle>{t('Suggested rebalancing')}</CardTitle>
+      </div>
+      {suggestions.map((g) => (
+        <div key={`${g.projectCode}:${g.leverCode}`} className={s.sug}>
+          <span className={s.sugTitle} title={g.hint}>
+            {g.title}
+          </span>
+          <div className={s.sugFoot}>
+            <span className={s.sugImpact}>{g.impact}</span>
+            {g.requested ? (
+              <span className="tag tag-outline">{g.requested}</span>
+            ) : (
+              canEdit && g.canApply && <ApplySuggestionButton title={g.title} projectCode={g.projectCode} lever={g.leverCode} />
+            )}
+          </div>
+        </div>
+      ))}
+    </section>
   );
 }
 

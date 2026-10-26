@@ -1,7 +1,7 @@
 // Cost control (delivery 7, R-068 / owner decision A-4 "Registre unique, propagation automatique"): what the approval of a
 // change request posted to the budget and the contract. One row per change request — the unique key makes the posting
 // idempotent (an approval re-run, two concurrent decisions or a retry never post the same request twice).
-import { jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { id, keur } from './_common';
 import { changeRequests } from './change';
 import { contractAmendments } from './contract';
@@ -29,4 +29,4 @@ export const changeRequestPostings = pgTable('change_request_postings', {
   postedAt: timestamp('posted_at', { withTimezone: true }).notNull().defaultNow(),
   postedByPersonId: uuid('posted_by_person_id').references(() => persons.id),
   postedByName: text('posted_by_name').notNull(),
-});
+}, (t) => [index('change_request_postings_project_id_idx').on(t.projectId)]);

@@ -6,7 +6,7 @@
 // (`BILLING` 3541) migrated into `billing_plans` + `payment_milestones` (fixed amounts, no contract): Cash flow,
 // Prioritisation margins and the client portal read the same rows. A project with a contract derives its billing
 // plan from the contract (value = base + signed amendments; milestone amount = round(value × share / 100)).
-import { date, integer, pgTable, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { date, index, integer, pgTable, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { AmendmentStatus, BillingModel, BondType, ContractType, PaymentMilestoneStatus, PaymentRule } from '../codes';
 import { id, keur, num, timestamps } from './_common';
 import { changeRequests } from './change';
@@ -77,7 +77,7 @@ export const contractAmendments = pgTable('contract_amendments', {
   documentRef: text('document_ref'),
   documentId: uuid('document_id').references(() => documents.id, { onDelete: 'set null' }),
   ...timestamps,
-});
+}, (t) => [index('contract_amendments_contract_id_idx').on(t.contractId)]);
 
 /** Bonds and guarantees. In force unless released. */
 export const contractBonds = pgTable('contract_bonds', {
@@ -91,7 +91,7 @@ export const contractBonds = pgTable('contract_bonds', {
   validUntil: date('valid_until', { mode: 'string' }),
   releasedOn: date('released_on', { mode: 'string' }),
   ...timestamps,
-});
+}, (t) => [index('contract_bonds_contract_id_idx').on(t.contractId)]);
 
 /**
  * Billing plan of a project (BILLING 3541): billing model and, for projects without a contract, the contract value
@@ -133,7 +133,7 @@ export const paymentMilestones = pgTable(
     position: integer('position').notNull(),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.number)],
+  (t) => [unique().on(t.projectId, t.number), index('payment_milestones_contract_id_idx').on(t.contractId)],
 );
 
 /**

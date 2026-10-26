@@ -1,7 +1,7 @@
 // Files, imports and exports (chapter 4): files stored by Keystone (task attachments, meeting transcripts, imported files —
 // src/server/storage), staged import jobs with their preview rows (S-9 and the Excel / CSV table imports), and the export log
 // (src/server/export). Codex documents are not stored here: Codex owns them (Keystone keeps the index, documents.ts).
-import { integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import type { FileScanStatus } from '../../../domain/file-scan';
 import type { ExportFormat, ImportJobStatus, ImportKind, ImportMode, ImportRowAction, ImportRowStatus, StoredFilePurpose } from '../codes';
 import { id } from './_common';
@@ -76,7 +76,7 @@ export const importJobRows = pgTable('import_job_rows', {
   data: jsonb('data').$type<Record<string, unknown>>().notNull().default({}),
   /** EN source messages ("Unknown predecessor A9999", "Duration not a number"). */
   messages: text('messages').array().notNull().default([]),
-});
+}, (t) => [index('import_job_rows_job_id_idx').on(t.jobId)]);
 
 /** Export log: every file produced by the export route (screen, format, filters, rows) — for the audit trail. */
 export const exportLog = pgTable('export_log', {

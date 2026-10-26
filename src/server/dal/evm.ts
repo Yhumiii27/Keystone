@@ -10,6 +10,7 @@ import { and, asc, eq, inArray, isNotNull } from 'drizzle-orm';
 import { cache } from 'react';
 import { projectDataDate } from '@/domain/ch4-defaults';
 import { businessToday } from '@/server/clock';
+import { versionedRead } from '@/server/cache/read-cache';
 import { computeEvm, monthIndexOf, openCommitmentKeur, type ComputedEvm, type EvmActivity, type EvmCostEvent, type EvmPlanRow } from '@/domain/cost-control';
 import { projectFxOf, toEur } from '@/domain/currency';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
@@ -97,13 +98,24 @@ async function computeFor(q: Q, ids?: string[]): Promise<Map<string, ProjectEvm>
     const b = baselineOf.get(r.projectId);
     if (!b || r.position > b.position) baselineOf.set(r.projectId, { id: r.baselineId, position: r.position });
   }
+  // R-017: grouped in one pass (the list was copied for every activity, quadratic on a large portfolio).
   const actsOf = new Map<string, typeof acts>();
-  for (const a of acts) actsOf.set(a.projectId, [...(actsOf.get(a.projectId) ?? []), a]);
+  for (const a of acts) {
+    const list = actsOf.get(a.projectId);
+    if (list) list.push(a);
+    else actsOf.set(a.projectId, [a]);
+  }
+  const snapshotOf = new Map<string, typeof snapshot>();
+  for (const r of snapshot) {
+    const list = snapshotOf.get(r.baselineId);
+    if (list) list.push(r);
+    else snapshotOf.set(r.baselineId, [r]);
+  }
   for (const h of heads) {
     const own = actsOf.get(h.id) ?? [];
     if (!own.length) continue;
     const blId = baselineOf.get(h.id)?.id;
-    const plan: EvmPlanRow[] = snapshot.filter((r) => r.baselineId === blId).map((r) => ({ budget: r.budget ?? 0, start: r.start, finish: r.finish }));
+    const plan: EvmPlanRow[] = (blId ? snapshotOf.get(blId) ?? [] : []).map((r) => ({ budget: r.budget ?? 0, start: r.start, finish: r.finish }));
     const facts: EvmActivity[] = own.map((a) => ({
       budget: a.budget, actual: a.actual, pct: a.pct, start: a.start, finish: a.finish,
       started: a.startActual || a.pct > 0, finished: a.finishActual || a.pct >= 100,
@@ -122,7 +134,12 @@ async function computeFor(q: Q, ids?: string[]): Promise<Map<string, ProjectEvm>
 }
 
 /** Earned value of every project computed from Keystone data (memoised per request). Projects without activity budgets are absent. */
-export const listProjectEvms = cache(async (): Promise<Map<string, ProjectEvm>> => computeFor(await getDb()));
+// R-017: every page reads it (projects register, shell, project context): computed once per database version (exact, see
+// src/server/cache/read-cache.ts) — it reads every activity of the portfolio.
+export const listProjectEvms = cache(async (): Promise<Map<string, ProjectEvm>> => {
+  const today = await businessToday();
+  return versionedRead(`evm|${today}`, async () => computeFor(await getDb()));
+});
 
 /** Earned value of a project computed from Keystone data; null when it has no activity budget (keep its own figures). */
 export async function getProjectEvm(code: string, q?: Q): Promise<ProjectEvm | null> {

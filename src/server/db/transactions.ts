@@ -16,6 +16,13 @@ import { sql } from 'drizzle-orm';
 import type { PgTransactionConfig } from 'drizzle-orm/pg-core';
 import { log } from '@/server/log';
 import type { DB } from './types';
+import { bumpWriteGeneration } from './write-generation';
+
+/** R-017: a transaction that committed moves the write generation (its writes are visible now: src/server/cache/read-cache.ts). */
+const committed = <T,>(p: Promise<T>): Promise<T> => p.then((v) => {
+  bumpWriteGeneration();
+  return v;
+});
 
 export const TX_RETRY = {
   /** Runs of one transaction (first try included). */
@@ -73,7 +80,7 @@ export function withSerializableTransactions<D extends DB>(db: D): D {
   const holder = db as D & { [WRAPPED]?: true };
   if (holder[WRAPPED]) return db;
   const original: DB['transaction'] = db.transaction.bind(db);
-  const transaction: DB['transaction'] = (cb, config?: PgTransactionConfig) => runWithRetry(() => original(cb, { isolationLevel: 'serializable', ...config }));
+  const transaction: DB['transaction'] = (cb, config?: PgTransactionConfig) => committed(runWithRetry(() => original(cb, { isolationLevel: 'serializable', ...config })));
   Object.defineProperty(db, 'transaction', { value: transaction, configurable: true, writable: true });
   Object.defineProperty(db, WRAPPED, { value: true });
   return db;
@@ -99,13 +106,13 @@ export function withWriteLockedTransactions<D extends DB>(db: D, lockName: strin
   const original: DB['transaction'] = db.transaction.bind(db);
   const lock = sql`select pg_advisory_xact_lock(hashtext(${lockName}))`;
   const transaction: DB['transaction'] = (cb, config?: PgTransactionConfig) => {
-    if (inWriteLock.getStore()) return runWithRetry(() => original(cb, { isolationLevel: 'read committed', ...config }));
-    return runWithRetry(() =>
+    if (inWriteLock.getStore()) return committed(runWithRetry(() => original(cb, { isolationLevel: 'read committed', ...config })));
+    return committed(runWithRetry(() =>
       original(async (tx) => {
         await tx.execute(lock);
         return inWriteLock.run(true, () => cb(tx));
       }, { isolationLevel: 'read committed', ...config }),
-    );
+    ));
   };
   Object.defineProperty(db, 'transaction', { value: transaction, configurable: true, writable: true });
   Object.defineProperty(db, WRAPPED, { value: true });

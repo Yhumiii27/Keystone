@@ -10,6 +10,7 @@ import { MIGRATIONS_FOLDER, pendingMigrations } from './migrations';
 import * as schema from './schema';
 import { seedIfEmpty } from './seed';
 import { withSerializableTransactions } from './transactions';
+import { writeLogger } from './write-generation';
 import type { DB } from './types';
 
 export interface OpenDatabaseOptions {
@@ -36,7 +37,8 @@ export async function openPglite(dataDir?: string, migrationsFolder = MIGRATIONS
     assertWritable(dataDir);
   }
   const client = dataDir ? new PGlite(dataDir) : new PGlite();
-  const pglite = drizzle(client, { schema });
+  // R-017: the logger bumps the write generation on every write statement (src/server/cache/read-cache.ts).
+  const pglite = drizzle(client, { schema, logger: writeLogger });
   const db: DB = withSerializableTransactions<DB>(pglite);
   const applied = (await pendingMigrations(db, migrationsFolder)).length;
   if (applied) await migrate(pglite, { migrationsFolder });

@@ -2,6 +2,7 @@
 // 1573–1597), Standard machine types (09 §9, template 1529–1572) and Activity, integrations & audit (10 §2, template
 // 2237–2267). Built from the DAL rows with the pure rules of src/domain/admin.ts; English is the prototype's source text,
 // French goes through t() as the prototype's `deepTr` did (data texts included), with the fixes of ./i18n.ts.
+import { pagerView, type PagerView } from '@/domain/pagination';
 import { screenHref } from '@/config/screens';
 import {
   ACTIVITY_ICON, MT_CALENDAR_OPTIONS, MT_COST_TYPES, PLUMB_VIEWS, SETTINGS_CARDS, activityChips, costCategoriesTotal, healthRuleText,
@@ -246,6 +247,8 @@ export interface PlumbingView {
   connectors: ConnectorRowView[];
   imports: ImportCardView[];
   audit: AuditRowView[];
+  /** R-017: pager of the audit trail (100 entries a page, newest first); null on a single page. */
+  auditPager: PagerView | null;
 }
 
 export interface PlumbingInput {
@@ -261,6 +264,8 @@ export interface PlumbingInput {
   personaTitle: string;
   /** R-046: the viewer sees rate values (`canSeeRates`); else the "Rate card" changes are masked in the feed and the trail. */
   ratesVisible: boolean;
+  /** R-017: page shown of the audit trail and its number of pages (one page when omitted). */
+  auditPage?: { page: number; pages: number };
 }
 
 /**
@@ -320,6 +325,7 @@ export function plumbingView(i: PlumbingInput, t: T, lang: Lang): PlumbingView {
       key: `${a.occurredAt}-${n}`, when: t(a.when), who: dataText(a.who, lang), object: auditObjectT(a.object, t, lang), change: auditChangeT(a, t, lang),
       area: auditAreaT(a.area, t, lang),
     })),
+    auditPager: i.auditPage ? pagerView(i.auditPage.page, i.auditPage.pages, (n) => integrationsHref({ view: 'audit', page: n }), t) : null,
   };
 }
 

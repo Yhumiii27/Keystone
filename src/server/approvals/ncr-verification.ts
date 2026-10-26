@@ -8,6 +8,8 @@ import { yearOfIso } from '@/domain/clock';
 import { ncrVerificationItems } from '@/domain/quality';
 import { ncrHref } from '@/features/quality/links';
 import { ncrVerificationDecidedCount, ncrVerificationQueue } from '@/server/dal/quality';
+import { NCR_VERIFIER_ROLES } from '@/server/db/codes';
+import { projectsWithNcrsInVerification } from '@/server/dal/approval-candidates';
 import type { ApprovalContext, ApprovalProvider } from './types';
 
 const actorOf = ({ viewer }: ApprovalContext) => ({ name: viewer.name, role: viewer.role });
@@ -25,4 +27,6 @@ export const ncrVerificationProvider: ApprovalProvider = {
   async decided(ctx) {
     return ctx.viewer.role === 'quality' ? ncrVerificationDecidedCount(actorOf(ctx)) : 0;
   },
+  // The verifiers only, on the projects with an NCR in Verification in the Vigie mirror.
+  candidates: async (ctx) => (NCR_VERIFIER_ROLES.includes(ctx.viewer.role) ? projectsWithNcrsInVerification() : new Set()),
 };

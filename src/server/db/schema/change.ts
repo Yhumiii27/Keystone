@@ -7,7 +7,7 @@
 //    (titles, days, status and "date · decider" meta differ) so the Budget screen renders the prototype exactly.
 //    Each line points to the register entry with the same number.
 import { sql } from 'drizzle-orm';
-import { check, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { check, date, index, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { BaselineSource, BaselineState, BudgetChangeStatus, EstimateClass, ChangeStatus, ChangeStep, ChangeType, ContractImpact, StepDecision } from '../codes';
 import { id, keur, timestamps } from './_common';
 import { persons } from './organisation';
@@ -78,7 +78,7 @@ export const changeRequestWbs = pgTable('change_request_wbs', {
   wbsNodeId: uuid('wbs_node_id').references(() => wbsNodes.id),
   amountKeur: keur('amount_keur'),
   position: integer('position').notNull(),
-});
+}, (t) => [index('change_request_wbs_change_request_id_idx').on(t.changeRequestId)]);
 
 /**
  * Delivery 7 (NEW-D2-2 = a, R-062): plan activities a change request touches, in addition to its work packages, with
@@ -117,7 +117,7 @@ export const budgetChangeLines = pgTable('budget_change_lines', {
   meta: text('meta').notNull(),
   changeRequestId: uuid('change_request_id').references(() => changeRequests.id),
   position: integer('position').notNull(),
-});
+}, (t) => [index('budget_change_lines_project_id_idx').on(t.projectId), index('budget_change_lines_change_request_id_idx').on(t.changeRequestId)]);
 
 /** Baselines (BASELINES 3504). BL2 is pending CR-009 (no set date yet). */
 export const baselines = pgTable(
@@ -183,5 +183,5 @@ export const baselineActivities = pgTable(
     totalFloatDays: integer('total_float_days'),
     position: integer('position').notNull(),
   },
-  (t) => [unique().on(t.baselineId, t.activityCode)],
+  (t) => [unique().on(t.baselineId, t.activityCode), index('baseline_activities_activity_id_idx').on(t.activityId)],
 );
