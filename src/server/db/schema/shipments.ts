@@ -1,14 +1,22 @@
 // R-158 lot A — Incoterms (reference data, Settings) and the project's shipments (Expéditions screen): shipments, their
 // equipment lines, transport steps, loads, content lines and the reasons given for the packing-control gaps. Rules in
-// src/domain/incoterms.ts and src/domain/shipments.ts; notes in docs/delivery-9/notes-r158-shipments.md. Lot B adds the
-// documents (Codex), the site reception and pub_expeditions on these tables.
+// src/domain/incoterms.ts and src/domain/shipments.ts; notes in docs/delivery-9/notes-r158-shipments.md. Lot B: the site reception
+// (`shipment_reception_lines`, the punch items it raised `shipment_punch_items`), the generated documents filed in Codex
+// (`shipment_documents`), the risk raised for a freight delay, and pub_expeditions (rules in src/domain/shipment-reception.ts and
+// src/domain/shipping-documents.ts).
 // Relative imports only (drizzle-kit loads these files directly; type-only imports are erased).
 import { sql } from 'drizzle-orm';
 import { boolean, check, date, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { IncotermModes, IncotermSplit } from '@/domain/incoterms';
+import type { ReceptionGap, ReceptionLoadState } from '@/domain/shipment-reception';
 import type { LoadType, ShipmentMode, ShipmentStatus } from '@/domain/shipments';
+import type { ShippingDocKind } from '@/domain/shipping-documents';
 import { eur, id, num, timestamps } from './_common';
 import { parts } from './catalogue';
+import { risks } from './control';
+import { documents } from './documents';
+import { storedFiles } from './files';
+import { punchItems } from './operations';
 import { persons } from './organisation';
 import { projectEquipments, projects } from './portfolio';
 
@@ -64,8 +72,19 @@ export const shipments = pgTable('shipments', {
   packingValidatedAt: timestamp('packing_validated_at', { withTimezone: true }),
   packingValidatedByPersonId: uuid('packing_validated_by_person_id').references(() => persons.id),
   createdByPersonId: uuid('created_by_person_id').references(() => persons.id),
+  /** Lot B: the site reception completed (status "received"), business date. */
+  receivedOn: date('received_on', { mode: 'string' }),
+  /** Lot B: closed — automatically once its last punch item is closed, or by hand with a reason (`close_reason`). */
+  closedOn: date('closed_on', { mode: 'string' }),
+  closeReason: text('close_reason'),
+  /** Lot B: the risk raised from the freight-delay warning (ETA later than the site need date), when one was. */
+  riskId: uuid('risk_id').references(() => risks.id, { onDelete: 'set null' }),
   ...timestamps,
 }, (t) => [
+  // Arche K-11: the incremental read of pub_expeditions (`maj_le > …`, maj_le = updated_at) reaches this index.
+  index('shipments_updated_at_idx').on(t.updatedAt),
+  // R-017 rule (c): a risk deleted from the register clears the link.
+  index('shipments_risk_id_idx').on(t.riskId),
   unique('shipments_project_ref_unique').on(t.projectId, t.ref),
   check('shipments_ref_check', sql`${t.ref} ~ '^EXP-[0-9]{2,}$'`),
   check('shipments_status_check', sql`${t.status} in ('draft', 'prepared', 'picked_up', 'in_transit', 'arrived', 'received', 'closed')`),
@@ -149,3 +168,81 @@ export const shipmentGapReasons = pgTable('shipment_gap_reasons', {
   byPersonId: uuid('by_person_id').references(() => persons.id),
   at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [unique('shipment_gap_reasons_key_unique').on(t.shipmentId, t.gapKey)]);
+
+/**
+ * Lot B — the site reception (decision 5), pointed once the shipment has arrived: one row per load (`item_id` null: the load as a
+ * whole — received, missing or damaged container / truck) and one per content line (quantities received, missing and damaged,
+ * their sum = the quantity shipped). Rules: src/domain/shipment-reception.ts.
+ */
+export const shipmentReceptionLines = pgTable('shipment_reception_lines', {
+  id: id(),
+  shipmentId: uuid('shipment_id').notNull().references(() => shipments.id, { onDelete: 'cascade' }),
+  loadId: uuid('load_id').notNull().references(() => shipmentLoads.id, { onDelete: 'cascade' }),
+  /** Null = the load itself. */
+  itemId: uuid('item_id').references(() => shipmentItems.id, { onDelete: 'cascade' }),
+  /** A load's state; null on a content line. */
+  loadState: text('load_state').$type<ReceptionLoadState>(),
+  receivedQty: num('received_qty'),
+  missingQty: num('missing_qty'),
+  damagedQty: num('damaged_qty'),
+  note: text('note'),
+  byPersonId: uuid('by_person_id').references(() => persons.id),
+  /** Business date of the pointing. */
+  pointedOn: date('pointed_on', { mode: 'string' }).notNull(),
+  ...timestamps,
+}, (t) => [
+  unique('shipment_reception_lines_line_unique').on(t.loadId, t.itemId).nullsNotDistinct(),
+  // R-017: the reception is read by shipment; a content line removed cascades.
+  index('shipment_reception_lines_shipment_id_idx').on(t.shipmentId),
+  index('shipment_reception_lines_item_id_idx').on(t.itemId),
+  check('shipment_reception_lines_state_check', sql`${t.loadState} is null or ${t.loadState} in ('received', 'missing', 'damaged')`),
+  check('shipment_reception_lines_kind_check', sql`(${t.itemId} is null) = (${t.loadState} is not null)`),
+]);
+
+/** Lot B — the punch items (réserves, R-117 list) a reception gap raised (decision 5), on the shipment's equipment line. */
+export const shipmentPunchItems = pgTable('shipment_punch_items', {
+  id: id(),
+  shipmentId: uuid('shipment_id').notNull().references(() => shipments.id, { onDelete: 'cascade' }),
+  punchItemId: uuid('punch_item_id').notNull().unique().references(() => punchItems.id, { onDelete: 'cascade' }),
+  loadId: uuid('load_id').notNull().references(() => shipmentLoads.id, { onDelete: 'cascade' }),
+  /** Null = a gap of the load itself. */
+  itemId: uuid('item_id').references(() => shipmentItems.id, { onDelete: 'cascade' }),
+  gap: text('gap').$type<ReceptionGap>().notNull(),
+  /** Quantity of the gap when the item was raised or last updated (a content line). */
+  quantity: num('quantity'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  unique('shipment_punch_items_gap_unique').on(t.loadId, t.itemId, t.gap).nullsNotDistinct(),
+  // R-017: read by shipment (pub_expeditions counts them); a content line removed cascades.
+  index('shipment_punch_items_shipment_id_idx').on(t.shipmentId),
+  index('shipment_punch_items_item_id_idx').on(t.itemId),
+  check('shipment_punch_items_gap_check', sql`${t.gap} in ('missing', 'damaged')`),
+]);
+
+/**
+ * Lot B — a shipping document generated by Keystone and filed in Codex (decision 3: every document but the invoices). One row per
+ * filed version: the PDF kept as filed (`stored_file_id`, its SHA-256) and the Codex index record it revised (type SHP, one record
+ * per shipment and kind, a new revision letter at each filing).
+ */
+export const shipmentDocuments = pgTable('shipment_documents', {
+  id: id(),
+  shipmentId: uuid('shipment_id').notNull().references(() => shipments.id, { onDelete: 'cascade' }),
+  kind: text('kind').$type<ShippingDocKind>().notNull(),
+  documentId: uuid('document_id').references(() => documents.id, { onDelete: 'set null' }),
+  /** Codex number and revision at filing ("SHP-HLT-041", "B"). */
+  number: text('number').notNull(),
+  revision: text('revision').notNull(),
+  storedFileId: uuid('stored_file_id').references(() => storedFiles.id, { onDelete: 'set null' }),
+  /** SHA-256 of the PDF as filed; null for the demo data set's rows (seeded without a file, regenerated on demand). */
+  sha256: text('sha256'),
+  /** Language the PDF was generated in. */
+  lang: text('lang').notNull(),
+  generatedByPersonId: uuid('generated_by_person_id').references(() => persons.id),
+  generatedAt: timestamp('generated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  unique('shipment_documents_version_unique').on(t.shipmentId, t.kind, t.revision),
+  // R-017: a Codex index record or a stored file removed clears the link.
+  index('shipment_documents_document_id_idx').on(t.documentId),
+  index('shipment_documents_stored_file_id_idx').on(t.storedFileId),
+  check('shipment_documents_kind_check', sql`${t.kind} in ('packing_list', 'container_packing_list', 'delivery_note', 'marking', 'cmr', 'shipping_instructions', 'origin_request', 'export_declaration')`),
+]);

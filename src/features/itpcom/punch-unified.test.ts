@@ -47,7 +47,7 @@ beforeAll(async () => {
 beforeEach(() => vi.mocked(revalidatePath).mockClear());
 
 describe('R-117 · "Add punch item" on the single list, 9 personas', () => {
-  it('editors add an item of either origin, numbered over the project (P-10…); the others read; the client never records an NCR', async () => {
+  it('editors add an item of either origin, numbered over the project (P-11…, R-158 lot B: the demo reception raised P-10); the others read; the client never records an NCR', async () => {
     const added: Record<string, string> = {};
     for (const role of ROLES) {
       as(role);
@@ -59,7 +59,7 @@ describe('R-117 · "Add punch item" on the single list, 9 personas', () => {
       expect([role, r]).toEqual([role, { toast: 'Punch item added' }]);
       added[role] = (await listPunchItems(HLT)).at(-1)!.number;
     }
-    expect(Object.values(added)).toEqual(['P-10', 'P-11', 'P-12', 'P-13', 'P-14']);
+    expect(Object.values(added)).toEqual(['P-11', 'P-12', 'P-13', 'P-14', 'P-15']);
     expect(revalidatePath).toHaveBeenCalledWith('/projects/HLT-026', 'layout');
     const rows = await listPunchItems(HLT, 'site');
     expect(rows.filter((p) => p.description.startsWith('Item by')).map((p) => [p.description, p.origin, p.ownerParty, p.ownerName, p.owner, p.ncrNumber, p.category])).toEqual([
@@ -69,15 +69,15 @@ describe('R-117 · "Add punch item" on the single list, 9 personas', () => {
       ['Item by client', 'site', 'client', null, 'Client', null, 'B'],
     ]);
     const [audit] = await listAudit({ projectCode: HLT, limit: 1 });
-    expect([audit.who, audit.object, audit.change]).toEqual(['Nadia Bensaïd', 'P-14', 'punch item added · Site · B · Item by client']);
+    expect([audit.who, audit.object, audit.change]).toEqual(['Nadia Bensaïd', 'P-15', 'punch item added · Site · B · Item by client']);
   });
 
   it('defaults: origin Inspection, party Keystone, the first TEAM owner; "—" leaves the party as owner', async () => {
     as('quality');
     expect(await addPunchItemAction(HLT, { item: 'Default origin' })).toEqual({ toast: 'Punch item added' });
-    expect(await item('P-15')).toMatchObject({ origin: 'itp', ownerParty: 'keystone', ownerName: 'A. Ollivier', ncrNumber: null, category: 'A', status: 'open' });
+    expect(await item('P-16')).toMatchObject({ origin: 'itp', ownerParty: 'keystone', ownerName: 'A. Ollivier', ncrNumber: null, category: 'A', status: 'open' });
     expect(await addPunchItemAction(HLT, { item: 'Party only', owner: '—', party: 'keystone' })).toEqual({ toast: 'Punch item added' });
-    expect(await item('P-16')).toMatchObject({ ownerName: null, owner: 'Keystone' });
+    expect(await item('P-17')).toMatchObject({ ownerName: null, owner: 'Keystone' });
   });
 
   it('malformed input and unknown values are refused, translated; nothing is written', async () => {

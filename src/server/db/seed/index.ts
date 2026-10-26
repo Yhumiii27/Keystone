@@ -38,7 +38,7 @@ import { seedSite } from './site';
 import { seedStock } from './stock';
 import { demoReferentsToBackfill, seedDemoReferents } from './project-team';
 import { backfillDemoUsers, demoUsersToBackfill, financeUserToBackfill, logisticsUserToBackfill, seedFinanceUser, seedLogisticsUser } from './users';
-import { demoShipmentsToBackfill, seedDemoShipments, seedIncoterms } from './shipments';
+import { demoShipmentLotBToBackfill, demoShipmentsToBackfill, seedDemoShipmentLotB, seedDemoShipments, seedIncoterms } from './shipments';
 import { seedVigie, seedVigieQuality } from './vigie';
 import { seedWork } from './work';
 import { readSeedRecord, writeSeedRecord } from './mode';
@@ -204,6 +204,10 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
     }
     if (await demoShipmentsToBackfill(db)) {
       await db.transaction(async (tx) => { await seedDemoShipments(tx); }).catch((e) => logError('Delivery 9 demo shipment backfill', e, { component: 'seed' }));
+    }
+    // R-158 lot B: EXP-01 arrived with its partial reception (once: while EXP-01 is still "prepared" and nothing is pointed).
+    if (await demoShipmentLotBToBackfill(db)) {
+      await db.transaction(async (tx) => { await seedDemoShipmentLotB(tx); }).catch((e) => logError('Delivery 9 demo shipment lot B backfill', e, { component: 'seed' }));
     }
     // ── Delivery 8 · demo backfills · connectors ──
     // Databases seeded before delivery 7 adopt their (demo) record.

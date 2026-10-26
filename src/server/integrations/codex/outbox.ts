@@ -22,12 +22,14 @@ export interface CodexOutboxEntry extends CodexEntryLike {
   attempts: number;
   lastError: string | null;
   codexRef: string | null;
+  /** Kind `deposit` (R-158 lot B): the generated file to hand to Codex (stored_files.id). */
+  storedFileId: string | null;
 }
 
 const entryOf = (r: typeof codexDocumentOutbox.$inferSelect): CodexOutboxEntry => ({
   id: r.id, documentId: r.documentId, documentNumber: r.documentNumber, revision: r.revision, kind: r.kind, stepPosition: r.stepPosition, role: r.role,
   decision: r.decision, comment: r.comment, actorName: r.actorName, actorRole: r.actorRole, recordedAt: r.recordedAt.toISOString(), syncStatus: r.syncStatus,
-  attempts: r.attempts, lastError: r.lastError, codexRef: r.codexRef,
+  attempts: r.attempts, lastError: r.lastError, codexRef: r.codexRef, storedFileId: r.storedFileId,
 });
 
 export interface NewCodexEntry {
@@ -43,6 +45,8 @@ export interface NewCodexEntry {
   actorPersonId: string | null;
   actorRole: string;
   recordedAt: Date;
+  /** Kind `deposit`: the generated file (stored_files.id). */
+  storedFileId?: string | null;
 }
 
 /** Queues an entry, "pending sync with Codex". */
@@ -52,7 +56,7 @@ export async function insertCodexEntry(q: Q, e: NewCodexEntry): Promise<CodexOut
     .values({
       documentId: e.documentId, documentNumber: e.documentNumber, revision: e.revision, kind: e.kind, stepPosition: e.stepPosition ?? null, role: e.role ?? null,
       decision: e.decision ?? null, comment: e.comment ?? null, actorName: e.actorName, actorPersonId: e.actorPersonId, actorRole: e.actorRole, recordedAt: e.recordedAt,
-      syncStatus: 'pending',
+      syncStatus: 'pending', storedFileId: e.storedFileId ?? null,
     })
     .returning();
   return entryOf(row);

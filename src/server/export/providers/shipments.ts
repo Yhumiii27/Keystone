@@ -1,15 +1,21 @@
 // Export provider — Shipments (R-158 lot A): the project's shipments (facts, the contract's Incoterm), their transport steps,
 // the content of their loads, the packing control and the per-HS-code customs summary. Typed text as typed (dataText). The
 // customs values follow the screen (`canSeeShipmentValues`: NEW-D2-1 roles and Logistics): the € columns are left out for the
-// other viewers. Lot B adds the shipping documents (packing list, CMR…) as PDF variants deposited in Codex.
+// other viewers. Lot B: the shipping documents (packing list, per container, delivery note, marking, CMR, shipping instructions,
+// origin request, export declaration data — never an invoice) as PDF variants `?variant=<kind>&id=EXP-01`, built by the templates
+// of ../shipping-documents (the values follow `canSeeShipmentValues`); "File in Codex" files the same document
+// (src/server/dal/shipment-documents.ts).
 import { INCOTERM_STEP_LABEL } from '@/domain/incoterms';
 import { canSeeShipmentValues } from '@/domain/rights';
 import { CATEGORY_LABEL, GAP_LABEL, LOAD_TYPE_LABEL, SHIPMENT_MODE_LABEL, SHIPMENT_STATUS_LABEL, shipmentSteps } from '@/domain/shipments';
 import { dataText } from '@/i18n/data-text';
 import { getProjectShipments } from '@/server/dal/shipments';
+import { shippingDocData } from '@/server/dal/shipment-documents';
+import { SHIPPING_DOC_KINDS, shippingDocBlocker, type ShippingDocKind } from '@/domain/shipping-documents';
+import { buildShippingDocument } from '../shipping-documents';
 import { registerExportProvider } from '../registry';
-import type { ExportContext, ExportWorkbook } from '../types';
-import { col, sheet, stripPriceColumns, todayIso } from './common';
+import type { ExportContext, ExportWorkbook, PdfDocument } from '../types';
+import { col, param, sheet, stripPriceColumns, todayIso } from './common';
 
 async function shipmentsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   if (!ctx.project) return null;
@@ -71,4 +77,16 @@ async function shipmentsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | n
   };
 }
 
-registerExportProvider({ screen: 'shipments', table: shipmentsWorkbook });
+/** One shipping document of a shipment (`?id=EXP-01`); null when unknown or not available for it (no content, CMR off the road). */
+const shippingDocument = (kind: ShippingDocKind) => async (ctx: ExportContext): Promise<PdfDocument | null> => {
+  if (!ctx.project) return null;
+  const ref = (param(ctx, 'id') ?? '').toUpperCase();
+  const data = ref ? await shippingDocData(ctx.project.code, ref) : null;
+  if (!data || shippingDocBlocker(kind, data.shipment)) return null;
+  return buildShippingDocument(kind, data, { t: ctx.t, lang: ctx.lang, values: canSeeShipmentValues(ctx.viewer.role), today: ctx.today });
+};
+
+registerExportProvider({
+  screen: 'shipments', table: shipmentsWorkbook,
+  documents: Object.fromEntries(SHIPPING_DOC_KINDS.map((k) => [k, shippingDocument(k)])),
+});

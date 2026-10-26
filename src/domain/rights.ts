@@ -155,7 +155,16 @@ export const roleReadOnly = (role: RoleKey, screen: ScreenId) => financeReadOnly
  * The rest of the team and the other internal roles read; the client is refused the screen.
  */
 export const canEditShipments = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) =>
-  role !== 'client' && canSee(role, 'shipments') && (role === 'director' || role === 'logistics' || a.lead);
+  // R-158 lot B: the team member has the screen to point the reception only (`canRecordReception`), never to edit shipments.
+  role !== 'client' && role !== 'member' && canSee(role, 'shipments') && (role === 'director' || role === 'logistics' || a.lead);
+
+/**
+ * R-158 lot B (decision 5): who points a shipment's site reception (loads and content received, missing, damaged — the gaps raise
+ * punch items) — the shipment editors (`canEditShipments`) and the site team: a member of the project's team who edits its Site
+ * screen (the team member on site, a department head on the team).
+ */
+export const canRecordReception = (role: RoleKey, a: Pick<ProjectAccess, 'lead' | 'member'>) =>
+  canEditShipments(role, a) || (role !== 'client' && canSee(role, 'site') && !roleReadOnly(role, 'site') && a.member);
 
 /** C-9 (R-044 default, DELIVERY-7 §8 open question): the project currency and budget rate — the director and Finance. */
 export const BUDGET_RATE_ROLES: readonly RoleKey[] = ['director', 'finance'];

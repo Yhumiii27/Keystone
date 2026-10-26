@@ -5,9 +5,15 @@ import 'server-only';
 // rights server-side (`editsShipments`: the director, Logistics, the project's leads), the shipment's status, writes in one
 // transaction and records the audit row and the activity event (system messages, R-184). The Server Functions validate the
 // input first (src/domain/shipment-input.ts) and revalidate the app.
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+// Lot B: the reads also carry the site reception (pointing, punch items raised), the documents filed in Codex, the risk raised
+// for a freight delay and the site need date; the reception writers are in ./shipment-reception.ts, the filing in
+// ./shipment-documents.ts.
+import { and, asc, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import { INCOTERM_STEP_LABEL, isIncotermStep, readSplit, type IncotermSplit } from '@/domain/incoterms';
 import type { ItemInput, LoadInput, ShipmentInput, StepInput } from '@/domain/shipment-input';
+import type { ReceptionGap, ReceptionLoadState, SiteNeed } from '@/domain/shipment-reception';
+import type { ShippingDocKind } from '@/domain/shipping-documents';
+import type { CodexSyncStatus, PunchCategory, PunchStatus } from '@/server/db/codes';
 import {
   SHIPMENT_STATUS_LABEL, contentEditable, nextShipmentRef, nextShipmentStatus, packingBlocker, packingControl, packingDeliverableBlocker,
   type ControlBomLine, type ControlItem, type GapJustification, type LoadType, type PackingControl, type ShipmentMode, type ShipmentStatus,
@@ -17,7 +23,8 @@ import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { nameOf } from '@/server/db/helpers';
 import {
-  contracts, incoterms, parts, persons, projectEquipments, projects, shipmentEquipments, shipmentGapReasons, shipmentItems, shipmentLoads, shipments, shipmentSteps,
+  activities, codexDocumentOutbox, contracts, incoterms, milestones, parts, persons, projectEquipments, projects, punchItems, risks, shipmentDocuments,
+  shipmentEquipments, shipmentGapReasons, shipmentItems, shipmentLoads, shipmentPunchItems, shipmentReceptionLines, shipments, shipmentSteps, siteSheets,
 } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
 import { getProjectBom } from './bom';
@@ -80,6 +87,54 @@ export interface ShipmentRow {
   packingValidatedAt: string | null;
   packingValidatedBy: string | null;
   control: PackingControl;
+  /** Lot B: reception completed on, closed on (and why, when closed by hand). */
+  receivedOn: string | null;
+  closedOn: string | null;
+  closeReason: string | null;
+  /** Lot B: the risk raised from the freight-delay warning. */
+  risk: { number: string; status: string } | null;
+  /** Lot B: the pointing of the site reception, by load id and by content-line id. */
+  reception: { loads: Record<string, ReceptionLoadRow>; items: Record<string, ReceptionItemRow> };
+  /** Lot B: the punch items the reception's gaps raised. */
+  punch: ShipmentPunchRow[];
+  /** Lot B: the documents filed in Codex, the latest version of each kind. */
+  documents: ShipmentDocumentRow[];
+}
+
+export interface ReceptionLoadRow {
+  state: ReceptionLoadState;
+  note: string | null;
+  by: string | null;
+  on: string;
+}
+
+export interface ReceptionItemRow {
+  received: number;
+  missing: number;
+  damaged: number;
+  note: string | null;
+  by: string | null;
+  on: string;
+}
+
+export interface ShipmentPunchRow {
+  number: string;
+  status: PunchStatus;
+  category: PunchCategory | null;
+  gap: ReceptionGap;
+  loadId: string;
+  itemId: string | null;
+  quantity: number | null;
+}
+
+export interface ShipmentDocumentRow {
+  kind: ShippingDocKind;
+  number: string;
+  revision: string;
+  generatedAt: string;
+  by: string | null;
+  /** Delivery of the deposit to Codex (outbox entry of this revision); null when the entry is closed (Codex holds it). */
+  sync: CodexSyncStatus | null;
 }
 
 export interface ProjectShipments {
@@ -92,6 +147,8 @@ export interface ProjectShipments {
   shipments: ShipmentRow[];
   /** The project's BOM articles (content form choices): ref, name, equipment line ref (null = common). */
   bom: { ref: string; name: string; equipmentRef: string | null; quantity: number }[];
+  /** Lot B: the site need date (site sheet start, else the schedule milestone tagged `arrivee_site`), for the freight-delay warning. */
+  need: SiteNeed | null;
 }
 
 const num = (v: number | null) => (v == null ? null : Number(v));
@@ -118,7 +175,7 @@ async function readShipments(db: Q, projectCode: string, bom: Bom): Promise<Proj
   ]);
   const [inc] = contract?.incotermId ? await db.select().from(incoterms).where(eq(incoterms.id, contract.incotermId)) : [];
   const ids = rows.map((r) => r.id);
-  const [eqRows, stepRows, loadRows, reasonRows, validators] = ids.length
+  const [eqRows, stepRows, loadRows, reasonRows, validators, receptionRows, punchRows, docRows, riskRows] = ids.length
     ? await Promise.all([
       db.select({ shipmentId: shipmentEquipments.shipmentId, id: projectEquipments.id, ref: projectEquipments.ref })
         .from(shipmentEquipments).innerJoin(projectEquipments, eq(projectEquipments.id, shipmentEquipments.equipmentId)).where(inArray(shipmentEquipments.shipmentId, ids))
@@ -129,8 +186,23 @@ async function readShipments(db: Q, projectCode: string, bom: Bom): Promise<Proj
         .leftJoin(persons, eq(persons.id, shipmentGapReasons.byPersonId)).where(inArray(shipmentGapReasons.shipmentId, ids)),
       db.select({ id: persons.id, fullName: persons.fullName, shortName: persons.shortName }).from(persons)
         .where(inArray(persons.id, rows.map((r) => r.packingValidatedByPersonId).filter((x): x is string => !!x).concat(['00000000-0000-0000-0000-000000000000']))),
+      db.select({ r: shipmentReceptionLines, by: persons.fullName, byShort: persons.shortName }).from(shipmentReceptionLines)
+        .leftJoin(persons, eq(persons.id, shipmentReceptionLines.byPersonId)).where(inArray(shipmentReceptionLines.shipmentId, ids)),
+      db.select({ l: shipmentPunchItems, number: punchItems.number, status: punchItems.status, category: punchItems.category }).from(shipmentPunchItems)
+        .innerJoin(punchItems, eq(punchItems.id, shipmentPunchItems.punchItemId)).where(inArray(shipmentPunchItems.shipmentId, ids)).orderBy(asc(punchItems.position), asc(punchItems.number)),
+      db.select({ d: shipmentDocuments, by: persons.fullName, byShort: persons.shortName }).from(shipmentDocuments)
+        .leftJoin(persons, eq(persons.id, shipmentDocuments.generatedByPersonId)).where(inArray(shipmentDocuments.shipmentId, ids)).orderBy(desc(shipmentDocuments.generatedAt)),
+      db.select({ id: risks.id, number: risks.number, status: risks.status }).from(risks)
+        .where(inArray(risks.id, rows.map((r) => r.riskId).filter((x): x is string => !!x).concat(['00000000-0000-0000-0000-000000000000']))),
     ])
-    : [[], [], [], [], []];
+    : [[], [], [], [], [], [], [], [], []];
+  // Deposits still waiting for Codex (open outbox entries of the filed revisions).
+  const docIds = [...new Set(docRows.map((r) => r.d.documentId).filter((x): x is string => !!x))];
+  const openDeposits = docIds.length
+    ? await db.select({ documentId: codexDocumentOutbox.documentId, revision: codexDocumentOutbox.revision, sync: codexDocumentOutbox.syncStatus }).from(codexDocumentOutbox)
+      .where(and(inArray(codexDocumentOutbox.documentId, docIds), eq(codexDocumentOutbox.kind, 'deposit'), sql`${codexDocumentOutbox.closedAt} is null`))
+    : [];
+  const need = await siteNeedOf(db, p.id);
   const loadIds = loadRows.map((l) => l.id);
   const itemRows = loadIds.length
     ? await db.select({ i: shipmentItems, ref: parts.ref, name: parts.name, hs: parts.hsCode, na: parts.hsNotApplicable, price: parts.listPriceEur, restr: parts.exportRestriction })
@@ -188,7 +260,25 @@ async function readShipments(db: Q, projectCode: string, bom: Bom): Promise<Proj
     }));
     const eqs = eqRows.filter((e) => e.shipmentId === r.id).map((e) => ({ id: e.id, ref: e.ref }));
     const control = packingControl({ bom: bomLines, equipmentIds: eqs.map((e) => e.id), items, packedElsewhere: elsewhere, justifications });
+    const reception: ShipmentRow['reception'] = { loads: {}, items: {} };
+    for (const x of receptionRows.filter((y) => y.r.shipmentId === r.id)) {
+      const by = x.by ?? x.byShort ?? null;
+      if (!x.r.itemId) reception.loads[x.r.loadId] = { state: x.r.loadState!, note: x.r.note, by, on: x.r.pointedOn };
+      else reception.items[x.r.itemId] = { received: Number(x.r.receivedQty ?? 0), missing: Number(x.r.missingQty ?? 0), damaged: Number(x.r.damagedQty ?? 0), note: x.r.note, by, on: x.r.pointedOn };
+    }
+    const latest = new Map<string, ShipmentDocumentRow>();
+    for (const x of docRows.filter((y) => y.d.shipmentId === r.id)) {
+      if (latest.has(x.d.kind)) continue;
+      const open = openDeposits.find((o) => o.documentId === x.d.documentId && o.revision === x.d.revision);
+      latest.set(x.d.kind, { kind: x.d.kind, number: x.d.number, revision: x.d.revision, generatedAt: x.d.generatedAt.toISOString(), by: x.by ?? x.byShort ?? null, sync: open?.sync ?? null });
+    }
+    const risk = r.riskId ? riskRows.find((x) => x.id === r.riskId) : undefined;
     return {
+      receivedOn: r.receivedOn, closedOn: r.closedOn, closeReason: r.closeReason, risk: risk ? { number: risk.number, status: risk.status } : null, reception,
+      punch: punchRows.filter((x) => x.l.shipmentId === r.id).map((x) => ({
+        number: x.number, status: x.status, category: x.category, gap: x.l.gap, loadId: x.l.loadId, itemId: x.l.itemId, quantity: x.l.quantity == null ? null : Number(x.l.quantity),
+      })),
+      documents: [...latest.values()],
       id: r.id, ref: r.ref, label: r.label, status: r.status, mode: r.mode, forwarder: r.forwarder, origin: r.origin, destination: r.destination,
       etd: r.etd, eta: r.eta, atd: r.atd, ata: r.ata, note: r.note, equipment: eqs,
       steps: stepRows.filter((s) => s.shipmentId === r.id).map((s) => ({ step: s.step, plannedOn: s.plannedOn, actualOn: s.actualOn, note: s.note })),
@@ -201,7 +291,20 @@ async function readShipments(db: Q, projectCode: string, bom: Bom): Promise<Proj
     incoterm: inc ? { code: inc.code, nameEn: inc.nameEn, nameFr: inc.nameFr, descriptionEn: inc.descriptionEn, descriptionFr: inc.descriptionFr, modes: inc.modes, split: readSplit(inc.split), active: inc.active } : null,
     incotermPlace: contract?.place ?? null, shipments: out,
     bom: (bom?.lines ?? []).map((l) => ({ ref: l.ref, name: l.name, equipmentRef: l.equipmentRef ?? null, quantity: l.quantity })),
+    need,
   };
+}
+
+/**
+ * Lot B: the date the equipment is needed on site — the site sheet's start (site readiness), else the finish of the activity the
+ * schedule milestone tagged `arrivee_site` (R-189) is anchored on; null without either (a milestone not anchored yet is not read).
+ */
+export async function siteNeedOf(db: Q, projectId: string): Promise<SiteNeed | null> {
+  const [ss] = await db.select({ start: siteSheets.startOn }).from(siteSheets).where(eq(siteSheets.projectId, projectId));
+  if (ss?.start) return { date: ss.start, source: 'site_sheet' };
+  const [m] = await db.select({ finish: activities.finishDate }).from(milestones).innerJoin(activities, eq(activities.id, milestones.activityId))
+    .where(and(eq(milestones.projectId, projectId), eq(milestones.capexMilestoneCode, 'arrivee_site'), isNotNull(activities.finishDate)));
+  return m?.finish ? { date: m.finish, source: 'milestone' } : null;
 }
 
 /**

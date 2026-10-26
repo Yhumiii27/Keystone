@@ -103,30 +103,30 @@ describe('ITP · commissioning Server Functions', () => {
     expect([plan.template, plan.systems, plan.customCount, plan.inspections.map((i) => [i.number, i.system])]).toEqual(['AUTRE', ['General'], 1, [['I-20', 'General']]]);
   });
 
-  it('"Add punch item": P-10, Open, owner as short name; an A item feeds the badge and Commissioning "Blocking A"; Start / Close', async () => {
+  it('"Add punch item": P-11 (R-158 lot B: the demo reception raised P-10), Open, owner as short name; an A item feeds the badge and Commissioning "Blocking A"; Start / Close', async () => {
     viewer.name = 'Gabriel Comte';
     viewer.role = 'quality';
     expect(await addPunchItemAction('HLT-026', { item: 'Missing bolt — post 3', loc: 'Structure · Bay 2', cat: 'A', src: 'sat', owner: 'Julien Wagner', due: '9 Oct' })).toEqual({ toast: 'Punch item added' });
-    expect(await punch('P-10')).toMatchObject({ description: 'Missing bolt — post 3', location: 'Structure · Bay 2', category: 'A', source: 'sat', sourceText: 'SAT', owner: 'J. Wagner', dueOn: '2026-10-09', status: 'open' });
+    expect(await punch('P-11')).toMatchObject({ description: 'Missing bolt — post 3', location: 'Structure · Bay 2', category: 'A', source: 'sat', sourceText: 'SAT', owner: 'J. Wagner', dueOn: '2026-10-09', status: 'open' });
     expect(await openPunchAByProject()).toEqual({ 'HLT-026': 1 });
     const c = (await getCommissioning('HLT-026'))!;
     // R-185 part 2: + the system of EQ-02 (MEMU modules M1–M3): the new item's location (Structure) is not its.
     expect(c.systems.map((s) => s.blockingA)).toEqual([1, 0, 0, 0, 0, 0, 0]);
 
-    expect(await advancePunchItemAction('HLT-026', 'P-10', 'open')).toEqual({ ok: true });
-    expect((await punch('P-10'))!.status).toBe('in_progress');
+    expect(await advancePunchItemAction('HLT-026', 'P-11', 'open')).toEqual({ ok: true });
+    expect((await punch('P-11'))!.status).toBe('in_progress');
     expect(await openPunchAByProject()).toEqual({ 'HLT-026': 1 });
     // A second click on the stale "Start" does not close the item.
-    expect(await advancePunchItemAction('HLT-026', 'P-10', 'open')).toEqual({ error: 'This punch item has already moved on' });
-    expect(await advancePunchItemAction('HLT-026', 'P-10', 'in_progress')).toEqual({ ok: true });
-    expect((await punch('P-10'))!.status).toBe('closed');
+    expect(await advancePunchItemAction('HLT-026', 'P-11', 'open')).toEqual({ error: 'This punch item has already moved on' });
+    expect(await advancePunchItemAction('HLT-026', 'P-11', 'in_progress')).toEqual({ ok: true });
+    expect((await punch('P-11'))!.status).toBe('closed');
     expect(await openPunchAByProject()).toEqual({});
-    expect(await advancePunchItemAction('HLT-026', 'P-10', 'in_progress')).toEqual({ error: 'This punch item is already closed' });
+    expect(await advancePunchItemAction('HLT-026', 'P-11', 'in_progress')).toEqual({ error: 'This punch item is already closed' });
     const [audit] = await listAudit({ projectCode: 'HLT-026', limit: 1 });
-    expect([audit.who, audit.object, audit.change]).toEqual(['Gabriel Comte', 'P-10', 'status: In progress → Closed']);
+    expect([audit.who, audit.object, audit.change]).toEqual(['Gabriel Comte', 'P-11', 'status: In progress → Closed']);
 
     expect(await addPunchItemAction('HLT-026', { item: 'Label', cat: 'C — cosmetic' })).toEqual({ toast: 'Punch item added' });
-    expect(await punch('P-11')).toMatchObject({ category: 'C', source: 'site_walk', owner: 'A. Ollivier', location: '', dueOn: null });
+    expect(await punch('P-12')).toMatchObject({ category: 'C', source: 'site_walk', owner: 'A. Ollivier', location: '', dueOn: null });
     expect(await addPunchItemAction('HLT-026', { item: 'x', owner: 'Nobody' })).toEqual({ error: 'Unknown owner' });
     viewer.lang = 'fr';
     expect(await addPunchItemAction('HLT-026', { item: '' })).toEqual({ error: 'L’élément est obligatoire' });

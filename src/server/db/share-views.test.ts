@@ -13,7 +13,7 @@ import { refreshShareProgress } from '@/server/dal/share-progress';
 import { setDb } from './client';
 import { openDatabase } from './open';
 import { clients, contractAmendments, contracts, lessonsLearned, machines, milestones, projects, punchItems } from './schema';
-import { INTERNAL_MONEY_COLUMN, REX_VIEW_TYPES, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COLUMNS, SHARE_VIEW_COUNT } from './share-contracts';
+import { EXPEDITIONS_FORBIDDEN_COLUMN, EXPEDITIONS_VIEW_TYPES, INTERNAL_MONEY_COLUMN, REX_VIEW_TYPES, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COLUMNS, SHARE_VIEW_COUNT } from './share-contracts';
 import type { DB } from './types';
 
 let db: DB;
@@ -25,13 +25,30 @@ beforeAll(async () => {
 }, 60_000);
 
 describe('share views of delivery 9 (0038_share_followup)', () => {
-  it('21 pub_ views (R-186: pub_catalogue_machines; R-187: pub_reponses_besoins; Matrix D22: pub_rex; R-191: pub_pack_ingenierie); each contract has its columns in order', async () => {
+  it('22 pub_ views (R-186: pub_catalogue_machines; R-187: pub_reponses_besoins; Matrix D22: pub_rex; R-191: pub_pack_ingenierie; R-158: pub_expeditions); each contract has its columns in order', async () => {
     const views = await rows<{ v: string }>(sql`select table_name as v from information_schema.views where table_schema = current_schema() and table_name like 'pub\_%' order by 1`);
     expect(views.map((r) => r.v)).toHaveLength(SHARE_VIEW_COUNT);
     for (const [view, cols] of Object.entries(SHARE_VIEW_COLUMNS)) {
       const got = await rows<{ c: string }>(sql`select column_name as c from information_schema.columns where table_schema = current_schema() and table_name = ${view} order by ordinal_position`);
       expect(got.map((r) => r.c), view).toEqual(cols);
     }
+  });
+
+  it('pub_expeditions (R-158 lot B): one row per shipment, no value, price or forwarder; the demo EXP-01 arrived with one open punch item', async () => {
+    const cols = await rows<{ c: string; t: string }>(sql`select column_name as c, data_type as t from information_schema.columns where table_schema = current_schema() and table_name = 'pub_expeditions' order by ordinal_position`);
+    expect(Object.fromEntries(cols.map((r) => [r.c, r.t]))).toEqual(EXPEDITIONS_VIEW_TYPES);
+    expect(cols.map((r) => r.c).filter((c) => EXPEDITIONS_FORBIDDEN_COLUMN.test(c))).toEqual([]);
+    const v = await rows<Record<string, unknown>>(sql`select projet_code, expedition_ref, equipements, statut, mode, incoterm, incoterm_lieu, origine, destination, etd::text, eta::text,
+      depart_reel_le::text, arrivee_reelle_le::text, receptionnee_le::text, nb_chargements, nb_reserves_ouvertes from pub_expeditions`);
+    expect(v).toEqual([{
+      projet_code: 'HLT-026', expedition_ref: 'EXP-01', equipements: 'EQ-02 · 3 × MEMU', statut: 'arrived', mode: 'road', incoterm: 'DAP', incoterm_lieu: 'Le Havre — terminal site',
+      origine: 'Atelier EPC2i — Lyon', destination: 'Le Havre — terminal site', etd: '2026-09-21', eta: '2026-09-22', depart_reel_le: '2026-09-21', arrivee_reelle_le: '2026-09-22',
+      receptionnee_le: null, nb_chargements: 2, nb_reserves_ouvertes: 1,
+    }]);
+    // The shipments feed the CAPEX milestones expedition (first pick-up) and arrivee_site (last arrival once all sent arrived).
+    const j = await rows<{ jalon_code: string; prevu_le: string | null; reel_le: string | null }>(sql`select jalon_code, prevu_le::text, reel_le::text from pub_jalons_projets
+      where projet_code = 'HLT-026' and jalon_code in ('expedition', 'arrivee_site') order by jalon_code`);
+    expect(j.map((r) => [r.jalon_code, r.reel_le])).toEqual([['arrivee_site', '2026-09-22'], ['expedition', '2026-09-21']]);
   });
 
   it('pub_avancement_projets is sales side only: no internal cost, rate, actual cost, CPI, EAC or margin (P-05 / AC-2)', async () => {
@@ -69,7 +86,8 @@ describe('share views of delivery 9 (0038_share_followup)', () => {
       sql`select projet_code, jalon_code, prevu_le::text, reference_le::text, reel_le::text from pub_jalons_projets`,
     );
     expect(v).toHaveLength(8 * n);
-    expect([...new Set(v.map((r) => r.jalon_code))]).toEqual(['commande', 'fin_etudes', 'fat', 'expedition', 'arrivee_site', 'sat', 'pv_reception', 'fin_garantie']);
+    // R-158 lot B: the view has no order; the eight codes (the row order changed with the shipments' lateral join).
+    expect([...new Set(v.map((r) => r.jalon_code))].sort()).toEqual(['commande', 'fin_etudes', 'fat', 'expedition', 'arrivee_site', 'sat', 'pv_reception', 'fin_garantie'].sort());
     // R-189: reference_le is the BL1 date of the schedule milestone tagged with the code (was null for every row before R-189).
     expect(v.filter((r) => r.reference_le).map((r) => [r.projet_code, r.jalon_code, r.reference_le]).sort()).toEqual([
       ['HLT-026', 'pv_reception', '2026-12-18'], ['MSR-012', 'pv_reception', '2026-11-01'], ['NDC-031', 'sat', '2027-04-01'], ['WSA-044', 'sat', '2027-07-01'],

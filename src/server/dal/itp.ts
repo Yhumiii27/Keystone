@@ -15,6 +15,7 @@ import { and, asc, eq, inArray, isNotNull } from 'drizzle-orm';
 import { lineOfRef, mainLineOf } from '@/domain/equipment-scope';
 import { equipmentLotLabel } from '@/domain/project-equipment';
 import { NCR_REF, canRecordItpResult } from '@/domain/itpcom';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { demoFloor } from '@/server/db/helpers';
 import {
@@ -26,6 +27,7 @@ import { documents, itpInspections, itpPlanSystems, itpPlans, machineTypeItpSyst
 import type { DB, Tx } from '@/server/db/types';
 import { vigieNcrUrl } from '@/server/integrations/vigie/links';
 import { isClientContactOf, isIsoDate, optionalDate, optionalText, projectOf, requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
+import { afterPunchItemChange } from './shipment-reception';
 import { onProjectTeam } from './team-guard';
 
 export type { Actor };
@@ -494,7 +496,8 @@ export async function addPunchItem(projectCode: string, input: NewPunchInput, ac
   requireWorkspace('itp', actor, 'Inspections & punch list');
   const description = requiredText(input.description, 'Item', 300);
   if (!punchCategory.isCode(input.category)) throw new Error('Invalid category');
-  if (!punchSource.isCode(input.source)) throw new Error('Invalid source');
+  // R-158 lot B: a reception punch item is raised by the shipment's reception only.
+  if (!punchSource.isCode(input.source) || input.source === 'reception') throw new Error('Invalid source');
   const origin = input.origin ?? 'itp';
   if (!punchOrigin.isCode(origin)) throw new Error('Invalid origin');
   const ownerParty = input.ownerParty ?? 'keystone';
@@ -566,6 +569,8 @@ export async function advancePunchItem(projectCode: string, number: string, acto
       objectRef: number, change: `status: ${punchStatus.label(it.status)} → ${punchStatus.label(next)}`, area: 'Punch list', entityType: 'punch_item', entityId: it.id, projectId: p.id,
       before: { status: it.status }, after: { status: next },
     });
+    // R-158 lot B: a punch item raised by a shipment's reception moves the shipment (its last one closed closes it).
+    await afterPunchItemChange(tx, it.id, actor, on ?? (await businessToday(tx)));
     return next;
   });
 }

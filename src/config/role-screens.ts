@@ -34,6 +34,9 @@ base.procurement.push('leave', 'meetings', 'sav', 'fleet');
 // R-158: procurement follows the shipments of the equipment it bought (Shipments in its workspace; edits as a project lead only).
 base.procurement.push('shipments');
 base.member.push('meetings');
+// R-158 lot B (decision 5): the site team points the reception of the shipments on site (Shipments in its workspace; the rest
+// of the screen read-only — `canRecordReception`, src/domain/rights.ts).
+base.member.push('shipments');
 // P-9a (R-061): activity owners enter the progress of their activities on the Plan — the team member and procurement own
 // activities (OWN) but had no Plan; they now have it, read-only except the % complete of their own activities.
 base.member.push('plan');

@@ -15,6 +15,7 @@ import type {
   DocService, DocumentStatus,
 } from '../codes';
 import { id, timestamps } from './_common';
+import { storedFiles } from './files';
 import { persons } from './organisation';
 import { projects } from './portfolio';
 
@@ -259,4 +260,9 @@ export const codexDocumentOutbox = pgTable('codex_document_outbox', {
   codexRef: text('codex_ref'),
   /** Codex reflected the entry (step signed, status moved on) or a new revision superseded it. */
   closedAt: timestamp('closed_at', { withTimezone: true }),
-}, (t) => [index('codex_document_outbox_document_id_idx').on(t.documentId)]);
+  /**
+   * R-158 lot B, kind `deposit`: the file Keystone generated and files in Codex (a shipping document), kept in Keystone's file
+   * store until Codex holds it.
+   */
+  storedFileId: uuid('stored_file_id').references(() => storedFiles.id, { onDelete: 'set null' }),
+}, (t) => [index('codex_document_outbox_document_id_idx').on(t.documentId), index('codex_document_outbox_stored_file_id_idx').on(t.storedFileId)]);

@@ -65,10 +65,10 @@ describe('the demo data set (R-158)', () => {
     expect((await getContractIncoterm('NDC-031')).hasContract).toBe(false);
   });
 
-  it('EXP-01 carries EQ-02 (3 × MEMU) in two 40′ HC containers, packing list validated, one gap justified', async () => {
+  it('EXP-01 carries EQ-02 (3 × MEMU) in two 40′ HC containers, packing list validated, one gap justified, arrived (R-158 lot B)', async () => {
     const s = await shipment('EXP-01');
     expect([s.status, s.mode, s.forwarder, s.equipment.map((e) => e.ref), s.loads.map((l) => `${l.number}:${l.type}:${l.identifier}`)]).toEqual([
-      'prepared', 'road', 'Transports Delmas', ['EQ-02'], ['1:c40hc:MSKU 482190-3', '2:c40hc:TCLU 905514-8'],
+      'arrived', 'road', 'Transports Delmas', ['EQ-02'], ['1:c40hc:MSKU 482190-3', '2:c40hc:TCLU 905514-8'],
     ]);
     expect(s.packingValidatedBy).toBe('Camille Verdier');
     const c = s.control;
@@ -189,7 +189,7 @@ describe('« Colisage & documents douaniers » (decision 4)', () => {
     expect(await setDeliverableAction({ code: 'HLT-026', stage: 'expedition', index: 0, done: true })).toMatchObject({ ok: false });
     as('logistics');
     expect(await removeShipmentAction('HLT-026', 'EXP-03')).toMatchObject({ ok: true });
-    // EXP-01 (prepared) and EXP-02 (picked up) are validated: the tick passes (the project is not at Expédition: no move).
+    // EXP-01 (arrived, R-158 lot B) and EXP-02 (picked up) are validated: the tick passes (the project is not at Expédition: no move).
     expect(await setDeliverableAndAdvance('HLT-026', 'expedition', 0, true)).toBeNull();
     // Unticking is never refused.
     expect(await setDeliverableAndAdvance('HLT-026', 'expedition', 0, false)).toBeNull();
@@ -258,7 +258,8 @@ describe('the Logistics Home', () => {
     const v = await getHomeView({ role: 'logistics', persona: { name: persona.name, title: persona.title }, projectCode: 'HLT-026', zone: null, lang: 'en' });
     expect([v.greeting, v.sub]).toEqual(['Good morning, Camille', 'Logistics coordinator · Friday 25 Sep 2026']);
     expect(v.kpis.map((k) => [k.label, k.value])).toEqual([['Shipments', '2'], ['Packing lists to validate', '0'], ['On the way', '1'], ['Late transport steps', '0']]);
-    expect(v.left.rows.map((r) => [r.title, r.tag])).toEqual([['EXP-01', 'Prepared'], ['EXP-02', 'Picked up']]);
+    // R-158 lot B: the demo EXP-01 has arrived (partial reception).
+    expect(v.left.rows.map((r) => [r.title, r.tag])).toEqual([['EXP-01', 'Arrived'], ['EXP-02', 'Picked up']]);
     expect(v.right.rows).toEqual([]);
     expect(JSON.stringify(v)).not.toMatch(/€/);
   });
@@ -271,11 +272,11 @@ describe('the screen (EN / FR)', () => {
       const t = makeT(lang);
       const view = shipmentsView(data, '2026-09-25', t, lang);
       const noForm = { title: 'x', submit: 'x', fields: [] };
-      const forms = { edit: noForm, load: noForm, editLoad: noForm, item: noForm, editItem: noForm, gap: noForm, step: () => noForm };
+      const forms = { edit: noForm, load: noForm, editLoad: noForm, item: noForm, editItem: noForm, gap: noForm, step: () => noForm, pointLoad: noForm, pointItem: noForm, close: noForm, risk: null };
       return renderToStaticMarkup(h(I18nProvider, { lang, children: h(ShipmentsBody, { view, code: 'HLT-026', canEdit, context: '#026', formsFor: () => forms, t }) }));
     };
     const en = render('en', true);
-    for (const s of ['DAP', 'Delivered At Place', 'Le Havre — terminal site', 'EXP-01 · Modules MEMU M1–M3', 'Container 40′ HC', 'Packing control cleared', 'Customs summary by HS code', 'Reopen packing list', 'Mark picked up', 'Mark in transit'])
+    for (const s of ['DAP', 'Delivered At Place', 'Le Havre — terminal site', 'EXP-01 · Modules MEMU M1–M3', 'Container 40′ HC', 'Packing control cleared', 'Customs summary by HS code', 'Site reception', 'Shipping documents', 'Mark in transit'])
       expect(en, s).toContain(s);
     const fr = render('fr', false);
     for (const s of ['Rendu au lieu de destination', 'Le Havre — site du terminal', 'Conteneur 40′ HC', 'Contrôle du colisage soldé', 'Synthèse douanière par code SH', 'Transport principal', 'EPC2i (vendeur)'])

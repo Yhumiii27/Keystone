@@ -89,7 +89,8 @@ describe('multi-equipment ITP, punch list, commissioning, BOM and installed base
     expect(await addPunchItemAction(HLT, { item: 'Fence gate', cat: 'C' })).toEqual({ toast: 'Punch item added' });
     expect(await addPunchItemAction(HLT, { item: 'x', equipment: 'EQ-42' })).toEqual({ error: 'Unknown equipment line' });
     const items = await listPunchItems(HLT);
-    expect(items.slice(-2).map((p) => [p.number, p.equipmentRef])).toEqual([['P-10', 'EQ-02'], ['P-11', null]]);
+    // R-158 lot B: after P-10 (the demo reception).
+    expect(items.slice(-2).map((p) => [p.number, p.equipmentRef])).toEqual([['P-11', 'EQ-02'], ['P-12', null]]);
     expect((await listAudit())[1].change).toContain('· EQ-02');
     const n = await addPunchItem(HLT, { description: 'Rope wear', category: 'B', source: 'itp', sourceInspection: 'I-15' }, DIRECTOR);
     expect((await listPunchItems(HLT)).find((p) => p.number === n)).toMatchObject({ equipmentRef: 'EQ-02', sourceText: 'ITP I-15' });
@@ -107,7 +108,8 @@ describe('multi-equipment ITP, punch list, commissioning, BOM and installed base
     expect(plan.kpis[0].value).toBe('2 / 3');
     const list = itpScreenView({ ...base, view: 'punch', plan: null, equipment: { lines: eqLines, selected: null, filter: 'EQ-02' } }, makeT('fr'), 'fr');
     expect(list.punch!.equipment).toBe(true);
-    expect(list.punch!.rows.map((r) => [r.number, r.equipment])).toEqual([['P-09', 'EQ-02'], ['P-10', 'EQ-02'], ['P-12', 'EQ-02']]);
+    // R-158 lot B: + P-10, raised on EQ-02 by the demo reception of EXP-01.
+    expect(list.punch!.rows.map((r) => [r.number, r.equipment])).toEqual([['P-09', 'EQ-02'], ['P-10', 'EQ-02'], ['P-11', 'EQ-02'], ['P-13', 'EQ-02']]);
     expect(list.equipment!.options.map((o) => o.label)).toEqual(['Tous', 'EQ-01 · EMP', 'EQ-02 · 3 × MEMU', 'Commun au projet']);
     expect(list.equipment!.options[3].href).toBe('/projects/HLT-026/itp?view=punch&equipment=common');
     const common = itpScreenView({ ...base, view: 'punch', plan: null, equipment: { lines: eqLines, selected: null, filter: 'common' } }, makeT('fr'), 'fr');

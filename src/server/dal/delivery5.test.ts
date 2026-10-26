@@ -197,7 +197,8 @@ describe('inspection & test plan, punch lists (07 §2.4)', () => {
   it('site register: SITE_PUNCH with its NCR and the owner party; open A per project (ITP badge) is none at seed', async () => {
     // A-6 'a' (R-117): one list per project — the items raised on site are numbered after the ITP items (P-01…P-03 → P-06…P-08),
     // category B; the ITP items have the Keystone party.
-    expect((await listPunchItems('HLT-026', 'site')).map((p) => ({ id: p.number, title: p.description, ncr: p.ncrNumber ?? '—', status: p.statusLabel, owner: p.owner, due: d(p.dueOn) })))
+    // R-158 lot B: the item raised by the demo reception of EXP-01 (P-10, source reception) is not the prototype's.
+    expect((await listPunchItems('HLT-026', 'site')).filter((p) => p.source !== 'reception').map((p) => ({ id: p.number, title: p.description, ncr: p.ncrNumber ?? '—', status: p.statusLabel, owner: p.owner, due: d(p.dueOn) })))
       .toEqual(G.site.punch.map((p: { id: string }) => ({ ...p, id: `P-0${+p.id.slice(2) + 5}` })));
     const all = await listPunchItems('HLT-026');
     expect(all.map((p) => [p.number, p.origin, p.category, p.ownerParty])).toEqual([
@@ -205,6 +206,8 @@ describe('inspection & test plan, punch lists (07 §2.4)', () => {
       ['P-06', 'site', 'B', 'client'], ['P-07', 'site', 'B', 'keystone'], ['P-08', 'site', 'B', 'client'],
       // R-185 part 2: Harbor Line's EQ-02 (3 × MEMU) demo item, after the prototype's.
       ['P-09', 'itp', 'C', 'keystone'],
+      // R-158 lot B: raised on site by the demo reception of EXP-01 (one damaged camera, category B chosen).
+      ['P-10', 'site', 'B', 'keystone'],
     ]);
     expect(await openPunchAByProject()).toEqual({});
   });
@@ -405,8 +408,9 @@ describe('site — readiness, mobilisation, execution (10 §3)', () => {
     // A-6 'a' (R-117): getSite returns the project's single punch list; the prototype's figure is that of its items raised on
     // site (the screen's "Punch list open" tile counts the whole list: 6 — src/features/site/render.test.ts).
     // R-185 part 2: + Harbor Line's EQ-02 demo item (P-09, raised by inspection).
-    expect(s.punch.map((p) => p.origin)).toEqual(['itp', 'itp', 'itp', 'itp', 'itp', 'site', 'site', 'site', 'itp']);
-    const open = s.punch.filter((p) => p.origin === 'site' && p.status === 'open');
+    // R-158 lot B: + P-10, raised on site by the demo reception of EXP-01 (left out of the prototype's figures below).
+    expect(s.punch.map((p) => p.origin)).toEqual(['itp', 'itp', 'itp', 'itp', 'itp', 'site', 'site', 'site', 'itp', 'site']);
+    const open = s.punch.filter((p) => p.origin === 'site' && p.status === 'open' && p.source !== 'reception');
     expect([
       [`${s.sheet.doneDays} / ${s.sheet.planDays} d`, 'Daily reports feed the data date'], [s.dailyReports.length, 'Mobile · hours, %, photos, weather'],
       [open.length, `${open.filter((p) => p.ownerParty === 'client').length} on the client`], ['0 incident', `${s.hse.filter((h) => h.status === 'pending').length} permits pending`],

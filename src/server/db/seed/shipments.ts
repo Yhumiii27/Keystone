@@ -3,12 +3,19 @@
 // (3 × MEMU) by road in two 40′ HC containers, packing list validated with one small gap justified (a spare kit outside the BOM).
 // HLT-026's BOM lines are all common to the project (R-185 part 2): the content lines are common BOM lines, so the packing control
 // shows their quantities against the BOM, the export-restriction alert of the OCR cameras and the per-HS-code summary.
+// Lot B (R-158): the shipment dated so that it has happened at the demo date (validated 17 Sep, picked up 21 Sep, arrived 22 Sep
+// 2026), a partial site reception pointed on 23 Sep by the site team (the second container's OCR cameras: one damaged → one punch
+// item). Its eight shipping documents are generated on demand; none is filed in Codex in the demo data set (the prototype's
+// document vault stays as it is — the filing is exercised by src/features/shipments/lot-b.test.ts).
 import { and, eq, sql } from 'drizzle-orm';
+import { nextBusinessNumber } from '../codes';
+import { demoFloor } from '../helpers';
 import { STANDARD_INCOTERMS } from '@/domain/incoterms';
 import { itemKey } from '@/domain/shipments';
 import { findPerson } from '../helpers';
 import {
-  contracts, incoterms, parts, projectEquipments, projects, shipmentEquipments, shipmentGapReasons, shipmentItems, shipmentLoads, shipments, shipmentSteps,
+  contracts, incoterms, parts, projectEquipments, projects, punchItems, shipmentEquipments,
+  shipmentGapReasons, shipmentItems, shipmentLoads, shipmentPunchItems, shipmentReceptionLines, shipments, shipmentSteps,
 } from '../schema';
 import type { DB, Tx } from '../types';
 
@@ -35,18 +42,23 @@ export const DEMO_SHIPMENT = {
   forwarder: 'Transports Delmas',
   origin: 'Atelier EPC2i — Lyon',
   destination: 'Le Havre — terminal site',
-  etd: '2026-10-12',
-  eta: '2026-10-14',
+  // R-158 lot B: dated before the demo date (Fri 25 Sep 2026) — the shipment has left and arrived (lot A: 12 → 14 Oct).
+  etd: '2026-09-21',
+  eta: '2026-09-22',
+  atd: '2026-09-21',
+  ata: '2026-09-22',
+  validatedAt: '2026-09-17T15:00:00Z',
+  reasonAt: '2026-09-17T14:30:00Z',
   /** Logistics coordinator (src/config/personas.ts). */
   by: 'Camille Verdier',
   steps: [
-    ['export_packaging', '2026-09-22', '2026-09-24', 'Crates and moisture barrier per module'],
-    ['loading_origin', '2026-10-12', null, null],
+    ['export_packaging', '2026-09-15', '2026-09-17', 'Crates and moisture barrier per module'],
+    ['loading_origin', '2026-09-21', '2026-09-21', null],
     ['export_clearance', null, null, 'Domestic shipment: no export declaration'],
-    ['pre_carriage', '2026-10-12', null, null],
-    ['main_carriage', '2026-10-12', null, 'Two trucks, convoy'],
-    ['insurance', '2026-10-05', null, 'Ad valorem cover requested from the broker'],
-    ['on_carriage', '2026-10-14', null, null],
+    ['pre_carriage', '2026-09-21', '2026-09-21', null],
+    ['main_carriage', '2026-09-21', '2026-09-22', 'Two trucks, convoy'],
+    ['insurance', '2026-09-18', '2026-09-18', 'Ad valorem cover requested from the broker'],
+    ['on_carriage', '2026-09-22', '2026-09-22', null],
   ] as [string, string | null, string | null, string | null][],
   loads: [
     { type: 'c40hc' as const, identifier: 'MSKU 482190-3', seal: 'SL-118204', grossKg: 9800, items: [
@@ -60,6 +72,13 @@ export const DEMO_SHIPMENT = {
   ],
   /** The free item is outside the BOM: its gap is justified. */
   gapReason: 'Spare kit shipped with the modules, one per module (contract annex — spare parts)',
+  /** Lot B: the partial reception pointed by the site team (the fuse kits of load 2 not pointed yet). */
+  reception: {
+    by: 'Julien Wagner',
+    on: '2026-09-23',
+    /** The OCR cameras of load 2: 11 received, 1 damaged (category B chosen: the camera works, its housing is replaced before the SAT). */
+    damaged: { part: 'CTL-CAM-OCR', quantity: 1, note: 'Cracked housing on one camera (crate 2, forklift impact)', category: 'B' as const },
+  },
 } as const;
 
 /** The demo contract Incoterm and shipment (demo seed, and once on a demo database seeded before R-158). */
@@ -72,7 +91,7 @@ export async function seedDemoShipments(tx: Tx): Promise<void> {
   const [eq02] = await tx.select({ id: projectEquipments.id }).from(projectEquipments).where(and(eq(projectEquipments.projectId, p.id), eq(projectEquipments.ref, d.equipment)));
   if (!eq02) return;
   const who = await findPerson(tx, d.by);
-  const validatedAt = new Date('2026-09-24T15:00:00Z');
+  const validatedAt = new Date(d.validatedAt);
   const [s] = await tx.insert(shipments).values({
     projectId: p.id, ref: d.ref, label: d.label, status: 'prepared', mode: 'road', forwarder: d.forwarder, origin: d.origin, destination: d.destination,
     etd: d.etd, eta: d.eta, packingValidatedAt: validatedAt, packingValidatedByPersonId: who?.id ?? null, createdByPersonId: who?.id ?? null,
@@ -96,8 +115,62 @@ export async function seedDemoShipments(tx: Tx): Promise<void> {
   }
   if (freeItem) {
     const free = d.loads[1].items[1];
-    await tx.insert(shipmentGapReasons).values({ shipmentId: s.id, gapKey: itemKey(freeItem), delta: free.quantity, reason: d.gapReason, byPersonId: who?.id ?? null, at: new Date('2026-09-24T14:30:00Z') });
+    await tx.insert(shipmentGapReasons).values({ shipmentId: s.id, gapKey: itemKey(freeItem), delta: free.quantity, reason: d.gapReason, byPersonId: who?.id ?? null, at: new Date(d.reasonAt) });
   }
+  await seedDemoShipmentLotB(tx);
+}
+
+/**
+ * R-158 lot B — EXP-01 picked up and arrived, its partial reception (one damaged camera → one punch item on EQ-02). Runs after the lot A demo (demo seed, and once on a demo database whose EXP-01 has not left yet).
+ */
+export async function seedDemoShipmentLotB(tx: Tx): Promise<void> {
+  const d = DEMO_SHIPMENT;
+  const [row] = await tx.select({ s: shipments, code: projects.code, projectId: projects.id }).from(shipments).innerJoin(projects, eq(projects.id, shipments.projectId))
+    .where(and(eq(projects.code, d.project), eq(shipments.ref, d.ref)));
+  if (!row || row.s.status !== 'prepared') return;
+  const s = row.s;
+  await tx.update(shipments).set({ status: 'arrived', etd: d.etd, eta: d.eta, atd: d.atd, ata: d.ata, packingValidatedAt: new Date(d.validatedAt), updatedAt: new Date() })
+    .where(eq(shipments.id, s.id));
+  for (const [step, plannedOn, actualOn, note] of d.steps)
+    await tx.insert(shipmentSteps).values({ shipmentId: s.id, step, plannedOn, actualOn, note })
+      .onConflictDoUpdate({ target: [shipmentSteps.shipmentId, shipmentSteps.step], set: { plannedOn, actualOn, note } });
+  await tx.update(shipmentGapReasons).set({ at: new Date(d.reasonAt) }).where(eq(shipmentGapReasons.shipmentId, s.id));
+  // The reception: both loads received; their lines pointed but the fuse kits; one OCR camera damaged.
+  const site = await findPerson(tx, d.reception.by);
+  const loads = await tx.select().from(shipmentLoads).where(eq(shipmentLoads.shipmentId, s.id));
+  const items = await tx.select({ i: shipmentItems, ref: parts.ref, name: parts.name }).from(shipmentItems).leftJoin(parts, eq(parts.id, shipmentItems.partId))
+    .where(sql`${shipmentItems.loadId} in (${sql.join(loads.map((l) => sql`${l.id}`), sql`, `)})`);
+  const on = d.reception.on;
+  for (const l of loads) {
+    await tx.insert(shipmentReceptionLines).values({ shipmentId: s.id, loadId: l.id, itemId: null, loadState: 'received', byPersonId: site?.id ?? null, pointedOn: on });
+    for (const { i, ref } of items.filter((x) => x.i.loadId === l.id)) {
+      if (!ref) continue; // the free item (fuse kits) is not pointed yet: the reception is partial
+      const damaged = ref === d.reception.damaged.part ? d.reception.damaged.quantity : 0;
+      await tx.insert(shipmentReceptionLines).values({
+        shipmentId: s.id, loadId: l.id, itemId: i.id, receivedQty: Number(i.quantity) - damaged, missingQty: 0, damagedQty: damaged,
+        note: damaged ? d.reception.damaged.note : null, byPersonId: site?.id ?? null, pointedOn: on,
+      });
+      if (!damaged) continue;
+      const existing = await tx.select({ n: punchItems.number, pos: punchItems.position }).from(punchItems).where(eq(punchItems.projectId, row.projectId));
+      const number = nextBusinessNumber(existing.map((e) => e.n), 'P-', 2, await demoFloor(tx, 9));
+      const [eq02] = await tx.select({ id: projectEquipments.id }).from(projectEquipments).where(and(eq(projectEquipments.projectId, row.projectId), eq(projectEquipments.ref, d.equipment)));
+      const load = `#${l.number}${l.identifier ? ` ${l.identifier}` : ''}`;
+      const [pi] = await tx.insert(punchItems).values({
+        projectId: row.projectId, register: 'site', number, description: `${d.ref} · Reception · Damaged ${damaged} × ${ref}${items.find((x) => x.i.id === i.id)?.name ? ` ${items.find((x) => x.i.id === i.id)!.name}` : ''} — ${d.reception.damaged.note}`,
+        location: `Shipment ${d.ref} · Load ${load}`, category: d.reception.damaged.category, source: 'reception', ownerParty: 'keystone', status: 'open',
+        position: existing.reduce((m, e) => Math.max(m, e.pos + 1), 0), equipmentId: eq02?.id ?? null,
+      }).returning({ id: punchItems.id });
+      await tx.insert(shipmentPunchItems).values({ shipmentId: s.id, punchItemId: pi.id, loadId: l.id, itemId: i.id, gap: 'damaged', quantity: damaged });
+    }
+  }
+}
+
+/** A demo database seeded with lot A only: EXP-01 still "prepared" and nothing pointed. Backfilled once (index.ts). */
+export async function demoShipmentLotBToBackfill(db: DB | Tx): Promise<boolean> {
+  const [r] = await db.select({ status: shipments.status }).from(shipments).innerJoin(projects, eq(projects.id, shipments.projectId))
+    .where(and(eq(projects.code, DEMO_SHIPMENT.project), eq(shipments.ref, DEMO_SHIPMENT.ref)));
+  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(shipmentReceptionLines);
+  return r?.status === 'prepared' && n === 0;
 }
 
 /** A demo database seeded before R-158: no shipment yet. Backfilled once (index.ts). */

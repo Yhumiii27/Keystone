@@ -15,7 +15,7 @@ import { getTableName, is, sql } from 'drizzle-orm';
 import { PgTable } from 'drizzle-orm/pg-core';
 import { healthOf } from '@/domain/health';
 import { D7_ACTUAL, D7_HEALTH, D7_PROGRESS_PCT, D7_SPI } from '@/test/d7-cost-control';
-import { CATALOGUE_VIEW_TYPES, INTERNAL_MONEY_COLUMN, PACK_VIEW_TYPES, REPONSES_VIEW_TYPES, REX_VIEW_TYPES, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COLUMNS, SHARE_VIEW_COUNT } from '@/server/db/share-contracts';
+import { CATALOGUE_VIEW_TYPES, EXPEDITIONS_FORBIDDEN_COLUMN, EXPEDITIONS_VIEW_TYPES, INTERNAL_MONEY_COLUMN, PACK_VIEW_TYPES, REPONSES_VIEW_TYPES, REX_VIEW_TYPES, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COLUMNS, SHARE_VIEW_COUNT } from '@/server/db/share-contracts';
 import { refreshShareProgress } from '@/server/dal/share-progress';
 import { getCostControl, listChangeRequests } from '@/server/dal/cost';
 import { getStageChecklist, getStageHistory, listStages, toggleStageDeliverable } from '@/server/dal/lifecycle';
@@ -142,7 +142,7 @@ const D4_COUNTS: Record<string, number> = {
  * machine-type aggregate 28 phases, 25 cost categories, 17 ITP systems; SETTINGS0 60 values; CONNECTORS 9 + Vigie; IMPORTS 6.
  */
 const D5_COUNTS: Record<string, number> = {
-  deliverables: 30, deliverable_raci: 150, vigie_ncrs: 15, vigie_ncr_progress: 0, vigie_hse_items: 5, itp_plans: 2, itp_plan_systems: 11, itp_inspections: 15, punch_items: 9,
+  deliverables: 30, deliverable_raci: 150, vigie_ncrs: 15, vigie_ncr_progress: 0, vigie_hse_items: 5, itp_plans: 2, itp_plan_systems: 11, itp_inspections: 15, punch_items: 10 /* R-158 lot B: + P-10, the demo reception of EXP-01 */,
   commissioning_systems: 7, commissioning_steps: 35, handover_items: 8, sat_plans: 0, lessons_learned: 4, closure_items: 10, satisfaction_scores: 5,
   machines: 8, machine_part_revisions: 31, warranty_claims: 8, interventions: 6, site_sheets: 1, site_equipment: 8, site_prerequisites: 6, site_rotations: 6,
   site_collisions: 4, site_conflict_arbitrations: 0, mission_cost_lines: 6, daily_reports: 2, cursus_clearances: 5, cursus_requests: 0, cursus_sync_runs: 1, cursus_events: 0,
@@ -170,6 +170,9 @@ const CH4_COUNTS: Record<string, number> = {
  */
 const R158_COUNTS: Record<string, number> = {
   incoterms: 11, shipments: 1, shipment_equipments: 1, shipment_steps: 7, shipment_loads: 2, shipment_items: 4, shipment_gap_reasons: 1,
+  // R-158 lot B: EXP-01 arrived, its partial reception (2 loads + 3 of its 4 content lines pointed), one damaged camera → one
+  // punch item; no document filed in Codex in the demo data set (generated on demand).
+  shipment_reception_lines: 5, shipment_punch_items: 1, shipment_documents: 0,
 };
 
 let failures = 0;
@@ -248,7 +251,7 @@ async function main() {
   console.log('\nShare views (pub_)');
   const views = await db.execute(sql`select table_name as v from information_schema.views where table_schema = current_schema() and table_name like 'pub\_%' order by 1`);
   const viewNames = (views.rows as { v: string }[]).map((r) => r.v);
-  check(`${SHARE_VIEW_COUNT} pub_ views (0035_share: 12, 0038_share_followup: 5 more, 0046_catalogue_share: 1 more, 0050_capex_needs_share: 1 more, 0054_matrix_rex_clients_share: 1 more, 0060_engineering_pack_share: 1 more)`, viewNames.length === SHARE_VIEW_COUNT, viewNames);
+  check(`${SHARE_VIEW_COUNT} pub_ views (0035_share: 12, 0038_share_followup: 5 more, 0046_catalogue_share: 1 more, 0050_capex_needs_share: 1 more, 0054_matrix_rex_clients_share: 1 more, 0060_engineering_pack_share: 1 more, 0064_shipments_share: 1 more)`, viewNames.length === SHARE_VIEW_COUNT, viewNames);
   for (const v of viewNames) {
     const r = await db.execute(sql`select count(*)::int as n from ${sql.identifier(v)}`);
     console.log(`  ${v.padEnd(34)} ${String((r.rows[0] as { n: number }).n).padStart(5)}`);
@@ -328,6 +331,21 @@ async function main() {
   check('pub_pack_ingenierie: provisional list 5 × 20 % on every type, PID/BOM/GA/SCH/FDS mapped, HLT-026 40 %, NDC-031 20 %, one % per project (R-191)',
     pack.provisional === 5 * (pack.types as number) && pack.mapped === 'BOM:bom,FDS:analyse_fonctionnelle,GA:layout,PID:pid,SCH:electrique'
     && pack.demo === 'HLT-026:40.0,NDC-031:20.0' && pack.pct_per_project === 1, pack);
+  // R-158 lot B (0063_shipments_reception, 0064_shipments_share): pub_expeditions' types, no value / price / forwarder, the demo row;
+  // the milestones fed by the shipments; the SHP document type is added at the first filing only.
+  const expTypes = (await db.execute(sql`select column_name as c, data_type as t from information_schema.columns where table_schema = current_schema()
+      and table_name = 'pub_expeditions' order by ordinal_position`)).rows as { c: string; t: string }[];
+  check('pub_expeditions: R-158 column types', isDeepStrictEqual(Object.fromEntries(expTypes.map((r) => [r.c, r.t])), EXPEDITIONS_VIEW_TYPES), expTypes);
+  check('pub_expeditions: no value, price or forwarder column', !expTypes.some((r) => EXPEDITIONS_FORBIDDEN_COLUMN.test(r.c)), expTypes.map((r) => r.c));
+  const exp = (await db.execute(sql`select
+      (select string_agg(projet_code || ':' || expedition_ref || ':' || equipements || ':' || statut || ':' || incoterm || ':' || coalesce(depart_reel_le::text, '') || ':'
+        || coalesce(arrivee_reelle_le::text, '') || ':' || coalesce(receptionnee_le::text, '-') || ':' || nb_chargements || ':' || nb_reserves_ouvertes, ',') from pub_expeditions) as rows,
+      (select reel_le::text from pub_jalons_projets where projet_code = 'HLT-026' and jalon_code = 'expedition') as expedition,
+      (select reel_le::text from pub_jalons_projets where projet_code = 'HLT-026' and jalon_code = 'arrivee_site') as arrivee,
+      (select count(*)::int from document_types where code = 'SHP') as shp`)).rows[0] as Record<string, unknown>;
+  check('pub_expeditions: HLT-026 EXP-01 · EQ-02 · 3 × MEMU · arrived · DAP · 21 → 22 Sep · 2 loads · 1 open punch item; milestones expedition 21 Sep, arrivee_site 22 Sep; no SHP type before a first filing (R-158)',
+    exp.rows === 'HLT-026:EXP-01:EQ-02 · 3 × MEMU:arrived:DAP:2026-09-21:2026-09-22:-:2:1' && exp.expedition === '2026-09-21' && exp.arrivee === '2026-09-22'
+    && exp.shp === 0, exp);
   // Arche K-02 / K-03 / K-10 (R-187, 0049_capex_needs, 0050_capex_needs_share): the answers' view types and the demo answers.
   const repTypes = (await db.execute(sql`select column_name as c, data_type as t from information_schema.columns where table_schema = current_schema()
       and table_name = 'pub_reponses_besoins' order by ordinal_position`)).rows as { c: string; t: string }[];
@@ -810,11 +828,13 @@ async function delivery5Reads() {
   const all = await listPunchItems('HLT-026');
   // A-6 'a' (R-117): one punch list per project, numbered over it — the Site items renumbered after the ITP items.
   // R-185 part 2: + P-09, Harbor Line's EQ-02 (3 × MEMU) demo item; P-02 (raised by I-03) on EQ-01.
-  check('punch HLT-026: one list P-01…P-09 · ITP items Keystone · Site items P-06…P-08 category B · P-06 carries NCR-029 · P-09 on EQ-02',
+  // R-158 lot B: + P-10, raised on site on EQ-02 by the demo reception of EXP-01 (one damaged camera, category B chosen).
+  check('punch HLT-026: one list P-01…P-10 · ITP items Keystone · Site items P-06…P-08 category B · P-06 carries NCR-029 · P-09 on EQ-02 · P-10 reception',
     same(all.map((p) => [p.number, p.origin, p.category, p.ownerParty, p.ncrNumber, p.equipmentRef]), [
       ['P-01', 'itp', 'A', 'keystone', null, null], ['P-02', 'itp', 'B', 'keystone', null, 'EQ-01'], ['P-03', 'itp', 'C', 'keystone', null, null],
       ['P-04', 'itp', 'B', 'keystone', null, null], ['P-05', 'itp', 'C', 'keystone', null, null], ['P-06', 'site', 'B', 'client', 'NCR-029', null],
       ['P-07', 'site', 'B', 'keystone', null, null], ['P-08', 'site', 'B', 'client', null, null], ['P-09', 'itp', 'C', 'keystone', null, 'EQ-02'],
+      ['P-10', 'site', 'B', 'keystone', null, 'EQ-02'],
     ]), all.map((p) => p.number));
   const cm = (await getCommissioning('HLT-026'))!;
   const cells = cm.systems.flatMap((x) => x.cells);
@@ -896,7 +916,8 @@ async function delivery5Writes() {
     await raiseClientIssue('HLT-026', 'Check', { name: 'Nadia Bensaïd', role: 'client' }),
     await saveDailyReport('HLT-026', { date: '2026-09-30', weather: 'clear', progress: 'Check' }, pm),
   ];
-  check('numbering: P-10 · LL-10 · MCH-050 · WC-020 · CI-08 · DR-003', same(numbers, ['P-10', 'LL-10', 'MCH-050', 'WC-020', 'CI-08', 'DR-003']), numbers);
+  // R-158 lot B: the next punch item is P-11 (the demo reception raised P-10).
+  check('numbering: P-11 · LL-10 · MCH-050 · WC-020 · CI-08 · DR-003', same(numbers, ['P-11', 'LL-10', 'MCH-050', 'WC-020', 'CI-08', 'DR-003']), numbers);
   const rem = await remindInCursus('HLT-026', 'Thomas Kerbrat', pm);
   check('Cursus reminder for T. Kerbrat pending sync with Cursus (mock)', rem.syncStatus === 'pending');
   check('audit rows appended (9 writes)', (await listAudit()).length === before + 9, [before, (await listAudit()).length]);

@@ -220,3 +220,159 @@ pour les autres lecteurs, à l’écran comme à l’export.
   dernière arrivée des expéditions du projet).
 - **`pub_expeditions`** pour Arche (décision 6 : la filiale suit dans Arche) : expédition, équipement, statut, ETD / ETA, dates
   réelles, nombre de colis — sans valeurs ; demande à Matrix pour la copie et les droits après le « validé ».
+
+---
+
+# Lot B — documents, réception sur site, jalons, `pub_expeditions`, risque de fret
+
+Statut : construit sur la branche `r158-shipments-b` (depuis `ef49685`, lot A fusionné) le 25 oct. 2026, d’après les décisions
+3, 5 et 6 du responsable produit (cadrage § 5). Migrations **0063_shipments_reception** (générée) et **0064_shipments_share**
+(SQL personnalisé : `pub_jalons_projets` recréée avec ses colonnes inchangées, `pub_expeditions`).
+
+## 11. Ce qui change (lot B)
+
+| Pièce | Où | Rôle |
+|---|---|---|
+| Tables, colonnes | `0063` | `shipment_reception_lines`, `shipment_punch_items`, `shipment_documents` ; `shipments.received_on`, `closed_on`, `close_reason`, `risk_id`, index `shipments_updated_at_idx` ; `codex_document_outbox.stored_file_id` ; index des clés étrangères lues (règle R-017 : `shipments.risk_id`, `shipment_reception_lines.shipment_id` / `item_id`, `shipment_punch_items.shipment_id` / `item_id`, `shipment_documents.document_id` / `stored_file_id`, `codex_document_outbox.stored_file_id`), les deux personnes « qui a agi » dans `fk-without-index.json` |
+| Vues | `0064` | `pub_jalons_projets` alimentée par les expéditions ; `pub_expeditions` |
+| Règles pures | `src/domain/shipment-reception.ts`, `src/domain/shipping-documents.ts` | pointage, catégories de réserve, progression, clôture ; retard de fret et brouillon de risque ; types de documents, disponibilité, indices |
+| Gabarits PDF | `src/server/export/shipping-documents/` (un fichier par document, `index.ts` = registre) | les 8 documents |
+| DAL | `src/server/dal/shipment-reception.ts`, `src/server/dal/shipment-documents.ts`, lectures dans `shipments.ts`, `fileGeneratedDocument` (`documents.ts`), crochet `afterPunchItemChange` dans `advancePunchItem` (`itp.ts`) | |
+| Connecteur Codex | `outbox.ts` (entrée `deposit`, fichier joint), `connector.ts` (envoi `POST /api/documents/:numéro/deposit`, TODO(codex)) | |
+| Server Functions | `src/features/shipments/actions.ts` : `pointLoadAction`, `pointItemAction`, `completeReceptionAction`, `closeShipmentAction`, `fileShippingDocumentAction`, `raiseFreightRiskAction` | |
+| Écran | carte de chaque expédition : alerte retard de fret, « Réception sur site », « Documents d’expédition », « Clôturer l’expédition » | |
+| Export | variantes PDF `?variant=<type>&id=EXP-01` du fournisseur `shipments` | |
+| Profil | `member` (équipe chantier) : écran Expéditions dans son espace, pointage seulement | |
+| Traductions | `src/i18n/extra/d9-shipments-b.json` ; messages système `shipment.reception`, `shipment.documentFiled`, `shipment.riskRaised` | |
+
+## 12. Documents générés et gabarits (décision 3)
+
+Keystone génère **tous les documents nécessaires sauf les factures** (ni facture commerciale, ni facture douane / proforma) :
+
+| Type (`variant`) | Document | Valeurs en douane |
+|---|---|---|
+| `packing_list` | Liste de colisage (chaque chargement, contenu, codes SH, poids, dimensions, origine, totaux) | oui |
+| `container_packing_list` | Liste de colisage par conteneur (une page par chargement, n°, scellé, signatures chargé / contrôlé par) | non |
+| `delivery_note` | Bon de livraison (quantités livrées, colonnes « reçu » et observations, trois signatures) | non |
+| `marking` | Marquage des colis (une étiquette par colis, « n / N », poids brut par colis, dimensions, manutention) | non |
+| `cmr` | Lettre de voiture CMR (cases de la convention ; route ou multimodal seulement) | non |
+| `shipping_instructions` | Instructions d’expédition au transitaire (base du B/L, de la LTA ou de la CMR selon le mode ; port payé / dû d’après l’Incoterm) | oui |
+| `origin_request` | Demande de certificat d’origine / EUR.1 (données pré-remplies) | oui |
+| `export_declaration` | Données de la déclaration d’export (par code SH, pour le commissionnaire) | oui |
+
+- **Gabarits isolés** : un fichier par document dans `src/server/export/shipping-documents/` (fonctions pures des données de
+  l’expédition et de la langue) ; `common.ts` porte les blocs partagés (parties, transport, tableau de contenu, regroupement SH).
+  Remplacer un document par le format standard d’EPC2i = remplacer son fichier. Pied de page « mise en page générique ».
+- **Valeurs** : `canSeeShipmentValues` (NEW-D2-1 + Logistique). Pour les autres lecteurs, colonnes €, totaux et montants retirés
+  (`withoutValues`) — même règle à l’écran, à l’export et dans le fichier versé (versé par un éditeur, qui voit les valeurs).
+- **Disponibilité** : un document demande au moins un chargement avec du contenu ; la CMR, le mode route ou multimodal.
+- **Langue** : celle de l’utilisateur qui télécharge ou verse (enregistrée sur la version versée).
+
+## 13. Versement dans Codex
+
+« Verser dans Codex » (éditeurs des expéditions) : le PDF est généré, passé à l’antivirus, **conservé tel que versé** dans le
+magasin de fichiers de Keystone (`stored_files`, usage `export`, propriétaire `shipment_document`, empreinte SHA-256), puis, dans
+une transaction :
+
+1. la fiche de l’index Codex est **créée** (type `SHP`, numéro `SHP-HLT-0nn` comme les dépôts, indice A, diffusée, interne, lien
+   `shipment` → `EXP-01`, étiquette `EXP-01`) ou, pour un document déjà versé, **révisée** (indice suivant B, C…, l’indice
+   précédent retiré à la date du jour, ses entrées Codex encore ouvertes closes) ;
+2. une entrée **`deposit`** est mise dans l’outbox Codex (« en attente de synchro », fichier joint par `stored_file_id`) ; le
+   connecteur HTTP l’envoie aussitôt (`POST /api/documents/:numéro/deposit`, contenu en base64 — proposition TODO(codex), question
+   D-1), le mock la laisse en attente ; la relecture de l’état Codex la clôt quand Codex reflète l’indice ;
+3. une ligne `shipment_documents` (type, numéro, indice, fichier, empreinte, langue, auteur), l’audit (expédition et document) et
+   le fil d’activité.
+
+Le téléchargement « PDF » (tout lecteur de l’écran) régénère le document sans rien verser. Le type `SHP` (« Shipping document »,
+famille Site, conservation 10 ans, ISO 8.5.4, circuit : l’auteur) est ajouté au registre des types Codex de Keystone **au premier
+versement** (`ensureShippingDocType`) — pas avant, pour ne pas changer le registre tant que rien n’est versé ; **il reste à le créer
+dans Codex**.
+
+## 14. Réception sur site et réserves (décision 5)
+
+- **Qui** : les éditeurs des expéditions (directeur, Logistique, responsables du projet) et **l’équipe chantier** — un membre de
+  l’équipe nommée du projet qui modifie son écran Chantier (`canRecordReception`). La clôture manuelle reste aux éditeurs.
+- **Quand** : l’expédition est « arrivée » ; la réception soldée la fige.
+- **Pointage d’un chargement** : reçu (ses lignes non pointées sont reçues en totalité), **manquant** (toutes ses lignes manquantes,
+  couvertes par **une** réserve du chargement — les réserves propres des lignes sont retirées), **endommagé** (conteneur, camion,
+  scellé ; les lignes restent à pointer). Une note est exigée pour un écart.
+- **Pointage d’une ligne** : quantités reçue, manquante, endommagée, dont la somme est la quantité expédiée ; note exigée pour un écart.
+- **Réserves** : chaque écart crée une réserve de la liste unique du projet (R-117 : origine Chantier, source « Réception
+  d’expédition », responsable Keystone, numérotée P-10…), sur la **ligne d’équipement de l’expédition** quand elle n’en porte
+  qu’une (sinon commune), liée à l’expédition (`shipment_punch_items`). Un pointage corrigé met à jour la réserve, la **clôt** si
+  l’écart disparaît, la **rouvre** s’il revient. Les photos s’ajoutent sur la réserve (fonction photos existante, R-126).
+- **Catégories par défaut** (choix sans le responsable produit, modifiables dans la boîte de pointage) : **endommagé = A**
+  (bloquante : à expertiser, réparer ou remplacer avant montage — sécurité), **manquant = B** (à livrer avant la SAT).
+- **Réception soldée** (« Solder la réception ») : chaque chargement et chaque ligne pointés → « réceptionnée sur site »
+  (`received_on` = date métier).
+- **Clôture** : automatique quand la **dernière réserve** liée est close (crochet dans `advancePunchItem`) ; à la main
+  (« Clôturer l’expédition ») avec un **motif obligatoire** tant qu’une réserve est ouverte, facultatif sinon (une réception sans
+  écart se clôture ainsi). Chaque changement d’une réserve liée fait avancer `shipments.updated_at` (`maj_le` de la vue).
+- Les statuts « arrivée → réceptionnée » et « réceptionnée → clôturée » ne passent plus par « Avancer » (lot A).
+
+## 15. Jalons CAPEX (R-189)
+
+`pub_jalons_projets` est recréée (`CREATE OR REPLACE`, ses six colonnes inchangées) : la vue ne lit que les étapes du cycle de vie
+et le jalon codé du planning, et les alimenter aurait obligé à modifier le planning.
+
+- `expedition` : `reel_le` = **premier enlèvement réel** (`atd`) des expéditions du projet, sinon comme avant (étape, jalon codé) ;
+  `prevu_le` = jalon codé du planning, sinon **plus petite ETD**, sinon `reel_le`.
+- `arrivee_site` : dès qu’une expédition est **envoyée** (tout statut sauf brouillon), les expéditions décident : `reel_le` =
+  **dernière arrivée réelle** (`ata`) une fois toutes ces expéditions arrivées, sinon null ; sans expédition, comme avant.
+  `prevu_le` = début du chantier (fiche chantier, comme avant), sinon jalon codé, sinon **plus grande ETA**, sinon `reel_le`.
+- `maj_le` suit aussi les expéditions. Démonstration : HLT-026 `expedition` 21 sept., `arrivee_site` 22 sept. 2026.
+
+## 16. Contrat `pub_expeditions` (décision 6)
+
+Une ligne par expédition, lecteur `arche_app` : `projet_code`, `expedition_ref`, `equipements` (« EQ-02 · 3 × MEMU », lignes
+séparées par des virgules), `statut` (`draft` … `closed`), `mode`, `incoterm`, `incoterm_lieu` (contrat), `origine`,
+`destination`, `etd`, `eta`, `depart_reel_le`, `arrivee_reelle_le`, `receptionnee_le`, `nb_chargements`, `nb_reserves_ouvertes`,
+`maj_le` (= `shipments.updated_at`, index `shipments_updated_at_idx` — K-11). **Aucune valeur, aucun prix, aucun contact du
+transitaire** (contrôlé par `EXPEDITIONS_FORBIDDEN_COLUMN` dans `share-views.test.ts` et `db-check`). Enregistrée dans
+`share-contracts.ts` (`SHARE_VIEW_COLUMNS`, `EXPEDITIONS_VIEW_TYPES`, `SHARE_MAJ_LE_INDEXES` ; 22 vues). Limite : un changement de
+l’Incoterm du contrat ne fait pas avancer `maj_le` (lu en direct).
+
+## 17. Suggestion de risque « retard de fret »
+
+Date de besoin sur site = début de la fiche chantier, sinon fin de l’activité d’ancrage du jalon du planning codé `arrivee_site`.
+Une expédition pas encore sur site (brouillon … en transit) dont l’ETA est postérieure affiche une alerte « Retard de fret · ETA …
+après la date de besoin sur site … · +n jours ». Un responsable du projet qui modifie le registre des risques a le bouton
+**« Ouvrir un risque »** : le formulaire « Nouveau risque » pré-rempli (« Retard de fret — EXP-02 · titre », Fournisseur /
+livraison, le chef de projet, Atténuer), la cause en déclencheur ; le risque est lié à l’expédition (une seule fois). **Jamais
+automatique.**
+
+## 18. Démonstration (lot B)
+
+EXP-01 de HLT-026 redatée avant la date de démonstration (validée le 17 sept., ETD / départ réel 21 sept., ETA / arrivée 22 sept. ;
+lot A : 12 → 14 oct.), **arrivée**, réception **partielle** pointée le 23 sept. par Julien Wagner (les deux conteneurs reçus, les
+lidars et anémomètres reçus, 11 caméras OCR reçues et **1 endommagée** — catégorie B choisie : la caméra fonctionne, son boîtier est
+à remplacer avant la SAT —, les kits de fusibles pas encore pointés) → **réserve P-10** sur EQ-02. Ses **huit documents** se génèrent à la
+demande (« PDF ») ; **aucun n’est versé dans Codex dans le jeu de démonstration** : le coffre documentaire reproduit celui du
+prototype (tests dorés), le versement est couvert par `src/features/shipments/lot-b.test.ts`. Une base de démonstration existante
+reçoit ces données une fois (EXP-01 encore « préparée », rien de pointé).
+
+## 19. Décisions prises sans demander (lot B)
+
+1. Catégories de réserve par défaut : **endommagé A, manquant B**, modifiables au pointage.
+2. Réserve d’un chargement manquant **unique** pour tout son contenu ; réserves corrigées, closes ou rouvertes par le pointage.
+3. Réserve sur la ligne d’équipement de l’expédition quand elle n’en a qu’une, sinon commune.
+4. **L’équipe chantier pointe** (membre de l’équipe qui modifie le Chantier) : écran Expéditions ajouté à l’espace « Membre » ; la
+   clôture manuelle et le versement restent aux éditeurs.
+5. Réception sans écart : « réceptionnée », clôture à la main sans motif ; avec écarts : clôture automatique à la dernière réserve.
+6. Type documentaire **SHP** ajouté au registre de Keystone au premier versement (famille Site, conservation 10 ans, ISO 8.5.4,
+   circuit : l’auteur), fiches **diffusées** dès le versement, confidentialité interne ; une fiche par expédition et type, un
+   indice par versement. Démonstration : documents générés à la demande, aucun versé (coffre du prototype inchangé).
+7. PDF versé conservé dans Keystone jusqu’à la prise en charge par Codex ; envoi au connecteur HTTP en base64 (à valider avec Codex).
+8. Jalon `arrivee_site` décidé par les expéditions dès qu’une est envoyée (les brouillons ne comptent pas) ; ETD / ETA en date
+   prévue seulement à défaut d’autre source.
+9. Date de besoin sur site : fiche chantier, sinon jalon codé ancré ; alerte seulement avant l’arrivée.
+10. Expéditeur imprimé « EPC2i » + origine saisie (identité légale et adresses avec les formats standard).
+11. Pas de pagination (R-017) sur l’écran Expéditions : quelques expéditions par projet, la réception et les documents par expédition.
+
+## 20. Ce qui reste
+
+- **Formats standard d’EPC2i** pour chaque document (décision 10) : remplacer les gabarits génériques un par un.
+- **Codex** : API de dépôt (D-1) et création du type `SHP` côté Codex ; d’ici là les dépôts restent « en attente de synchro ».
+- **Matrix** : copie de `pub_expeditions` (et de la nouvelle définition de `pub_jalons_projets`) dans `partage/30-keystone.sql`,
+  droit de lecture `arche_app` (`partage/90-droits.sql`) — demande à présenter au responsable produit avant toute écriture.
+- Pays de destination structuré (texte de la fiche chantier aujourd’hui) ; coûts de fret et assurance (à cadrer, Sage X3).
