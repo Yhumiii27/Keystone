@@ -1,6 +1,6 @@
 {
  "generated": "2026-10-10",
- "updated": "2026-10-25",
+ "updated": "2026-10-26",
  "branch": "main-2a2fep",
  "history": [
   {
@@ -182,6 +182,10 @@
   {
    "date": "2026-10-25",
    "text": "R-158 lot A : profil Logistique, Incoterms paramétrables, écran projet Expéditions avec contrôle du colisage."
+  },
+  {
+   "date": "2026-10-26",
+   "text": "R-017 fait : tenue de la charge avec de vrais volumes (index, points chauds, cache des badges, pagination)."
   }
  ],
  "items": [
@@ -666,7 +670,9 @@
     "src/server/dal/shell.ts:80-95 globalBadges calcule 9 requêtes globales par page, plus les badges projet"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "9",
+    "note": "26 oct. 2026 (docs/delivery-9/notes-r017-volumes.md) : jeu agrandi (npm run load:seed : 150 projets, 30 000 activités, 20 000 documents, 8 000 commandes, 50 000 lignes d’audit, 500 personnes), mesures (npm run load:measure, load:check), 72 index (migration 0062), points chauds corrigés (calendriers, listes IN, valeur acquise, coffre documentaire, approbations, badges sans appel Cursus / Vigie), cache de lecture (versionedRead exact, badges ttlRead 30 s ; KEYSTONE_READ_CACHE=off), pagination ?page= (coffre, piste d’audit). Tous les écrans mesurés < 300 ms à chaud en PGlite, < 150 ms sur PostgreSQL. Reste : coût après écriture de l’accueil directeur (1–2 s), suggestions de rééquilibrage à calculer dans le worker."
    }
   },
   {
