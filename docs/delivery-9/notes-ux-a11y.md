@@ -67,7 +67,7 @@ autres tuiles KPI (l’icône est déjà là partout, seul le texte pour lecteur
 - **Après fusion de `main-2a2fep`** (Gantt interactif R-198, cloche « Notifications et rappels » du lot B) : le Gantt est dans
   la liste des écrans contrôlés, et un test ouvre la cloche puis la fenêtre « Notifications et rappels » (EN et FR) sous axe —
   aucune violation.
-- Run local (build de production `.next-ci`) : `09-accessibility`, `01-platform`, `d9-gantt` — 20 / 20 réussis.
+- Run local (build de production `.next-ci`, après fusion des lots B et D) : `09-accessibility` 13 / 13 (dont Mes approbations avec la carte Suppléance), `01-platform` et `d9-gantt` 7 / 7.
 
 **État : fait.**
 

@@ -56,7 +56,7 @@ test('axe: every screen as the director (EN), no serious or critical WCAG 2.1 AA
 
 /** The main screens of each other persona, in French (the default language). */
 const PERSONA_SCREENS: Record<Exclude<Role, 'director'>, string[]> = {
-  pm: ['/', '/my/projects', '/projects/HLT-026/plan', '/projects/HLT-026/budget', '/projects/HLT-026/changes', '/projects/HLT-026/billing'],
+  pm: ['/', '/my/projects', '/my/approvals', '/projects/HLT-026/plan', '/projects/HLT-026/budget', '/projects/HLT-026/changes', '/projects/HLT-026/billing'],
   depthead: ['/', '/resources', '/resources/requests', '/portfolio/prioritisation'],
   member: ['/', '/my/tasks', '/my/tasks/T-2314'],
   englead: ['/', '/projects/HLT-026/engineering', '/projects/HLT-026/bom', '/projects/HLT-026/itp'],
