@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.135.0",
-    "@electric-sql/pglite": "^0.5.10",
+    "@electric-sql/pglite": "^0.5.11",
     "@phosphor-icons/react": "^2.1.10",
     "d3-geo": "^3.1.1",
     "d3-selection": "^3.0.0",
@@ -50,7 +50,7 @@
     "@types/d3-zoom": "^3.0.9",
     "@types/geojson": "^7946.0.16",
     "@types/node": "^24.19.1",
-    "@types/pdfkit": "0.17.6",
+    "@types/pdfkit": "0.17.7",
     "@types/pg": "8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
