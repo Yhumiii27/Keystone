@@ -8,6 +8,7 @@
 import { useId, useRef, useState, useTransition, type KeyboardEvent } from 'react';
 import { Field, Input, Select, Textarea } from '@/components/ds/Field';
 import { showToast } from '@/components/ds/Toast';
+import { useStaleRecordToast } from '@/components/app/StaleRecord';
 import { cx } from '@/components/ds/cx';
 import { updateContractFieldAction, type ContractEditResult } from './actions';
 import type { SheetFieldView } from './model';
@@ -15,22 +16,25 @@ import s from './contract.module.css';
 
 export interface ContractSheetFormProps {
   code: string;
+  /** R-010: the contract's version token as the page read it. */
+  version: string;
   fields: SheetFieldView[];
   canEdit: boolean;
 }
 
-export function ContractSheetForm({ code, fields, canEdit }: ContractSheetFormProps) {
+export function ContractSheetForm({ code, version, fields, canEdit }: ContractSheetFormProps) {
   return (
     <div className={s.sheetGrid}>
       {fields.map((f) => (
-        <SheetField key={f.key} code={code} field={f} canEdit={canEdit} />
+        <SheetField key={f.key} code={code} version={version} field={f} canEdit={canEdit} />
       ))}
     </div>
   );
 }
 
-function SheetField({ code, field: f, canEdit }: { code: string; field: SheetFieldView; canEdit: boolean }) {
+function SheetField({ code, version, field: f, canEdit }: { code: string; version: string; field: SheetFieldView; canEdit: boolean }) {
   const id = useId();
+  const stale = useStaleRecordToast();
   const [draft, setDraft] = useState<string | null>(null);
   // A new server value (after a save, or another viewer's edit) replaces the draft; focus stays in the field.
   const [shown, setShown] = useState(f.value);
@@ -52,12 +56,12 @@ function SheetField({ code, field: f, canEdit }: { code: string; field: SheetFie
     startTransition(async () => {
       let r: ContractEditResult;
       try {
-        r = await updateContractFieldAction(code, f.key, raw);
+        r = await updateContractFieldAction(code, f.key, raw, version);
       } catch (e) {
         r = { error: e instanceof Error ? e.message : String(e) };
       }
       inflight.current = false;
-      if ('error' in r) showToast(r.error);
+      if ('error' in r && !stale(r)) showToast(r.error);
       // Success: the refreshed server value (same transition) is shown; failure: the previous value comes back.
       setDraft(null);
     });

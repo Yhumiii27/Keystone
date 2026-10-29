@@ -22,6 +22,7 @@ import {
   activities, changeRequestSteps, changeRequestWbs, changeRequests, costCategories, costStreamPeriods, costStreams, evmPeriods,
   offerQuotes, projectControls, projects, wbsNodes, wpBudgets,
 } from '@/server/db/schema';
+import { tokenOf } from './record-version';
 import { getContingencyTotals } from './contingency';
 import { getOpenCommitment, getProjectEvm } from './evm';
 import { healthThresholds } from './health-thresholds';
@@ -64,6 +65,8 @@ export interface CostCategoryRow {
   actual: number;
   committed: number;
   forecast: number;
+  /** R-010: the category's version token, sent back by its "Edit category" form. */
+  version: string;
 }
 
 export interface WpBudgetRow {
@@ -139,6 +142,7 @@ export function costNote(stored: string, cpi: number | null, th: HealthThreshold
 /** Cost-control data of a project (projectData() cost side); null for projects without data. */
 export async function getCostControl(code: string): Promise<CostControl | null> {
   const db = await getDb();
+  const readAt = new Date();
   const [head] = await db
     .select({ c: projectControls, projectId: projects.id, bac: projects.budgetKeur, progress: projects.progress })
     .from(projectControls)
@@ -203,6 +207,7 @@ export async function getCostControl(code: string): Promise<CostControl | null> 
         actual: reserve ? drawn : k.actualKeur,
         committed: k.id === firstMaterial ? ordersPlaced : k.committedKeur,
         forecast: reserve ? tile.forecast : k.forecastKeur,
+        version: tokenOf(k.version, readAt),
       };
     }),
     workPackages: wps.map((w) => {

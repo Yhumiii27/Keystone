@@ -95,12 +95,13 @@ export async function setTaskProgressAction(input: { taskId: string; pct: number
 }
 
 /** Ticks / unticks a checklist item (by position). */
-export async function toggleChecklistItemAction(input: { taskId: string; position: number }): Promise<TaskActionResult> {
+export async function toggleChecklistItemAction(input: { taskId: string; position: number; done?: boolean }): Promise<TaskActionResult> {
   const g = await gate(input?.taskId, 'edit');
   if (!g.ok) return g;
   const position = input.position;
   if (typeof position !== 'number' || !Number.isInteger(position) || position < 0) return fail('Unknown checklist item');
-  return write('toggleChecklistItemAction', () => toggleChecklistItem(g.task.id, position, g.viewer.name));
+  const done = typeof input.done === 'boolean' ? { done: input.done } : {};
+  return write('toggleChecklistItemAction', () => toggleChecklistItem(g.task.id, position, g.viewer.name, done));
 }
 
 /** "Add an item…" + Add (not wired in the prototype). */

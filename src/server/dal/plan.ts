@@ -3,7 +3,7 @@ import 'server-only';
 // resource requests of one project (tasks and requests DALs); writes the Plan edits (the prototype's wbsOv / wbsRm / wbsOrd / added maps
 // become persisted changes). Permission checks and revalidation stay in the Server Functions
 // (src/features/plan/actions.ts).
-import { and, asc, eq, gte, inArray, max, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, max, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { projectCalendarCode, projectDataDate } from '@/domain/ch4-defaults';
 import { businessToday } from '@/server/clock';
@@ -22,6 +22,7 @@ import {
 } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
 import { listProjectBaselines, type BaselineInfo } from './baselines';
+import { assertRecordFresh, bumpVersion, tokenOf, type VersionedTable } from './record-version';
 import { lockProjectRow, maxTrashedPosition, shiftTrashedPositions, trashPlanRow } from './plan-trash';
 import { listCalendars } from './calendars';
 import { getProjectEvm } from './evm';
@@ -43,6 +44,8 @@ export interface PlanActivityRow extends PlanActivity {
   description: string | null;
   critical: boolean | null;
   position: number;
+  /** R-010: the activity's version token, sent back by the Plan's inline edits (src/domain/record-version.ts). */
+  version: string;
 }
 
 export interface PlanPackageRow extends PlanPackage {
@@ -98,6 +101,7 @@ export async function getPlanData(code: string): Promise<PlanData | null> {
   if (!control) return null;
   const owner = alias(persons, 'owner');
   const pred = alias(activities, 'pred');
+  const readAt = new Date();
   const [nodes, acts, links, owners] = await Promise.all([
     db
       .select({ n: wbsNodes, ownerName: persons.fullName })
@@ -155,7 +159,7 @@ export async function getPlanData(code: string): Promise<PlanData | null> {
       totalFloat: a.totalFloatDays, pct: a.percentComplete, owner: ownerCode ?? ownerInitials ?? null, ownerName: ownerName ?? ownerShort ?? null, ownerIsCode: !!ownerCode,
       budget: a.budgetKeur, actual: a.actualKeur, eac: a.eacKeur, preds: preds.get(a.id) ?? [],
       isAdded: a.isAdded, edited: !a.isAdded && a.updatedAt.getTime() > a.createdAt.getTime(),
-      description: a.description, critical: a.critical, position: a.position,
+      description: a.description, critical: a.critical, position: a.position, version: tokenOf(a.version, readAt),
       finishDate: a.finishDate, baselineFinishDate: a.baselineFinishDate, calendarCode: a.calendarCode, remainingDays: a.remainingDays,
       freeFloat: a.scheduledAt ? a.freeFloatDays : null, scheduled: !!a.scheduledAt, drivingPreds: a.scheduledAt ? (driving.get(a.id) ?? []) : null,
     })),
@@ -231,7 +235,14 @@ export interface ActivityEditAudit {
   actorName: string;
   /** Activity-feed event ("Moved A1250 on the Gantt · start no earlier than 2026-10-12"). */
   feed?: SystemMessage;
+  /** Where the edit was made: the Gantt (default) or the Plan's cells (R-010: audited too, so the editor is known). */
+  source?: 'gantt' | 'plan';
+  /** R-010: the activity's version token as the page read it; an activity changed meanwhile by someone else is refused. */
+  version?: string | null;
 }
+
+/** R-010: activities under optimistic locking (audit entity "activity"). */
+const ACTIVITY_VERSION: VersionedTable = { table: activities, id: activities.id, version: activities.version, entityType: 'activity' };
 
 async function findActivity(tx: Tx, code: string, actId: string) {
   const [row] = await tx
@@ -258,9 +269,13 @@ async function findNode(tx: Tx, code: string, w: string) {
 export async function updateActivity(code: string, actId: string, patch: ActivityPatch, audit?: ActivityEditAudit): Promise<boolean> {
   const db = await getDb();
   return db.transaction(async (tx) => {
-    const a = await findActivity(tx, code, actId);
-    if (!a) return false;
-    const set: Partial<typeof activities.$inferInsert> = {};
+    const found = await findActivity(tx, code, actId);
+    if (!found) return false;
+    const actor = audit ? await findPerson(tx, audit.actorName) : null;
+    if (audit) await assertRecordFresh(tx, ACTIVITY_VERSION, found.id, audit.version, { name: audit.actorName, personId: actor?.id ?? null });
+    // Read again behind the row lock taken by the check (the values the edit compares with are the current ones).
+    const a = audit ? ((await findActivity(tx, code, actId)) ?? found) : found;
+    const set: Omit<Partial<typeof activities.$inferInsert>, 'version'> & { version?: SQL } = {};
     if (patch.constraint !== undefined) {
       const c = patch.constraint;
       set.constraintType = c ? c.type : null;
@@ -277,6 +292,8 @@ export async function updateActivity(code: string, actId: string, patch: Activit
       if (!p) return false;
       set.ownerPersonId = p.id;
     }
+    // The relationships are kept in activity_links: the successor's version counts them (R-010).
+    if (patch.preds !== undefined) set.version = bumpVersion(activities.version);
     const structural = Object.keys(set).some((k) => k !== 'percentComplete') || patch.preds !== undefined;
     if (structural) set.updatedAt = new Date();
     // A remaining duration stored by an import (MSPDI / XER) wins over % complete in the CPM: a new % or duration replaces it.
@@ -307,15 +324,33 @@ export async function updateActivity(code: string, actId: string, patch: Activit
         before.constraint = a.constraintType && a.constraintType !== 'ASAP' ? { type: a.constraintType, date: a.constraintDate } : null;
         after.constraint = patch.constraint;
       }
+      // R-010: the Plan's cells (name, owner, budget, % complete, predecessors) are audited too.
+      const plain: [keyof ActivityPatch, keyof typeof a, string][] = [['name', 'name', 'name'], ['budget', 'budgetKeur', 'budget'], ['eac', 'eacKeur', 'EAC'], ['pct', 'percentComplete', '% complete']];
+      const extra: string[] = [];
+      for (const [k, col, label] of plain)
+        if (patch[k] !== undefined && patch[k] !== a[col]) {
+          before[k] = a[col];
+          after[k] = patch[k];
+          extra.push(`${label} ${String(a[col])} → ${String(patch[k])}`);
+        }
+      if (set.ownerPersonId !== undefined && set.ownerPersonId !== a.ownerPersonId) {
+        before.ownerCode = null;
+        after.ownerCode = patch.ownerCode;
+        extra.push(`owner → ${patch.ownerCode}`);
+      }
+      if (patch.preds !== undefined) {
+        after.preds = patch.preds;
+        extra.push(`predecessors → ${patch.preds.map(([p, type, lag]) => `${p} ${type}${lag ? (lag > 0 ? '+' : '') + lag : ''}`).join(', ') || '—'}`);
+      }
       const parts = [
         'durationDays' in after ? `duration ${a.durationDays} → ${patch.durationDays} d` : null,
         'constraint' in after ? `constraint ${constraintText(a.constraintType, a.constraintDate) || 'ASAP'} → ${patch.constraint ? `${patch.constraint.type} ${patch.constraint.date}` : 'ASAP'}` : null,
+        ...extra,
       ].filter(Boolean);
-      const actor = await findPerson(tx, audit.actorName);
       const who = actor ? nameOf(actor) : audit.actorName;
       await writeAudit(tx, {
-        actorName: who, actorPersonId: actor?.id, objectRef: actId, change: `Gantt edit: ${parts.join(' · ') || 'no change'}`, area: 'Planning', entityType: 'activity',
-        entityId: a.id, projectId: a.projectId, before, after,
+        actorName: who, actorPersonId: actor?.id, objectRef: actId, change: `${audit.source === 'plan' ? 'Plan edit' : 'Gantt edit'}: ${parts.join(' · ') || 'no change'}`, area: 'Planning',
+        entityType: 'activity', entityId: a.id, projectId: a.projectId, before, after,
       });
       if (audit.feed) await recordActivity(tx, { actorName: who, actorPersonId: actor?.id, message: audit.feed, kind: 'change', projectId: a.projectId });
     }
@@ -552,7 +587,7 @@ export async function addActivityLink(code: string, link: { pred: string; succ: 
     if (cycle) return { error: 'cycle' as const, cycle };
     const position = Math.max(-1, ...existing.filter((l) => l.succId === ends.succId).map((l) => l.position)) + 1;
     await tx.insert(activityLinks).values({ projectId: ends.projectId, predecessorId: ends.predId, successorId: ends.succId, type: link.type, lagDays: link.lag, position });
-    await tx.update(activities).set({ updatedAt: new Date() }).where(eq(activities.id, ends.succId));
+    await tx.update(activities).set({ updatedAt: new Date(), version: bumpVersion(activities.version) }).where(eq(activities.id, ends.succId));
     const actor = await findPerson(tx, actorName);
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: link.succ,
@@ -579,7 +614,7 @@ export async function updateActivityLink(code: string, link: { pred: string; suc
     if (!cur) return { error: 'missing' as const };
     if (cur.type === link.type && cur.lag === link.lag) return { ok: true as const };
     await tx.update(activityLinks).set({ type: link.type, lagDays: link.lag }).where(eq(activityLinks.id, cur.id));
-    await tx.update(activities).set({ updatedAt: new Date() }).where(eq(activities.id, ends.succId));
+    await tx.update(activities).set({ updatedAt: new Date(), version: bumpVersion(activities.version) }).where(eq(activities.id, ends.succId));
     const label = (type: string, lag: number) => `${type}${lag ? (lag > 0 ? '+' : '') + lag : ''}`;
     const actor = await findPerson(tx, actorName);
     await writeAudit(tx, {
@@ -603,7 +638,7 @@ export async function removeActivityLink(code: string, pred: string, succ: strin
       .where(and(eq(activityLinks.predecessorId, ends.predId), eq(activityLinks.successorId, ends.succId)))
       .returning({ type: activityLinks.type });
     if (!del.length) return { error: 'missing' as const };
-    await tx.update(activities).set({ updatedAt: new Date() }).where(eq(activities.id, ends.succId));
+    await tx.update(activities).set({ updatedAt: new Date(), version: bumpVersion(activities.version) }).where(eq(activities.id, ends.succId));
     const actor = await findPerson(tx, actorName);
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: succ, change: `relationship removed: ${pred} ${del[0].type} → ${succ}`,

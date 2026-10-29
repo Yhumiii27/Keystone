@@ -568,6 +568,9 @@ export async function markHoursImported(
   });
 }
 
+/** Refusal of an "Assign" on a line already assigned (EN source, shown by the Hours screen). */
+export const HOURS_ALREADY_ASSIGNED = 'These hours are already assigned';
+
 /** "Assign" of an unassigned line (by its position in the list) to a work package (OPEN QUESTION R-6). */
 export async function assignUnassignedHours(projectCode: string, position: number, wbsCode: string, actor: Actor): Promise<void> {
   const actorName = actor.name;
@@ -581,6 +584,9 @@ export async function assignUnassignedHours(projectCode: string, position: numbe
     if (!node) throw new Error(`Unknown WBS ${wbsCode} on ${projectCode}`);
     const [u] = await tx.select().from(unassignedHours).where(and(eq(unassignedHours.importId, imp.id), eq(unassignedHours.position, position)));
     if (!u) throw new Error(`No unassigned line #${position}`);
+    // R-010: re-checked in the transaction (the Server Function's check was made before it): two "Assign" sent at once on the
+    // same line assign it once, the second is refused instead of moving the hours to its work package.
+    if (u.assignedWbsNodeId) throw new Error(HOURS_ALREADY_ASSIGNED);
     await tx.update(unassignedHours).set({ assignedWbsNodeId: node.id, assignedAt: new Date() }).where(eq(unassignedHours.id, u.id));
     const person = await findPerson(tx, actorName);
     await writeAudit(tx, { actorName: person ? nameOf(person) : actorName, actorPersonId: person?.id, objectRef: `Hours ${imp.analyticCode}`, change: `${u.hours} h assigned to WBS ${wbsCode}`, area: 'Hours', entityType: 'unassigned_hours', entityId: u.id, projectId: p.id });

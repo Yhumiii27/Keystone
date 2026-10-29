@@ -11,6 +11,7 @@ import 'server-only';
 import { and, eq } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import { VIGIE_CONNECTOR_NAME, connectorEnabled } from '@/server/integrations/connector-enabled';
+import { giveBackRefresh, mayRefresh } from '@/server/integrations/refresh-claims';
 import { vigieNcrs } from '@/server/db/schema';
 import { ncrsToAnnounce } from '@/domain/vigie-events';
 import { logError, logWarning } from '@/server/log';
@@ -58,7 +59,8 @@ export const mockQualityConnector: VigieQualityConnector = {
 
 const HTTP_TIMEOUT_MS = 5000;
 const REFRESH_EVERY_MS = 60_000;
-// Per server process (R-010): concurrent reads share the refresh in flight (see eco-connector.ts).
+// R-010: concurrent reads share the refresh in flight; one refresh per minute across instances (slot "vigie-quality", see
+// eco-connector.ts and src/server/integrations/refresh-claims.ts).
 const g = globalThis as unknown as { __ksVigieQualityRefreshedAt?: number; __ksVigieQualityRefreshing?: Promise<void> };
 
 /** Forgets the last refresh time (tests). */
@@ -103,12 +105,23 @@ async function refreshFromVigie(): Promise<number> {
   return n;
 }
 
+const REFRESH_SLOT = 'vigie-quality';
+
 async function refreshIfStale(): Promise<void> {
   if (g.__ksVigieQualityRefreshedAt && Date.now() - g.__ksVigieQualityRefreshedAt < REFRESH_EVERY_MS) return;
-  const running = (g.__ksVigieQualityRefreshing ??= refreshFromVigie().then(
-    () => undefined,
-    (e) => logWarning('Vigie NCR / HSE refresh (the local mirror is used)', e, { component: 'vigie' }),
-  ).finally(() => { g.__ksVigieQualityRefreshing = undefined; }));
+  const running = (g.__ksVigieQualityRefreshing ??= (async () => {
+    if (!(await mayRefresh(REFRESH_SLOT, REFRESH_EVERY_MS))) {
+      g.__ksVigieQualityRefreshedAt = Date.now(); // another instance refreshed the shared mirror within the minute
+      return;
+    }
+    await refreshFromVigie().then(
+      () => undefined,
+      async (e) => {
+        await giveBackRefresh(REFRESH_SLOT);
+        logWarning('Vigie NCR / HSE refresh (the local mirror is used)', e, { component: 'vigie' });
+      },
+    );
+  })().finally(() => { g.__ksVigieQualityRefreshing = undefined; }));
   await running;
 }
 

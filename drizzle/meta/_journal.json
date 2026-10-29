@@ -477,6 +477,20 @@
       "when": 1793294005476,
       "tag": "0067_approval_delegations",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1793297321748,
+      "tag": "0068_row_versions",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1793297324018,
+      "tag": "0069_row_version_triggers",
+      "breakpoints": true
     }
   ]
 }

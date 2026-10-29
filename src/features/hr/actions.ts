@@ -12,7 +12,7 @@ import { yearOfIso } from '@/domain/clock';
 import { canEditRates, parseEffectiveDate } from '@/domain/hr';
 import { businessToday } from '@/server/clock';
 import {
-  HOURS_READ_ONLY, RATES_EDIT_REFUSED, addRateRole, addSkill, assignUnassignedHours, getHoursReconciliation, getRateCard, getSkillsMatrix, markHoursImported,
+  HOURS_ALREADY_ASSIGNED, HOURS_READ_ONLY, RATES_EDIT_REFUSED, addRateRole, addSkill, assignUnassignedHours, getHoursReconciliation, getRateCard, getSkillsMatrix, markHoursImported,
   setBaseRate, setMultiplier,
 } from '@/server/dal/hr';
 import { getProject } from '@/server/dal/projects';
@@ -133,7 +133,8 @@ async function hoursEditor(code: unknown): Promise<{ code: string; analytic: str
 /** The DAL's re-check of the Hours rule (a team or role change since the check above) keeps its message. */
 async function hoursFailure(e: unknown): Promise<{ error: string }> {
   const t = await tr();
-  return { error: t(e instanceof Error && e.message === HOURS_READ_ONLY ? HOURS_READ_ONLY : 'The change could not be saved') };
+  const known = e instanceof Error && (e.message === HOURS_READ_ONLY || e.message === HOURS_ALREADY_ASSIGNED);
+  return { error: t(known ? (e as Error).message : 'The change could not be saved') };
 }
 
 /**

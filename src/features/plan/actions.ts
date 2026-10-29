@@ -17,6 +17,7 @@ import {
   type ActivityPatch, type PlanData,
 } from '@/server/dal/plan';
 import { restorePlanTrash, trashPlanRow } from '@/server/dal/plan-trash';
+import { staleRecordResult } from '@/server/dal/record-version';
 import { getProject } from '@/server/dal/projects';
 import { rescheduleIfAutomatic } from '@/server/dal/schedule';
 import { getProjectContext, type ProjectContext } from '@/server/project-context';
@@ -24,8 +25,8 @@ import { getI18n } from '@/server/session';
 import { removedText, restoreConflictText, restoredText } from './i18n';
 import { canEditPlan, canEditProgress, canEditStructure, canSchedulePlan } from './rights';
 
-/** `value`: the normalised value of an edited cell. */
-export type PlanActionResult = { ok: true; value?: string } | { error: string };
+/** `value`: the normalised value of an edited cell. `conflict` (R-010): the activity changed meanwhile (StaleRecord). */
+export type PlanActionResult = { ok: true; value?: string } | { error: string; conflict?: true };
 export type PlanFormResult = { toast?: string; error?: string };
 export type ActivityField = 'name' | 'owner' | 'dur' | 'budget' | 'preds' | 'pct';
 
@@ -98,7 +99,7 @@ async function predError(e: PredError): Promise<string> {
  * normalised cell value (e.g. "150" % → "100", "" duration → the current duration). Unchanged values are not
  * written, so they do not set the "edited" mark.
  */
-export async function editActivity(code: string, actId: string, field: ActivityField, value: string): Promise<PlanActionResult> {
+export async function editActivity(code: string, actId: string, field: ActivityField, value: string, version?: string): Promise<PlanActionResult> {
   const r = await editablePlan(code, field === 'pct' ? 'progress' : 'structure');
   if ('error' in r) return r;
   const { t } = await getI18n();
@@ -153,7 +154,15 @@ export async function editActivity(code: string, actId: string, field: ActivityF
     }
   }
   if (patch) {
-    if (!(await updateActivity(code, actId, patch))) return { error: t('Invalid request') };
+    // R-010: audited with the viewer, and refused when someone else changed the activity since the page read it (`version`).
+    try {
+      if (!(await updateActivity(code, actId, patch, { actorName: r.actor, source: 'plan', version: typeof version === 'string' ? version : null }))) return { error: t('Invalid request') };
+    } catch (e) {
+      const stale = staleRecordResult(e, (await getI18n()).lang);
+      if (!stale) throw e;
+      refresh(code);
+      return stale;
+    }
     if (field === 'dur' || field === 'preds' || field === 'pct') await afterScheduleEdit(code, r.actor);
     refresh(code);
   }
@@ -296,7 +305,7 @@ export async function saveProgress(code: string, values: Record<string, string>)
   if (!act) return { error: t('Invalid request') };
   if (!mayEnterProgress(r, act)) return { error: t(OWN_PROGRESS_ONLY) };
   const pc = clampPct(str(values?.pc));
-  await updateActivity(code, id, { pct: pc });
+  await updateActivity(code, id, { pct: pc }, { actorName: r.actor, source: 'plan' });
   await afterScheduleEdit(code, r.actor);
   refresh(code);
   return { toast: await toastOf(`${id} · ${pc} % · Progress saved`) };

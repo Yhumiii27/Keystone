@@ -32,6 +32,7 @@ import { claimRequestDelivery, markRequestDelivery, readClearances, recordFailed
 import type {
   CursusActor, CursusClearanceRecord, CursusConnector, CursusDirectoryPayload, CursusGoNoGo, CursusGoNoGoPayload, CursusRequestReceipt, CursusTravelRequestInput,
 } from './types';
+import { mayRefresh } from '@/server/integrations/refresh-claims';
 
 export type {
   CursusActor, CursusClearanceView, CursusConnector, CursusDirectoryPayload, CursusGoNoGo, CursusRequestReceipt, CursusTravelRequestInput,
@@ -111,8 +112,9 @@ export const mockCursusConnector: CursusConnector = {
 const HTTP_TIMEOUT_MS = 5000;
 /** Reads refresh a project's verdicts at most once a minute (a failed refresh too: the mirror is used until the next attempt). */
 const REFRESH_EVERY_MS = 60_000;
-// Per server process (R-010): with several instances each refreshes a project at most once a minute (bounded load on
-// Cursus); concurrent reads of one process share the refresh in flight instead of starting their own.
+// R-010: concurrent reads of one process share the refresh in flight; with several instances on the PostgreSQL server, one of
+// them refreshes a project's verdicts per minute (slot "cursus-go-no-go:<project>", src/server/integrations/refresh-claims.ts),
+// the others read the shared mirror. The times kept here only spare the slot's query on every read.
 const g = globalThis as unknown as {
   __ksCursusRefreshedAt?: Map<string, number>; __ksCursusRefreshing?: Map<string, Promise<void>>; __ksCursusInFlight?: Map<string, Promise<number>>;
 };
@@ -295,7 +297,12 @@ export const httpCursusConnector: CursusConnector = {
     if (!chantierId) return readClearances(db, projectCode);
     let running = refreshing().get(projectCode);
     if (!running) {
-      running = refreshShared(projectCode)
+      running = mayRefresh(`cursus-go-no-go:${projectCode}`, REFRESH_EVERY_MS)
+        .then((mine) => {
+          if (mine) return refreshShared(projectCode);
+          refreshedAt().set(projectCode, Date.now()); // another instance refreshed it within the minute
+          return 0;
+        })
         .then(
           () => undefined,
           async (e) => {
