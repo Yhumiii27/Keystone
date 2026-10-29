@@ -148,6 +148,24 @@ const RUNS: Record<JobName, () => Promise<JobOutcome>> = {
     const counts: Record<string, number> = r.state === 'done' ? { subsidiaries: r.subsidiaries, active: r.active, skipped: r.skipped } : {};
     return { summary: subsidiaryRefreshSummary(r), counts, warn: r.state === 'failed' || (r.state === 'done' && r.skipped > 0) };
   },
+  // ── Delivery 9 · R-199: deadline reminders (bell + e-mail), one per person and run; failed e-mails are a warning.
+  'deadline-reminders': async (): Promise<JobOutcome> => {
+    const r = await (await import('@/server/dal/reminders')).runDeadlineReminders();
+    return {
+      summary: `Deadline reminders at ${r.today} · ${r.items} items due · ${r.reminders} reminders · ${r.persons} persons notified · ${r.emailed} e-mails · ${r.emailFailed} failed · ${r.emailSkipped} not e-mailed`,
+      counts: { items: r.items, reminders: r.reminders, persons: r.persons, emailed: r.emailed, emailFailed: r.emailFailed, emailSkipped: r.emailSkipped },
+      warn: r.emailFailed > 0,
+    };
+  },
+  // ── Delivery 9 · R-199: weekly reports (the first run of each ISO week sends; the other days claim nothing).
+  'scheduled-reports': async (): Promise<JobOutcome> => {
+    const r = await (await import('@/server/dal/scheduled-reports')).runScheduledReports();
+    return {
+      summary: `Weekly reports ${r.period} · ${r.projects} projects · ${r.reports} reports · ${r.emailed} e-mails · ${r.emailFailed} failed · ${r.emailSkipped} not e-mailed`,
+      counts: { projects: r.projects, reports: r.reports, emailed: r.emailed, emailFailed: r.emailFailed, emailSkipped: r.emailSkipped },
+      warn: r.emailFailed > 0,
+    };
+  },
 };
 
 export const JOB_DEFINITIONS: readonly JobDefinition[] = JOB_SCHEDULES.map((s) => ({ ...s, run: RUNS[s.name] }));
