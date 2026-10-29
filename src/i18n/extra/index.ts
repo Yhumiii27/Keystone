@@ -86,6 +86,7 @@ import d9MatrixSubsidiaries from './d9-matrix-subsidiaries.json';
 import d9CatalogueScreen from './d9-catalogue-screen.json';
 import d9Reminders from './d9-reminders.json';
 import d9UxA11y from './d9-ux-a11y.json';
+import d9NotificationMail from './d9-notification-mail.json';
 
 export const EXTRA_FR: Record<string, string> = {
   ...common,
@@ -172,4 +173,5 @@ export const EXTRA_FR: Record<string, string> = {
   ...d9ShipmentsB,
   ...d9Reminders,
   ...d9UxA11y,
+  ...d9NotificationMail,
 };

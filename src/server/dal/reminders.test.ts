@@ -23,6 +23,7 @@ import { readReminderDefaults, saveUserReminderPrefs } from './reminder-preferen
 import { collectDueItems, receiveRule, recipientsOf, runDeadlineReminders } from './reminders';
 import { runScheduledReports } from './scheduled-reports';
 import type { DueItem } from '@/domain/reminders';
+import { DEFAULT_NOTIFICATION_MODES } from '@/domain/notification-mail';
 
 let dir: string;
 const as = (role: string) => {
@@ -129,7 +130,7 @@ describe('the daily job', () => {
 describe('preferences', () => {
   it('a person turns the e-mail off: the bell notice still comes, no e-mail; fewer offsets, fewer reminders', async () => {
     const fabien = (await userOf('procurement'))!;
-    await saveUserReminderPrefs(fabien.id, { emailReminders: false, emailReports: true, offsets: [1], overdue: true }, { name: 'Fabien Bertrand', role: 'procurement' });
+    await saveUserReminderPrefs(fabien.id, { emailReminders: false, emailReports: true, offsets: [1], overdue: true, notifications: { ...DEFAULT_NOTIFICATION_MODES } }, { name: 'Fabien Bertrand', role: 'procurement' });
     const fabienFiles = () => files().filter((f) => f.includes('fabien-bertrand')).length;
     const n = fabienFiles();
     const before = (await listNotifications('procurement')).length;
@@ -144,11 +145,11 @@ describe('preferences', () => {
   it('the Server Functions: each viewer their own choices (audit with before / after), back to the default; the director sets the default', async () => {
     as('member');
     expect(await getMyReminderPreferencesAction()).toEqual({
-      values: { emailReminders: 'on', emailReports: 'on', offsets: '7,1', overdue: 'on', apply: 'default' }, own: false,
-      defaults: { emailReminders: 'on', emailReports: 'on', offsets: '7,1', overdue: 'on' }, transport: 'file',
+      values: { emailReminders: 'on', emailReports: 'on', offsets: '7,1', overdue: 'on', notifApprovals: 'immediate', notifTasks: 'immediate', notifMentions: 'immediate', notifAlerts: 'digest', apply: 'default' }, own: false,
+      defaults: { emailReminders: 'on', emailReports: 'on', offsets: '7,1', overdue: 'on', notifApprovals: 'immediate', notifTasks: 'immediate', notifMentions: 'immediate', notifAlerts: 'digest' }, transport: 'file',
     });
     expect(await saveMyReminderPreferencesAction({ apply: 'own', emailReminders: 'off', emailReports: 'on', offsets: '3,1', overdue: 'on' })).toEqual({ ok: true, toast: 'Preferences saved' });
-    expect((await getMyReminderPreferencesAction())!.values).toEqual({ emailReminders: 'off', emailReports: 'on', offsets: '3,1', overdue: 'on', apply: 'own' });
+    expect((await getMyReminderPreferencesAction())!.values).toEqual({ emailReminders: 'off', emailReports: 'on', offsets: '3,1', overdue: 'on', notifApprovals: 'immediate', notifTasks: 'immediate', notifMentions: 'immediate', notifAlerts: 'digest', apply: 'own' });
     const [audit] = await listAudit({ limit: 1 });
     expect(audit).toMatchObject({
       who: 'Julien Wagner', object: 'Reminders & reports', area: 'My preferences', change: 'e-mail reminders off · e-mail reports on · J-3 · J-1 · overdue',
@@ -167,7 +168,7 @@ describe('preferences', () => {
     as('director');
     expect(await saveReminderDefaultsAction({ ...valid, offsets: 'soon' })).toEqual({ error: 'Invalid preferences' });
     expect(await saveReminderDefaultsAction(valid)).toEqual({ ok: true, toast: 'Default saved' });
-    expect(await readReminderDefaults()).toEqual({ emailReminders: true, emailReports: false, offsets: [14, 7, 1], overdue: false });
+    expect(await readReminderDefaults()).toEqual({ emailReminders: true, emailReports: false, offsets: [14, 7, 1], overdue: false, notifications: { ...DEFAULT_NOTIFICATION_MODES } });
     expect((await listActivity({ limit: 1 }))[0].what).toBe('Reminders & reports default · e-mail reminders on · e-mail reports off · J-14 · J-7 · J-1');
     // A user without their own choice follows the new default.
     as('member');
@@ -236,7 +237,7 @@ describe('weekly reports', () => {
 
   it('a lead with e-mail reports off gets the bell notice only', async () => {
     const romain = (await userOf('pm'))!;
-    await saveUserReminderPrefs(romain.id, { emailReminders: true, emailReports: false, offsets: [7, 1], overdue: true }, { name: 'Romain Aubert', role: 'pm' });
+    await saveUserReminderPrefs(romain.id, { emailReminders: true, emailReports: false, offsets: [7, 1], overdue: true, notifications: { ...DEFAULT_NOTIFICATION_MODES } }, { name: 'Romain Aubert', role: 'pm' });
     await runScheduledReports('2026-10-12');
     const [row] = (await sendsOf(romain.personId)).filter((x) => x.occurrence === '2026-W42');
     expect(row).toMatchObject({ kind: 'report', itemKey: 'project_weekly:HLT-026', emailStatus: 'off' });

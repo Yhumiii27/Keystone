@@ -143,7 +143,7 @@ export async function runScheduledReports(on?: string, now: Date = new Date()): 
     try {
       code = await createNotification({
         kind: 'request', title, sub: w.projectCode ? `${w.projectCode} · ${period}` : `${period} · ${projects.length} ${projects.length > 1 ? 'projects' : 'project'}`,
-        screen, params: {}, projectCode: w.projectCode, audience: w.r.roles as RoleKey[], toPersonIds: [w.r.personId],
+        screen, params: {}, projectCode: w.projectCode, audience: w.r.roles as RoleKey[], toPersonIds: [w.r.personId], email: false,
       });
     } catch (e) {
       logError('runScheduledReports', e, { personId: w.r.personId, projectCode: w.projectCode });

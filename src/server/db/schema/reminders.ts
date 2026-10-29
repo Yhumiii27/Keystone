@@ -1,7 +1,7 @@
 // R-199 — deadline reminders and scheduled reports (src/domain/reminders.ts): each user's reminder and report preferences
 // (R-036 part: e-mail on / off, reminder offsets), and the send log that makes the jobs idempotent. The company default is the
 // app setting `reminders.defaults` (Settings, the director). Relative imports only (drizzle-kit loads this file directly).
-import { boolean, date, index, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { boolean, date, index, integer, jsonb, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import { id } from './_common';
 import { persons, users } from './organisation';
 
@@ -16,6 +16,8 @@ export const reminderPreferences = pgTable('reminder_preferences', {
   offsets: integer('offsets').array().notNull(),
   /** One reminder once the due date has passed. */
   overdue: boolean('overdue').notNull(),
+  /** R-036: e-mail of the other notifications per family ({ approvals: 'immediate', … }); null = the company default's. */
+  notificationModes: jsonb('notification_modes').$type<Record<string, string>>(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -30,7 +32,7 @@ export const reminderSends = pgTable(
   {
     id: id(),
     personId: uuid('person_id').notNull().references(() => persons.id, { onDelete: 'cascade' }),
-    kind: text('kind').$type<'reminder' | 'report'>().notNull(),
+    kind: text('kind').$type<'reminder' | 'report' | 'digest' | 'alert'>().notNull(),
     itemKey: text('item_key').notNull(),
     slot: text('slot').notNull(),
     occurrence: text('occurrence').notNull(),

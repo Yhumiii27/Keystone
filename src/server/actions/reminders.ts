@@ -25,7 +25,7 @@ export interface MyReminderPreferences {
   transport: 'none' | 'file';
 }
 
-const isValues = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length <= 10;
+const isValues = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length <= 16;
 
 /** The viewer's preferences (null when the viewer has no user account). */
 export async function getMyReminderPreferencesAction(): Promise<MyReminderPreferences | null> {

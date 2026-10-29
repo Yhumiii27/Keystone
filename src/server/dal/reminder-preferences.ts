@@ -3,6 +3,7 @@ import 'server-only';
 // portfolio director — A-14) and each user's own choice (`reminder_preferences`, no row = the default). Writers record an audit
 // row (R-168: before / after); the company default also an activity line. Rules: src/domain/reminders.ts.
 import { eq, inArray } from 'drizzle-orm';
+import { DEFAULT_NOTIFICATION_MODES, modesLabel, sameModes } from '@/domain/notification-mail';
 import { DEFAULT_REMINDER_PREFS, normalisePrefs, offsetsLabel, prefsChanges, type ReminderPrefs } from '@/domain/reminders';
 import { canEditSettings, SETTINGS_DIRECTOR_ONLY } from '@/domain/settings-rules';
 import { getDb } from '@/server/db/client';
@@ -21,8 +22,9 @@ export async function readReminderDefaults(q?: Q): Promise<ReminderPrefs> {
   return normalisePrefs(row?.value, DEFAULT_REMINDER_PREFS);
 }
 
-const prefsOfRow = (r: typeof reminderPreferences.$inferSelect): ReminderPrefs =>
-  normalisePrefs({ emailReminders: r.emailReminders, emailReports: r.emailReports, offsets: r.offsets, overdue: r.overdue });
+/** A row → preferences; R-036: no notification modes on the row (saved before R-036) = the company default's. */
+const prefsOfRow = (r: typeof reminderPreferences.$inferSelect, defaults: ReminderPrefs): ReminderPrefs =>
+  normalisePrefs({ emailReminders: r.emailReminders, emailReports: r.emailReports, offsets: r.offsets, overdue: r.overdue, notifications: r.notificationModes }, defaults);
 
 export interface UserReminderPrefs {
   prefs: ReminderPrefs;
@@ -36,7 +38,7 @@ export async function getUserReminderPrefs(userId: string, q?: Q): Promise<UserR
   const db = q ?? (await getDb());
   const defaults = await readReminderDefaults(db);
   const [row] = await db.select().from(reminderPreferences).where(eq(reminderPreferences.userId, userId));
-  return { prefs: row ? prefsOfRow(row) : defaults, own: !!row, defaults };
+  return { prefs: row ? prefsOfRow(row, defaults) : defaults, own: !!row, defaults };
 }
 
 /** Preferences of several users at once (the jobs): user id → preferences. */
@@ -44,12 +46,14 @@ export async function userReminderPrefsMap(userIds: readonly string[], q?: Q): P
   const db = q ?? (await getDb());
   const defaults = await readReminderDefaults(db);
   const rows = userIds.length ? await db.select().from(reminderPreferences).where(inArray(reminderPreferences.userId, [...userIds])) : [];
-  const own = new Map(rows.map((r) => [r.userId, prefsOfRow(r)]));
+  const own = new Map(rows.map((r) => [r.userId, prefsOfRow(r, defaults)]));
   return new Map(userIds.map((id) => [id, own.get(id) ?? defaults]));
 }
 
+/** Audit text; R-036: the notification e-mails are named when they differ from Keystone's default. */
 const describe = (p: ReminderPrefs) =>
-  `e-mail reminders ${p.emailReminders ? 'on' : 'off'} · e-mail reports ${p.emailReports ? 'on' : 'off'} · ${offsetsLabel(p.offsets)}${p.overdue ? ' · overdue' : ''}`;
+  `e-mail reminders ${p.emailReminders ? 'on' : 'off'} · e-mail reports ${p.emailReports ? 'on' : 'off'} · ${offsetsLabel(p.offsets)}${p.overdue ? ' · overdue' : ''}${
+    sameModes(p.notifications, DEFAULT_NOTIFICATION_MODES) ? '' : ` · notifications: ${modesLabel(p.notifications)}`}`;
 
 /**
  * Saves a user's own preferences (the signed-in user, or the demo persona's user — `userId` is resolved by the caller from the
@@ -64,7 +68,10 @@ export async function saveUserReminderPrefs(userId: string, prefs: ReminderPrefs
     const next = prefs === 'reset' ? cur.defaults : normalisePrefs(prefs, cur.defaults);
     if (prefs === 'reset') await tx.delete(reminderPreferences).where(eq(reminderPreferences.userId, userId));
     else {
-      const values = { emailReminders: next.emailReminders, emailReports: next.emailReports, offsets: next.offsets, overdue: next.overdue, updatedAt: new Date() };
+      const values = {
+        emailReminders: next.emailReminders, emailReports: next.emailReports, offsets: next.offsets, overdue: next.overdue, notificationModes: { ...next.notifications },
+        updatedAt: new Date(),
+      };
       await tx.insert(reminderPreferences).values({ userId, ...values }).onConflictDoUpdate({ target: reminderPreferences.userId, set: values });
     }
     const diff = prefsChanges(cur.prefs, next);

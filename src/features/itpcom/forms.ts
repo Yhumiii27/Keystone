@@ -16,8 +16,10 @@ import { dataT } from './i18n';
 export const INSPECTION_RESULT = 'Inspection added to the plan';
 /** AF_RESULT.punch. */
 export const PUNCH_RESULT = 'Punch item added';
-/** AF_RESULT.commissioning (the invitation is recorded with the plan; no mail connector sends it yet). */
+/** AF_RESULT.commissioning (R-015 / R-036: the client contacts are invited in the bell and by e-mail once IT connects the transport). */
 export const SAT_RESULT = 'SAT planned · invitation sent to the client';
+/** R-015: no client contact to invite (a group subsidiary — R-190 — or no client account). */
+export const SAT_NOT_INVITED = 'SAT planned · no client contact to invite';
 /** Default "Prerequisites" of the Plan SAT form. */
 export const SAT_PREREQUISITES = 'Punch A items closed · pre-commissioning reports issued';
 

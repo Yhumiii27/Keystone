@@ -226,8 +226,8 @@ const NOTIF_ICON: Record<string, Icon> = {
 };
 
 /**
- * The bell. `emailOn`: an e-mail transport is configured (R-199 / R-036: reminders and weekly reports also by e-mail); the
- * footer opens the viewer's "Reminders & reports" preferences.
+ * The bell. `emailOn`: an e-mail transport is configured (R-199 / R-036: notifications — immediate or daily digest —, reminders
+ * and weekly reports also by e-mail); the footer opens the viewer's "Notifications & reminders" preferences (no Teams: X-6b).
  */
 export function Notifications({ items, role, emailOn = false }: { items: NotificationView[]; role: string; emailOn?: boolean }) {
   const { t } = useI18n();
@@ -302,7 +302,7 @@ export function Notifications({ items, role, emailOn = false }: { items: Notific
             })}
             {/* X-6b / S-11 (R-037): no Teams channel post exists; R-199 / R-036: e-mail when IT's transport is configured. */}
             <div className={styles.notifFoot}>
-              <span>{t(emailOn ? 'Reminders and weekly reports are also sent by e-mail' : 'E-mail not connected yet — reminders and notifications stay in Keystone')}</span>
+              <span>{t(emailOn ? 'Notifications, reminders and weekly reports are also sent by e-mail, as you chose' : 'E-mail not connected yet — reminders and notifications stay in Keystone')}</span>
               <button
                 type="button"
                 className={cx('btn btn-ghost', styles.markAll)}
@@ -312,7 +312,7 @@ export function Notifications({ items, role, emailOn = false }: { items: Notific
                   prefs.open();
                 }}
               >
-                <BellRinging aria-hidden /> {t('Reminders & reports')}
+                <BellRinging aria-hidden /> {t('Notifications & reminders')}
               </button>
             </div>
           </div>

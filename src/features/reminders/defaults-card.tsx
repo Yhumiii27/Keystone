@@ -8,6 +8,7 @@ import { FormDialog } from '@/components/app/FormDialog';
 import type { FormValues } from '@/components/app/form-def';
 import { Button } from '@/components/ds/Button';
 import { cx } from '@/components/ds/cx';
+import { NOTIFICATION_FAMILIES, NOTIFICATION_FAMILY_LABEL, NOTIFICATION_MODE_LABEL, modeField, type NotificationMode } from '@/domain/notification-mail';
 import { offsetsLabel, parseOffsets } from '@/domain/reminders';
 import { useI18n } from '@/i18n/client';
 import { saveReminderDefaultsAction } from '@/server/actions/reminders';
@@ -23,6 +24,8 @@ export function ReminderDefaultsCard({ values, canEdit, transport }: { values: F
     [t('Overdue reminder'), yes(values.overdue)],
     [t('E-mail reminders'), yes(values.emailReminders)],
     [t('E-mail reports'), yes(values.emailReports)],
+    // R-036: the e-mail of the other notifications, per family.
+    ...NOTIFICATION_FAMILIES.map((f): [string, string] => [t(NOTIFICATION_FAMILY_LABEL[f]), t(NOTIFICATION_MODE_LABEL[values[modeField(f)] as NotificationMode] ?? '—')]),
     [t('E-mail transport'), t(transport === 'file' ? 'Written to a folder (file)' : 'Not connected (awaits IT)')],
   ];
   return (
@@ -30,9 +33,11 @@ export function ReminderDefaultsCard({ values, canEdit, transport }: { values: F
       <div className={s.head}>
         <BellRinging className={s.accent} aria-hidden />
         <div className={s.title}>
-          <div className="card-title">{t('Reminders & reports — company default')}</div>
+          <div className="card-title">{t('Notifications, reminders & reports — company default')}</div>
           <span className={s.muted}>
             {t('Deadline reminders every morning (tasks, activities, milestones, deliverables, meeting actions, client prerequisites) and weekly reports on Monday (status report to the project leads, portfolio to the directors) · each person changes their own choice from the notifications bell')}
+            {' · '}
+            {t('Notifications by e-mail: at once, or in the daily digest sent at the reminders hour; clients receive theirs at once')}
           </span>
         </div>
         {canEdit && (
