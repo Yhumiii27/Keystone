@@ -30,11 +30,12 @@ import { refreshSubsidiaryMirror, subsidiaryRefreshSummary } from '@/server/inte
 import { addProjectEquipment, removeProjectEquipment, updateProjectEquipment } from '@/server/dal/project-equipment';
 import { setProjectBudgetRate } from '@/server/dal/currency';
 import { getProject } from '@/server/dal/projects';
+import { staleRecordResult } from '@/server/dal/record-version';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { RESULT } from './model';
 
-export type ContractEditResult = { ok: true } | { error: string };
+export type ContractEditResult = { ok: true } | { error: string; conflict?: true };
 
 const refresh = () => revalidatePath('/', 'layout');
 
@@ -65,8 +66,11 @@ async function editable(
   return { code: project.code, actor: ctx.viewer.name, viewer: { name: ctx.viewer.name, role: ctx.viewer.role }, contract, year: yearOfIso(await businessToday()) };
 }
 
-/** Contract sheet: one field saved on blur / Enter / select change (`setCtr`). */
-export async function updateContractFieldAction(code: string, key: string, value: string): Promise<ContractEditResult> {
+/**
+ * Contract sheet: one field saved on blur / Enter / select change (`setCtr`). `version` (R-010): the contract's token as the
+ * sheet read it — refused when someone else changed the contract meanwhile.
+ */
+export async function updateContractFieldAction(code: string, key: string, value: string, version?: string): Promise<ContractEditResult> {
   const ok = await editable(code, 'contract');
   if ('error' in ok) return ok;
   const parsed = parseSheetField(key, value, ok.year);
@@ -76,8 +80,13 @@ export async function updateContractFieldAction(code: string, key: string, value
     if (ok.contract.hasInvoices) return { error: await tr('The currency cannot change once an invoice is issued') };
   }
   try {
-    await updateContractSheet(ok.code, parsed.value, ok.actor);
+    await updateContractSheet(ok.code, parsed.value, ok.actor, { version: typeof version === 'string' ? version : null });
   } catch (e) {
+    const stale = staleRecordResult(e, (await getI18n()).lang);
+    if (stale) {
+      refresh();
+      return stale;
+    }
     return { error: await tr(knownError(e) ?? 'The change could not be saved') };
   }
   refresh();
@@ -203,11 +212,19 @@ export async function updatePaymentMilestoneAction(code: string, number: string,
   if ('error' in m) return m;
   const v = strings(values);
   delete v.basis; // the basis of a milestone does not change
+  // R-010: the milestone's token as the form was opened with it (hidden value).
+  const version = v.version ?? null;
+  delete v.version;
   const parsed = parseMilestoneForm(v, ok.year);
   if (!parsed.ok) return { error: await tr(parsed.error) };
   try {
-    await updatePaymentMilestone(ok.code, m.number, { label: parsed.value.label, sharePct: parsed.value.sharePct, contractualDue: parsed.value.contractualDue, condition: parsed.value.condition }, ok.viewer);
+    await updatePaymentMilestone(
+      ok.code, m.number, { label: parsed.value.label, sharePct: parsed.value.sharePct, contractualDue: parsed.value.contractualDue, condition: parsed.value.condition }, ok.viewer,
+      { version },
+    );
   } catch (e) {
+    const stale = staleRecordResult(e, (await getI18n()).lang);
+    if (stale) return stale;
     return milestoneError(e);
   }
   refresh();

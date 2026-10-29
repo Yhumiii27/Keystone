@@ -155,14 +155,14 @@ export async function addMinutesLineAction(input: {
 }
 
 /** Action checkbox (agenda, carry-over, previous meeting, Actions register): ticks / unticks; returns the new state. */
-export async function toggleMeetingActionAction(input: { code: string; meeting: string; point: number; position: number }): Promise<MeetingActionResult> {
+export async function toggleMeetingActionAction(input: { code: string; meeting: string; point: number; position: number; done?: boolean }): Promise<MeetingActionResult> {
   const g = await editableMeeting(input?.code, input?.meeting);
   if (!g.ok) return fail(g.error);
   if (!isIndex(input.point) || !isIndex(input.position)) return fail('Unknown agenda point');
   const line = g.meeting.agenda.find((a) => a.position === input.point)?.lines.find((l) => l.position === input.position);
   if (!line) return fail('Unknown agenda point');
   if (line.type !== 'action') return fail('Only actions can be ticked');
-  const r = await write('toggleMeetingActionAction', () => toggleMeetingAction(g.meeting.number, input.point, input.position, g.actor));
+  const r = await write('toggleMeetingActionAction', () => toggleMeetingAction(g.meeting.number, input.point, input.position, g.actor, typeof input.done === 'boolean' ? { done: input.done } : {}));
   if (!r.ok) return fail(r.error);
   refresh(g.code);
   return { ok: true, done: r.value };

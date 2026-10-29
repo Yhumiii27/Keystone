@@ -14,6 +14,7 @@ import { systemMessage, type SystemMessage } from '@/domain/system-messages';
 import { getGanttNetwork, recordGanttActivity } from '@/server/dal/gantt';
 import { addActivityLink, removeActivityLink, updateActivity, updateActivityLink, type ActivityPatch } from '@/server/dal/plan';
 import { getProject } from '@/server/dal/projects';
+import { staleRecordResult } from '@/server/dal/record-version';
 import { rescheduleProject } from '@/server/dal/schedule';
 import type { KnownConstraintType } from '@/server/db/codes';
 import { getProjectContext, type ProjectContext } from '@/server/project-context';
@@ -21,7 +22,7 @@ import { getI18n } from '@/server/session';
 import { cycleText, linkCycleText, rescheduledText } from '@/features/plan/i18n';
 import { canEditGantt, ganttEditable } from './gantt-rights';
 
-export type GanttActionResult = { ok: true; toast: string } | { error: string };
+export type GanttActionResult = { ok: true; toast: string } | { error: string; conflict?: true };
 
 const ACT_RE = /^A\d{1,8}$/;
 const str = (v: unknown) => (typeof v === 'string' ? v : v == null ? '' : String(v));
@@ -69,6 +70,8 @@ export interface GanttActivityValues {
   duration?: string;
   /** Remove the activity's date constraint ("As soon as possible"). */
   clearConstraint?: boolean;
+  /** R-010: the activity's version token as the Gantt read it ('' or absent = not checked). */
+  version?: string;
 }
 
 /**
@@ -110,7 +113,16 @@ export async function ganttEditActivityAction(code: string, activity: string, va
     : patch.durationDays !== undefined
       ? systemMessage('gantt.durationChanged', { activity: act, days: patch.durationDays })
       : systemMessage('gantt.constraintCleared', { activity: act });
-  if (!(await updateActivity(r.ctx.project.code, act, patch, { actorName: r.ctx.viewer.name, feed }))) return { error: t('Invalid request') };
+  // R-010: refused when someone else changed the activity since the Gantt read it (the edit was checked on that network).
+  try {
+    const version = typeof values?.version === 'string' ? values.version : null;
+    if (!(await updateActivity(r.ctx.project.code, act, patch, { actorName: r.ctx.viewer.name, feed, version }))) return { error: t('Invalid request') };
+  } catch (e) {
+    const stale = staleRecordResult(e, (await getI18n()).lang);
+    if (!stale) throw e;
+    revalidatePath(`/projects/${r.ctx.project.code}`, 'layout');
+    return stale;
+  }
   const what = moved ? 'Activity moved' : patch.durationDays !== undefined ? 'Duration changed' : 'Date constraint removed';
   return rescheduled(r, `${act} · ${t(what)}`);
 }

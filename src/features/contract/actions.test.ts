@@ -62,7 +62,9 @@ async function expectContract(scenario: string, lang: Lang, parts: ('kpis' | 'am
     expect(v.amendments.map((a) => [a.label, a.amount, a.status, a.date, a.doc ?? '', a.tagClass])).toEqual(w.amendments.map((a) => [a.label, a.amount, a.status, a.date, a.doc ?? '', a.tagClass]));
   if (parts.includes('bonds')) expect(v.bonds.map((b) => [b.label, b.amount, b.state, b.released])).toEqual(w.bonds.map((b) => [b.label, b.amount, b.state, b.released]));
   if (parts.includes('milestones')) {
-    expect(v.milestones).toEqual(w.milestones);
+    // R-010: the fixture has no version tokens (the database's are checked by the edit tests).
+    const unversioned = (ms: typeof v.milestones) => ms.map((m) => ({ ...m, edit: { ...m.edit, version: '' } }));
+    expect(unversioned(v.milestones)).toEqual(w.milestones);
     expect([v.groups, v.total, v.baseTotal]).toEqual([w.groups, w.total, w.baseTotal]);
   }
 }

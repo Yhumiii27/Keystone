@@ -240,7 +240,7 @@ function ChecklistCard() {
       </div>
       {live.checklist.map((c) =>
         canEdit ? (
-          <CheckRow key={c.position} done={c.done} onToggle={() => run({ kind: 'check', position: c.position }, () => toggleChecklistItemAction({ taskId: data.id, position: c.position }))}>
+          <CheckRow key={c.position} done={c.done} onToggle={() => run({ kind: 'check', position: c.position }, () => toggleChecklistItemAction({ taskId: data.id, position: c.position, done: !c.done }))}>
             {c.text}
           </CheckRow>
         ) : (

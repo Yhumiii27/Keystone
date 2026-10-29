@@ -210,6 +210,10 @@
   {
    "date": "2026-10-29",
    "text": "R-051 fait : suppléance des validations sur une période ; R-064 : partie technique vérifiée, attend S-5."
+  },
+  {
+   "date": "2026-10-29",
+   "text": "R-010 fait : verrouillage optimiste des fiches (« modifiée entre-temps par X »), numérotation et contrôles sûrs en concurrence (migrations 0068-0069)."
   }
  ],
  "items": [
@@ -493,9 +497,9 @@
     "temporisations de rafraîchissement dans globalThis : cursus/connector.ts:97, vigie/eco-connector.ts:51, quality-connector.ts:57"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 7",
-    "note": "Livraison 7 : transactions SERIALIZABLE avec reprise et réservation des envois faites ; reste la détection d’une fiche modifiée entre-temps par quelqu’un d’autre (choix d’ergonomie à faire)."
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Fiche modifiée entre-temps : refus avec « modifiée entre-temps par X — rechargez » (colonne version + déclencheur, migrations 0068-0069) sur le Plan, le Gantt, les risques, le contrat, les jalons de paiement, les catégories de coût et les réclamations ; numérotation relancée sur conflit ; vérifications déplacées dans les transactions ; rafraîchissements des connecteurs partagés entre instances."
    }
   },
   {

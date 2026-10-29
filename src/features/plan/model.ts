@@ -26,6 +26,8 @@ export interface PlanRowView {
   name: string;
   /** Stored name — the name input's value (an edit must not persist the translation). */
   nameValue: string;
+  /** R-010: the activity's version token (activity rows; '' otherwise), sent back by the inline edits. */
+  version: string;
   /** "1.4 · Steel structure" — value of the Add activity "Work package" option (WP rows). */
   wpOption?: string;
   indent: number;
@@ -106,6 +108,7 @@ export function planOwnerNames(data: Pick<PlanData, 'activities' | 'owners'>): (
 export function planRowViews(rows: PlanRow[], data: PlanData, t: T, lang: Lang): PlanRowView[] {
   const ownerName = planOwnerNames(data);
   const ownerIsCode = new Map(data.activities.map((x) => [x.id, x.ownerIsCode]));
+  const versionOf = new Map(data.activities.map((x) => [x.id, x.version]));
   return rows.map((r) => {
     const a = r.act;
     const sum = r.kind !== 'act';
@@ -117,6 +120,7 @@ export function planRowViews(rows: PlanRow[], data: PlanData, t: T, lang: Lang):
       // R-148: work package and activity names are shown as typed (or their seeded demo entry).
       name: dataText(r.name, lang),
       nameValue: r.name,
+      version: a ? (versionOf.get(a.id) ?? '') : '',
       wpOption: r.kind === 'wp' ? `${r.id} · ${r.name}` : undefined,
       indent: r.indent,
       mark: r.mark,

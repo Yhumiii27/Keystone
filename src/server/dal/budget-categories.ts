@@ -11,6 +11,10 @@ import { costType, type CostType } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import { baselines, costCategories } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
+import { assertRecordFresh, type VersionedTable } from './record-version';
+
+/** R-010: cost categories under optimistic locking (audit entity "cost_category"). */
+const CATEGORY_VERSION: VersionedTable = { table: costCategories, id: costCategories.id, version: costCategories.version, entityType: 'cost_category' };
 
 /** Largest budget a category accepts, k€ (a typo guard: €1bn). */
 export const MAX_CATEGORY_BUDGET_KEUR = 1_000_000;
@@ -90,12 +94,18 @@ export async function addProjectCostCategory(projectCode: string, input: CostCat
  * afterwards the forecast is left to the cost forecast. Delivery 8 (R-081, C-3a): once the project has BL1 a budget change is
  * refused (CATEGORY_FROZEN_MESSAGE), the director included; an absent budget means "unchanged" (name and type stay editable).
  */
-export async function updateProjectCostCategory(projectCode: string, categoryCode: string, patch: Partial<CostCategoryInput>, actorName: string): Promise<void> {
+export async function updateProjectCostCategory(
+  projectCode: string, categoryCode: string, patch: Partial<CostCategoryInput>, actorName: string, opts: { version?: string | null } = {},
+): Promise<void> {
   const db = await getDb();
   await db.transaction(async (tx) => {
     const p = await requireProject(tx, projectCode);
-    const [c] = await tx.select().from(costCategories).where(and(eq(costCategories.projectId, p.id), eq(costCategories.code, categoryCode)));
-    if (!c) throw new Error('Unknown cost category');
+    const [found] = await tx.select({ id: costCategories.id }).from(costCategories).where(and(eq(costCategories.projectId, p.id), eq(costCategories.code, categoryCode)));
+    if (!found) throw new Error('Unknown cost category');
+    // R-010: refused when someone else changed the category since the form was opened.
+    const saver = await actorOf(tx, actorName);
+    await assertRecordFresh(tx, CATEGORY_VERSION, found.id, opts.version, { name: saver.actorName, personId: saver.actorPersonId });
+    const [c] = await tx.select().from(costCategories).where(eq(costCategories.id, found.id));
     const set: Partial<typeof costCategories.$inferInsert> = {};
     const changes: string[] = [];
     if (patch.name !== undefined) {

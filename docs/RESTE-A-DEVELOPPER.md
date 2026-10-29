@@ -8,28 +8,28 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-29 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 117 faits, 29 en cours, 63 à faire, sur 209 points.
+**Avancement** : 118 faits, 28 en cours, 63 à faire, sur 209 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
-| Bloquant production | 16 | ≈ 106 |
+| Bloquant production | 15 | ≈ 102 |
 | Prochaine étape | 20 | ≈ 168 |
 | À décider | 36 | ≈ 329 |
 | Plus tard | 20 | ≈ 74 |
-| **Total** | **92** | **≈ 676** |
+| **Total** | **91** | **≈ 672** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
-| Non commencé | 42 |
+| Non commencé | 41 |
 | Partiel | 10 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
 
 | Domaine | Bloquant production | Prochaine étape | À décider | Plus tard | Restants | Faits |
 |---|---:|---:|---:|---:|---:|---:|
-| Plateforme et mise en production | 7 | 3 | 0 | 2 | 12 | 14 |
+| Plateforme et mise en production | 6 | 3 | 0 | 2 | 11 | 15 |
 | Authentification, utilisateurs et droits | 1 | 0 | 2 | 0 | 3 | 14 |
 | Intégrations avec les autres systèmes | 5 | 6 | 4 | 5 | 20 | 6 |
 | Projets, cycle de vie et modèles par type de machine | 0 | 1 | 2 | 2 | 5 | 5 |
@@ -51,7 +51,7 @@ L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il
 
 Les points « Bloquant production » restants, par domaine. Sans eux, Keystone reste un démonstrateur mono-utilisateur sur des données de démonstration.
 
-- **Plateforme et mise en production** : R-003 Héberger une instance multi-utilisateur (bêta puis production) *(en cours, Livraison 8)* ; R-004 Mettre en place sauvegardes et restauration (RPO ≤ 15 min, RTO ≤ 4 h) *(en cours, Livraison 8)* ; R-010 Sécuriser les écritures concurrentes en multi-utilisateur *(en cours, Livraison 7)* ; R-012 Faire la reprise initiale des plannings et données existants ; R-014 Numéroter les registres projet par projet (Q-7) ; R-173 Mettre Keystone en conformité RGPD (données personnelles, conservation, sous-traitants) *(en cours, Livraison 8)* ; R-174 Faire auditer la sécurité avant production (test d'intrusion, veille des dépendances) *(en cours, Livraison 8)*.
+- **Plateforme et mise en production** : R-003 Héberger une instance multi-utilisateur (bêta puis production) *(en cours, Livraison 8)* ; R-004 Mettre en place sauvegardes et restauration (RPO ≤ 15 min, RTO ≤ 4 h) *(en cours, Livraison 8)* ; R-012 Faire la reprise initiale des plannings et données existants ; R-014 Numéroter les registres projet par projet (Q-7) ; R-173 Mettre Keystone en conformité RGPD (données personnelles, conservation, sous-traitants) *(en cours, Livraison 8)* ; R-174 Faire auditer la sécurité avant production (test d'intrusion, veille des dépendances) *(en cours, Livraison 8)*.
 - **Authentification, utilisateurs et droits** : R-044 Créer le rôle Finance (contrat, facturation, grille de taux) *(en cours, Livraison 8)*.
 - **Intégrations avec les autres systèmes** : R-022 Réconcilier les codes projet (#000, XXX000, Cursus, Vigie) dans la fiche projet ; R-024 Faire construire le module ECO de Vigie avec les adresses proposées *(en cours, Livraison 8)* ; R-027 Importer l’annuaire du personnel de Cursus (matricule ↔ personne) *(en cours, Livraison 8)* ; R-033 Construire le connecteur Codex (index, approbations, dépôts, liens profonds) *(en cours, Livraison 8)* ; R-034 Construire le connecteur Sage X3 (extractions quotidiennes et envois) *(en cours, Livraison 8)*.
 - **Planning** : R-060 Gérer la date de situation par projet et le gel hebdomadaire du vendredi.
@@ -129,7 +129,7 @@ Décisions à prendre et données à fournir avant de pouvoir développer. Les q
 
 ## 2. Liste détaillée par domaine
 
-### 2.1 Plateforme et mise en production (12 restants, 14 faits)
+### 2.1 Plateforme et mise en production (11 restants, 15 faits)
 
 **R-003 · Héberger une instance multi-utilisateur (bêta puis production)** — *Bloquant production · partiel · effort M* · **en cours (Livraison 8)**  
 La PR #1 (ouverte, non fusionnée) apporte un Dockerfile Coolify : un seul conteneur next start sur le port 3000, PGlite et fichiers sur un volume /data. Il reste à la rebaser sur la livraison 6, construire et tester l’image, ajouter NEXT_PUBLIC_CODEX_URL aux arguments de build, configurer TLS et domaine, et protéger l’accès tant que l’authentification manque. Ensuite viennent la préproduction et la production avec PostgreSQL et un worker ; leur cible (Azure, serveur interne ou cloud) reste à décider. Analyse comparative du 25 oct. 2026 : l’hébergement d’une instance multi-utilisateur est un prérequis de production (bloquant), rappelé par l’analyse comparative ; aucun changement de priorité.  
@@ -138,10 +138,6 @@ La PR #1 (ouverte, non fusionnée) apporte un Dockerfile Coolify : un seul conte
 **R-004 · Mettre en place sauvegardes et restauration (RPO ≤ 15 min, RTO ≤ 4 h)** — *Bloquant production · non commencé · effort M* · **en cours (Livraison 8)**  
 Sauvegarder la base en continu (restauration à un instant donné) ainsi que les fichiers stockés par Keystone, et écrire une procédure de restauration testée en moins de 4 h. Rien n’existe aujourd’hui : la base est un dossier PGlite local.  
 *Avancement : Livraison 8 : sauvegardes planifiées (10 min, rétention 48 h / 30 j / 12 m) et restauration vérifiée ; copie hors site et PITR attendent l’hébergement (I-1a). · Attend : Hébergement choisi (I-1a) · Sources : I-1b, 00 §8.10*
-
-**R-010 · Sécuriser les écritures concurrentes en multi-utilisateur** — *Bloquant production · non commencé · effort M* · **en cours (Livraison 7)**  
-Rendre sûres sous accès concurrent la numérotation métier (max+1 sur toute la table), les contrôles « vérifier puis écrire » et les états gardés dans globalThis : contraintes uniques avec nouvel essai, verrous ou transactions SERIALIZABLE, détection des modifications simultanées d’une fiche. Cas connu : « Définir la référence » revérifie la règle BL1 hors de la transaction, donc deux envois simultanés à BL0 peuvent créer BL2 sans demande de modification. Analyse comparative du 25 oct. 2026 : le verrouillage optimiste par enregistrement (détection d’une fiche modifiée entre-temps) est un standard du marché ; le verrou d’écriture global hashtext('keystone.ecritures') (src/server/db/transactions.ts) sérialise toutes les écritures et limitera la montée en charge multi-utilisateur. Priorité suggérée P1 : remplacer le verrou global par un verrou optimiste (version par enregistrement) ou des verrous ciblés.  
-*Avancement : Livraison 7 : transactions SERIALIZABLE avec reprise et réservation des envois faites ; reste la détection d’une fiche modifiée entre-temps par quelqu’un d’autre (choix d’ergonomie à faire). · Sources : Q-7, S-3, DELIVERY-6.md §6 Minor points, Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **R-012 · Faire la reprise initiale des plannings et données existants** — *Bloquant production · attend le responsable produit · effort M*  
 S-9b demande d’importer une seule fois les plannings des projets en cours (MS Project / P6), et éventuellement des tables Excel/CSV, puis de tout planifier dans Keystone. Les importeurs MSPDI, XER et tables sont construits et testés mais désactivés par D-7b (« ne rien traiter pour le moment »). Il faut le feu vert et le périmètre, activer IMPORTS_ENABLED, ajouter le choix du projet dans un XER multi-projets, déplacer la replanification dans la transaction d’écriture et écrire la procédure de migration par projet. Analyse comparative du 25 oct. 2026 : l’import MS Project (MSPDI) et Primavera (XER) avec reprise des plannings existants est un standard du marché (MS Project, P6, Smartsheet) ; les parseurs existent mais IMPORTS_ENABLED=false (src/domain/ch4-defaults.ts, D-7b). Priorité suggérée P1 : condition du remplacement de MS Project.  
@@ -198,6 +194,10 @@ Ajouter les en-têtes de sécurité globaux (CSP, HSTS, frame-ancestors), une li
 **~~R-009 · Ajouter journalisation, supervision et alertes~~** — *Bloquant production · partiel · effort M* · **fait (Livraison 7)**  
 Mettre en place des journaux structurés, un suivi des erreurs, un point de contrôle de santé pour l’hébergeur et des alertes externes (e-mail, Teams) quand un connecteur échoue ou que des envois restent trop longtemps en attente. Aujourd’hui, seul l’écran Administration › Intégrations montre les connecteurs en échec (badge « ! »), et les erreurs ne vont qu’en console.  
 *Sources : 00 Phase 9 (observabilité)*
+
+**~~R-010 · Sécuriser les écritures concurrentes en multi-utilisateur~~** — *Bloquant production · non commencé · effort M* · **fait (Livraison 9)**  
+Rendre sûres sous accès concurrent la numérotation métier (max+1 sur toute la table), les contrôles « vérifier puis écrire » et les états gardés dans globalThis : contraintes uniques avec nouvel essai, verrous ou transactions SERIALIZABLE, détection des modifications simultanées d’une fiche. Cas connu : « Définir la référence » revérifie la règle BL1 hors de la transaction, donc deux envois simultanés à BL0 peuvent créer BL2 sans demande de modification. Analyse comparative du 25 oct. 2026 : le verrouillage optimiste par enregistrement (détection d’une fiche modifiée entre-temps) est un standard du marché ; le verrou d’écriture global hashtext('keystone.ecritures') (src/server/db/transactions.ts) sérialise toutes les écritures et limitera la montée en charge multi-utilisateur. Priorité suggérée P1 : remplacer le verrou global par un verrou optimiste (version par enregistrement) ou des verrous ciblés.  
+*Avancement : Fiche modifiée entre-temps : refus avec « modifiée entre-temps par X — rechargez » (colonne version + déclencheur, migrations 0068-0069) sur le Plan, le Gantt, les risques, le contrat, les jalons de paiement, les catégories de coût et les réclamations ; numérotation relancée sur conflit ; vérifications déplacées dans les transactions ; rafraîchissements des connecteurs partagés entre instances. · Sources : Q-7, S-3, DELIVERY-6.md §6 Minor points, Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **~~R-011 · Démarrer la production sans données de démonstration~~** — *Bloquant production · non commencé · effort M* · **fait (Livraison 7)**  
 En production, Keystone ne doit afficher que ce qu’il a enregistré ou reçu de Codex, du PDM, de Vigie, de Cursus ou de Sage. Il faut un mode d’initialisation « production » qui ne charge que les référentiels (étapes, calendriers, listes des Paramètres, types de documents et de machine, utilisateurs), garder le jeu du prototype pour une base de démo séparée, et retirer les artefacts de démo du code (projet par défaut HLT-026, numérotations décalées).  
@@ -1001,6 +1001,7 @@ Module demandé mais à cadrer avec le responsable produit avant construction : 
 
 ## 3. Mises à jour
 
+- 2026-10-29 — R-010 fait : verrouillage optimiste des fiches (« modifiée entre-temps par X »), numérotation et contrôles sûrs en concurrence (migrations 0068-0069).
 - 2026-10-29 — R-051 fait : suppléance des validations sur une période ; R-064 : partie technique vérifiée, attend S-5.
 - 2026-10-29 — R-015 fait et R-036 avancé : notifications par e-mail (immédiat / résumé quotidien, préférences), avis aux personnes concernées, alertes d’indicateur (migration 0066).
 - 2026-10-29 — R-198 et R-199 faits : Gantt interactif ; rappels d’échéances et rapports programmés (migration 0065).

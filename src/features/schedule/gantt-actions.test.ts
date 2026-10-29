@@ -29,7 +29,11 @@ import { ganttAddLinkAction, ganttEditActivityAction, ganttEditLinkAction, gantt
 const STRUCTURE = { error: 'Only the project manager or the director can change the plan structure — you can update the progress of your own activities' };
 const READ_ONLY = { error: 'This schedule is read-only for you' };
 const net = async () => (await getGanttNetwork('HLT-026'))!;
-const act = async (id: string) => (await net()).activities.find((a) => a.id === id)!;
+/** The activity as the Gantt reads it; its R-010 token keeps the version only (the read time differs between reads). */
+const act = async (id: string) => {
+  const a = (await net()).activities.find((x) => x.id === id)!;
+  return { ...a, version: a.version?.split('.')[0] };
+};
 const links = async () => (await net()).links.map((l) => `${l.pred}>${l.succ} ${l.type}${l.lag}`);
 
 describe('Gantt Server Functions (R-198)', () => {
@@ -130,5 +134,22 @@ describe('Gantt Server Functions (R-198)', () => {
     expect((await listActivity({ limit: 10 })).filter((x) => x.messageKey?.startsWith('gantt.link')).map((x) => x.what)).toEqual([
       'Removed the link A1330 → A1520 on the Gantt', 'Changed the link A1330 → A1520 on the Gantt · SS−2', 'Linked A1330 → A1520 on the Gantt · FS',
     ]);
+  });
+
+  it('R-010: a bar dragged on a Gantt read before someone else changed the activity is refused (who and when); the editor\'s own second drag passes', async () => {
+    const read = (await net()).activities.find((x) => x.id === 'A1520')!.version!;
+    Object.assign(viewer, { role: 'pm', name: 'Romain Aubert' });
+    expect(await ganttEditActivityAction('HLT-026', 'A1520', { duration: '12', version: read })).toMatchObject({ ok: true });
+    // Romain drags it again before his page refreshed: his own change, saved.
+    expect(await ganttEditActivityAction('HLT-026', 'A1520', { duration: '13', version: read })).toMatchObject({ ok: true });
+    // Marie's Gantt was read before both.
+    Object.assign(viewer, { role: 'director', name: 'Marie Lefebvre' });
+    const r = await ganttEditActivityAction('HLT-026', 'A1520', { duration: '20', version: read });
+    expect(r).toEqual({ error: expect.stringMatching(/^Record modified meanwhile by Romain Aubert on .+ — reload to see their changes$/), conflict: true });
+    expect((await act('A1520')).duration).toBe(13);
+    // A Reschedule (CPM dates only) never makes the Gantt stale.
+    const fresh = (await net()).activities.find((x) => x.id === 'A1520')!.version!;
+    await ganttEditActivityAction('HLT-026', 'A1330', { duration: '4', version: (await net()).activities.find((x) => x.id === 'A1330')!.version! });
+    expect(await ganttEditActivityAction('HLT-026', 'A1520', { duration: '14', version: fresh })).toMatchObject({ ok: true });
   });
 });

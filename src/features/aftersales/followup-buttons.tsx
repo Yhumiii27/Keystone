@@ -25,6 +25,8 @@ export interface FollowupFormButtonProps {
   target: string | null;
   /** Status the viewer saw (diagnose). */
   from?: string;
+  /** R-010 (edit): the claim's version token as the page read it, sent with the values. */
+  version?: string;
   label: string;
   ariaLabel?: string;
   context?: string;
@@ -50,14 +52,14 @@ const submit = (kind: Kind, target: string | null, from: string | undefined, v: 
   }
 };
 
-export function FollowupFormButton({ kind, target, from, label, ariaLabel, context, form, variant = 'secondary', size = 'sm' }: FollowupFormButtonProps) {
+export function FollowupFormButton({ kind, target, from, version, label, ariaLabel, context, form, variant = 'secondary', size = 'sm' }: FollowupFormButtonProps) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <Button variant={variant} size={size} icon={ICON[kind]} nowrap aria-label={ariaLabel} onClick={() => setOpen(true)}>
         {label}
       </Button>
-      <FormDialog {...form} open={open} onClose={() => setOpen(false)} context={context} onSubmit={(v) => submit(kind, target, from, v)} />
+      <FormDialog {...form} open={open} onClose={() => setOpen(false)} context={context} onSubmit={(v) => submit(kind, target, from, version ? { ...v, version } : v)} />
     </>
   );
 }

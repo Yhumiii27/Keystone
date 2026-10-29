@@ -5,7 +5,7 @@ import { sql } from 'drizzle-orm';
 import { boolean, check, date, index, integer, jsonb, pgTable, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { CapexMilestoneCode } from '@/domain/capex-milestones';
 import type { CalendarCode, ConstraintType, LinkType, MilestoneStatus, PipelineWindow } from '../codes';
-import { id, keur, months, num, timestamps } from './_common';
+import { id, keur, months, num, rowVersion, timestamps } from './_common';
 import { departments, persons } from './organisation';
 import { projectEquipments, projects } from './portfolio';
 
@@ -101,6 +101,8 @@ export const activities = pgTable(
     scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
     /** UID in the imported MS Project / P6 file (S-9 update matching). */
     externalUid: text('external_uid'),
+    /** R-010: optimistic locking (see rowVersion). */
+    version: rowVersion(),
     ...timestamps,
     /** R-185: the equipment line of an activity of a lot specific to an equipment (wizard); null = common to the project. */
     equipmentId: uuid('equipment_id').references(() => projectEquipments.id, { onDelete: 'set null' }),
