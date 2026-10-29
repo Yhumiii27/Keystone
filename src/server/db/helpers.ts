@@ -10,6 +10,7 @@ import { nextBusinessNumber, type ActivityKind } from './codes';
 import { activityEvents, auditEntries, persons, projects, users } from './schema';
 import { demoFloor } from './seed/mode';
 import type { DB, Tx } from './types';
+import { delegatedActor } from '@/server/delegation-scope';
 
 export { demoFloor } from './seed/mode';
 
@@ -111,13 +112,24 @@ async function auditUserOf(q: Q, e: AuditFields): Promise<string | null> {
 }
 
 /**
+ * R-051 (P-7d): during a decision a substitute records on an approver's behalf (src/server/delegation-scope.ts), the rows the
+ * module writes in the approver's name are written in the substitute's name, "on behalf of" the approver.
+ */
+async function onBehalf<E extends { actorName: string; actorPersonId?: string | null; actorUserId?: string | null }>(q: Q, input: E): Promise<E & { onBehalfOfName: string | null }> {
+  const e = delegatedActor(input);
+  if (e.onBehalfOfName && !e.actorPersonId) e.actorPersonId = (await findPerson(q, e.actorName))?.id ?? null;
+  return e;
+}
+
+/**
  * Appends one audit row (AUDIT shape: when, who, object, change, area; R-168: user, before / after, reason; R-184: message
  * key and parameters). The table is append-only: a database trigger refuses UPDATE, DELETE and TRUNCATE.
  */
-export async function writeAudit(q: Q, e: AuditInput): Promise<void> {
+export async function writeAudit(q: Q, input: AuditInput): Promise<void> {
+  const e = await onBehalf(q, input);
   const change = e.message ? messageText(e.message) : e.change!;
   await q.insert(auditEntries).values({
-    occurredAt: e.occurredAt ?? new Date(), actorName: e.actorName, actorPersonId: e.actorPersonId ?? null, actorUserId: await auditUserOf(q, e),
+    occurredAt: e.occurredAt ?? new Date(), actorName: e.actorName, actorPersonId: e.actorPersonId ?? null, actorUserId: await auditUserOf(q, e), onBehalfOfName: e.onBehalfOfName,
     objectRef: e.objectRef, change, area: e.area, entityType: e.entityType ?? null, entityId: e.entityId ?? null, projectId: e.projectId ?? null,
     before: e.before ?? null, after: e.after ?? null, reason: e.reason?.trim() || null,
     messageKey: e.message?.key ?? null, messageParams: e.message?.params ?? null,
@@ -140,9 +152,10 @@ interface ActivityFields {
 export type ActivityInput = ActivityFields & RowText<'text'>;
 
 /** Appends one activity-feed event (ACTIVITY shape: when, who, what, kind). */
-export async function recordActivity(q: Q, e: ActivityInput): Promise<void> {
+export async function recordActivity(q: Q, input: ActivityInput): Promise<void> {
+  const e = await onBehalf(q, input);
   await q.insert(activityEvents).values({
-    occurredAt: e.occurredAt ?? new Date(), actorName: e.actorName, actorPersonId: e.actorPersonId ?? null, text: e.message ? messageText(e.message) : e.text!,
+    occurredAt: e.occurredAt ?? new Date(), actorName: e.actorName, actorPersonId: e.actorPersonId ?? null, onBehalfOfName: e.onBehalfOfName, text: e.message ? messageText(e.message) : e.text!,
     messageKey: e.message?.key ?? null, messageParams: e.message?.params ?? null, kind: e.kind, projectId: e.projectId ?? null,
   });
 }

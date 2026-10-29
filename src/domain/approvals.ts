@@ -104,6 +104,11 @@ export interface ApprovalItem {
   decision: ApprovalDecision | null;
   /** Link to the item in the application that owns it (e.g. "Open in Vigie"), opened outside Keystone; EN label. */
   external?: { href: string; label: string } | null;
+  /**
+   * R-051 (P-7d): the item reaches the viewer as a substitute — `name` is the approver it belongs to; the inline decision is
+   * recorded through the delegation `delegationId` (on the approver's behalf). Absent for the viewer's own items.
+   */
+  onBehalfOf?: { name: string; delegationId: string } | null;
 }
 
 /** "24 Sep" / "9 Jan ’27" / "25 Sep 2026" → ISO (a year-less date is in the business year `year`, R-013); null for "—" or ''. */

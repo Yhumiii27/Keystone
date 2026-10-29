@@ -30,6 +30,7 @@ import { decideDeliverableAction, verifyNcrAction } from '@/features/quality/act
 import { decideDrawDownAction } from '@/features/risks/actions';
 import { useI18n } from '@/i18n/client';
 import { decideChangeRequestAction, decideForcedStageChangeAction, decideResourceRequestAction } from './actions';
+import { decideOnBehalfAction } from './delegation-actions';
 import s from './myapprovals.module.css';
 
 /** Shown when the Server Function itself fails (network, server error) — same text as its own failure result. */
@@ -102,7 +103,11 @@ function rejectPrompt(decision: ApprovalDecision): RejectPrompt | null {
   return null;
 }
 
-export function DecisionButtons({ id, decision }: { id: string; decision: ApprovalDecision }) {
+/**
+ * `delegationId` (R-051): the row reaches the viewer as a substitute — the decision goes through the delegation (recorded on
+ * the approver's behalf by the same module Server Function).
+ */
+export function DecisionButtons({ id, decision, delegationId }: { id: string; decision: ApprovalDecision; delegationId?: string | null }) {
   const { t } = useI18n();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
@@ -110,7 +115,7 @@ export function DecisionButtons({ id, decision }: { id: string; decision: Approv
   const prompt = rejectPrompt(decision);
 
   const decide = (ok: boolean, note?: string, done?: () => void) => {
-    const record = recorder(decision);
+    const record = delegationId ? (yes: boolean, n?: string) => decideOnBehalfAction({ delegationId, decision, ok: yes, note: n }) : recorder(decision);
     startTransition(async () => {
       try {
         const r = await record(ok, note);
