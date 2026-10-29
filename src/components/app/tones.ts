@@ -214,13 +214,15 @@ export function riskLevel(score: number): RiskLevel {
 export function riskCell(p: number, i: number): { bg: string; fg: string } {
   const sc = p * i;
   const bg = sc >= 15 ? 'var(--color-accent-500)' : sc >= 8 ? 'var(--color-accent-700)' : sc >= 4 ? 'var(--color-accent-900)' : 'var(--color-neutral-900)';
-  return { bg, fg: sc >= 8 ? 'var(--color-accent-100)' : 'var(--color-neutral-300)' };
+  // R-183 (WCAG 1.4.3): dark text on the accent-500 cells (accent-100 on accent-500 gave 2.7:1).
+  return { bg, fg: sc >= 15 ? 'var(--color-bg)' : sc >= 8 ? 'var(--color-accent-100)' : 'var(--color-neutral-300)' };
 }
 
 /** shade (3867): allocation % heat cell. >115 · >100 · ≥90 · ≥60 · else. */
 export function shade(v: number): { bg: string; fg: string } {
   if (v > 115) return { bg: 'var(--color-accent-400)', fg: 'var(--color-bg)' };
-  if (v > 100) return { bg: 'var(--color-accent-600)', fg: 'var(--color-accent-100)' };
+  // R-183 (WCAG 1.4.3): accent-700 ground — accent-100 on the prototype's accent-600 gave 4.1:1.
+  if (v > 100) return { bg: 'var(--color-accent-700)', fg: 'var(--color-accent-100)' };
   if (v >= 90) return { bg: 'var(--color-accent-800)', fg: 'var(--color-accent-200)' };
   if (v >= 60) return { bg: 'var(--color-accent-900)', fg: 'var(--color-neutral-300)' };
   return { bg: 'var(--color-neutral-900)', fg: 'var(--color-neutral-400)' };

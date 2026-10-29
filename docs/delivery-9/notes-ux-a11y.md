@@ -52,8 +52,24 @@ autres tuiles KPI (l’icône est déjà là partout, seul le texte pour lecteur
   conservé après une action (ci-dessus) ; en-tête de colonne vide des actions de réunion nommé ; icônes décoratives en
   `aria-hidden` ; classe `.sr-only` (`src/app/globals.css`). Contraste d’accent-300 : #d2cefd sur la surface #232532 ≈ 11 : 1,
   conforme AA. Onglets et segments : ce sont des liens d’URL (`aria-current`) ou des boutons (`aria-pressed`) dans un
-  `role="group"` nommé — motif valide, pas de `role="tab"` (qui exigerait la navigation aux flèches) ; voir §5 pour ce qu’axe a
-  relevé.
+  `role="group"` nommé — motif valide, pas de `role="tab"` (qui exigerait la navigation aux flèches).
+- **Ce qu’axe a relevé** (premier passage : uniquement des contrastes insuffisants, aucune autre règle *serious* / *critical*)
+  et corrigé :
+  - texte accent (#9184d9) des boutons primaires et fantômes sur les fonds incrustés neutral-900 / accent-900 (4,4 : 1) :
+    accent-500 (#968ae0, même teinte) pour le texte de `.btn-primary` / `.btn-ghost` (`src/app/globals.css`), et pour le
+    sur-titre des réunions ;
+  - cellules de charge > 100 % (`shade()`) : fond accent-700 au lieu d’accent-600 (4,1 : 1) ;
+  - cellules critiques de la matrice des risques (`riskCell()`, `risk-matrix.module.css`) : texte sombre sur accent-500
+    (2,7 : 1 avant) ;
+  - étapes du planning portefeuille : texte neutral-200 sur neutral-700 (4,4 : 1 avant) ; étape passée sur neutral-500 avec
+    texte sombre (3,5 : 1 avant).
+  Les tests dorés touchés (tones, ressources) portent un commentaire « R-183 ».
+- **Après fusion de `main-2a2fep`** (Gantt interactif R-198, cloche « Notifications et rappels » du lot B) : le Gantt est dans
+  la liste des écrans contrôlés, et un test ouvre la cloche puis la fenêtre « Notifications et rappels » (EN et FR) sous axe —
+  aucune violation.
+- Run local (build de production `.next-ci`) : `09-accessibility`, `01-platform`, `d9-gantt` — 20 / 20 réussis.
+
+**État : fait.**
 
 ## 4. Décisions prises sans demander
 
@@ -63,10 +79,13 @@ autres tuiles KPI (l’icône est déjà là partout, seul le texte pour lecteur
 - Bordure rendue aux étiquettes-menus « outline » (écart au prototype, pour que le statut ne tienne pas qu’à la couleur).
 - Actions à la 2e personne sans nom : sans responsable (à attribuer), plutôt que l’orateur.
 - Harmonisation des couleurs selon X-13b (pas de différence voulue par le propriétaire).
+- Contrastes : corrections par la rampe de la charte (accent-500, accent-700, neutral-500), sans toucher `nocturne.css` ; les
+  couleurs du prototype changent légèrement sur ces éléments.
 
 ## 5. Fichiers partagés touchés
 
 `src/app/globals.css` (fond des boutons-étiquettes, lien d’évitement, `.sr-only`) ; `src/app/(app)/layout.tsx` (lien
 d’évitement, `FocusKeeper`, `id` du `main`) ; `src/components/app/{Kpi.tsx,tones.ts,StatusTag.module.css,index.ts}` ;
-`src/server/export/{types,format,xlsx,pdf}.ts` ; `src/i18n/extra/index.ts` (+ `d9-ux-a11y.json`) ; `package.json`,
+`src/server/export/{types,format,xlsx,pdf}.ts` ; `src/components/charts/{portfolio-gantt,risk-matrix}.module.css` ;
+`src/features/meetings/meetings.module.css` ; `src/i18n/extra/index.ts` (+ `d9-ux-a11y.json`) ; `package.json`,
 `package-lock.json` (seule l’entrée axe ajoutée). `nocturne.css` n’est pas modifié.

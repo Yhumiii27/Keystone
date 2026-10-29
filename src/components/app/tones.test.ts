@@ -70,14 +70,15 @@ describe('tones', () => {
     expect(riskLevel(8)).toBe('high');
     expect(riskLevel(4)).toBe('medium');
     expect(riskLevel(3)).toBe('low');
-    expect(riskCell(3, 5)).toEqual({ bg: 'var(--color-accent-500)', fg: 'var(--color-accent-100)' });
+    // R-183 (WCAG 1.4.3): dark text on the accent-500 cell (the prototype's accent-100 gave 2.7:1).
+    expect(riskCell(3, 5)).toEqual({ bg: 'var(--color-accent-500)', fg: 'var(--color-bg)' });
     expect(riskCell(2, 2)).toEqual({ bg: 'var(--color-accent-900)', fg: 'var(--color-neutral-300)' });
     expect(riskCell(1, 3).bg).toBe('var(--color-neutral-900)');
   });
 
   it('allocation shade (3867), skill level (4392), RACI (4935)', () => {
     expect(shade(116)).toEqual({ bg: 'var(--color-accent-400)', fg: 'var(--color-bg)' });
-    expect(shade(101).bg).toBe('var(--color-accent-600)');
+    expect(shade(101).bg).toBe('var(--color-accent-700)'); // R-183: accent-600 gave 4.1:1 with accent-100
     expect(shade(90).bg).toBe('var(--color-accent-800)');
     expect(shade(60).bg).toBe('var(--color-accent-900)');
     expect(shade(59).bg).toBe('var(--color-neutral-900)');

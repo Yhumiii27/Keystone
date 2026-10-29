@@ -13,6 +13,8 @@ interface Finding {
   impact: string;
   help: string;
   targets: string[];
+  /** axe's explanation of the first node (contrast ratio and colours for color-contrast). */
+  summary: string;
 }
 
 async function audit(page: Page, path: string): Promise<Finding[]> {
@@ -20,7 +22,7 @@ async function audit(page: Page, path: string): Promise<Finding[]> {
   expect(r!.status(), path).toBe(200);
   await page.waitForLoadState('load');
   const result = await new AxeBuilder({ page }).withTags(TAGS).analyze();
-  return result.violations.map((v) => ({ path, rule: v.id, impact: v.impact ?? 'minor', help: v.help, targets: v.nodes.slice(0, 5).map((n) => n.target.join(' ')) }));
+  return result.violations.map((v) => ({ path, rule: v.id, impact: v.impact ?? 'minor', help: v.help, targets: v.nodes.slice(0, 5).map((n) => n.target.join(' ')), summary: (v.nodes[0]?.failureSummary ?? '').replace(/\s+/g, ' ').slice(0, 300) }));
 }
 
 /** Runs axe on each path; fails on serious / critical findings, with one readable line per rule and page. */
@@ -29,7 +31,7 @@ async function auditAll(page: Page, paths: string[]): Promise<void> {
   for (const p of paths) findings.push(...(await audit(page, p)));
   const blocking = findings.filter((f) => f.impact === 'serious' || f.impact === 'critical');
   for (const f of findings.filter((x) => !blocking.includes(x))) test.info().annotations.push({ type: `axe ${f.impact}`, description: `${f.path} · ${f.rule} · ${f.targets.join(', ')}` });
-  expect(blocking.map((f) => `${f.path} · ${f.rule} (${f.impact}) ${f.help} · ${f.targets.join(' | ')}`)).toEqual([]);
+  expect(blocking.map((f) => `${f.path} · ${f.rule} (${f.impact}) ${f.help} · ${f.targets.join(' | ')} · ${f.summary}`)).toEqual([]);
 }
 
 const GLOBAL = [
@@ -98,4 +100,20 @@ test('keyboard: after "Mark paid" removes its own button, the focus stays in the
   // The focus went back into the same table (its row, or the row now in its place), not to the top of the page.
   await expect.poll(() => page.evaluate(() => !!document.activeElement && document.activeElement !== document.body && !!document.activeElement.closest('table'))).toBe(true);
   w.check();
+});
+
+test('axe: the bell panel and its "Notifications & reminders" dialog (EN and FR)', async ({ page, context }) => {
+  for (const lang of ['en', 'fr'] as const) {
+    await viewAs(context, 'pm', lang);
+    const w = watch(page);
+    await page.goto('/projects/HLT-026/schedule');
+    await page.getByRole('button', { name: lang === 'en' ? 'Notifications' : /^Notifications$/ }).first().click();
+    const findings = (await new AxeBuilder({ page }).withTags(TAGS).analyze()).violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
+    expect(findings.map((v) => `${lang} bell · ${v.id} · ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([]);
+    await page.getByRole('button', { name: lang === 'en' ? 'Notifications & reminders' : 'Notifications et rappels' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    const dialog = (await new AxeBuilder({ page }).withTags(TAGS).analyze()).violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
+    expect(dialog.map((v) => `${lang} dialog · ${v.id} · ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([]);
+    w.check();
+  }
 });

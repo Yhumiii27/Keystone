@@ -109,9 +109,11 @@
   border-radius: 4px;
   border: 0;
   background: var(--color-neutral-700);
-  color: var(--color-neutral-300);
+  /* R-183 (WCAG 1.4.3): neutral-200 on neutral-700 ≈ 5.3:1 (neutral-300 gave 4.4:1). */
+  color: var(--color-neutral-200);
 }
-.stageDone { background: var(--color-neutral-600); color: var(--color-neutral-200); }
+/* R-183: a past stage on a lighter ground with dark text (≈ 5.9:1; neutral-200 on neutral-600 gave 3.5:1). */
+.stageDone { background: var(--color-neutral-500); color: var(--color-bg); }
 .board {
   top: 15px;
   height: 12px;
