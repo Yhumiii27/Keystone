@@ -1,6 +1,6 @@
 # Keystone PM — reste à développer
 
-Inventaire initial du 2026-10-10, mis à jour le 2026-10-26 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
+Inventaire initial du 2026-10-10, mis à jour le 2026-10-29 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
 
 **Méthode.** Onze relectures indépendantes ont croisé les 195 décisions produit (`docs/DECISIONS.md`), les écarts et questions ouvertes de `DELIVERY-1.md` à `DELIVERY-6.md`, `docs/BACKLOG.md`, les marqueurs du code (TODO, simulations, constantes du prototype), la spécification fonctionnelle (`docs/spec/`) et la préparation à la production. Chaque point a ensuite été vérifié dans le code, catégorie par catégorie : ce qui existait déjà a été écarté (153 candidats), les doublons fusionnés, puis un contrôle de complétude a ajouté ce qui manquait. Le détail, avec les preuves relevées dans le code pour chaque point, est dans `docs/reste-a-developper.json` ; ce document et la page sont produits par `npm run remaining:page`.
 
@@ -8,7 +8,7 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-26 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 113 faits, 29 en cours, 67 à faire, sur 209 points.
+**Avancement** : 113 faits, 31 en cours, 65 à faire, sur 209 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
@@ -175,9 +175,9 @@ Il n'existe aucune documentation pour les utilisateurs : le README et docs/ s'ad
 Les Paramètres (catégories de risques et de coûts, compétences, types de livrables, statuts, lieux de stockage), la grille de taux, les services et les clients viennent des constantes du prototype, et « Rétablir les valeurs par défaut » recharge SETTINGS0. Il faut que la direction fournisse les vraies listes et qu'une reprise les charge, en complément du démarrage sans données de démonstration.  
 *Avancement : Livraison 8 : coefficients de production en attente (valeurs provisoires) et fiche de collecte des données de référence ; vraies valeurs attendues de la direction. · Attend : Listes métier validées par la direction (catégories, compétences, taux, services, clients, lieux) · Sources : A-14, A-15, A-10, 10 §1 (Paramètres)*
 
-**R-199 · Rappels d’échéances et rapports programmés (envoi automatique)** — *Prochaine étape · non commencé · effort M*  
+**R-199 · Rappels d’échéances et rapports programmés (envoi automatique)** — *Prochaine étape · non commencé · effort M* · **en cours (Livraison 9)**  
 Envoyer automatiquement des rappels avant les échéances (tâches, jalons, livrables, actions de réunion, prérequis client) et des rapports programmés (avancement hebdomadaire, portefeuille) aux personnes concernées, par e-mail puis Teams. Standard du marché (Smartsheet, Wrike, MS Project). Aujourd’hui les avis sont in-app seulement, sans dépendance SMTP ; le canal e-mail (R-036), les comptes réels (R-038, R-039) et le job worker (R-006, fait) sont les prérequis. Analyse comparative du 25 oct. 2026 : priorité P1 avec R-036 et R-037.  
-*Avancement : Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire. · Attend : Canal e-mail (R-036) et comptes réels · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+*Avancement : Validé le 29 oct. 2026 ; en construction (rappels J-7/J-1, rapports hebdomadaires, canal e-mail par transport, préférences) ; SMTP / Graph attendent l’IT. · Attend : Canal e-mail (R-036) et comptes réels · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **R-018 · Mémoriser les préférences par utilisateur (langue, menu, projet, zone)** — *Plus tard · partiel · effort S*  
 Une fois l’authentification en place, stocker en base, par utilisateur, la langue (français par défaut, choix FR/EN suivant l’utilisateur sur tous ses postes, X-1), l’état du menu, le dernier projet, la zone et les préférences de notification, qui vivent aujourd’hui dans des cookies du navigateur.  
@@ -459,9 +459,9 @@ E-9 veut que la modification d’un type de machine ne touche que les nouveaux p
 Écrire projects.data_date (date de situation par projet, que le CP fait avancer) et l’utiliser pour l’avancement et les coûts ; tous les lecteurs passent déjà par projectDataDate() et le Plan l’affiche déjà, il ne manque que l’écrivain. Un gel le vendredi doit enregistrer l’instantané de la semaine (Tendances : CPI, SPI, EAC, marge, risques ; période EVM ; avancement) : freezeSnapshot existe mais n’est jamais appelé, et l’historique des Tendances et de l’EVM vient uniquement du seed (contraire à A-15). Volet lié de S-4 : les retards, échéances et horodatages doivent suivre l’horloge réelle, alors que TODAY/STATUS_ISO restent figés au 25 sept. 2026 dans environ 46 fichiers.  
 *Attend : Précision du responsable produit : ce qui fait avancer la date (tâche du vendredi, action du CP, Replanifier) et ce que le gel enregistre (DELIVERY-6 §8 S-4) · Sources : S-4, A-15, 04 §2, Q11, 11 §3.3, DELIVERY-6.md §3, §8 S-4, docs/delivery-6/notes-planning.md §3 gap (6)*
 
-**R-198 · Gantt interactif : glisser-déposer, zoom jour/semaine, édition des liens et des durées** — *Prochaine étape · non commencé · effort L*  
+**R-198 · Gantt interactif : glisser-déposer, zoom jour/semaine, édition des liens et des durées** — *Prochaine étape · non commencé · effort L* · **en cours (Livraison 9)**  
 Rendre le Gantt du planning interactif : déplacer et redimensionner les activités par glisser-déposer, zoom jour / semaine / mois, création et édition des liens et des durées directement dans le diagramme, avec recalcul CPM immédiat. Standard du marché (Smartsheet, MS Project, Wrike). Aujourd’hui le Gantt est un rendu serveur en lecture seule à l’échelle mensuelle sur 13 mois (src/components/charts/project-gantt.tsx). Analyse comparative du 25 oct. 2026 : priorité P1, condition du remplacement de MS Project.  
-*Avancement : Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+*Avancement : Validé le 29 oct. 2026 ; en construction (zoom jour/semaine/mois, glisser-déposer, liens, recalcul CPM). · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **R-063 · Trancher les règles restantes des références de planning (S-3)** — *À décider · attend le responsable produit · effort S*  
 Trois choix restent : une référence proposée dont la CR est rejetée est-elle supprimée ou marquée rejetée ? Après BL1, « Re-baseline » du Planning devient-il le même lien vers une CR que le Plan ? Quand une ancienne CR est approuvée après une plus récente (CR-009 / BL2 après CR-011 / BL3), la dernière approbation l’emporte-t-elle ou garde-t-on la BLn la plus haute ?  
@@ -1001,6 +1001,7 @@ Module demandé mais à cadrer avec le responsable produit avant construction : 
 
 ## 3. Mises à jour
 
+- 2026-10-29 — R-198 et R-199 validés et lancés (Gantt interactif ; rappels d’échéances et rapports programmés).
 - 2026-10-26 — Analyse comparative avec les solutions du commerce (25 oct. 2026) : 12 items ajoutés (R-198 à R-209), 18 items existants annotés.
 - 2026-10-26 — R-158 fait : lot B des expéditions (documents générés et versés dans Codex, réception sur site et réserves, jalons, pub_expeditions).
 - 2026-10-26 — R-017 fait : tenue de la charge avec de vrais volumes (index, points chauds, cache des badges, pagination).

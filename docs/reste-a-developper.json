@@ -1,6 +1,6 @@
 {
  "generated": "2026-10-10",
- "updated": "2026-10-26",
+ "updated": "2026-10-29",
  "branch": "main-2a2fep",
  "history": [
   {
@@ -194,6 +194,10 @@
   {
    "date": "2026-10-26",
    "text": "Analyse comparative avec les solutions du commerce (25 oct. 2026) : 12 items ajoutés (R-198 à R-209), 18 items existants annotés."
+  },
+  {
+   "date": "2026-10-29",
+   "text": "R-198 et R-199 validés et lancés (Gantt interactif ; rappels d’échéances et rapports programmés)."
   }
  ],
  "items": [
@@ -5788,8 +5792,9 @@
     "src/domain/cpm.ts"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+    "state": "en_cours",
+    "delivery": "Livraison 9",
+    "note": "Validé le 29 oct. 2026 ; en construction (zoom jour/semaine/mois, glisser-déposer, liens, recalcul CPM)."
    }
   },
   {
@@ -5811,8 +5816,9 @@
     "src/server/dal/shell.ts"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+    "state": "en_cours",
+    "delivery": "Livraison 9",
+    "note": "Validé le 29 oct. 2026 ; en construction (rappels J-7/J-1, rapports hebdomadaires, canal e-mail par transport, préférences) ; SMTP / Graph attendent l’IT."
    }
   },
   {
