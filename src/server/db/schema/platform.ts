@@ -2,6 +2,7 @@
 // 10 §2 activity feed and audit trail).
 import { index, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import type { ActivityKind, NotificationKind } from '../codes';
+import type { MailState } from '../../../domain/notification-mail';
 import { id } from './_common';
 import { persons, users } from './organisation';
 import { projects } from './portfolio';
@@ -38,8 +39,20 @@ export const notificationRecipients = pgTable(
     notificationId: uuid('notification_id').notNull().references(() => notifications.id, { onDelete: 'cascade' }),
     userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     readAt: timestamp('read_at', { withTimezone: true }),
+    /**
+     * R-036: the e-mail of this notice to this user (src/domain/notification-mail.ts MailState): immediate / digest while it
+     * waits, then sent, digested, seen, failed…; null = not e-mailed by this channel (rows from before R-036, the deadline
+     * reminders and weekly reports, which send their own e-mail).
+     */
+    mailState: text('mail_state').$type<MailState>(),
+    /** When the e-mail state last moved (sent, digested, failed…). */
+    mailAt: timestamp('mail_at', { withTimezone: true }),
+    mailError: text('mail_error'),
   },
-  (t) => [primaryKey({ columns: [t.notificationId, t.userId] }), index('notification_recipients_user_id_idx').on(t.userId)],
+  (t) => [
+    primaryKey({ columns: [t.notificationId, t.userId] }), index('notification_recipients_user_id_idx').on(t.userId),
+    index('notification_recipients_mail_state_idx').on(t.mailState),
+  ],
 );
 
 /** Cross-project activity feed (ACTIVITY 3557), newest first. Actors are persons or systems (Lucca, System, Sage X3). */

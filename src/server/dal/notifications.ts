@@ -7,6 +7,8 @@ import { getDb } from '@/server/db/client';
 import { NOTIFICATION_ICON, stampText, type ActivityKind, type NotificationKind } from '@/server/db/codes';
 import { nextNumber, recordActivity, writeAudit, type ActivityInput, type AuditInput } from '@/server/db/helpers';
 import { activityEvents, auditEntries, notificationRecipients, notifications, projects, users } from '@/server/db/schema';
+import { logError } from '@/server/log';
+import { mailStatesFor } from './notification-routing';
 import { userIdOf, userIdsOfPersons, userIdsWithRoles, type UserRef } from './users';
 
 export interface NotificationRow {
@@ -97,12 +99,22 @@ export interface NewNotificationInput {
    */
   toPersonIds?: string[];
   occurredAt?: Date;
+  /**
+   * R-036: false = the bell only (the deadline reminders and weekly reports, which send their own e-mail, R-199). Otherwise each
+   * recipient's e-mail follows their preference for the notice's family: sent at once (after the commit), kept for the daily
+   * digest, or none.
+   */
+  email?: boolean;
 }
 
-/** Creates a notification on top of the bell list for its recipients (persons, else the audience roles). Returns its code. */
+/**
+ * Creates a notification on top of the bell list for its recipients (persons, else the audience roles). Returns its code. R-036:
+ * the e-mails due at once are sent right after the commit (best effort: a failure is logged, the job "notification-mails" sends
+ * what a crash left waiting).
+ */
 export async function createNotification(input: NewNotificationInput): Promise<string> {
   const db = await getDb();
-  return db.transaction(async (tx) => {
+  const made = await db.transaction(async (tx) => {
     const [{ minOrder }] = await tx.select({ minOrder: sql<number>`coalesce(min(${notifications.sortOrder}), 1)::int` }).from(notifications);
     const code = await nextNumber(tx, notifications, notifications.code, 'n', 1);
     let projectId: string | null = null;
@@ -115,9 +127,18 @@ export async function createNotification(input: NewNotificationInput): Promise<s
       })
       .returning({ id: notifications.id });
     const to = input.toPersonIds ? await userIdsOfPersons(tx, input.toPersonIds) : await userIdsWithRoles(tx, input.audience);
-    if (to.length) await tx.insert(notificationRecipients).values(to.map((u) => ({ notificationId: n.id, userId: u.id })));
-    return code;
+    const states = input.email === false ? new Map<string, never>() : await mailStatesFor(tx, input.kind, to);
+    if (to.length) await tx.insert(notificationRecipients).values(to.map((u) => ({ notificationId: n.id, userId: u.id, mailState: states.get(u.id) ?? null })));
+    return { code, id: n.id, immediate: [...states.values()].includes('immediate') };
   });
+  if (made.immediate) {
+    try {
+      await (await import('./notification-mail')).sendImmediateMails({ notificationId: made.id });
+    } catch (e) {
+      logError('createNotification: immediate e-mail', e, { code: made.code });
+    }
+  }
+  return made.code;
 }
 
 // ── Activity feed ──────────────────────────────────────────────────────────────────────────────────────

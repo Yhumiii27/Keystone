@@ -26,7 +26,7 @@ export function useReminderPreferences(): { open: () => void; pending: boolean; 
     <FormDialog
       {...reminderFormDef(t, 'mine', values.offsets)}
       open
-      context={t('The bell always receives the reminders and the reports')}
+      context={t('The bell always receives the notifications, the reminders and the reports')}
       initialValues={values}
       onClose={() => setValues(null)}
       onSubmit={async (v) => {

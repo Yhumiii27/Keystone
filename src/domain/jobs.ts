@@ -56,6 +56,13 @@ export type JobName =
   // the leads, portfolio to the directors), sent by the first run of each ISO week (Monday morning). Both reminder jobs.
   | 'deadline-reminders'
   | 'scheduled-reports'
+  // ── Delivery 9 · R-036: the e-mails of the bell notifications — those due at once that a crash or a restart left waiting
+  // (every 5 minutes; createNotification sends them right after its commit), and the daily digest of the others (a reminder job).
+  | 'notification-mails'
+  | 'notification-digest'
+  // ── Delivery 9 · R-015 (X-6a): the portfolio alert rules (R-130) as notices — each new alert to the project's leads and the
+  // directors, once while it lasts (a reminder job).
+  | 'indicator-alerts'
   ;
 
 export interface JobSchedule {
@@ -124,6 +131,11 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
   // worker stopped on Monday catches the week's reports up the next morning. Longer leases: reports render PDFs.
   { name: 'deadline-reminders', everyMs: 24 * HOUR, leaseMs: 30 * MIN, firstDelayMs: 80_000, daily: 'reminders' },
   { name: 'scheduled-reports', everyMs: 24 * HOUR, leaseMs: HOUR, firstDelayMs: 85_000, daily: 'reminders' },
+  // ── Delivery 9 · R-036: immediate e-mails left waiting, every 5 minutes; the daily digest at the reminders hour, after the alerts.
+  { name: 'notification-mails', everyMs: 5 * MIN, leaseMs: 15 * MIN, firstDelayMs: 90_000 },
+  // ── Delivery 9 · R-015: the indicator alerts, every morning (before the digest, which carries them).
+  { name: 'indicator-alerts', everyMs: 24 * HOUR, leaseMs: 30 * MIN, firstDelayMs: 95_000, daily: 'reminders' },
+  { name: 'notification-digest', everyMs: 24 * HOUR, leaseMs: 30 * MIN, firstDelayMs: 100_000, daily: 'reminders' },
 ];
 
 export const JOB_NAMES: readonly JobName[] = JOB_SCHEDULES.map((j) => j.name);

@@ -9,6 +9,7 @@ import {
   prefsChanges, prefsOfForm, reminderMail, reminderNoticeSub, reminderSendKey, reminderSlot, reminderTarget, reportMail, reportPeriodKey, reportSendKey, sendKeyText,
   summaryLines, type DueItem,
 } from './reminders';
+import { DEFAULT_NOTIFICATION_MODES } from './notification-mail';
 
 const today = DEMO_TODAY_ISO;
 const item = (over: Partial<DueItem> = {}): DueItem => ({
@@ -24,17 +25,29 @@ describe('preferences', () => {
   });
 
   it('default: e-mail on, J-7 and J-1, overdue once; a stored value is completed field by field', () => {
-    expect(DEFAULT_REMINDER_PREFS).toEqual({ emailReminders: true, emailReports: true, offsets: [7, 1], overdue: true });
-    expect(normalisePrefs({ emailReports: false, offsets: 'bad' })).toEqual({ ...DEFAULT_REMINDER_PREFS, emailReports: false });
-    expect(normalisePrefs(null, { emailReminders: false, emailReports: false, offsets: [3], overdue: false })).toEqual({ emailReminders: false, emailReports: false, offsets: [3], overdue: false });
+    // R-036: the notification e-mails too — immediate for what waits for an action, the daily digest for the alerts.
+    const notifications = { approvals: 'immediate', tasks: 'immediate', mentions: 'immediate', alerts: 'digest' } as const;
+    expect(DEFAULT_REMINDER_PREFS).toEqual({ emailReminders: true, emailReports: true, offsets: [7, 1], overdue: true, notifications });
+    expect(normalisePrefs({ emailReports: false, offsets: 'bad', notifications: { alerts: 'off', tasks: 'soon' } }))
+      .toEqual({ ...DEFAULT_REMINDER_PREFS, emailReports: false, notifications: { ...notifications, alerts: 'off' } });
+    const quiet = { emailReminders: false, emailReports: false, offsets: [3], overdue: false, notifications: { ...notifications, mentions: 'digest' as const } };
+    expect(normalisePrefs(null, quiet)).toEqual(quiet);
   });
 
   it('the form: on / off and an offsets preset, both ways; anything else refused; the audit diff names what changed', () => {
-    const p = prefsOfForm({ emailReminders: 'off', emailReports: 'on', offsets: '14,7,1', overdue: 'off' });
-    expect(p).toEqual({ emailReminders: false, emailReports: true, offsets: [14, 7, 1], overdue: false });
-    expect(formOfPrefs(p!)).toEqual({ emailReminders: 'off', emailReports: 'on', offsets: '14,7,1', overdue: 'off' });
-    expect([prefsOfForm({ emailReminders: 'yes', emailReports: 'on', offsets: '7', overdue: 'on' }), prefsOfForm({ emailReminders: 'on', emailReports: 'on', offsets: '99', overdue: 'on' })]).toEqual([null, null]);
-    expect(prefsChanges(DEFAULT_REMINDER_PREFS, p!)).toEqual({ before: { emailReminders: true, overdue: true, offsets: 'J-7 · J-1' }, after: { emailReminders: false, overdue: false, offsets: 'J-14 · J-7 · J-1' } });
+    const p = prefsOfForm({ emailReminders: 'off', emailReports: 'on', offsets: '14,7,1', overdue: 'off', notifAlerts: 'off' });
+    expect(p).toEqual({ emailReminders: false, emailReports: true, offsets: [14, 7, 1], overdue: false, notifications: { ...DEFAULT_NOTIFICATION_MODES, alerts: 'off' } });
+    expect(formOfPrefs(p!)).toEqual({
+      emailReminders: 'off', emailReports: 'on', offsets: '14,7,1', overdue: 'off', notifApprovals: 'immediate', notifTasks: 'immediate', notifMentions: 'immediate', notifAlerts: 'off',
+    });
+    expect([
+      prefsOfForm({ emailReminders: 'yes', emailReports: 'on', offsets: '7', overdue: 'on' }), prefsOfForm({ emailReminders: 'on', emailReports: 'on', offsets: '99', overdue: 'on' }),
+      prefsOfForm({ emailReminders: 'on', emailReports: 'on', offsets: '7', overdue: 'on', notifTasks: 'weekly' }),
+    ]).toEqual([null, null, null]);
+    expect(prefsChanges(DEFAULT_REMINDER_PREFS, p!)).toEqual({
+      before: { emailReminders: true, overdue: true, offsets: 'J-7 · J-1', notifications: 'approvals immediate · tasks immediate · mentions immediate · alerts digest' },
+      after: { emailReminders: false, overdue: false, offsets: 'J-14 · J-7 · J-1', notifications: 'approvals immediate · tasks immediate · mentions immediate · alerts off' },
+    });
     expect(prefsChanges(DEFAULT_REMINDER_PREFS, { ...DEFAULT_REMINDER_PREFS })).toBeNull();
   });
 });
@@ -114,7 +127,7 @@ describe('e-mails (French by default)', () => {
       '- HLT-026 · T-2315 · Crane load test report', '  Tâche · échéance 20 sept. · 5 j de retard', '  https://ks/x/T-2315',
       '- HLT-026 · D-021 · Load test report', '  Livrable · échéance 2 oct. · dans 7 j', '  https://ks/x/D-021',
       '', 'Ouvrir Keystone: https://ks/my/tasks', '', '—',
-      'Message automatique de Keystone · modifiez vos e-mails de rappels et de rapports depuis la cloche des notifications › Rappels et rapports',
+      'Message automatique de Keystone · modifiez vos e-mails de rappels et de rapports depuis la cloche des notifications › Notifications et rappels',
     ]);
   });
 

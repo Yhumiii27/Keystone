@@ -1,6 +1,6 @@
 import 'server-only';
 // Bell notifications addressed to persons (X-6a; delivery 8 defaults, docs/DELIVERY-8-PLAN.md §2 "Notification channel"):
-// Keystone's bell only (X-6b: no e-mail), sent AFTER the writer's transaction commits (createNotification opens its own
+// Keystone's bell, and the e-mail each person chose (R-036, X-6b: createNotification), sent AFTER the writer's transaction commits (createNotification opens its own
 // transaction; R-010 transactions may run twice), to the active user accounts of the persons named, never to the actor.
 // Clients are left to the bell's read-time filter (dal/shell.ts notificationsFor). Titles are fixed English templates
 // (translated by t() in the bell); typed text stays in the sub-line (fieldsText, R-148). A failure is the caller's to log
