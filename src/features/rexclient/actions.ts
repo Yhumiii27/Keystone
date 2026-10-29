@@ -23,7 +23,7 @@ import { raiseClientIssue } from '@/server/dal/client';
 import { acknowledgeDocument, listSharedDocuments } from '@/server/dal/documents';
 import { getProject } from '@/server/dal/projects';
 import { decideDeliverable, getDeliverable } from '@/server/dal/quality';
-import { addLesson, advanceLesson, cycleClosureItem, getRex } from '@/server/dal/rex';
+import { REX_MOVED_ON, addLesson, advanceLesson, cycleClosureItem, getRex } from '@/server/dal/rex';
 import { recordStatusReport } from '@/server/dal/trends';
 import { getProjectContext, type ProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
@@ -90,8 +90,13 @@ export async function advanceLessonAction(code: string, number: string, from: Le
   if (!lesson) return { error: await tr('Unknown lesson') };
   if (lesson.status !== from || !lesson.next) return { error: await tr('This lesson has already moved on') };
   try {
-    await advanceLesson(code0, number, actorOf(a.ctx));
-  } catch {
+    // R-010: `from` re-checked in the writer's transaction (two clicks at once: one step).
+    await advanceLesson(code0, number, actorOf(a.ctx), { expected: from });
+  } catch (e) {
+    if (e instanceof Error && e.message.endsWith(REX_MOVED_ON)) {
+      refreshRex(code0);
+      return { error: await tr('This lesson has already moved on') };
+    }
     return { error: await tr('The change could not be saved') };
   }
   refreshRex(code0);
@@ -108,8 +113,12 @@ export async function cycleClosureAction(code: string, position: number, from: C
   if (!item) return { error: await tr('Unknown checklist item') };
   if (item.status !== from) return { error: await tr('This checklist item has already changed') };
   try {
-    await cycleClosureItem(code0, position, actorOf(a.ctx));
-  } catch {
+    await cycleClosureItem(code0, position, actorOf(a.ctx), { expected: from });
+  } catch (e) {
+    if (e instanceof Error && e.message.endsWith(REX_MOVED_ON)) {
+      refreshRex(code0);
+      return { error: await tr('This checklist item has already changed') };
+    }
     return { error: await tr('The change could not be saved') };
   }
   refreshRex(code0);

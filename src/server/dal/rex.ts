@@ -105,14 +105,21 @@ export async function addLesson(projectCode: string, input: NewLessonInput, acto
   });
 }
 
-/** "Validate" / "Mark applied": one step of a lesson. Returns the new status. */
-export async function advanceLesson(projectCode: string, number: string, actor: Actor): Promise<LessonStatus> {
+/** A step refused because the record moved on since the viewer saw it (R-010, `expected`). */
+export const REX_MOVED_ON = 'moved on';
+
+/**
+ * "Validate" / "Mark applied": one step of a lesson. Returns the new status. `expected` (R-010): the status the viewer saw,
+ * re-checked in the transaction — two clicks sent at once move the lesson one step, not two.
+ */
+export async function advanceLesson(projectCode: string, number: string, actor: Actor, opts: { expected?: LessonStatus } = {}): Promise<LessonStatus> {
   requireWorkspace('rex', actor, 'Lessons learned & closure');
   const db = await getDb();
   return db.transaction(async (tx) => {
     const p = await projectOf(tx, projectCode);
     const [l] = await tx.select().from(lessonsLearned).where(and(eq(lessonsLearned.projectId, p.id), eq(lessonsLearned.number, number)));
     if (!l) throw new Error(`Unknown lesson ${number} on ${projectCode}`);
+    if (opts.expected && l.status !== opts.expected) throw new Error(`${number} has ${REX_MOVED_ON}`);
     const next = LESSON_NEXT[l.status];
     if (!next) throw new Error(`${number} is already applied`);
     await tx.update(lessonsLearned).set({ status: next, updatedAt: new Date() }).where(eq(lessonsLearned.id, l.id));
@@ -123,14 +130,15 @@ export async function advanceLesson(projectCode: string, number: string, actor: 
   });
 }
 
-/** Closure checklist click: Not started → In progress → Done → Not started. Returns the new status. */
-export async function cycleClosureItem(projectCode: string, position: number, actor: Actor): Promise<ClosureItemStatus> {
+/** Closure checklist click: Not started → In progress → Done → Not started. Returns the new status. `expected`: as advanceLesson. */
+export async function cycleClosureItem(projectCode: string, position: number, actor: Actor, opts: { expected?: ClosureItemStatus } = {}): Promise<ClosureItemStatus> {
   requireWorkspace('rex', actor, 'Lessons learned & closure');
   const db = await getDb();
   return db.transaction(async (tx) => {
     const p = await projectOf(tx, projectCode);
     const [c] = await tx.select().from(closureItems).where(and(eq(closureItems.projectId, p.id), eq(closureItems.position, position)));
     if (!c) throw new Error(`Unknown closure item ${position} on ${projectCode}`);
+    if (opts.expected && c.status !== opts.expected) throw new Error(`Closure item ${position} has ${REX_MOVED_ON}`);
     const next = CLOSURE_NEXT[c.status];
     await tx.update(closureItems).set({ status: next, updatedAt: new Date() }).where(eq(closureItems.id, c.id));
     await trace(tx, await whoIs(tx, actor), {

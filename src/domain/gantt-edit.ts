@@ -63,6 +63,8 @@ export interface GanttActivity {
   /** Displayed baseline dates (null when the activity is not in it). */
   baselineStart: IsoDate | null;
   baselineFinish: IsoDate | null;
+  /** R-010: the activity's version token as the page read it (src/domain/record-version.ts), sent back by its edits. */
+  version?: string;
 }
 
 export interface GanttLink {

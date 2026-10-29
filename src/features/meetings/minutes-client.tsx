@@ -35,7 +35,8 @@ function useLineToggles(code: string) {
     toggle: (ref: LineRef, current: boolean) =>
       startTransition(async () => {
         flip({ key: lineKey(ref), done: !current });
-        const r = await toggleMeetingActionAction({ code, ...ref });
+        // R-010: the state asked for, not a flip (two people ticking at once leave it ticked).
+        const r = await toggleMeetingActionAction({ code, ...ref, done: !current });
         if (!r.ok) toast.show(r.error);
       }),
   };

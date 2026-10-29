@@ -64,16 +64,19 @@ const quiet = () => {
 };
 
 /** DAL reads compared before and after a restore. */
+/** R-010: a version token carries the time of its read; the versions themselves are compared. */
+const withoutReadTimes = <T,>(v: T): T => JSON.parse(JSON.stringify(v).replace(/"version":"(\d+)\.\d+"/g, '"version":"$1"'));
+
 async function reads() {
   const projects = await listProjects();
-  return {
+  return withoutReadTimes({
     projects,
     data: await getProjectData('HLT-026'),
     plan: await getPlanData('HLT-026'),
     risks: await getRiskRegister('HLT-026'),
     tasks: await listTasks(),
     files: await listTaskFiles('T-2314'),
-  };
+  });
 }
 
 describe('snapshot and restore (PGlite)', () => {

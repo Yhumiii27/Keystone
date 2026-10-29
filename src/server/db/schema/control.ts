@@ -5,7 +5,7 @@ import { date, index, integer, pgTable, text, timestamp, unique, uuid } from 'dr
 import type {
   ContingencyDrawStatus, ContingencyLinkType, ReportAudience, ReportPeriod, ReportSections, RiskCategory, RiskResponse, RiskStatus, RiskTrend,
 } from '../codes';
-import { id, keur, num, timestamps } from './_common';
+import { id, keur, num, rowVersion, timestamps } from './_common';
 import { persons } from './organisation';
 import { activities } from './planning';
 import { projects } from './portfolio';
@@ -46,6 +46,8 @@ export const risks = pgTable(
     trend: text('trend').$type<RiskTrend>().notNull(),
     /** Register source order (added risks are prepended with a lower value). */
     sortOrder: integer('sort_order').notNull(),
+    /** R-010: optimistic locking (see rowVersion). */
+    version: rowVersion(),
     ...timestamps,
   },
   (t) => [unique().on(t.projectId, t.number), index('risks_activity_id_idx').on(t.activityId)],

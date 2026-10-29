@@ -8,7 +8,7 @@
 // plan from the contract (value = base + signed amendments; milestone amount = round(value × share / 100)).
 import { date, index, integer, pgTable, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { AmendmentStatus, BillingModel, BondType, ContractType, PaymentMilestoneStatus, PaymentRule } from '../codes';
-import { id, keur, num, timestamps } from './_common';
+import { id, keur, num, rowVersion, timestamps } from './_common';
 import { changeRequests } from './change';
 import { documents } from './documents';
 import { clients } from './organisation';
@@ -54,6 +54,8 @@ export const contracts = pgTable('contracts', {
    */
   incotermId: uuid('incoterm_id').references(() => incoterms.id),
   incotermPlace: text('incoterm_place'),
+  /** R-010: optimistic locking (see rowVersion). */
+  version: rowVersion(),
   ...timestamps,
 });
 
@@ -131,6 +133,8 @@ export const paymentMilestones = pgTable(
     condition: text('condition'),
     status: text('status').$type<PaymentMilestoneStatus>().notNull(),
     position: integer('position').notNull(),
+    /** R-010: optimistic locking (see rowVersion). */
+    version: rowVersion(),
     ...timestamps,
   },
   (t) => [unique().on(t.projectId, t.number), index('payment_milestones_contract_id_idx').on(t.contractId)],

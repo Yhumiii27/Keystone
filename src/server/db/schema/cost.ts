@@ -2,7 +2,7 @@
 // offer quotes, cost streams and the monthly EVM series (PV / EV / AC) of projectData().
 import { index, integer, pgTable, primaryKey, text, unique, uuid } from 'drizzle-orm/pg-core';
 import type { CostType } from '../codes';
-import { id, keur, timestamps } from './_common';
+import { id, keur, rowVersion, timestamps } from './_common';
 import { wbsNodes } from './planning';
 import { projects } from './portfolio';
 
@@ -21,6 +21,8 @@ export const costCategories = pgTable(
     committedKeur: keur('committed_keur').notNull(),
     forecastKeur: keur('forecast_keur').notNull(),
     position: integer('position').notNull(),
+    /** R-010: optimistic locking (see rowVersion). */
+    version: rowVersion(),
     ...timestamps,
   },
   (t) => [unique().on(t.projectId, t.code)],

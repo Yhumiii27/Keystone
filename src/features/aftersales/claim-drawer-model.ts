@@ -48,7 +48,8 @@ export interface ClaimDrawerView {
   /** Editor's steps; null for read-only viewers and closed claims. */
   actions: {
     from: string;
-    edit: { label: string; form: FormDef };
+    /** `version` (R-010): the claim's token as the page read it, sent back with the form. */
+    edit: { label: string; form: FormDef; version: string };
     diagnose: { label: string; form: FormDef } | null;
     plan: { label: string; form: FormDef };
     close: { label: string } | null;
@@ -125,7 +126,7 @@ export function claimDrawerView({ claim: c, ecos, config, parts, owners, viewer,
       viewer.canEdit && open
         ? {
             from: c.status,
-            edit: { label: t('Edit claim'), form: loc(claimEditFormDef(c, owners, lang)) },
+            edit: { label: t('Edit claim'), form: loc(claimEditFormDef(c, owners, lang)), version: c.version ?? '' },
             diagnose: c.steps.includes('diagnose') ? { label: t('Mark diagnosed'), form: loc(diagnoseFormDef(c.diagnosis)) } : null,
             plan: { label: t('Plan intervention'), form: loc(planInterventionFormDef(null, { technicians })) },
             close: c.steps.includes('close') ? { label: t('Close claim') } : null,

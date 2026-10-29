@@ -13,6 +13,7 @@ import { Field, Input, Select, Textarea } from '@/components/ds/Field';
 import { showToast } from '@/components/ds/Toast';
 import { useI18n } from '@/i18n/client';
 import { Callout } from './Callout';
+import { StaleRecordCallout } from './StaleRecord';
 import {
   initialFormValues,
   isFormValid,
@@ -26,8 +27,11 @@ import {
 } from './form-def';
 import s from './FormDialog.module.css';
 
-/** What `onSubmit` may return: nothing (success), a toast message, or `{ toast?, error? }`. */
-export type FormDialogResult = void | undefined | string | { toast?: string; error?: string };
+/**
+ * What `onSubmit` may return: nothing (success), a toast message, or `{ toast?, error? }`. `conflict` (R-010): the error is a
+ * refused save on a record changed meanwhile — shown with a "Reload" action (StaleRecordCallout).
+ */
+export type FormDialogResult = void | undefined | string | { toast?: string; error?: string; conflict?: boolean };
 
 export interface FormDialogProps extends FormDef {
   open: boolean;
@@ -81,6 +85,7 @@ function FormBody({ fields, submit, kind = 'create', note, onClose, onSubmit, in
   const baseId = useId();
   const [values, setValues] = useState<FormValues>(() => initialFormValues(fields, initialValues));
   const [error, setError] = useState<string | null>(null);
+  const [conflict, setConflict] = useState(false);
   const [pending, startTransition] = useTransition();
   const valid = isFormValid(fields, values);
   const set = (id: string, v: string) => setValues((cur) => ({ ...cur, [id]: v }));
@@ -88,12 +93,14 @@ function FormBody({ fields, submit, kind = 'create', note, onClose, onSubmit, in
   const submitForm = () => {
     if (!valid || pending) return;
     setError(null);
+    setConflict(false);
     const resolved = resolveFormValues(fields, values);
     startTransition(async () => {
       try {
         const r = await onSubmit(resolved);
         if (r && typeof r === 'object' && r.error) {
           setError(r.error);
+          setConflict(r.conflict === true);
           return;
         }
         const msg = typeof r === 'string' ? r : r && typeof r === 'object' ? r.toast : undefined;
@@ -153,7 +160,8 @@ function FormBody({ fields, submit, kind = 'create', note, onClose, onSubmit, in
           </a>
         </p>
       )}
-      {error && (
+      {error && conflict && <StaleRecordCallout message={error} onReload={onClose} className={s.error} />}
+      {error && !conflict && (
         <Callout variant="emphasis" icon={Warning} role="alert" className={s.error}>
           {error}
         </Callout>

@@ -28,10 +28,11 @@ export function RiskDrawer({ code, view, canEdit, t }: RiskDrawerProps) {
         key={view.id}
         code={code}
         riskId={view.id}
+        version={view.version}
         values={{ probability: view.probability, impact: view.impact, response: view.response, status: view.status }}
         canEdit={canEdit}
       />
-      {canEdit && <RiskCostField key={`${view.id}:${view.cost}`} code={code} riskId={view.id} cost={view.cost} />}
+      {canEdit && <RiskCostField key={`${view.id}:${view.cost}`} code={code} riskId={view.id} version={view.version} cost={view.cost} />}
       <div className={s.section}>
         <Eyebrow>{t('Response plan')}</Eyebrow>
         <span className={s.plan}>{view.plan}</span>
@@ -46,7 +47,7 @@ export function RiskDrawer({ code, view, canEdit, t }: RiskDrawerProps) {
         <ButtonLink variant="secondary" size="sm" icon={Scales} href={view.whatifHref}>
           {t('What-if levelling')}
         </ButtonLink>
-        {canEdit && <RiskStatusToggle code={code} riskId={view.id} label={view.toggleLabel} next={view.toggleNext} />}
+        {canEdit && <RiskStatusToggle code={code} riskId={view.id} version={view.version} label={view.toggleLabel} next={view.toggleNext} />}
       </div>
     </Drawer>
   );

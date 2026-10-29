@@ -3,7 +3,7 @@
 // as-maintained configuration come from the Vigie ECO mirror (effectivity targets of type machine), never from here.
 import { date, index, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { ClaimCoverage, ClaimStatus, InterventionStatus, InterventionType, MachineTypeCode, NcrSeverity, WarrantyStatus } from '../codes';
-import { id, keur, num, timestamps } from './_common';
+import { id, keur, num, rowVersion, timestamps } from './_common';
 import { clients, persons } from './organisation';
 import { machineTypes, projectEquipments, projects } from './portfolio';
 
@@ -78,6 +78,8 @@ export const warrantyClaims = pgTable('warranty_claims', {
   /** Closure date (R-143). */
   closedOn: date('closed_on', { mode: 'string' }),
   position: integer('position').notNull(),
+  /** R-010: optimistic locking (see rowVersion). */
+  version: rowVersion(),
   ...timestamps,
 }, (t) => [index('warranty_claims_machine_id_idx').on(t.machineId)]);
 

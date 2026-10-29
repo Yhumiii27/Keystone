@@ -23,6 +23,7 @@ import {
   type GanttZoom,
 } from '@/domain/gantt-edit';
 import { ganttAddLinkAction, ganttEditActivityAction, ganttEditLinkAction, ganttRemoveLinkAction, type GanttActionResult } from './gantt-actions';
+import { useStaleRecordToast } from '@/components/app/StaleRecord';
 import { GanttActivityDialog, GanttLinkDialog } from './gantt-dialogs';
 import s from './gantt.module.css';
 
@@ -144,6 +145,10 @@ export function InteractiveGantt({ code, network, zoom, editable, showBaseline =
     return m;
   }, [optimistic.activities, dates, scale]);
 
+  /** R-010: the activity's version token as the page read it (sent back by its edits). */
+  const versionOf = (id: string) => network.activities.find((a) => a.id === id)?.version ?? '';
+  const stale = useStaleRecordToast();
+
   const errorText = (r: Extract<GanttEditResult, { ok: false }>) => (r.error === 'cycle' ? linkCycleText(r.cycle ?? [], lang) : t(GANTT_EDIT_ERRORS[r.error]));
 
   /** Checks the edits on the optimistic network, shows them at once, then lets the Server Function decide. */
@@ -158,7 +163,7 @@ export function InteractiveGantt({ code, network, zoom, editable, showBaseline =
       addOptimistic(edits);
       try {
         const r = await call();
-        showToast('error' in r ? r.error : r.toast);
+        if (!stale(r)) showToast('error' in r ? r.error : r.toast);
         onDone?.(!('error' in r));
       } catch (e) {
         showToast(e instanceof Error ? e.message : String(e));
@@ -210,8 +215,8 @@ export function InteractiveGantt({ code, network, zoom, editable, showBaseline =
     }
     if (!moved.current || !dragged.edit) return;
     const edit = dragged.edit;
-    if (edit.kind === 'move') commit([edit], () => ganttEditActivityAction(code, edit.id, { start: edit.start }));
-    else if (edit.kind === 'duration') commit([edit], () => ganttEditActivityAction(code, edit.id, { duration: String(edit.days) }));
+    if (edit.kind === 'move') commit([edit], () => ganttEditActivityAction(code, edit.id, { start: edit.start, version: versionOf(edit.id) }));
+    else if (edit.kind === 'duration') commit([edit], () => ganttEditActivityAction(code, edit.id, { duration: String(edit.days), version: versionOf(edit.id) }));
   }
 
   function onPointerCancel() {
@@ -408,7 +413,7 @@ export function InteractiveGantt({ code, network, zoom, editable, showBaseline =
           nameOf={nameOf}
           dayText={dayText}
           onClose={() => setDialog(null)}
-          onApply={(edits, values) => commit(edits, () => ganttEditActivityAction(code, dlgActivity.id, values), (ok) => ok && setDialog(null))}
+          onApply={(edits, values) => commit(edits, () => ganttEditActivityAction(code, dlgActivity.id, { ...values, version: versionOf(dlgActivity.id) }), (ok) => ok && setDialog(null))}
           onAddLink={(link) => commit([{ kind: 'addLink', link }], () => ganttAddLinkAction(code, { ...link, lag: String(link.lag) }))}
           onEditLink={(link) => commit([{ kind: 'editLink', link }], () => ganttEditLinkAction(code, { ...link, lag: String(link.lag) }))}
           onRemoveLink={(l) => commit([{ kind: 'removeLink', pred: l.pred, succ: l.succ }], () => ganttRemoveLinkAction(code, l.pred, l.succ))}

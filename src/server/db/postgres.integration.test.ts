@@ -65,7 +65,10 @@ async function admin(sqlText: string, database?: string): Promise<void> {
 }
 
 /** JSON copy with the generated ids (random UUIDs, different in each seeded database) replaced by a placeholder. */
-const plain = (v: unknown) => JSON.parse(JSON.stringify(v).replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, '<uuid>'));
+const plain = (v: unknown) =>
+  JSON.parse(JSON.stringify(v).replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, '<uuid>')
+    // R-010: a version token carries the time of its read (src/domain/record-version.ts); the versions are compared.
+    .replace(/"version":"(\d+)\.\d+"/g, '"version":"$1"'));
 
 describe.skipIf(!ADMIN_URL)('PostgreSQL server (KEYSTONE_TEST_DATABASE_URL)', () => {
   const name = `ks_test_${randomBytes(4).toString('hex')}`;
@@ -268,5 +271,52 @@ describe.skipIf(!ADMIN_URL)('PostgreSQL server (KEYSTONE_TEST_DATABASE_URL)', ()
     expect(results.filter((r) => r.status === 'fulfilled').map((r) => (r as PromiseFulfilledResult<{ code: string }>).value.code)).toEqual(['BL1']);
     for (const r of results.filter((x) => x.status === 'rejected')) expect((r as PromiseRejectedResult).reason).toBeInstanceOf(BaselinePolicyError);
     expect((await listProjectBaselines('EWA-051')).map((b) => b.code)).toEqual(['BL0', 'BL1']);
+  }, 120_000);
+
+  it('R-010 on separate connections: two saves of a risk read on the same version → one saved, one refused; the version trigger runs in "keystone"', async () => {
+    setDb(pg.db);
+    const { listRisks, updateRisk } = await import('@/server/dal/risks');
+    const { StaleRecordError } = await import('@/server/dal/record-version');
+    const token = (await listRisks('HLT-026')).find((r) => r.id === 'R-03')!.version;
+    const results = await Promise.allSettled([
+      updateRisk('HLT-026', 'R-03', { probability: 1 }, 'Romain Aubert', { version: token }),
+      updateRisk('HLT-026', 'R-03', { probability: 5 }, 'Léa Marchand', { version: token }),
+      updateRisk('HLT-026', 'R-03', { impact: 1 }, 'Marie Lefebvre', { version: token }),
+    ]);
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    for (const r of results.filter((x) => x.status === 'rejected')) expect((r as PromiseRejectedResult).reason).toBeInstanceOf(StaleRecordError);
+    const { rows } = await pg.pool.query<{ version: number }>("select r.version from risks r join projects p on p.id = r.project_id where p.code = 'HLT-026' and r.number = 'R-03'");
+    expect(rows[0].version).toBe(Number(token.split('.')[0]) + 1);
+  }, 120_000);
+
+  it('R-010 on separate connections: a business number taken meanwhile is drawn again (unique violation → retry)', async () => {
+    setDb(pg.db);
+    const { nextNumber, requireProject } = await import('./helpers');
+    const { risks } = await import('./schema');
+    const p = await requireProject(pg.db, 'HLT-026');
+    const stale = await nextNumber(pg.db, risks, risks.number, 'R-', 2, 20);
+    await createRisk('HLT-026', { title: 'Taken meanwhile', category: 'technical', response: 'mitigate' }, 'System');
+    let attempts = 0;
+    const got = await pg.db.transaction(async (tx) => {
+      attempts++;
+      const number = attempts === 1 ? stale : await nextNumber(tx, risks, risks.number, 'R-', 2, 20);
+      await tx.insert(risks).values({
+        projectId: p.id, number, title: 'Collision', category: 'technical', probability: 1, impact: 1, response: 'accept', responsePlan: '—', trigger: '—',
+        status: 'open', trend: 'flat', sortOrder: -1000, costKeur: 0,
+      });
+      return number;
+    });
+    expect([attempts, got]).toEqual([2, `R-${Number(stale.slice(2)) + 1}`]);
+  }, 120_000);
+
+  it('R-010: the connectors\' refresh slot is claimed by exactly one of several instances', async () => {
+    const { claimRefresh } = await import('@/server/integrations/refresh-claims');
+    const others = await Promise.all(Array.from({ length: 3 }, () => openPostgres({ url: urlOf(name), poolMax: 2 })));
+    try {
+      const won = await Promise.all([pg, ...others].flatMap((h) => [claimRefresh('vigie-ecos', 60_000, h.db), claimRefresh('vigie-ecos', 60_000, h.db)]));
+      expect(won.filter(Boolean)).toHaveLength(1);
+    } finally {
+      await Promise.all(others.map((h) => h.close()));
+    }
   }, 120_000);
 });
