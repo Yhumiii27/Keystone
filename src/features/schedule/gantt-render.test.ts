@@ -6,7 +6,7 @@ vi.mock('@/server/session', async () => {
   const { makeT } = await import('@/i18n/translate');
   return { getI18n: async () => ({ lang: 'fr', t: makeT('fr') }) };
 });
-import { createElement } from 'react';
+import { createElement, type ComponentProps } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { BUILTIN_CALENDARS } from '@/domain/calendar';
 import type { GanttActivity, GanttNetwork } from '@/domain/gantt-edit';
@@ -32,7 +32,7 @@ const render = async (editable: boolean) => {
   const card = await ActivityGanttCard({
     code: 'HLT-026', network, zoom: 'week', zoomHref: (z) => `/projects/HLT-026/schedule?gantt=activities&zoom=${z}`, levelSwitch: null, editable, showBaseline: true,
   });
-  return renderToStaticMarkup(createElement(I18nProvider, { lang: 'fr', children: createElement(ClockProvider, { today: '2026-09-25', children: card }) }));
+  return renderToStaticMarkup(createElement(I18nProvider, { lang: 'fr' } as ComponentProps<typeof I18nProvider>, createElement(ClockProvider, { today: '2026-09-25' } as ComponentProps<typeof ClockProvider>, card)));
 };
 
 describe('Activity Gantt card render (FR)', () => {
