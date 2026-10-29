@@ -206,6 +206,10 @@
   {
    "date": "2026-10-29",
    "text": "R-015 fait et R-036 avancé : notifications par e-mail (immédiat / résumé quotidien, préférences), avis aux personnes concernées, alertes d’indicateur (migration 0066)."
+  },
+  {
+   "date": "2026-10-29",
+   "text": "R-051 fait : suppléance des validations sur une période ; R-064 : partie technique vérifiée, attend S-5."
   }
  ],
  "items": [
@@ -1697,7 +1701,9 @@
     "docs/DECISIONS.md:93 P-7d (Plus tard) : suppléant déclaré par l’approbateur pour une période"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Suppléance déclarée par l’approbateur sur une période (un an au plus) ; « Mes validations » du suppléant, décision tracée « pour le compte de », sans chaînage, annulation par l’approbateur ou le directeur (migration 0067)."
    }
   },
   {
@@ -2051,7 +2057,7 @@
    "kind": "question_ouverte",
    "priority": "plus_tard",
    "status": "partiel",
-   "waiting_on": "Confirmation du responsable produit pour les limites et les droits (DELIVERY-6 §8 S-5) ; la partie technique n’attend rien",
+   "waiting_on": "Confirmation du responsable produit (DELIVERY-6 §8 S-5)",
    "effort": "S",
    "sources": [
     "S-5",
@@ -2067,8 +2073,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8",
-    "note": "Livraison 8 : positions après restauration (emplacements fantômes) ; 30 jours, 20 entrées et droits PM + directeur restent à confirmer (S-5)."
+    "delivery": "Livraison 9",
+    "note": "Partie technique faite (purge planifiée toutes les heures par la tâche plan-trash-purge, positions après restauration) ; reste la confirmation S-5 : 30 jours, 20 entrées, suppression et restauration réservées au CP et au directeur."
    }
   },
   {
