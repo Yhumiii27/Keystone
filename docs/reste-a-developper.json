@@ -214,6 +214,10 @@
   {
    "date": "2026-10-29",
    "text": "R-010 fait : verrouillage optimiste des fiches (« modifiée entre-temps par X »), numérotation et contrôles sûrs en concurrence (migrations 0068-0069)."
+  },
+  {
+   "date": "2026-10-29",
+   "text": "R-157, R-154 et R-183 faits : finitions d’ergonomie, couleurs de statut harmonisées, accessibilité WCAG 2.1 AA avec contrôles axe."
   }
  ],
  "items": [
@@ -4632,7 +4636,9 @@
     "vérifié : tones.ts:111 activityDetail « inverted vs. the row (Q-6) » et :115 budgetChange « differs from change control (Q-5) » toujours présents ; seuls GO/NO GO et la santé (A-13) ont été harmonisés"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Mêmes couleurs pour un même statut (X-13b « Harmoniser ») et aucune information portée par la seule couleur (icône d’alerte, textes)."
    }
   },
   {
@@ -4720,9 +4726,9 @@
     "vérifié : src/features/itpcom/commissioning-view.tsx:62-66 cellules bloquées en texte simple ; src/features/meetings/meetings-view.tsx Décisions/Actions sans EmptyState ; src/features/contract/mark-paid-button.tsx sans gestion du focus ; local.ts FR_SELF/FR_NAMED sans « tu vas » / « vous allez »"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8",
-    "note": "Livraison 8 : textes des connecteurs en français dans Activité & intégrations (point 2) ; les autres finitions restent à faire."
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Messages de refus précis (Chantier, Qualité), textes des connecteurs en français, recherche de la nomenclature en français sans accents, vraies dates dans les exports, IF-xx cliquables, boutons « outline », lecture seule des pondérations, focus conservé, vues vides des réunions, actions à la 2e personne."
    }
   },
   {
@@ -5440,7 +5446,9 @@
    "id": "R-183",
    "verdict": "ajout_critique",
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Contrôles axe (WCAG 2.1 AA) dans les tests de bout en bout existants (tous les écrans du directeur, écrans principaux des autres profils), lien d’évitement, contrastes corrigés."
    }
   },
   {

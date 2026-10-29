@@ -49,7 +49,8 @@ const as = (role: RoleKey, lang: 'en' | 'fr' = 'en') => {
 };
 const HLT = 'HLT-026';
 const PM = { name: 'Romain Aubert', role: 'pm' as const };
-const STALE = 'This step is not available any more';
+// R-157: a line changed meanwhile is refused with a precise message (was "This step is not available any more").
+const STALE = 'This line was changed by someone else meanwhile: check it again';
 const rows = async (q: string) => (await (await getDb()).execute(sql.raw(q))).rows as Record<string, unknown>[];
 const site = async (code = HLT) => (await getSite(code))!;
 const errorOf = (r: unknown) => (r && typeof r === 'object' && 'error' in r ? (r as { error: string }).error : 'ok');

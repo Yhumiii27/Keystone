@@ -48,7 +48,7 @@ export function InterfacesBody({ code, view, canEdit, receivedDefault, t }: Inte
           </thead>
           <tbody>
             {view.rows.map((r) => (
-              <tr key={r.number}>
+              <tr key={r.number} id={r.number} className={s.row}>
                 <Td className={s.id}>{r.number}</Td>
                 <Td className={s.title}>{r.title}</Td>
                 <Td tone="secondary">{r.side}</Td>

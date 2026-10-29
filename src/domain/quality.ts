@@ -177,6 +177,24 @@ export function ncrActionFor(n: Pick<NcrLike, 'status' | 'requestedStatus'>, vie
   return { kind: 'step', target: next };
 }
 
+/**
+ * R-157: why an NCR step ("→ next step") or a verification is refused on a fresh read — a precise reason instead of the
+ * generic "not available any more". English, `·`-separated so each part is translated (`toast.showEn`).
+ */
+export function ncrRefusalText(n: Pick<NcrLike, 'number' | 'status' | 'requestedStatus'>, wanted: 'step' | 'verify'): string {
+  const reason =
+    n.status === 'closed'
+      ? 'This NCR is closed in Vigie'
+      : n.requestedStatus
+        ? 'A request on this NCR already waits for Vigie'
+        : wanted === 'verify'
+          ? 'This NCR is not in verification'
+          : n.status === 'verification'
+            ? 'In verification, only the quality manager decides'
+            : 'This NCR has moved to another step';
+  return `${n.number} · ${reason}`;
+}
+
 /** The NCR waits for the quality manager's verification (in Verification, nothing pending in Keystone). */
 export const awaitsVerification = (n: Pick<NcrLike, 'status' | 'requestedStatus'>) => n.status === 'verification' && !n.requestedStatus;
 
@@ -297,6 +315,26 @@ export function deliverableActionFor(d: Pick<DeliverableLike, 'status'>, viewer:
 
 /** The producer step that follows a status (server-side check of "Start" / "To internal review" / "Submit to client"). */
 export const producerNextOf = (s: DeliverableStatus): ProducerTarget | null => PRODUCER[s]?.to ?? null;
+
+/**
+ * R-157: why a producer step ("Start", "To internal review", "Submit to client") or a client decision is refused on a fresh
+ * read — a precise reason, `·`-separated like the toasts.
+ */
+export function deliverableRefusalText(d: Pick<DeliverableLike, 'number' | 'status'>, wanted: 'move' | 'decide'): string {
+  const reason =
+    d.status === 'accepted'
+      ? 'The client has already accepted this deliverable'
+      : d.status === 'submitted'
+        ? wanted === 'move'
+          ? 'This deliverable is already with the client'
+          : 'Only a client contact of the project accepts or rejects this deliverable'
+        : wanted === 'decide'
+          ? d.status === 'rejected'
+            ? 'The client has already rejected this deliverable'
+            : 'This deliverable is not submitted to the client'
+          : 'This deliverable has moved to another step';
+  return `${d.number} · ${reason}`;
+}
 
 /** Drawer hint (dlvVals.hint): a submitted deliverable seen by someone who cannot decide it. */
 export function deliverableHint(d: Pick<DeliverableLike, 'status'>, viewer: DeliverableViewer): string {

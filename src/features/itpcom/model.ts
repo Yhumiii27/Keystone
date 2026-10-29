@@ -332,6 +332,8 @@ export interface CommissioningCellView {
   icon: 'Check' | 'LockSimple' | 'CircleHalf' | 'CircleDashed';
   /** Tooltip of a SAT cell planned in Keystone ("SAT planned by …"). */
   title?: string;
+  /** R-157: a blocking interface ("IF-02") opens its row of the interface register (viewers who see that screen). */
+  href?: string;
 }
 
 export interface CommissioningRowView {
@@ -363,11 +365,16 @@ export interface CommissioningScreenView {
   dossier: DossierRowView[];
 }
 
+/** An interface number ("IF-02"), as the commissioning cells carry it when an interface blocks the step. */
+const INTERFACE_REF = /^IF-\d+$/;
+
 const satTitle = (p: SatPlanRow, today: string, t: T) =>
   [`${t('SAT planned')} ${t(itpDateText(p.plannedOn, today))} · ${p.plannedBy}`, p.clientWitnesses ? `${t('Client witnesses')} ${p.clientWitnesses}` : ''].filter(Boolean).join(' · ');
 
 /** Null when the project has no commissioning plan (the screen shows its empty panel). `today` = the business date (R-013). */
-export function commissioningScreenView(code: string, c: Commissioning | null, punch: readonly PunchRow[], today: string, t: T, lang: Lang): CommissioningScreenView | null {
+export function commissioningScreenView(
+  code: string, c: Commissioning | null, punch: readonly PunchRow[], today: string, t: T, lang: Lang, links: { interfacesHref?: string | null } = {},
+): CommissioningScreenView | null {
   if (!c) return null;
   const s = summariseCommissioning(c.systems, c.dossier, punch);
   const dash = (iso: string | null) => (iso ? itpDateText(iso, today) : '—');
@@ -393,6 +400,7 @@ export function commissioningScreenView(code: string, c: Commissioning | null, p
           cells: sys.cells.map((x) => ({
             status: t(x.statusLabel),
             date: x.blockingRef ?? t(itpDateText(x.dateOn, today)),
+            ...(x.blockingRef && links.interfacesHref && INTERFACE_REF.test(x.blockingRef) ? { href: `${links.interfacesHref}#${x.blockingRef}` } : {}),
             ...commissioningCellLook(x.status),
             ...(x.step === 'sat' && sat ? { title: satTitle(sat, today, t) } : {}),
           })),

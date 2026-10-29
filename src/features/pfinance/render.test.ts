@@ -94,6 +94,10 @@ describe('Prioritisation tab', () => {
     expect(x).not.toContain('Internal');
     expect(m).not.toContain('type="number"');
     expect(x).toContain('Strategic fit 25% 0.25');
+    // R-157: the Weights card says it is read-only (it said "Editable" whatever the rights).
+    expect(x).toContain('Weights Read-only · outside your workspace');
+    expect(x).not.toContain('Editable');
+    expect(text(await board('depthead', 'fr', false))).toContain('Poids Lecture seule · hors de votre périmètre');
     expect(m).not.toContain('var(--color-accent-300)'); // nothing in LO: masked margins carry no colour
   });
 });

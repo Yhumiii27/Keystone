@@ -1,7 +1,7 @@
 // Budget › Performance tab (docs/spec/04 §1.4; template 289–378, logic 3816–3845, 5179). Server Component.
 import { ArrowRight, Steps } from '@phosphor-icons/react/dist/ssr';
 import type { CSSProperties } from 'react';
-import { BulletBar, KpiGrid, KpiTile, LO, Legend, LegendItem, OK, SectionCard } from '@/components/app';
+import { AlertMark, BulletBar, KpiGrid, KpiTile, LO, Legend, LegendItem, OK, SectionCard } from '@/components/app';
 import { EvmSCurve } from '@/components/charts/evm-s-curve';
 import { ButtonLink } from '@/components/ds/Button';
 import { CardTitle } from '@/components/ds/Card';
@@ -53,9 +53,9 @@ export function PerformanceTab({ cost, core, offer, profileText, setupHref, th =
     <div className={s.stack}>
       <KpiGrid min={140}>
         {kpis.map((k) => [
-          <KpiTile key={k.label} label={t(k.label)} value={k.value} sub={t(k.sub)} color={k.color} />,
+          <KpiTile key={k.label} label={t(k.label)} value={k.value} sub={t(k.sub)} color={k.color} alertLabel={t('Alert')} />,
           // R-188: the class and range of the BAC, next to it.
-          k.label === 'Budget (BAC)' && estimate ? <KpiTile key="estimate" label={estimate.label} value={estimate.value} sub={estimate.sub} color={estimate.alert ? LO : OK} /> : null,
+          k.label === 'Budget (BAC)' && estimate ? <KpiTile key="estimate" label={estimate.label} value={estimate.value} sub={estimate.sub} color={estimate.alert ? LO : OK} alertLabel={t('Alert')} /> : null,
         ])}
       </KpiGrid>
 
@@ -109,11 +109,17 @@ export function PerformanceTab({ cost, core, offer, profileText, setupHref, th =
           <div className={s.varGrid}>
             <div className={s.varItem}>
               <span className={s.varLabel}>{t('Cost (EV−AC)')}</span>
-              <span className={s.varValue} style={{ color: tone(alert.cv) }}>{f(core.cv, true)}</span>
+              <span className={s.varValue} style={{ color: tone(alert.cv) }}>
+                {f(core.cv, true)}
+                {alert.cv && <AlertMark label={t('Alert')} />}
+              </span>
             </div>
             <div className={s.varItem}>
               <span className={s.varLabel}>{t('Schedule (EV−PV)')}</span>
-              <span className={s.varValue} style={{ color: tone(alert.sv) }}>{f(core.sv, true)}</span>
+              <span className={s.varValue} style={{ color: tone(alert.sv) }}>
+                {f(core.sv, true)}
+                {alert.sv && <AlertMark label={t('Alert')} />}
+              </span>
             </div>
           </div>
           <div className={s.caption}>{t('Cumulative cost variance by month')}</div>

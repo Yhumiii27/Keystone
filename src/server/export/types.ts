@@ -23,6 +23,8 @@ export type ColumnType =
   | 'percent'
   /** ISO date 'YYYY-MM-DD'. */
   | 'date'
+  /** R-157: a month-precision date, ISO 'YYYY-MM' (project start / finish "Dec 2026"): an Excel date shown as month and year. */
+  | 'month'
   /** ISO timestamp. */
   | 'datetime'
   | 'boolean';

@@ -190,7 +190,7 @@ export function DisciplineBody({ code, view, t }: { code: string; view: Discipli
           </div>
           {view.checks.map((c) => (
             <div key={c.id} className={s.check}>
-              <span className={s.checkDot} style={{ background: c.sevDot }} />
+              <span className={s.checkDot} style={{ background: c.sevDot }} aria-hidden />
               <div className={s.checkMid}>
                 <span className={s.checkTitle} style={{ color: c.color }}>
                   {c.title}

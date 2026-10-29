@@ -136,7 +136,7 @@ async function bomWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   const lines = data.bom.lines;
   const type = bomTypeOptions(lines).some((o) => o.value === state.type) ? state.type : null;
   const mfr = bomSupplierOptions(lines).some((o) => o.value === state.mfr) ? state.mfr : null;
-  const shown = sortBomLines(filterBomLines(lines, { q: state.q, type, mfr }), state.sort);
+  const shown = sortBomLines(filterBomLines(lines, { q: state.q, type, mfr }, (l) => dataText(l.name, ctx.lang)), state.sort);
   const flat = sheet(t('Articles'), [
     col('ref', t('Reference'), 'text', 16), col('name', t('Article'), 'text', 36), col('type', t('Type'), 'text', 14), col('makeBuy', t('Make / buy'), 'text', 12),
     col('scope', t('Scope'), 'text', 12), col('qty', t('Quantity'), 'number', 9), col('unit', t('Unit'), 'text', 6), col('price', t('Unit price'), 'money_eur'),

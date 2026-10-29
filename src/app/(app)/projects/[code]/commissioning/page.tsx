@@ -7,6 +7,7 @@
 // read-only for them, and refused server-side.
 import type { ReactNode } from 'react';
 import { PageHeader } from '@/components/app/shell/page-header';
+import { canSee, screenHref } from '@/config/screens';
 import { defaultSatDate } from '@/domain/itpcom';
 import { ItpFormButton } from '@/features/itpcom/add-buttons';
 import { CommissioningBody } from '@/features/itpcom/commissioning-view';
@@ -44,7 +45,13 @@ export default async function CommissioningPage({ params }: { params: Promise<{ 
   return (
     <>
       <PageHeader screen="commissioning" projectCode={projectCode} primary={primary} />
-      <CommissioningBody view={commissioningScreenView(projectCode, data, punch, today, t, lang)} t={t} />
+      <CommissioningBody
+        view={commissioningScreenView(projectCode, data, punch, today, t, lang, {
+          // R-157: a blocking interface (IF-02) opens the interface register, for the viewers who see it.
+          interfacesHref: canSee(ctx.viewer.role, 'interfaces') ? screenHref('interfaces', { code: projectCode }) : null,
+        })}
+        t={t}
+      />
     </>
   );
 }

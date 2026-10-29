@@ -97,7 +97,7 @@ describe('resourcesView — Resources (portfolio)', () => {
     const julien = v.people[1];
     expect(julien.href).toBe('/my/tasks?person=Julien%20Wagner');
     expect(julien.cells[2]).toEqual({ v: 130, bg: 'var(--color-accent-400)', fg: 'var(--color-bg)' });
-    expect(julien.cells[4]).toEqual({ v: 110, bg: 'var(--color-accent-600)', fg: 'var(--color-accent-100)' });
+    expect(julien.cells[4]).toEqual({ v: 110, bg: 'var(--color-accent-700)', fg: 'var(--color-accent-100)' }); // R-183: accent-700 ground (contrast)
     expect(julien.cells[7]).toEqual({ v: 60, bg: 'var(--color-accent-900)', fg: 'var(--color-neutral-300)' });
     expect(v.people[6].cells[0]).toEqual({ v: 40, bg: 'var(--color-neutral-900)', fg: 'var(--color-neutral-400)' });
   });

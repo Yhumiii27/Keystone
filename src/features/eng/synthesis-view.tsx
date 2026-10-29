@@ -94,9 +94,10 @@ export function SynthesisBody({ view, t, pack }: { view: SynthesisScreenView; t:
               {row.cells.map((c) => (
                 <div key={c.key} role="cell" className={s.cell} style={{ background: c.bg }}>
                   {c.items.map((it) => (
-                    <span key={it.key} className={s.pill} style={{ borderColor: it.border, color: it.color }}>
-                      <span className={s.pillDot} style={{ background: it.dot, borderColor: it.dotBorder }} />
+                    <span key={it.key} className={s.pill} style={{ borderColor: it.border, color: it.color }} title={it.state}>
+                      <span className={s.pillDot} style={{ background: it.dot, borderColor: it.dotBorder }} aria-hidden />
                       {it.label} · {it.sub}
+                      {it.state && <span className="sr-only">{` · ${it.state}`}</span>}
                     </span>
                   ))}
                 </div>
@@ -142,7 +143,7 @@ export function SynthesisBody({ view, t, pack }: { view: SynthesisScreenView; t:
           </div>
           {view.gate.items.map((c) => (
             <Link key={c.number} href={c.href} className={s.gateBtn}>
-              <span className={s.sevDot} style={{ background: c.sevDot }} />
+              <span className={s.sevDot} style={{ background: c.sevDot }} aria-hidden />
               <span className={s.gateMid}>
                 <span className={s.gateTitle}>{c.title}</span>
                 <span className={s.gateMeta}>

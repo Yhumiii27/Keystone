@@ -29,6 +29,7 @@ export type { ProgressBarProps, SpendVsEarnedProps, CapacityBarProps, CapacitySt
 export { Callout, InsetPanel } from './Callout';
 export type { CalloutProps, InsetPanelProps } from './Callout';
 export { EmptyState } from './EmptyState';
+export { AlertMark } from './AlertMark';
 export type { EmptyStateProps } from './EmptyState';
 export { FlowStepper, NumberedStepper, WizardSteps } from './Stepper';
 export type { FlowStep, FlowStepperProps, NumberedStepperProps, WizardStepsProps } from './Stepper';

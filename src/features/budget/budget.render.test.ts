@@ -90,12 +90,13 @@ describe('Budget & cost', () => {
       'Budget (BAC) €4.80M Approved baseline',
       'Actual cost €3.36M 70% of budget',
       'Earned value €3.01M Work completed',
-      'Forecast (EAC) €5.37M At current CPI',
-      'Variance (VAC) −€565k -11.8% of budget',
-      'CPI 0.89 Target ≥ 1.00',
-      'TCPI 1.25 Needed to hit BAC',
-      'Cost (EV−AC) −€354k',
-      'Schedule (EV−PV) −€657k',
+      // R-154: a value in LO carries the alert mark, read out as "· Alert".
+      'Forecast (EAC) €5.37M · Alert At current CPI',
+      'Variance (VAC) −€565k · Alert -11.8% of budget',
+      'CPI 0.89 · Alert Target ≥ 1.00',
+      'TCPI 1.25 · Alert Needed to hit BAC',
+      'Cost (EV−AC) −€354k · Alert',
+      'Schedule (EV−PV) −€657k · Alert',
       'Budget at completion · €4.80M',
       'EAC €5.37M',
       'Planned value follows the cost-loaded baseline · Earned value = progress × budget · PROFILE',
@@ -119,7 +120,7 @@ describe('Budget & cost', () => {
   it('Performance (FR)', () => {
     const tx = text(render(hlt, 'perf', 'fr'));
     for (const s of [
-      'Coût réel 3,36 M€ 70 % du budget', 'Écart (VAC) −565 k€ -11,8 % du budget', 'Budget à l’achèvement · 4,80 M€', 'Aujourd’hui', 'janv.', 'Main-d’œuvre', 'Matériaux',
+      'Coût réel 3,36 M€ 70 % du budget', 'Écart (VAC) −565 k€ · Alerte -11,8 % du budget', 'Budget à l’achèvement · 4,80 M€', 'Aujourd’hui', 'janv.', 'Main-d’œuvre', 'Matériaux',
       'La valeur planifiée suit la référence chargée en coûts · Valeur acquise = avancement × budget',
     ])
       expect(tx).toContain(s);
@@ -156,9 +157,10 @@ describe('Budget & cost', () => {
     expect(out).toContain('--wp-a:50%;--wp-t:71.4%;--wp-e:77.9%');
     expect(tx).toContain('Add category');
     expect(tx).toContain('New change request');
-    expect(out).toContain('class="tag tag-accent">Approved');
-    expect(out).toContain('class="tag tag-outline">In review');
-    expect(out).toContain('class="tag tag-neutral">Rejected');
+    // X-13b / R-154: same tones as change control (approved neutral, in review accent, rejected outline).
+    expect(out).toContain('class="tag tag-neutral">Approved');
+    expect(out).toContain('class="tag tag-accent">In review');
+    expect(out).toContain('class="tag tag-outline">Rejected');
   });
 
   it('Structure & changes: read-only hides edit controls; FR labels', () => {

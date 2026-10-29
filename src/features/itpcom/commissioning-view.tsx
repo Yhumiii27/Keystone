@@ -4,6 +4,7 @@
 // with its Codex record buttons; R-185: the grid grouped by equipment line when the project has several. Without a
 // commissioning plan: the empty panel. "Plan SAT" is the header's primary action. Server Component.
 import { Check, CircleDashed, CircleHalf, LockSimple } from '@phosphor-icons/react/dist/ssr';
+import Link from 'next/link';
 import { Fragment, type CSSProperties } from 'react';
 import { EmptyState } from '@/components/app/EmptyState';
 import { KpiGrid, KpiTile } from '@/components/app/Kpi';
@@ -73,7 +74,13 @@ export function CommissioningBody({ view, t }: CommissioningBodyProps) {
                         <I className={s.cellIcon} aria-hidden />
                         <span className={s.cellText}>
                           <span>{c.status}</span>
-                          <span className={s.cellSub}>{c.date}</span>
+                          {c.href ? (
+                            <Link href={c.href} className={cx(s.cellSub, s.cellLink)}>
+                              {c.date}
+                            </Link>
+                          ) : (
+                            <span className={s.cellSub}>{c.date}</span>
+                          )}
                         </span>
                       </div>
                     );

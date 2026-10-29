@@ -31,7 +31,7 @@ export interface SynthesisScreenView {
   from: string[];
   matrix: {
     label: string;
-    cells: { key: string; bg: string; items: { key: string; label: string; sub: string; color: string; border: string; dot: string; dotBorder: string }[] }[];
+    cells: { key: string; bg: string; items: { key: string; label: string; sub: string; color: string; border: string; dot: string; dotBorder: string; state?: string }[] }[];
   }[];
   discCards: { disc: Discipline; href: string; icon: string; label: string; lead: string; tools: string; pct: string; relText: string; openText: string; openColor: string }[];
   gate: { cls: string; text: string; items: { number: string; href: string; title: string; id: string; ruleLabel: string; lead: string; status: string; stClass: string; sevDot: string }[] };
@@ -50,7 +50,7 @@ export function synthesisScreenView(reg: EngRegister, tr: T, lang: Lang): Synthe
       cells: r.cells.map((c) => ({
         key: `${r.to}-${c.from}`,
         bg: c.bg,
-        items: c.items.map((i) => ({ key: i.doc, label: t(i.label), sub: t(i.sub), color: i.color, border: i.border, dot: i.dot, dotBorder: i.dotBorder })),
+        items: c.items.map((i) => ({ key: i.doc, label: t(i.label), sub: t(i.sub), color: i.color, border: i.border, dot: i.dot, dotBorder: i.dotBorder, ...(i.state ? { state: t(i.state) } : {}) })),
       })),
     })),
     discCards: v.discCards.map((d) => ({

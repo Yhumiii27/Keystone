@@ -15,7 +15,7 @@
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import { yearOfIso } from '@/domain/clock';
-import { DELIVERABLE_CREATOR_ROLES, deliverableActionFor, ncrActionFor, ncrRequestText, parseNewDeliverable, producerNextOf, type ProducerTarget } from '@/domain/quality';
+import { DELIVERABLE_CREATOR_ROLES, deliverableActionFor, deliverableRefusalText, ncrActionFor, ncrRefusalText, ncrRequestText, parseNewDeliverable, producerNextOf, type ProducerTarget } from '@/domain/quality';
 import { NCR_VERIFIER_ROLES, deliverableStatus, ncrStatus, vigieSyncStatus, type NcrStatus } from '@/server/db/codes';
 import { businessToday } from '@/server/clock';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
@@ -37,8 +37,6 @@ const TEAM_ONLY = 'Only the project team records this progress';
 const QUALITY_ONLY = 'Only the quality manager verifies and closes NCRs';
 const UNKNOWN_NCR = 'Unknown NCR';
 const UNKNOWN_DLV = 'Unknown deliverable';
-const STEP_GONE = 'This step is not available any more';
-const NOT_YOURS = 'This decision is not waiting for you any more';
 const FAILED = 'The progress could not be recorded';
 const NOT_SAVED = 'The change could not be saved';
 
@@ -97,7 +95,7 @@ export async function advanceNcrAction(input: { projectCode: string; number: str
     const next = ncrActionFor(n, { role: a.actor.role, canEdit: a.canEdit });
     if (next?.kind !== 'step' || next.target !== step) {
       refreshAll(); // the row or the drawer is stale
-      return { ok: false, error: STEP_GONE };
+      return { ok: false, error: ncrRefusalText(n, 'step') };
     }
     const receipt = await advanceNcr(a.code, n.number, a.actor);
     refreshAll();
@@ -125,7 +123,7 @@ export async function verifyNcrAction(input: { projectCode: string; number: stri
     if (!n) return { ok: false, error: UNKNOWN_NCR };
     if (ncrActionFor(n, { role: a.actor.role, canEdit: a.canEdit })?.kind !== 'verify') {
       refreshAll();
-      return { ok: false, error: NOT_YOURS };
+      return { ok: false, error: ncrRefusalText(n, 'verify') };
     }
     const receipt = await verifyNcr(a.code, n.number, decision, a.actor);
     refreshAll();
@@ -150,14 +148,14 @@ export async function moveDeliverableAction(input: { projectCode: string; number
     if (!d) return { ok: false, error: UNKNOWN_DLV };
     if (producerNextOf(d.status) !== to) {
       refreshAll();
-      return { ok: false, error: STEP_GONE };
+      return { ok: false, error: deliverableRefusalText(d, 'move') };
     }
     try {
       await moveDeliverable(a.code, d.number, to, a.actor, undefined, d.status);
     } catch (e) {
       if (e instanceof Error && / has moved on$| cannot move from /.test(e.message)) {
         refreshAll();
-        return { ok: false, error: STEP_GONE };
+        return { ok: false, error: deliverableRefusalText({ number: d.number, status: 'in_progress' }, 'move') };
       }
       throw e;
     }
@@ -190,7 +188,7 @@ export async function decideDeliverableAction(input: { projectCode: string; numb
     const viewer = { role: a.actor.role, canEdit: a.canEdit, isClientContact: identity.clientProjects.includes(a.code) };
     if (deliverableActionFor(d, viewer)?.kind !== 'decide') {
       refreshAll();
-      return { ok: false, error: NOT_YOURS };
+      return { ok: false, error: deliverableRefusalText(d, 'decide') };
     }
     await decideDeliverable(a.code, d.number, decision, a.actor, comments);
     refreshAll();
