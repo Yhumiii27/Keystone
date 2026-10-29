@@ -1,16 +1,17 @@
 // My approvals body (docs/spec/08 §7.3–7.4; template 1715–1736): KPI row → kind chips (?filter=) → the
 // "Waiting for my decision" card. Server Component; rows and inline decisions are small client islands.
-import { ArrowRight, ArrowSquareOut, Funnel } from '@phosphor-icons/react/dist/ssr';
+import { ArrowRight, ArrowSquareOut, Funnel, UserSwitch } from '@phosphor-icons/react/dist/ssr';
 import { EmptyState, FilterBar, FilterChips, FilterGroup, FilterLabel, FilterNote, KpiGrid, KpiTile, LO, OK, SectionCard, Stack } from '@/components/app';
 import { Tag } from '@/components/ds/Tag';
 import { screenHref } from '@/config/screens';
 import { APPROVAL_KIND_LABEL, kpiTexts, type InboxView } from '@/domain/approvals';
+import type { ReactNode } from 'react';
 import type { Lang, T } from '@/i18n/translate';
 import { ApprovalRow } from './approval-row';
 import { DecisionButtons } from './decision-buttons';
 import { inboxT } from './i18n';
 import s from './myapprovals.module.css';
-import { fieldsText } from '@/i18n/data-text';
+import { dataText, fieldsText } from '@/i18n/data-text';
 
 const filterHref = (kind: string | null) => screenHref('myapprovals') + (kind ? `?filter=${kind}` : '');
 
@@ -20,12 +21,17 @@ export interface MyApprovalsBodyProps {
   lang: Lang;
   /** Inline decisions allowed (false when the screen is outside the viewer's workspace). */
   canDecide: boolean;
+  /** R-051: the Delegation card (substitute, period; banner of the approvers the viewer stands in for), under the queue. */
+  delegation?: ReactNode;
+  /** R-051: the substitute's banner (the approvers they stand in for), above the KPIs. */
+  banner?: ReactNode;
 }
 
-export function MyApprovalsBody({ view, t: tr, lang, canDecide }: MyApprovalsBodyProps) {
+export function MyApprovalsBody({ view, t: tr, lang, canDecide, delegation, banner }: MyApprovalsBodyProps) {
   const t = inboxT(tr, lang);
   return (
     <Stack>
+      {banner}
       <KpiGrid>
         {view.kpis.map((k) => {
           const x = kpiTexts(k, t);
@@ -59,6 +65,12 @@ export function MyApprovalsBody({ view, t: tr, lang, canDecide }: MyApprovalsBod
               <span className={s.meta}>
                 {fieldsText(a.who, t, lang)} · {t(a.when)}
               </span>
+              {a.onBehalfOf && (
+                // R-051: an item of an approver the viewer stands in for.
+                <span className={s.onBehalf}>
+                  <UserSwitch aria-hidden /> {t('On behalf of')} {dataText(a.onBehalfOf.name, lang)}
+                </span>
+              )}
               {a.external && (
                 // The application that owns the item (ECOs: Vigie), opened outside Keystone.
                 <a href={a.external.href} target="_blank" rel="noopener noreferrer" className={s.external} aria-label={`${t(a.external.label)} ${a.id}`}>
@@ -67,12 +79,13 @@ export function MyApprovalsBody({ view, t: tr, lang, canDecide }: MyApprovalsBod
                 </a>
               )}
             </div>
-            {a.decision && canDecide ? <DecisionButtons id={a.id} decision={a.decision} /> : <div className={s.actions} />}
+            {a.decision && canDecide ? <DecisionButtons id={a.id} decision={a.decision} delegationId={a.onBehalfOf?.delegationId} /> : <div className={s.actions} />}
             {a.href && <ArrowRight className={s.arrow} aria-hidden />}
           </ApprovalRow>
         ))}
         {view.total === 0 && <EmptyState pad={10}>{t('Nothing waiting for you — switch role (bottom-left) to see another queue')}</EmptyState>}
       </SectionCard>
+      {delegation}
     </Stack>
   );
 }

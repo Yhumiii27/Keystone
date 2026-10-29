@@ -289,12 +289,13 @@ describe('Activity & integrations Server Functions and the audit export', () => 
     expect(res.headers.get('Content-Disposition')).toMatch(/^attachment; filename="keystone-audit-trail-\d{4}-\d{2}-\d{2}\.csv"$/);
     const body = await res.text();
     const lines = body.replace(/^﻿/, '').split('\r\n');
-    // R-168: the user account (e-mail), the reason and the values before / after follow the prototype's columns.
-    expect(lines[0]).toBe('Quand (UTC),Qui,Objet,Modification,Domaine,Projet,Utilisateur,Motif,Avant,Après');
+    // R-168: the user account (e-mail), the reason and the values before / after follow the prototype's columns; R-051: then
+    // the approver a substitute decided for.
+    expect(lines[0]).toBe('Quand (UTC),Qui,Objet,Modification,Domaine,Projet,Utilisateur,Motif,Avant,Après,Pour le compte de');
     const all = await listAudit({ limit: 1_000_000 });
     expect(lines.length).toBe(all.length + 2);
     const pm = all.find((a) => a.object === 'CR-008' && a.who === 'Romain Aubert')!;
     expect(pm.userEmail).toMatch(/@/);
-    expect(lines).toContain(`2026-09-25T07:12:00.000Z,Romain Aubert,CR-008,status: Draft → In review,Change control,,${pm.userEmail},,,`);
+    expect(lines).toContain(`2026-09-25T07:12:00.000Z,Romain Aubert,CR-008,status: Draft → In review,Change control,,${pm.userEmail},,,,`);
   });
 });

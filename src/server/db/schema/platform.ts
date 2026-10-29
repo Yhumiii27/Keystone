@@ -71,6 +71,8 @@ export const activityEvents = pgTable('activity_events', {
   messageKey: text('message_key'),
   messageParams: jsonb('message_params').$type<Record<string, unknown>>(),
   kind: text('kind').$type<ActivityKind>().notNull(),
+  /** R-051 (P-7d): the approver a substitute decided for (actor = the substitute); null otherwise. */
+  onBehalfOfName: text('on_behalf_of_name'),
   projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
@@ -110,6 +112,8 @@ export const auditEntries = pgTable('audit_entries', {
   /** R-184: the system message the change text was built from, and its typed parameters (as on activity_events). */
   messageKey: text('message_key'),
   messageParams: jsonb('message_params').$type<Record<string, unknown>>(),
+  /** R-051 (P-7d): the approver a substitute decided for (actor = the substitute, "on behalf of"); null otherwise. */
+  onBehalfOfName: text('on_behalf_of_name'),
 }, (t) => [
   /** Share D18 (Matrix): keystone.pub_journal is read by period. */
   index('audit_entries_occurred_at_idx').on(t.occurredAt),

@@ -470,6 +470,13 @@
       "when": 1793289937941,
       "tag": "0066_notification_mail",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1793294005476,
+      "tag": "0067_approval_delegations",
+      "breakpoints": true
     }
   ]
 }
