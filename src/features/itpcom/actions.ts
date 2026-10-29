@@ -20,7 +20,7 @@ import { getProject } from '@/server/dal/projects';
 import { teamOwnerOptions } from '@/server/dal/team';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
-import { INSPECTION_RESULT, PUNCH_RESULT, RESULT_RESULT, SAT_RESULT } from './forms';
+import { INSPECTION_RESULT, PUNCH_RESULT, RESULT_RESULT, SAT_NOT_INVITED, SAT_RESULT } from './forms';
 
 export type PunchStepResult = { ok: true } | { error: string };
 
@@ -138,6 +138,7 @@ export async function advancePunchItemAction(code: string, number: string, from:
 /**
  * "Plan SAT" (AF `commissioning`, "Plan & invite"): records the plan and dates the system's SAT step. Systems: the
  * commissioning plan's, else the inspection template's (the prototype's `ITPSYS`; the plan is recorded, no grid created).
+ * R-015 / R-036: the project's external client contacts are invited (bell and e-mail).
  */
 export async function planSatAction(code: string, values: Record<string, string>): Promise<FormDialogResult> {
   const ok = await editable(code, 'commissioning');
@@ -146,14 +147,16 @@ export async function planSatAction(code: string, values: Record<string, string>
   const parsed = parsePlanSat(strings(values), systems, await businessToday());
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
+  let invited = 0;
   try {
-    await planSat(ok.code, { system: v.system, date: v.date, clientWitnesses: v.clientWitnesses, prerequisites: v.prerequisites }, ok.actor);
+    invited = await planSat(ok.code, { system: v.system, date: v.date, clientWitnesses: v.clientWitnesses, prerequisites: v.prerequisites }, ok.actor);
   } catch (e) {
     if (e instanceof Error && / is already done$/.test(e.message)) return { error: await tr('The SAT of this system is already done') };
     return { error: await tr('The change could not be saved') };
   }
   refresh(ok.code);
-  return { toast: await tr(SAT_RESULT) };
+  // R-015 / R-036: "invitation sent" only when a client contact was invited (none for a subsidiary or a client without account).
+  return { toast: await tr(invited ? SAT_RESULT : SAT_NOT_INVITED) };
 }
 
 const RESULT_CHANGED = 'This inspection has changed since you opened it';

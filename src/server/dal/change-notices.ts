@@ -3,8 +3,8 @@ import 'server-only';
 // current step; after each decision, the approvers of the new current step (R-069: the chain is sequential); on the final
 // approval or rejection, the requester. Rule: `crNoticeOf` (src/domain/change-control.ts). Called by the Server Functions AFTER
 // the writer's transaction committed (a notice never runs inside it — createNotification opens its own transaction, and a
-// retried transaction must not notify twice); a failure is logged and never undoes the decision. Keystone's bell only (no mail
-// relay, R-036). Client contacts receive it through the bell's read-time filter like any notice (src/server/dal/shell.ts).
+// retried transaction must not notify twice); a failure is logged and never undoes the decision. Keystone's bell, and the e-mail
+// each person chose (R-036: approvals at once by default). Client contacts receive it through the bell's read-time filter like any notice (src/server/dal/shell.ts).
 import { asc, eq } from 'drizzle-orm';
 import { crNoticeOf } from '@/domain/change-control';
 import { getDb } from '@/server/db/client';
