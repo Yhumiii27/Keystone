@@ -12,6 +12,7 @@ import { listProjectBaselines } from '@/server/dal/baselines';
 import { addProjectCostCategory, updateProjectCostCategory } from '@/server/dal/budget-categories';
 import { getCostControl } from '@/server/dal/cost';
 import { getProject } from '@/server/dal/projects';
+import { staleRecordResult } from '@/server/dal/record-version';
 import { costCategoryOptions } from '@/server/dal/settings-lists';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
@@ -89,8 +90,10 @@ export async function editCostCategoryAction(code: string, categoryCode: string,
   const budget = (v.budget ?? '').trim() ? parseCategoryBudget(v.budget) : undefined;
   if (budget === null || (budget === undefined && !ok.frozen)) return { error: await tr('Enter a budget in k€ (0 or more)') };
   try {
-    await updateProjectCostCategory(ok.code, categoryCode, { name: v.name ?? '', type: v.type, ...(budget !== undefined ? { budgetKeur: budget } : {}) }, ok.actor);
+    await updateProjectCostCategory(ok.code, categoryCode, { name: v.name ?? '', type: v.type, ...(budget !== undefined ? { budgetKeur: budget } : {}) }, ok.actor, { version: v.version ?? null });
   } catch (e) {
+    const stale = staleRecordResult(e, (await getI18n()).lang);
+    if (stale) return stale;
     return failure(e);
   }
   refresh(ok.code);

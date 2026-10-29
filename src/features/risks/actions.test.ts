@@ -154,4 +154,16 @@ describe('risk Server Functions', () => {
     const c = (await getContingency('NDC-031'))!;
     expect([c.initial, c.isDefault, c.drawn, c.pending, c.draws[0].linkRef, c.draws[0].requestedBy]).toEqual([100, false, 0, 5, 'R-01', 'M. Lefebvre']);
   });
+
+  it('R-010: a drawer edit on a risk changed meanwhile by someone else is refused with who and when (conflict)', async () => {
+    const token = (await risk('R-14'))!.version;
+    viewer.name = 'Romain Aubert';
+    expect(await updateRiskAction('HLT-026', 'R-14', { probability: 1 }, token)).toEqual({ ok: true });
+    viewer.name = 'Léa Marchand';
+    const r = await updateRiskAction('HLT-026', 'R-14', { impact: 1 }, token);
+    expect(r).toEqual({ error: expect.stringMatching(/^Record modified meanwhile by Romain Aubert on \d{1,2} [A-Z][a-z]{2} \d{4}, \d{2}:\d{2} — reload to see their changes$/), conflict: true });
+    expect((await risk('R-14'))!.impact).not.toBe(1);
+    // After a reload (fresh token) Léa's edit is saved.
+    expect(await updateRiskAction('HLT-026', 'R-14', { impact: 1 }, (await risk('R-14'))!.version)).toEqual({ ok: true });
+  });
 });

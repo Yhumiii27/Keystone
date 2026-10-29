@@ -39,6 +39,8 @@ export interface NetworkActivity {
   freeFloatDays: number | null;
   critical: boolean | null;
   position: number;
+  /** R-010: the activity row's version (optimistic locking of the Gantt's edits). */
+  version: number;
 }
 
 export interface NetworkLink {
@@ -94,7 +96,7 @@ export async function loadScheduleNetwork(code: string, q?: Q): Promise<Schedule
     dbId: a.id, code: a.code, name: a.name, wbsCode: wbs, durationDays: a.durationDays, percentComplete: a.percentComplete, remainingDays: a.remainingDays,
     calendarCode: a.calendarCode, startDate: a.startDate, finishDate: a.finishDate, startActual: a.startActual, finishActual: a.finishActual, startText: a.startText,
     finishText: a.finishText, constraintType: a.constraintType, constraintDate: a.constraintDate, constraintViolated: a.constraintViolated, totalFloatDays: a.totalFloatDays,
-    freeFloatDays: a.freeFloatDays, critical: a.critical, position: a.position,
+    freeFloatDays: a.freeFloatDays, critical: a.critical, position: a.position, version: a.version,
   }));
   // Links in the successor's predecessor order (activity order first).
   const order = new Map(acts.map((a, i) => [a.code, i]));

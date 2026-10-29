@@ -4,7 +4,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { drizzle } from 'drizzle-orm/pglite';
 import { PGlite } from '@electric-sql/pglite';
 import { openDatabase } from './open';
-import { TX_RETRY, isRetryableTransactionError, runWithRetry, sqlStateOf, withSerializableTransactions, withWriteLockedTransactions } from './transactions';
+import { getTableConfig, type PgTable } from 'drizzle-orm/pg-core';
+import { NUMBERING_CONSTRAINTS, TX_RETRY, constraintOf, isRetryableTransactionError, runWithRetry, sqlStateOf, withSerializableTransactions, withWriteLockedTransactions } from './transactions';
 import type { DB } from './types';
 
 const pgError = (code: string, message = 'pg error') => Object.assign(new Error(message), { code });
@@ -22,11 +23,29 @@ describe('sqlStateOf / isRetryableTransactionError', () => {
     expect(sqlStateOf(null)).toBeNull();
   });
 
-  it('retries serialization failures and deadlocks only (a unique violation or a business error is final)', () => {
+  it('retries serialization failures, deadlocks and a business number taken meanwhile (another unique violation or a business error is final)', () => {
     expect(isRetryableTransactionError(drizzleError(pgError('40001')))).toBe(true);
     expect(isRetryableTransactionError(pgError('40P01'))).toBe(true);
     expect(isRetryableTransactionError(pgError('23505'))).toBe(false);
     expect(isRetryableTransactionError(new Error('CR-011 is not in review'))).toBe(false);
+    // R-010: the numbering's unique constraints (the attempt is run again and draws the next number).
+    const taken = (constraint: string) => drizzleError(Object.assign(pgError('23505'), { constraint }));
+    expect(isRetryableTransactionError(taken('risks_project_id_number_unique'))).toBe(true);
+    expect(isRetryableTransactionError(taken('tasks_number_unique'))).toBe(true);
+    expect(isRetryableTransactionError(taken('projects_code_unique'))).toBe(false);
+    expect(constraintOf(taken('tasks_number_unique'))).toBe('tasks_number_unique');
+    expect(constraintOf(pgError('23505'))).toBeNull();
+  });
+
+  it('every numbering constraint exists in the schema (a renamed constraint would silently stop the retry)', async () => {
+    const names = new Set<string>();
+    for (const t of Object.values(await import('./schema')))
+      if (t && typeof t === 'object' && Symbol.for('drizzle:IsDrizzleTable') in t)
+        for (const cfg of [getTableConfig(t as PgTable)]) {
+          for (const u of cfg.uniqueConstraints) { const n = u.getName(); if (n) names.add(n); }
+          for (const c of cfg.columns) if (c.isUnique && c.uniqueName) names.add(c.uniqueName);
+        }
+    for (const c of NUMBERING_CONSTRAINTS) expect(names.has(c), c).toBe(true);
   });
 });
 

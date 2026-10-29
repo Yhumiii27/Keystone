@@ -14,7 +14,11 @@ import {
 import { findPerson, nameOf, nextNumber, requireProject, writeAudit } from '@/server/db/helpers';
 import { activities, persons, projectControls, projects, risks, wbsNodes } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
+import { assertRecordFresh, tokenOf, type VersionedTable } from './record-version';
 import { settingsEntries } from './settings-lists';
+
+/** R-010: risks under optimistic locking (audit entity "risk"). */
+const RISK_VERSION: VersionedTable = { table: risks, id: risks.id, version: risks.version, entityType: 'risk' };
 
 export interface LinkedActivity {
   /** "A1250". */
@@ -58,6 +62,8 @@ export interface RiskRow {
   /** 'Open' | 'Closed'. */
   statusLabel: string;
   trend: RiskTrend;
+  /** R-010: the version token the drawer's edits send back (src/domain/record-version.ts). */
+  version: string;
 }
 
 export interface RiskCategoryChip {
@@ -87,6 +93,7 @@ const costOf = (r: { costKeur: number | null; emvKeur: number | null; probabilit
 /** Risks of a project (empty for projects without a register). */
 export async function listRisks(projectCode: string): Promise<RiskRow[]> {
   const db = await getDb();
+  const readAt = new Date();
   const rows = await db
     .select({
       r: risks, ownerFull: persons.fullName, ownerShort: persons.shortName,
@@ -111,7 +118,7 @@ export async function listRisks(projectCode: string): Promise<RiskRow[]> {
       response: r.response, responseLabel: riskResponse.label(r.response), plan: r.responsePlan,
       activity: actCode ? { code: actCode, name: actName!, wbs: actWbs!, totalFloat: actFloat, pct: actPct! } : null,
       emv: emvOf(costOf(r), r.probability), costIfOccurs: costIfOccurs(costOf(r)), trigger: r.trigger,
-      status: r.status, statusLabel: riskStatus.label(r.status), trend: r.trend,
+      status: r.status, statusLabel: riskStatus.label(r.status), trend: r.trend, version: tokenOf(r.version, readAt),
     };
   });
 }
@@ -223,13 +230,19 @@ export interface RiskPatch {
   trigger?: string;
 }
 
-/** Drawer edits (riskOv): P / I segments, response strategy, close / reopen, plus the other editable fields. */
-export async function updateRisk(projectCode: string, riskNumber: string, patch: RiskPatch, actorName: string): Promise<void> {
+/**
+ * Drawer edits (riskOv): P / I segments, response strategy, close / reopen, plus the other editable fields. `version` (R-010):
+ * the token the drawer read — a risk changed meanwhile by someone else throws StaleRecordError.
+ */
+export async function updateRisk(projectCode: string, riskNumber: string, patch: RiskPatch, actorName: string, opts: { version?: string | null } = {}): Promise<void> {
   const db = await getDb();
   await db.transaction(async (tx) => {
     const p = await requireProject(tx, projectCode);
-    const [r] = await tx.select().from(risks).where(and(eq(risks.projectId, p.id), eq(risks.number, riskNumber)));
-    if (!r) throw new Error(`Unknown risk ${riskNumber} on ${projectCode}`);
+    const [found] = await tx.select({ id: risks.id }).from(risks).where(and(eq(risks.projectId, p.id), eq(risks.number, riskNumber)));
+    if (!found) throw new Error(`Unknown risk ${riskNumber} on ${projectCode}`);
+    const saver = await findPerson(tx, actorName);
+    await assertRecordFresh(tx, RISK_VERSION, found.id, opts.version, { name: actorName, personId: saver?.id ?? null });
+    const [r] = await tx.select().from(risks).where(eq(risks.id, found.id));
     const set: Partial<typeof risks.$inferInsert> = { updatedAt: new Date() };
     const changes: string[] = [];
     if (patch.probability != null && clamp15(patch.probability) !== r.probability) {
@@ -264,7 +277,7 @@ export async function updateRisk(projectCode: string, riskNumber: string, patch:
     if (patch.owner !== undefined) set.ownerPersonId = (await findPerson(tx, patch.owner))?.id ?? null;
     await tx.update(risks).set(set).where(eq(risks.id, r.id));
     if (changes.length) {
-      const actor = await findPerson(tx, actorName);
+      const actor = saver;
       await writeAudit(tx, {
         actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: riskNumber, change: changes.join(' · '), area: 'Risks',
         entityType: 'risk', entityId: r.id, projectId: p.id,

@@ -17,6 +17,7 @@ import {
 } from '@/server/dal/claims';
 import { addMachine, listDeliveryCandidates, listMachineOptions, registerDeliveredMachines } from '@/server/dal/fleet';
 import { getProject } from '@/server/dal/projects';
+import { staleRecordResult } from '@/server/dal/record-version';
 import { claimStatus } from '@/server/db/codes';
 import { getScreenAccess, projectAccessResolver } from '@/server/project-context';
 import { getI18n } from '@/server/session';
@@ -95,12 +96,16 @@ export async function updateClaimAction(number: string, values: Record<string, s
   const claim = await getClaim(number);
   if (!claim) return { error: messageText('Unknown claim', e.t) };
   if (claim.status === 'closed') return { error: messageText('This claim is closed', e.t) };
-  const parsed = parseClaimUpdate(strings(values), CLAIM_OWNERS);
+  const v = strings(values);
+  const parsed = parseClaimUpdate(v, CLAIM_OWNERS);
   if (!parsed.ok) return { error: messageText(parsed.error, e.t) };
   if (claim.status !== 'open' && !parsed.value.diagnosis) return { error: messageText('Enter the diagnosis', e.t) };
   try {
-    await updateClaim(claim.number, parsed.value, e.actor);
+    // R-010: the claim's token as the drawer read it (hidden value of the form).
+    await updateClaim(claim.number, parsed.value, e.actor, { version: v.version ?? null });
   } catch (err) {
+    const stale = staleRecordResult(err, (await getI18n()).lang);
+    if (stale) return stale;
     console.error('updateClaimAction', err);
     return { error: messageText('The change could not be saved', e.t) };
   }

@@ -18,6 +18,10 @@ import { interventions, machinePartRevisions, machines, parts, persons, warranty
 import type { Tx } from '@/server/db/types';
 import { listMachines, type MachineRow } from './fleet';
 import { isIsoDate, optionalText, requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
+import { assertRecordFresh, tokenOf, type VersionedTable } from './record-version';
+
+/** R-010: warranty claims under optimistic locking (audit entity "warranty_claim"). */
+const CLAIM_VERSION: VersionedTable = { table: warrantyClaims, id: warrantyClaims.id, version: warrantyClaims.version, entityType: 'warranty_claim' };
 
 export type { Actor };
 
@@ -51,6 +55,8 @@ export interface ClaimRow {
   projectCode: string | null;
   plannedInterventions: number;
   steps: ClaimStep[];
+  /** R-010: the claim's version token, sent back by "Edit claim". */
+  version: string;
 }
 
 export interface InterventionRow {
@@ -96,6 +102,7 @@ async function machineIndex(zone?: ZoneCode | null): Promise<Map<string, Machine
 /** Warranty claims (open first, then closed, CLAIMS order within each), optionally for the machines of one zone. */
 export async function listClaims(opts: { zone?: ZoneCode | null } = {}): Promise<ClaimRow[]> {
   const db = await getDb();
+  const readAt = new Date();
   const [rows, idx, planned] = await Promise.all([
     db.select({ c: warrantyClaims, mch: machines.number }).from(warrantyClaims).innerJoin(machines, eq(machines.id, warrantyClaims.machineId)).orderBy(asc(warrantyClaims.position)),
     machineIndex(opts.zone),
@@ -112,7 +119,7 @@ export async function listClaims(opts: { zone?: ZoneCode | null } = {}): Promise
         severityLabel: ncrSeverity.label(c.severity), severityTag: SEVERITY_TAG[c.severity], reportedOn: c.reportedOn, status: c.status, statusLabel: claimStatus.label(c.status),
         open: c.status !== 'closed', coverage: c.coverage, coverageLabel: claimCoverage.label(c.coverage), costKeur: c.costKeur, ecoNumber: c.ecoNumber, owner: c.ownerName,
         nextStep: c.nextStep, diagnosis: c.diagnosis, closedOn: c.closedOn, projectCode: m.projectCode, plannedInterventions,
-        steps: claimSteps({ status: c.status, diagnosis: c.diagnosis, plannedInterventions }),
+        steps: claimSteps({ status: c.status, diagnosis: c.diagnosis, plannedInterventions }), version: tokenOf(c.version, readAt),
       };
     });
   return [...list.filter((c) => c.open), ...list.filter((c) => !c.open)];
@@ -234,7 +241,7 @@ export interface ClaimUpdateInput {
  * "Edit claim": coverage (warranty, extended warranty, chargeable — after-sales decides, Q-8), owner, cost (k€), next step,
  * diagnosis and the design ECO (a Vigie ECO number). A closed claim is read-only. The change is audited field by field.
  */
-export async function updateClaim(number: string, input: ClaimUpdateInput, actor: Actor): Promise<void> {
+export async function updateClaim(number: string, input: ClaimUpdateInput, actor: Actor, opts: { version?: string | null } = {}): Promise<void> {
   requireWorkspace('sav', actor, 'Warranty claims & interventions');
   if (!claimCoverage.isCode(input.coverage)) throw new Error('Invalid coverage');
   if (!Number.isFinite(input.costKeur) || input.costKeur < 0) throw new Error('Invalid cost');
@@ -244,7 +251,11 @@ export async function updateClaim(number: string, input: ClaimUpdateInput, actor
   const eco = optionalText(input.ecoNumber, 'ECO', 40);
   const db = await getDb();
   await db.transaction(async (tx) => {
-    const c = await claimOf(tx, number);
+    const found = await claimOf(tx, number);
+    // R-010: refused when someone else changed the claim since the form was opened (then read again behind the row lock).
+    const saver = await whoIs(tx, actor);
+    await assertRecordFresh(tx, CLAIM_VERSION, found.id, opts.version, { name: saver.who, personId: saver.personId });
+    const c = opts.version ? await claimOf(tx, number) : found;
     if (c.status === 'closed') throw new Error(`${number} is closed`);
     if (c.status !== 'open' && !diagnosis) throw new Error('A diagnosed claim keeps its diagnosis');
     const [o] = await tx.select({ id: persons.id }).from(persons).where(eq(persons.shortName, owner));

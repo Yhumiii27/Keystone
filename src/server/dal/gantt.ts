@@ -11,10 +11,12 @@ import { findPerson, nameOf, recordActivity, requireProject } from '@/server/db/
 import { projects, wbsNodes } from '@/server/db/schema';
 import { getBaselineActivities, getDisplayedBaselineCode } from './baselines';
 import { listCalendars, settingsHolidayDates } from './calendars';
+import { tokenOf } from './record-version';
 import { loadScheduleNetwork } from './schedule-network';
 
 /** The project's Gantt network; null for an unknown project or a project without activities. */
 export async function getGanttNetwork(code: string): Promise<GanttNetwork | null> {
+  const readAt = new Date();
   const net = await loadScheduleNetwork(code);
   if (!net || !net.activities.length) return null;
   const db = await getDb();
@@ -41,6 +43,7 @@ export async function getGanttNetwork(code: string): Promise<GanttNetwork | null
       // Same rule as the Schedule roll-ups: the CPM flag, else the stored float; never when complete.
       critical: !complete && (a.critical ?? (a.totalFloatDays != null && a.totalFloatDays <= CRITICAL_FLOAT_DAYS)),
       totalFloat: complete ? null : a.totalFloatDays, baselineStart: b?.startDate ?? null, baselineFinish: b?.finishDate ?? null,
+      version: tokenOf(a.version, readAt),
     };
   });
   return {

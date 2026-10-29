@@ -16,6 +16,7 @@ import { orderedOptions } from '@/domain/settings-rules';
 import { ContingencyError, decideContingencyDraw, drawLinkOptions, submitContingencyDraw } from '@/server/dal/contingency';
 import { getProject } from '@/server/dal/projects';
 import { notifyRequestEvent, type NoticeActor, type RequestNotice } from '@/server/dal/requests-screens';
+import { staleRecordResult } from '@/server/dal/record-version';
 import { createRisk, listRisks, updateRisk } from '@/server/dal/risks';
 import { riskOwnerOptions } from '@/server/dal/risks-screen';
 import { riskCategoryOptions } from '@/server/dal/settings-lists';
@@ -23,7 +24,7 @@ import { getProjectContext, getScreenAccess } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { DRAW_RESULT, RISK_RESULT } from './forms';
 
-export type RiskEditResult = { ok: true } | { error: string };
+export type RiskEditResult = { ok: true } | { error: string; conflict?: true };
 
 const refresh = (code: string) => revalidatePath(`/projects/${code}`, 'layout');
 
@@ -68,16 +69,24 @@ export async function createRiskAction(code: string, values: Record<string, stri
   return { toast: `${number} · ${await tr(RISK_RESULT)}` };
 }
 
-/** Drawer edits (riskOv): probability / impact segments, response strategy, cost if it occurs (Q-1), "Close risk" / "Reopen". */
-export async function updateRiskAction(code: string, riskId: string, patch: RiskEdit): Promise<RiskEditResult> {
+/**
+ * Drawer edits (riskOv): probability / impact segments, response strategy, cost if it occurs (Q-1), "Close risk" / "Reopen".
+ * `version` (R-010): the risk's token as the drawer read it — refused when someone else changed the risk meanwhile.
+ */
+export async function updateRiskAction(code: string, riskId: string, patch: RiskEdit, version?: string): Promise<RiskEditResult> {
   const ok = await editable(code, 'risks');
   if ('error' in ok) return ok;
   const parsed = parseRiskEdit(patch);
   if (!parsed.ok) return { error: await tr(parsed.error) };
   if (typeof riskId !== 'string' || !(await listRisks(ok.code)).some((r) => r.id === riskId)) return { error: await tr('Unknown risk') };
   try {
-    await updateRisk(ok.code, riskId, parsed.value, ok.actor);
-  } catch {
+    await updateRisk(ok.code, riskId, parsed.value, ok.actor, { version: typeof version === 'string' ? version : null });
+  } catch (e) {
+    const stale = staleRecordResult(e, (await getI18n()).lang);
+    if (stale) {
+      refresh(ok.code);
+      return stale;
+    }
     return { error: await tr('The change could not be saved') };
   }
   refresh(ok.code);

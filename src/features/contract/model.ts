@@ -26,7 +26,10 @@ import { dataText } from './i18n';
 
 /** What the screens need from the Contract DAL (`ProjectContract` satisfies it). */
 export interface ContractData extends ContractInput {
-  sheet: ContractSheetInput & { client: string; type: ContractType; signedOn: string | null; governingLaw: string; scope: string };
+  /** `version` (R-010): the contract's token as the page read it. */
+  sheet: ContractSheetInput & { client: string; type: ContractType; signedOn: string | null; governingLaw: string; scope: string; version?: string };
+  /** `version` (R-010): each milestone's token as the page read it. */
+  milestones: readonly (ContractInput['milestones'][number] & { version?: string })[];
   /** Next free invoice number ("INV-2026-004"). */
   nextInvoiceNumber: string;
   /** R-013: business date the figures are read at (late milestones, overdue invoices, the invoice date proposed). */
@@ -104,7 +107,8 @@ export interface MilestoneRowView {
    * (label as typed, share, contractual date, condition).
    */
   planned: boolean;
-  edit: { label: string; pct: string; due: string; cond: string };
+  /** "Edit" form values; `version` (R-010): the milestone's token, sent back with them. */
+  edit: { label: string; pct: string; due: string; cond: string; version: string };
 }
 
 /** An amendment's own milestones (NEW-D3-3): header and subtotal rows of the schedule. */
@@ -133,6 +137,8 @@ export interface CurrencyView {
 
 export interface ContractView {
   reference: string;
+  /** R-010: the contract's version token (the sheet's field edits send it back). */
+  version: string;
   currency: CurrencyCode;
   kpis: KpiView[];
   fields: SheetFieldView[];
@@ -221,9 +227,11 @@ export function contractView(c: ContractData, t: T, lang: Lang): ContractView {
     value: value[d.key],
     ...(extra[d.key] ?? {}),
   }));
+  const milestoneVersion = new Map(c.milestones.map((m) => [m.number, m.version]));
   const groupAt = new Map(fig.groups.filter((g) => g.amendment != null).map((g) => [g.amendment!, g]));
   return {
     reference: s.reference,
+    version: s.version ?? '',
     currency: cur,
     kpis,
     fields,
@@ -256,7 +264,7 @@ export function contractView(c: ContractData, t: T, lang: Lang): ContractView {
       group: m.amendment ?? null,
       billable: m.billable,
       planned: m.status === 'planned',
-      edit: editMilestoneValues(m, t),
+      edit: { ...editMilestoneValues(m, t), version: milestoneVersion.get(m.number) ?? '' },
     })),
     groups: [...groupAt.values()].map((g) => ({
       key: g.amendment!,

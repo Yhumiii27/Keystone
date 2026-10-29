@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
 import { Avatar } from '@/components/app/Badges';
 import { ProgressBar } from '@/components/app/Progress';
+import { useStaleRecordToast } from '@/components/app/StaleRecord';
 import { LO } from '@/components/app/tones';
 import { Button, IconButton } from '@/components/ds/Button';
 import { cx } from '@/components/ds/cx';
@@ -101,10 +102,11 @@ interface TableProps extends PlanTableProps {
 function useAction() {
   const [pending, start] = useTransition();
   const toast = useToast();
+  const stale = useStaleRecordToast();
   const run = (fn: () => Promise<PlanActionResult>) =>
     start(async () => {
       const r = await fn();
-      if ('error' in r) toast.show(r.error);
+      if ('error' in r && !stale(r)) toast.show(r.error);
     });
   return { pending, run };
 }
@@ -176,6 +178,7 @@ function EditableInput({ value, save, type = 'text', debounceMs, inlineError, cl
   const lastSent = useRef<string | null>(null);
   const normalized = useRef<string | null>(null);
   const toast = useToast();
+  const stale = useStaleRecordToast();
   const [, start] = useTransition();
   if (value !== prev) {
     // Server value changed (after a commit or someone else's edit): adopt it unless the user is typing.
@@ -195,7 +198,8 @@ function EditableInput({ value, save, type = 'text', debounceMs, inlineError, cl
       if ('error' in r) {
         lastSent.current = null;
         normalized.current = null;
-        if (inlineError) setError(r.error);
+        if (stale(r)) setDraft(value);
+        else if (inlineError) setError(r.error);
         else {
           toast.show(r.error);
           setDraft(value);
@@ -297,7 +301,7 @@ function NameCell({ r, collapsed, toggle, children }: { r: PlanRowView; collapse
 function StructureTable({ rows, code, selected, canEdit, canRemove, owners, collapsed, toggle, href, askRemove }: TableProps) {
   const { t } = useI18n();
   const { run } = useAction();
-  const edit = (id: string, field: ActivityField) => (v: string) => editActivity(code, id, field, v);
+  const edit = (r: PlanRowView, field: ActivityField) => (v: string) => editActivity(code, r.id, field, v, r.version);
   return (
     <div className={s.structure} role="table" aria-label={t('Work breakdown structure')}>
       <div className={cx(s.sGrid, s.head)} role="row">
@@ -338,29 +342,29 @@ function StructureTable({ rows, code, selected, canEdit, canRemove, owners, coll
                   value={r.nameValue}
                   label={t(sum ? 'Work package' : 'Activity')}
                   className={sum ? s.w500 : undefined}
-                  save={sum ? (v) => renamePackage(code, r.id, v) : edit(r.id, 'name')}
+                  save={sum ? (v) => renamePackage(code, r.id, v) : edit(r, 'name')}
                 />
               )}
             </NameCell>
             <span role="cell" className={s.flexCell}>
               {act &&
                 (canEdit ? (
-                  <OwnerSelect {...ownerSelectOptions(r, owners)} label={t('Owner')} save={edit(r.id, 'owner')} />
+                  <OwnerSelect {...ownerSelectOptions(r, owners)} label={t('Owner')} save={edit(r, 'owner')} />
                 ) : (
                   <span className={s.readText}>{r.ownerName}</span>
                 ))}
             </span>
             <span role="cell" className={s.numCell}>
-              {act && (canEdit ? <EditableInput type="number" min={1} value={r.durValue} label={t('Dur')} debounceMs={700} save={edit(r.id, 'dur')} /> : r.durLabel)}
+              {act && (canEdit ? <EditableInput type="number" min={1} value={r.durValue} label={t('Dur')} debounceMs={700} save={edit(r, 'dur')} /> : r.durLabel)}
               {sum && r.dur}
             </span>
             <span role="cell" className={s.budgetCell}>
-              {act && canEdit ? <EditableInput type="number" min={0} value={r.budget} label={t('Budget k€')} debounceMs={700} save={edit(r.id, 'budget')} /> : r.budget}
+              {act && canEdit ? <EditableInput type="number" min={0} value={r.budget} label={t('Budget k€')} debounceMs={700} save={edit(r, 'budget')} /> : r.budget}
             </span>
             <span role="cell" className={s.flexCell}>
               {act &&
                 (canEdit ? (
-                  <EditableInput value={r.predsValue} label={t('Predecessors')} placeholder="—" inlineError save={edit(r.id, 'preds')} />
+                  <EditableInput value={r.predsValue} label={t('Predecessors')} placeholder="—" inlineError save={edit(r, 'preds')} />
                 ) : (
                   <span className={s.readText}>{r.predsLabel}</span>
                 ))}
@@ -447,7 +451,7 @@ function ProgressTable({ rows, code, selected, canEdit: canEditAll, progressIds,
                   value={String(r.pct)}
                   label={t('Progress')}
                   debounceMs={600}
-                  save={(v) => editActivity(code, r.id, 'pct', v)}
+                  save={(v) => editActivity(code, r.id, 'pct', v, r.version)}
                 />
               )}
               {(r.kind === 'wp' || (act && !canEdit)) && <span className={s.pctText}>{r.pct}%</span>}
@@ -459,7 +463,7 @@ function ProgressTable({ rows, code, selected, canEdit: canEditAll, progressIds,
                   label={t('Mark complete')}
                   onClick={(e) => {
                     e.stopPropagation();
-                    run(() => editActivity(code, r.id, 'pct', '100'));
+                    run(() => editActivity(code, r.id, 'pct', '100', r.version));
                   }}
                 />
               )}

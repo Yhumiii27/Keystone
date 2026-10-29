@@ -8,6 +8,7 @@ import { Button } from '@/components/ds/Button';
 import { Input } from '@/components/ds/Field';
 import { Segmented } from '@/components/ds/Segmented';
 import { showToast } from '@/components/ds/Toast';
+import { useStaleRecordToast } from '@/components/app/StaleRecord';
 import { useI18n } from '@/i18n/client';
 import type { RiskResponse, RiskStatus } from '@/domain/risk';
 import { updateRiskAction } from './actions';
@@ -29,14 +30,15 @@ const RESPONSES: { value: RiskResponse; label: string }[] = [
   { value: 'accept', label: 'Accept' },
 ];
 
-function useRiskEdit(code: string, riskId: string, server: Values) {
+function useRiskEdit(code: string, riskId: string, version: string, server: Values) {
   const [values, apply] = useOptimistic(server, (cur: Values, patch: Partial<Values>) => ({ ...cur, ...patch }));
   const [pending, start] = useTransition();
+  const stale = useStaleRecordToast();
   const edit = (patch: Partial<Values>) =>
     start(async () => {
       apply(patch);
-      const r = await updateRiskAction(code, riskId, patch);
-      if ('error' in r) showToast(r.error);
+      const r = await updateRiskAction(code, riskId, patch, version);
+      if ('error' in r && !stale(r)) showToast(r.error);
     });
   return { values, pending, edit };
 }
@@ -44,14 +46,16 @@ function useRiskEdit(code: string, riskId: string, server: Values) {
 export interface RiskScalesProps {
   code: string;
   riskId: string;
+  /** R-010: the risk's version token as the page read it. */
+  version: string;
   values: Values;
   canEdit: boolean;
 }
 
 /** Probability · Impact (two-column grid) and Response strategy. */
-export function RiskScales({ code, riskId, values: server, canEdit }: RiskScalesProps) {
+export function RiskScales({ code, riskId, version, values: server, canEdit }: RiskScalesProps) {
   const { t } = useI18n();
-  const { values, pending, edit } = useRiskEdit(code, riskId, server);
+  const { values, pending, edit } = useRiskEdit(code, riskId, version, server);
   const scale = (cur: number) =>
     SCALE.map((v) => ({ value: v, label: v, disabled: !canEdit && Number(v) !== cur }));
   return (
@@ -96,14 +100,16 @@ export function RiskScales({ code, riskId, values: server, canEdit }: RiskScales
 export interface RiskStatusToggleProps {
   code: string;
   riskId: string;
+  version: string;
   /** Translated "Close risk" / "Reopen". */
   label: string;
   next: RiskStatus;
 }
 
 /** `btn btn-ghost` 12.5px: "Close risk" when open, "Reopen" when closed. */
-export function RiskStatusToggle({ code, riskId, label, next }: RiskStatusToggleProps) {
+export function RiskStatusToggle({ code, riskId, version, label, next }: RiskStatusToggleProps) {
   const [pending, start] = useTransition();
+  const stale = useStaleRecordToast();
   return (
     <Button
       variant="ghost"
@@ -112,8 +118,8 @@ export function RiskStatusToggle({ code, riskId, label, next }: RiskStatusToggle
       aria-busy={pending || undefined}
       onClick={() =>
         start(async () => {
-          const r = await updateRiskAction(code, riskId, { status: next });
-          if ('error' in r) showToast(r.error);
+          const r = await updateRiskAction(code, riskId, { status: next }, version);
+          if ('error' in r && !stale(r)) showToast(r.error);
         })
       }
     >
@@ -125,6 +131,7 @@ export function RiskStatusToggle({ code, riskId, label, next }: RiskStatusToggle
 export interface RiskCostFieldProps {
   code: string;
   riskId: string;
+  version: string;
   /** Stored cost if it occurs, k€ (0 = none). */
   cost: number;
 }
@@ -133,8 +140,9 @@ export interface RiskCostFieldProps {
  * Delivery 7 (R-072, Q-1): the cost if the risk occurs, edited in the drawer — the EMV (cost × P / 5) follows on the server
  * re-render. Decimal comma accepted; an invalid value is refused by the server function (toast).
  */
-export function RiskCostField({ code, riskId, cost }: RiskCostFieldProps) {
+export function RiskCostField({ code, riskId, version, cost }: RiskCostFieldProps) {
   const { t, lang } = useI18n();
+  const stale = useStaleRecordToast();
   const id = useId();
   const [value, setValue] = useState(cost ? String(cost).replace('.', lang === 'fr' ? ',' : '.') : '');
   const [pending, start] = useTransition();
@@ -146,8 +154,8 @@ export function RiskCostField({ code, riskId, cost }: RiskCostFieldProps) {
         showToast(t('Enter a cost of 0 or more (k€)'));
         return;
       }
-      const r = await updateRiskAction(code, riskId, { costKeur: parsed });
-      if ('error' in r) showToast(r.error);
+      const r = await updateRiskAction(code, riskId, { costKeur: parsed }, version);
+      if ('error' in r && !stale(r)) showToast(r.error);
     });
   return (
     <div className={s.field}>

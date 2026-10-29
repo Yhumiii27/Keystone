@@ -286,15 +286,18 @@ export async function setTaskProgress(number: string, pct: number, actorName: st
  * Ticks / unticks a checklist item (by position). Tasks without items have only the stored counts: nothing to
  * toggle. Returns the new state. `actorName` (the viewer) is recorded in the audit trail.
  */
-export async function toggleChecklistItem(number: string, position: number, actorName?: string): Promise<boolean> {
+export async function toggleChecklistItem(number: string, position: number, actorName?: string, opts: { done?: boolean } = {}): Promise<boolean> {
   const db = await getDb();
   return db.transaction(async (tx) => {
     const t = await loadTask(tx, number);
     const [item] = await tx.select().from(taskChecklistItems).where(and(eq(taskChecklistItems.taskId, t.id), eq(taskChecklistItems.position, position)));
     if (!item) throw new Error(`Task ${number} has no checklist item #${position}`);
-    await tx.update(taskChecklistItems).set({ done: !item.done, doneAt: item.done ? null : new Date() }).where(eq(taskChecklistItems.id, item.id));
-    if (actorName) await auditTask(tx, t, actorName, `checklist: ${item.done ? 'unticked' : 'ticked'} "${item.text}"`);
-    return !item.done;
+    // R-010: `done` = the state the viewer asked for (two ticks at once leave it ticked); without it the item flips.
+    const done = opts.done ?? !item.done;
+    if (done === item.done) return done;
+    await tx.update(taskChecklistItems).set({ done, doneAt: done ? new Date() : null }).where(eq(taskChecklistItems.id, item.id));
+    if (actorName) await auditTask(tx, t, actorName, `checklist: ${done ? 'ticked' : 'unticked'} "${item.text}"`);
+    return done;
   });
 }
 

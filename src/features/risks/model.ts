@@ -89,6 +89,8 @@ export interface RiskDrawerView {
   closeHref: string;
   toggleLabel: string;
   toggleNext: RiskStatus;
+  /** R-010: version token sent back by the drawer's edits; '' when unknown (no check). */
+  version: string;
 }
 
 export interface RiskRegisterView {
@@ -188,6 +190,7 @@ export function riskRegisterView(input: RiskRegisterInput, t: T, lang: Lang): Ri
       closeHref: risksHref(code, { filter }),
       toggleLabel: t(tog.label),
       toggleNext: tog.next,
+      version: r.version ?? '',
     };
   }
 

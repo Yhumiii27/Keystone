@@ -216,7 +216,7 @@ export function ContractScreen({ view, code, canEdit, canSetRate, context, forms
             {t('Open contract')}
           </ButtonLink>
         </div>
-        <ContractSheetForm code={code} fields={view.fields} canEdit={canEdit} />
+        <ContractSheetForm code={code} version={view.version} fields={view.fields} canEdit={canEdit} />
       </Card>
 
       <CurrencyCard fx={view.fx} code={code} canSetRate={canSetRate} t={t} />
