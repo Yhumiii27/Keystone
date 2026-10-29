@@ -1,5 +1,6 @@
 // Schedule screen body (docs/spec/05 §1.3–1.4, template 485–572): KPI row · Gantt card · bottom grid
 // (Schedule progression | Milestones). Server Component; all strings go through t() (EN source = prototype).
+import type { ReactNode } from 'react';
 import { EmptyState } from '@/components/app/EmptyState';
 import { KpiGrid, KpiTile } from '@/components/app/Kpi';
 import { Legend, LegendItem } from '@/components/app/Legend';
@@ -27,7 +28,17 @@ export interface ScheduleCapexMilestones {
   editCode?: string;
 }
 
-export async function ScheduleView({ view, showBaseline = true, capex }: { view: ScheduleModel; showBaseline?: boolean; capex?: ScheduleCapexMilestones }) {
+export async function ScheduleView({
+  view, showBaseline = true, capex, ganttSwitch, activityGantt,
+}: {
+  view: ScheduleModel;
+  showBaseline?: boolean;
+  capex?: ScheduleCapexMilestones;
+  /** R-198: Work packages | Activities switch, shown in the package Gantt card. */
+  ganttSwitch?: ReactNode;
+  /** R-198: the interactive activity Gantt card, shown instead of the package Gantt card. */
+  activityGantt?: ReactNode;
+}) {
   const { t, lang } = await getI18n();
   const capexOptions = [{ value: '', label: t(NO_CAPEX_MILESTONE) }, ...CAPEX_MILESTONE_CODES.map((c) => ({ value: c, label: t(CAPEX_MILESTONE_LABELS[c]) }))];
   const capexOf = (i: number) => (capex && capex.rows.length === view.milestones.length ? capex.rows[i] : undefined);
@@ -40,11 +51,13 @@ export async function ScheduleView({ view, showBaseline = true, capex }: { view:
         ))}
       </KpiGrid>
 
+      {activityGantt ?? (
       <SectionCard gap={10} scroll>
         <div className={s.head}>
           <CardTitle push>{t('Schedule — baseline vs forecast')}</CardTitle>
           <ProjectGanttLegend labels={{ critical: t('Critical path'), task: t('Task'), baseline: t('Baseline'), milestone: t('Milestone') }} />
         </div>
+        {ganttSwitch}
         {hasGantt ? (
           <ProjectGantt
             months={view.ganttMonths.map((m) => t(m))}
@@ -58,6 +71,7 @@ export async function ScheduleView({ view, showBaseline = true, capex }: { view:
           <EmptyState variant="boxed">{t('No work package scheduled for this project')}</EmptyState>
         )}
       </SectionCard>
+      )}
 
       <CardGrid min={400} gap={14} align="stretch">
         <SectionCard gap={10}>
