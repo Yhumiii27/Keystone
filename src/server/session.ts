@@ -7,6 +7,7 @@ import { AUTH_PATHS } from '@/domain/auth';
 import { authMode } from '@/server/auth/config';
 import { DEFAULT_PROJECT } from '@/config/screens';
 import { resolveCurrentProject } from '@/server/dal/current-project';
+import { currentDelegation } from '@/server/delegation-scope';
 import { DEFAULT_LANG, makeT, type Lang, type T } from '@/i18n/translate';
 
 /** Cookie names for user preferences (stand-in until real users/preferences exist in the DB). */
@@ -28,8 +29,13 @@ export type Viewer = Persona;
  * the `ks-role` cookie, the director when none — exactly as before. Entra mode: the signed-in user, re-read from the
  * database on every request (sealed session cookie → active user → active role); without a valid session the request
  * is sent to the sign-in page (the proxy normally redirects first — this is the server-side check).
+ * R-051 (P-7d): during ONE decision a substitute records on an approver's behalf (`runOnBehalf`, src/server/delegation-scope.ts),
+ * the approver — so the module's Server Function applies the approver's rights to that item only.
  */
-export const getViewer = cache(async (): Promise<Viewer> => {
+export const getViewer = async (): Promise<Viewer> => currentDelegation()?.approver ?? signedInViewer();
+
+/** The person signed in (demo persona or Entra user), memoised per request; see getViewer. */
+const signedInViewer = cache(async (): Promise<Viewer> => {
   if (authMode() === 'entra') {
     const { entraViewer } = await import('@/server/auth/viewer');
     const v = await entraViewer();

@@ -8,21 +8,21 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-29 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 116 faits, 29 en cours, 64 à faire, sur 209 points.
+**Avancement** : 117 faits, 29 en cours, 63 à faire, sur 209 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
 | Bloquant production | 16 | ≈ 106 |
 | Prochaine étape | 20 | ≈ 168 |
 | À décider | 36 | ≈ 329 |
-| Plus tard | 21 | ≈ 78 |
-| **Total** | **93** | **≈ 680** |
+| Plus tard | 20 | ≈ 74 |
+| **Total** | **92** | **≈ 676** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
-| Non commencé | 43 |
+| Non commencé | 42 |
 | Partiel | 10 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
@@ -30,7 +30,7 @@ L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il
 | Domaine | Bloquant production | Prochaine étape | À décider | Plus tard | Restants | Faits |
 |---|---:|---:|---:|---:|---:|---:|
 | Plateforme et mise en production | 7 | 3 | 0 | 2 | 12 | 14 |
-| Authentification, utilisateurs et droits | 1 | 0 | 2 | 1 | 4 | 13 |
+| Authentification, utilisateurs et droits | 1 | 0 | 2 | 0 | 3 | 14 |
 | Intégrations avec les autres systèmes | 5 | 6 | 4 | 5 | 20 | 6 |
 | Projets, cycle de vie et modèles par type de machine | 0 | 1 | 2 | 2 | 5 | 5 |
 | Planning | 1 | 0 | 6 | 1 | 8 | 4 |
@@ -235,7 +235,7 @@ Aucune page error.tsx, global-error.tsx ni not-found.tsx n'existe : une erreur s
 Envoyer automatiquement des rappels avant les échéances (tâches, jalons, livrables, actions de réunion, prérequis client) et des rapports programmés (avancement hebdomadaire, portefeuille) aux personnes concernées, par e-mail puis Teams. Standard du marché (Smartsheet, Wrike, MS Project). Aujourd’hui les avis sont in-app seulement, sans dépendance SMTP ; le canal e-mail (R-036), les comptes réels (R-038, R-039) et le job worker (R-006, fait) sont les prérequis. Analyse comparative du 25 oct. 2026 : priorité P1 avec R-036 et R-037.  
 *Avancement : Rappels J-7 / J-1 / retard et rapports hebdomadaires (tâches planifiées, journal des envois, préférences) ; l’envoi réel des e-mails attend le relais SMTP ou Microsoft 365 de la DSI (R-036). · Attend : Canal e-mail (R-036) et comptes réels · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
-### 2.2 Authentification, utilisateurs et droits (4 restants, 13 faits)
+### 2.2 Authentification, utilisateurs et droits (3 restants, 14 faits)
 
 **R-044 · Créer le rôle Finance (contrat, facturation, grille de taux)** — *Bloquant production · non commencé · effort M* · **en cours (Livraison 8)**  
 Ajouter un rôle Finance (persona, ROLE_SCREENS, contrôles serveur, exports, i18n). Directeur, CP du projet et Finance modifient la page Contrat ; les achats perdent ce droit (P-4). Finance et directeur tiennent la grille des taux et coefficients, les CP la consultent (P-12).  
@@ -248,10 +248,6 @@ Choisir si les rôles (directeur, CP, chef de service, achats, qualité, futur r
 **R-179 · Choisir la connexion des clients avant d'ouvrir le portail** — *À décider · attend le responsable produit · effort M*  
 Le responsable produit a retenu « pas d'accès client au lancement » (I-2b) ; le portail est construit mais le client n'est qu'un profil de démonstration rattaché à une organisation codée en dur. Avant d'ouvrir le portail, décider du mode de connexion des clients (invités Entra B2B ou lien par e-mail), de leur rattachement à une organisation et des conditions d'utilisation, puis le brancher.  
 *Avancement :  25 oct. 2026 (responsable produit) : tout ce à quoi la filiale (client interne) accédait dans Keystone remonte désormais dans Arche par les vues pub_, plus dans Keystone ; le portail Keystone ne concerne plus que les clients externes. · Attend : Décision du responsable produit et de la DSI sur la date d'ouverture du portail et le mode de connexion client · Sources : I-2b, 00 §8.12, 00 §10 I-2, P-10c, DELIVERY-6.md §4 (Client portal), §8 P-1*
-
-**R-051 · Ajouter la délégation des validations à un suppléant sur une période** — *Plus tard · non commencé · effort M*  
-L’approbateur déclare un suppléant et des dates ; pendant cette période, ses validations (documents, demandes, commandes, Mes validations) sont routées vers le suppléant, et les décisions sont tracées à son nom.  
-*Sources : P-7d, 08 §7*
 
 **~~R-038 · Remplacer « Voir en tant que » par la connexion Microsoft Entra ID~~** — *Bloquant production · non commencé · effort L* · **fait (Livraison 7)**  
 Connexion OIDC Entra ID (session serveur, connexion, déconnexion, redirection via proxy.ts) à la place du cookie ks-role, avec le même fournisseur que Cursus, Vigie et Codex, et « Voir en tant que » réservé à la démo. Aujourd’hui n’importe qui peut se déclarer directeur et une requête sans cookie s’exécute en directeur. Aucun compte client n’est ouvert au lancement (I-2b).  
@@ -300,6 +296,10 @@ Seuls l’organisateur et le CP du projet envoient le compte rendu ; les interne
 **~~R-190 · Filiale = client interne ; projet rattaché à son CAPEX~~** — *À décider · non commencé · effort S* · **fait (9)**  
 Un client peut être une filiale du groupe (organisation interne) ; un projet porte la référence de son CAPEX et de son besoin ; les filiales suivent leurs projets dans l’application CAPEX, pas dans le portail client (réservé aux clients externes, R-179).  
 *Avancement : Livraison 9, lot « share-views » : projects.capex_code et besoin_ref (formats d’Arche CPX-SAI-2026-01, CPX-SAI-2026-01/B01, contrôlés en base), carte « Rattachement CAPEX » de l’écran Contrat pour le directeur et les responsables du projet (audit et fil d’activité), publiés en fin de pub_projets. Un client peut déjà être une filiale (saisie libre) ; drapeau « client interne » non ajouté (aucun écran d’administration des clients) — à reprendre avec R-179 (portail réservé aux clients externes) et la création du projet à la commande (R-187). 24 oct. 2026 : fait (docs/delivery-9/notes-r190-internal-client.md) — clients.is_internal et subsidiary_code (migration 0051, un client par filiale), carte « Client » de l’écran Contrat (directeur), badge « Interne », portail client fermé aux projets d’un client interne, client interne posé à la création d’un projet depuis un besoin d’Arche, client_interne et filiale_code en fin de pub_projets (0052). Reste : R-179 (connexion des clients au portail) ; Matrix recopie pub_projets. · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
+
+**~~R-051 · Ajouter la délégation des validations à un suppléant sur une période~~** — *Plus tard · non commencé · effort M* · **fait (Livraison 9)**  
+L’approbateur déclare un suppléant et des dates ; pendant cette période, ses validations (documents, demandes, commandes, Mes validations) sont routées vers le suppléant, et les décisions sont tracées à son nom.  
+*Avancement : Suppléance déclarée par l’approbateur sur une période (un an au plus) ; « Mes validations » du suppléant, décision tracée « pour le compte de », sans chaînage, annulation par l’approbateur ou le directeur (migration 0067). · Sources : P-7d, 08 §7*
 
 **~~R-052 · Étendre la recherche globale au portefeuille, filtrée selon les droits~~** — *Plus tard · non commencé · effort M* · **fait (Livraison 8)**  
 Chercher commandes, CR, NCR et risques sur tous les projets, chaque résultat ouvrant son projet, en filtrant les résultats selon les droits du lecteur (un client ne voit que ses projets). Aujourd’hui la recherche ignore l’utilisateur et limite ces objets au projet courant.  
@@ -483,9 +483,9 @@ Modéliser les plannings fournisseurs (lots d’achat) dans le CPM et les consol
 Évaluer la qualité d’un planning avec les 14 contrôles DCMA (liens manquants, contraintes dures, marges négatives, durées longues, retards, liens début-fin…) et fournir une analyse forensique des retards (comparaison référence / actuel par activité, glissement du chemin critique). Fonction différenciante du marché (Deltek Acumen). Absent aujourd’hui. Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
 *Avancement : Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire. · Attend : Validation du responsable produit · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
-**R-064 · Corbeille du Plan : confirmer rétention et droits, purge planifiée** — *Plus tard · partiel · effort S* · **en cours (Livraison 8)**  
+**R-064 · Corbeille du Plan : confirmer rétention et droits, purge planifiée** — *Plus tard · partiel · effort S* · **en cours (Livraison 9)**  
 La confirmation et l’annulation demandées en S-5 sont livrées. Reste à faire confirmer les limites (30 jours, 20 entrées par projet) et la règle qui réserve suppression et restauration au CP et au directeur. Côté technique, à faire sans attendre la réponse : purger par tâche planifiée plutôt qu’à la suppression suivante, et renuméroter les positions en double après une restauration.  
-*Avancement : Livraison 8 : positions après restauration (emplacements fantômes) ; 30 jours, 20 entrées et droits PM + directeur restent à confirmer (S-5). · Attend : Confirmation du responsable produit pour les limites et les droits (DELIVERY-6 §8 S-5) ; la partie technique n’attend rien · Sources : S-5, DELIVERY-6.md §6 Minor points, §8 S-5, docs/delivery-6/notes-planning.md §2, §3*
+*Avancement : Partie technique faite (purge planifiée toutes les heures par la tâche plan-trash-purge, positions après restauration) ; reste la confirmation S-5 : 30 jours, 20 entrées, suppression et restauration réservées au CP et au directeur. · Attend : Confirmation du responsable produit (DELIVERY-6 §8 S-5) · Sources : S-5, DELIVERY-6.md §6 Minor points, §8 S-5, docs/delivery-6/notes-planning.md §2, §3*
 
 **~~R-061 · Réserver la structure du planning au CP et au directeur~~** — *Prochaine étape · partiel · effort M* · **fait (Livraison 7)**  
 WBS, durées, budgets et liens ne sont modifiables que par le CP du projet et le directeur ; les responsables d’activité saisissent seulement l’avancement de leurs activités. Aujourd’hui ingénierie et qualité modifient le planning de tous les projets, et le membre n’a pas accès au Plan. Replanifier, références et suppression sont déjà limités au CP et au directeur.  
@@ -1001,6 +1001,7 @@ Module demandé mais à cadrer avec le responsable produit avant construction : 
 
 ## 3. Mises à jour
 
+- 2026-10-29 — R-051 fait : suppléance des validations sur une période ; R-064 : partie technique vérifiée, attend S-5.
 - 2026-10-29 — R-015 fait et R-036 avancé : notifications par e-mail (immédiat / résumé quotidien, préférences), avis aux personnes concernées, alertes d’indicateur (migration 0066).
 - 2026-10-29 — R-198 et R-199 faits : Gantt interactif ; rappels d’échéances et rapports programmés (migration 0065).
 - 2026-10-29 — R-198 et R-199 validés et lancés (Gantt interactif ; rappels d’échéances et rapports programmés).

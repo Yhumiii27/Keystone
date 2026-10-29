@@ -285,6 +285,12 @@ const importIcon = (cls: string): ImportIcon => {
 /** "26 Sep 07:00" in the viewer's language (`stampText` of the instant), "—" before the first sync. */
 const stampOf = (iso: string | null, t: T) => (iso ? t(stampText(new Date(iso))) : '—');
 
+/** Who acted (typed name), R-051: "Antoine Girard (on behalf of Romain Aubert)" for a substitute's decision. */
+export function actorWhoT(a: { who: string; onBehalfOf?: string | null }, t: T, lang: Lang): string {
+  const who = dataText(a.who, lang);
+  return a.onBehalfOf ? `${who} (${t('on behalf of')} ${dataText(a.onBehalfOf, lang)})` : who;
+}
+
 export function plumbingView(i: PlumbingInput, t: T, lang: Lang): PlumbingView {
   const kinds = i.activity.map((a) => a.kind);
   const chips = activityChips(kinds);
@@ -299,7 +305,7 @@ export function plumbingView(i: PlumbingInput, t: T, lang: Lang): PlumbingView {
     chips: chips.map((c) => ({ value: c.value ?? '', label: activityChipT(c.label, t, lang), count: String(c.count), href: integrationsHref({ source: c.value }) })),
     chipValue: i.source ?? '',
     // R-184 (NEW-D1-2): the text from its message key in the viewer's language, else as written (typed values as typed).
-    activity: rows.map((a, n) => ({ key: `${a.occurredAt}-${n}`, icon: ACTIVITY_ICON[a.kind] ?? 'arrows-clockwise', who: dataText(a.who, lang), what: activityWhatT(a, t, lang), when: t(a.when) })),
+    activity: rows.map((a, n) => ({ key: `${a.occurredAt}-${n}`, icon: ACTIVITY_ICON[a.kind] ?? 'arrows-clockwise', who: actorWhoT(a, t, lang), what: activityWhatT(a, t, lang), when: t(a.when) })),
     connectors: i.connectors.map((c) => {
       const outbox = outboxT(c.pending, c.failed, lang);
       const volume = volumeT(c.lastVolume, t, lang);
@@ -322,7 +328,7 @@ export function plumbingView(i: PlumbingInput, t: T, lang: Lang): PlumbingView {
     imports: i.imports.map((f) => ({ name: t(f.name), description: t(f.description), icon: importIcon(f.icon), direction: f.direction })),
     // R-184: the trail is not passed through the segment translator — its generic shapes are rendered, typed values kept.
     audit: ratesMaskedAudit(i.audit, i.ratesVisible).map((a, n) => ({
-      key: `${a.occurredAt}-${n}`, when: t(a.when), who: dataText(a.who, lang), object: auditObjectT(a.object, t, lang), change: auditChangeT(a, t, lang),
+      key: `${a.occurredAt}-${n}`, when: t(a.when), who: actorWhoT(a, t, lang), object: auditObjectT(a.object, t, lang), change: auditChangeT(a, t, lang),
       area: auditAreaT(a.area, t, lang),
     })),
     auditPager: i.auditPage ? pagerView(i.auditPage.page, i.auditPage.pages, (n) => integrationsHref({ view: 'audit', page: n }), t) : null,
