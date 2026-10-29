@@ -133,7 +133,36 @@ export function activityWhatT(a: Keyed & { what: string }, t: T, lang: Lang): st
   }
   const added = /^Connector (.+) added by IT · not connected yet$/.exec(a.what);
   if (added) return `Connecteur ${dataText(added[1], lang)} ajouté par l’IT · pas encore connecté`;
+  // R-157: the other connector and import texts Keystone writes (Cursus requests and staff directory, Sage X3 push, imports).
+  const connector = connectorActivityFr(a.what, t, lang);
+  if (connector != null) return connector;
   return fieldsText(a.what, t, lang);
+}
+
+/** French of the connector / import activity texts (R-157); null when `what` is not one of them. Names and numbers as typed. */
+function connectorActivityFr(what: string, t: T, lang: Lang): string | null {
+  const d = (s: string) => dataText(s, lang);
+  const travel = /^Travel request sent to Cursus · (.+)$/.exec(what);
+  if (travel) return `Demande de déplacement envoyée à Cursus · ${d(travel[1])}`;
+  const directory = /^Staff directory imported from Cursus · (\d+) matched · (\d+) created(?: · (\d+) to check)?$/.exec(what);
+  if (directory)
+    return `Annuaire du personnel importé de Cursus · ${plural(+directory[1], 'rapprochée', 'rapprochées')} · ${plural(+directory[2], 'créée', 'créées')}`
+      + (directory[3] ? ` · ${directory[3]} à vérifier` : '');
+  const push = /^Simulated push of (\S+) to Sage X3 \(not connected\) · (.+)$/.exec(what);
+  if (push) return `Envoi simulé de ${push[1]} vers Sage X3 (non connecté) · ${d(push[2])}`;
+  const pid = /^Imported P&ID tags · (\S+) rev (\S+)$/.exec(what);
+  if (pid) return `Repères P&ID importés · ${pid[1]} rév. ${d(pid[2])}`;
+  const doc = /^Imported (\S+) rev (\S+) · (.+)$/.exec(what);
+  if (doc) return `${doc[1]} rév. ${d(doc[2])} importé · ${t(doc[3])}`;
+  const job = /^(.+?) · (.+) imported(?: into (\S+))?(?: · (\d+) activities| · (\d+) created · (\d+) updated)$/.exec(what);
+  if (job) {
+    const into = job[3] ? ` dans ${job[3]}` : '';
+    const count = job[4] != null ? plural(+job[4], 'activité', 'activités') : `${plural(+job[5], 'créé', 'créés')} · ${plural(+job[6], 'mis à jour', 'mis à jour')}`;
+    return `${t(job[1])} · ${d(job[2])} importé${into} · ${count}`;
+  }
+  const file = /^Imported (\S+)$/.exec(what);
+  if (file) return `Import de ${d(file[1])}`;
+  return null;
 }
 
 /** Lone words of a change ("added", "enabled"…) in French. */

@@ -132,11 +132,14 @@ export const PROGRESS_STATUS: Record<ProgressStatus, { label: string; className:
 export type BarTone = 'done' | 'behind' | 'normal';
 export const barTone = (pct: number, behind: boolean): BarTone => (pct === 100 ? 'done' : behind ? 'behind' : 'normal');
 
-/** Drawer status tag (logic 4022) — different labels and classes from the table (docs/spec/02 Q-6). */
+/**
+ * Drawer status tag (logic 4022). The prototype used other classes than the table (docs/spec/02 Q-6); the owner chose one
+ * colour per status everywhere (X-13b, R-154), so the classes are the table's (`PROGRESS_STATUS`).
+ */
 export function drawerStatus(pct: number): { label: string; className: string } {
-  if (pct === 100) return { label: 'Complete', className: 'tag tag-neutral' };
-  if (pct > 0) return { label: `In progress · ${pct}%`, className: 'tag tag-accent' };
-  return { label: 'Not started', className: 'tag tag-outline' };
+  if (pct === 100) return { label: 'Complete', className: PROGRESS_STATUS.completed.className };
+  if (pct > 0) return { label: `In progress · ${pct}%`, className: PROGRESS_STATUS.in_progress.className };
+  return { label: 'Not started', className: PROGRESS_STATUS.not_started.className };
 }
 
 /** Clamp a typed % complete: parseInt, 0 when invalid, 0..100. */

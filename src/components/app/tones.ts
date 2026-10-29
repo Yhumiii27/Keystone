@@ -107,12 +107,12 @@ export const STATUS_TONES = {
   stageMode: T({ forced: 'accent', auto: 'neutral' }, 'neutral'),
   /** Plan activity row statusClass (4007). */
   activity: T({ behind: 'accent', in_progress: 'outline', completed: 'neutral', not_started: 'muted' }, 'muted'),
-  /** Selected-activity drawer (4020) — inverted vs. the row (Q-6). */
-  activityDetail: T({ in_progress: 'accent', not_started: 'outline', completed: 'neutral' }, 'outline'),
+  /** Selected-activity drawer (4020). The prototype inverted it vs. the row (02 Q-6); harmonised with `activity` (owner, X-13b). */
+  activityDetail: T({ behind: 'accent', in_progress: 'outline', completed: 'neutral', not_started: 'muted' }, 'muted'),
   /** Schedule milestone (3856). */
   milestone: T({ late: 'accent', done: 'neutral' }, 'outline'),
-  /** Budget › Change requests list (4053) — differs from change control (Q-5). */
-  budgetChange: T({ approved: 'accent', pending: 'outline', in_review: 'outline' }, 'neutral'),
+  /** Budget › Change requests list (4053). The prototype differed from change control (02 Q-5); harmonised with `change` (owner, X-13b): approved = neutral, awaiting a decision = accent. */
+  budgetChange: T({ approved: 'neutral', pending: 'accent', in_review: 'accent', rejected: 'outline', draft: 'outline' }, 'outline'),
   /** Change control crTag (4594). */
   change: T({ in_review: 'accent', approved: 'neutral' }, 'outline'),
   /** CR approval chain step (4609). */

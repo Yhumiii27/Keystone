@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { money, moneyEur } from '@/lib/format';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
+import { dataText } from '@/i18n/data-text';
 import d4 from '@/server/dal/delivery4.golden.json';
 import golden from '@/features/bom/bom.golden.json';
 import {
@@ -103,6 +104,20 @@ describe('flat list (bomRows, bomKpis, filters, sorts)', () => {
       expect([rows.map((r) => r.ref), `${rows.length} / ${its.length} articles`], k).toEqual([EN.filters[k].refs, EN.filters[k].count]);
     }
     expect(filterBomLines(its, { q: '  VFD ' }).map((r) => r.ref)).toEqual(['EL-VFD-200']); // trimmed (the prototype did not trim)
+  });
+
+  it('R-157: the search also reads the displayed (French) article name and ignores accents', () => {
+    const its = items('HLT-026');
+    const fr = (l: { name: string }) => dataText(l.name, 'fr');
+    const line = its.find((l) => fr(l) !== l.name && fr(l).split(/\s+/).some((w) => w.length > 4 && !l.name.toLowerCase().includes(w.toLowerCase())))!;
+    expect(line).toBeDefined();
+    const word = fr(line).split(/\s+/).find((w) => w.length > 4 && !line.name.toLowerCase().includes(w.toLowerCase()))!;
+    expect(filterBomLines(its, { q: word }).map((r) => r.ref)).not.toContain(line.ref); // the English name alone misses it
+    expect(filterBomLines(its, { q: word }, fr).map((r) => r.ref)).toContain(line.ref);
+    // Case and accents are folded: "ÉLECTRIQUE" finds "électrique", "cable" finds "Câble".
+    const folded = word.normalize('NFD').replace(/\p{M}/gu, '').toUpperCase();
+    expect(filterBomLines(its, { q: folded }, fr).map((r) => r.ref)).toContain(line.ref);
+    expect(filterBomLines([{ ...line, name: 'Câble blindé' }], { q: 'cable blinde' }).length).toBe(1);
   });
 
   it('sorts: every column in both directions; header clicks (same column flips, Total starts descending)', () => {

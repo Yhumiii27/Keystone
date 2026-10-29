@@ -25,3 +25,46 @@ a:hover {
 button {
   font: inherit;
 }
+
+/* R-157: a tag rendered as a <button> keeps the tag's ground — the outline tag has none (not the browser's grey). */
+button.tag-outline {
+  background: transparent;
+}
+
+/* R-183 (WCAG 2.4.1): skip link, off screen until it has the keyboard focus. */
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -48px;
+  z-index: 1000;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-accent-300);
+  border: 1px solid var(--color-accent);
+  text-decoration: none;
+}
+.skip-link:focus {
+  top: 12px;
+}
+
+/* The main region takes the focus from the skip link and the focus keeper without drawing a ring around the page. */
+main:focus:not(:focus-visible) {
+  outline: none;
+}
+main[tabindex='-1']:focus {
+  outline: none;
+}
+
+/* Text for screen readers only (a status a colour or a dot shows; R-154). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

@@ -286,9 +286,11 @@ export function Notifications({ items, role, emailOn = false }: { items: Notific
                     setOpen(false);
                   }}
                 >
-                  <span className={cx(styles.dot, !read && styles.dotOn)} />
+                  <span className={cx(styles.dot, !read && styles.dotOn)} aria-hidden />
+                  {/* R-154: the unread dot is read out too. */}
+                  {!read && <span className="sr-only">{t('Unread')}</span>}
                   <span className={styles.notifIcon}>
-                    <I />
+                    <I aria-hidden />
                   </span>
                   <span className={styles.stack}>
                     <span className={styles.notifText}>{n.title}</span>

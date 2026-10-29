@@ -215,6 +215,17 @@ const FR_NAMED = new RegExp(
   `^(${OWNER_NAME})\\s+(?:doit|devra|va|se\\s+charge\\s+d(?:e\\s+|${AP})|s${AP}occupe\\s+d(?:e\\s+|${AP})|prend\\s+l${AP}action\\s+d(?:e\\s+|${AP}))\\s*(?:aussi\\s+|également\\s+|ensuite\\s+)?([a-zà-ÿ].*)$`,
   'u',
 );
+/**
+ * R-157: an action addressed to someone — "tu vas / tu dois / vous allez / vous devez …", "tu te charges de …", "you'll /
+ * you need to …". The owner is the person named before it ("Paul, tu vas …"), else nobody (to assign): never the speaker.
+ */
+const SECOND_PERSON = new RegExp(
+  `^(?:tu\\s+vas|tu\\s+dois|tu\\s+devras|vous\\s+allez|vous\\s+devez|vous\\s+devrez|tu\\s+te\\s+charges\\s+d(?:e\\s+|${AP})|tu\\s+t${AP}occupes\\s+d(?:e\\s+|${AP})|vous\\s+vous\\s+chargez\\s+d(?:e\\s+|${AP})|vous\\s+vous\\s+occupez\\s+d(?:e\\s+|${AP})|you\\s*(?:${AP}ll|will|are\\s+going\\s+to|${AP}re\\s+going\\s+to|need\\s+to|have\\s+to|must))\\s*(?:aussi\\s+|également\\s+|ensuite\\s+|also\\s+|then\\s+)?(?!\\s*${FLOW}(?![\\p{L}]))(.+)$`,
+  'iu',
+);
+const VOCATIVE = new RegExp(`^(${OWNER_NAME})\\s*,\\s*(.+)$`, 'u');
+const LEAD_RE = new RegExp(`^${LEAD}`, 'iu');
+
 const FR_NAMED_ANY = new RegExp(`(?:[àa]\\s+charge\\s+d(?:e\\s+|${AP})|action\\s+(?:pour|[àa])\\s+|il\\s+faut\\s+qu(?:e\\s+|${AP}))(${OWNER_NAME})`, 'u');
 
 const capitalise = (s: string) => s.charAt(0).toLocaleUpperCase() + s.slice(1);
@@ -243,6 +254,9 @@ function commitment(c: Clause, ctx: Ctx, s: string): ProposalDraft | null {
   if ((m = EN_SELF.exec(s) ?? EN_LET_ME.exec(s) ?? FR_SELF.exec(s))) return action(c, ctx, c.speaker, m[m.length - 1]);
   if (FR_FUTURE.test(s)) return action(c, ctx, c.speaker, s.replace(new RegExp(`^${LEAD}`, 'iu'), ''));
   let owner: string | null;
+  const lead = s.replace(LEAD_RE, '');
+  const voc = VOCATIVE.exec(lead);
+  if ((m = SECOND_PERSON.exec(voc ? voc[2] : lead))) return action(c, ctx, voc ? namedOwner(voc[1], ctx.known) : null, m[m.length - 1]);
   if ((m = EN_NAMED.exec(s) ?? FR_NAMED.exec(s)) && (owner = namedOwner(m[1], ctx.known))) return action(c, ctx, owner, m[2]);
   if ((m = FR_NAMED_ANY.exec(s)) && (owner = namedOwner(m[1], ctx.known))) return action(c, ctx, owner, s);
   return null;

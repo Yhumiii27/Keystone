@@ -153,7 +153,7 @@ describe('R-114 / R-115 Server Functions', () => {
     const [audit] = await listAudit({ projectCode: HLT, limit: 1 });
     expect([audit.who, audit.object, audit.change]).toEqual(['Gabriel Comte', 'D-016', 'status: Rejected → In progress · revision B → C']);
     // A second click on the stale "Start next revision" does nothing.
-    expect(await moveDeliverableAction({ projectCode: HLT, number: 'D-016', to: 'in_progress' })).toEqual({ ok: false, error: 'This step is not available any more' });
+    expect(await moveDeliverableAction({ projectCode: HLT, number: 'D-016', to: 'in_progress' })).toEqual({ ok: false, error: 'D-016 · This deliverable has moved to another step' });
     expect((await getDeliverable(HLT, 'D-016'))!.revision).toBe('C');
     // Rev C: internal review, submit, rejected again, then rev D accepted.
     expect((await moveDeliverableAction({ projectCode: HLT, number: 'D-016', to: 'internal_review' })).ok).toBe(true);

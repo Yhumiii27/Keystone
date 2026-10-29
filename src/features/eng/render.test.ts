@@ -58,7 +58,7 @@ function synthesisShape(lang: Lang) {
   return {
     kpis: v.kpis,
     from: v.from,
-    matrix: v.matrix.map((r) => ({ label: r.label, cells: r.cells.map((c) => ({ bg: c.bg, items: c.items.map((i) => omit(i, 'key')) })) })),
+    matrix: v.matrix.map((r) => ({ label: r.label, cells: r.cells.map((c) => ({ bg: c.bg, items: c.items.map((i) => omit(i, 'key', 'state')) })) })), // R-154: `state` (the dot in words) is not in the golden
     discCards: v.discCards.map((d) => ({ label: d.label, lead: d.lead, tools: d.tools, pct: d.pct, relText: d.relText, openText: d.openText, openColor: d.openColor })),
     gate: { cls: v.gate.cls, text: v.gate.text, items: v.gate.items.map((c) => ({ id: c.id, title: c.title, ruleLabel: c.ruleLabel, lead: c.lead, status: c.status, stClass: c.stClass, sevDot: c.sevDot })) },
     changes: v.changes.map((c) => omit(c, 'key')),

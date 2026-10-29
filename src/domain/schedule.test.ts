@@ -231,8 +231,9 @@ describe('row derivations', () => {
   });
   it('drawer status (labels/classes differ from the table)', () => {
     expect(drawerStatus(100)).toEqual({ label: 'Complete', className: 'tag tag-neutral' });
-    expect(drawerStatus(72)).toEqual({ label: 'In progress · 72%', className: 'tag tag-accent' });
-    expect(drawerStatus(0)).toEqual({ label: 'Not started', className: 'tag tag-outline' });
+    // X-13b / R-154: same classes as the table (the prototype inverted them, 02 Q-6).
+    expect(drawerStatus(72)).toEqual({ label: 'In progress · 72%', className: 'tag tag-outline' });
+    expect(drawerStatus(0)).toEqual({ label: 'Not started', className: 'text-muted' });
   });
   it('relationship text', () => {
     expect([relText('FS', 0), relText('FS', 10), relText('FS', -5), relText('FF', 5)]).toEqual(['FS', 'FS +10d', 'FS -5d', 'FF +5d']);

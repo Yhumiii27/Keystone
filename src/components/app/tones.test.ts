@@ -55,7 +55,11 @@ describe('tones', () => {
     expect(statusTone('site', 'go_with_reserve')).toBe('outline');
     expect(statusTone('punch', 'open')).toBe('accent');
     expect(statusTone('change', 'draft')).toBe('outline');
-    expect(statusTone('budgetChange', 'approved')).toBe('accent');
+    // X-13b / R-154: harmonised with change control (the prototype had approved = accent here, 02 Q-5).
+    expect(statusTone('budgetChange', 'approved')).toBe('neutral');
+    expect(statusTone('budgetChange', 'in_review')).toBe(statusTone('change', 'in_review'));
+    expect(statusTone('budgetChange', 'rejected')).toBe(statusTone('change', 'rejected'));
+    expect(statusTone('activityDetail', 'in_progress')).toBe(statusTone('activity', 'in_progress'));
     expect(statusTone('activity', 'not_started')).toBe('muted');
     expect(statusTone('milestone', 'at_risk')).toBe('outline');
     expect(statusTone('po', null)).toBe('muted');

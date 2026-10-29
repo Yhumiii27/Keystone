@@ -29,3 +29,7 @@
 .neededSub { font-size: 11px; }
 .actions { text-align: right; white-space: nowrap; }
 .nowrap { white-space: nowrap; }
+
+/* R-157: a commissioning cell blocked by an interface links to its row (#IF-02). */
+.row:target { background: var(--color-accent-900); }
+.row { scroll-margin-top: 96px; }

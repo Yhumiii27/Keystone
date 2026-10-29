@@ -305,7 +305,11 @@ export function planImport(raw: EngRaw, target: { consumer: Discipline; document
 
 export interface KpiV { label: string; value: string | number; sub: string; color: string }
 
-export interface PillV { doc: string; label: string; sub: string; color: string; border: string; dot: string; dotBorder: string }
+export interface PillV {
+  doc: string; label: string; sub: string; color: string; border: string; dot: string; dotBorder: string;
+  /** R-154: what the dot shows, in words (an input: outdated / acknowledged / not acknowledged); absent when `sub` says it. */
+  state?: string;
+}
 export interface MatrixCellV { from: DocRecipient; bg: string; items: PillV[] }
 export interface MatrixRowV { to: DocRecipient; label: string; cells: MatrixCellV[] }
 
@@ -363,6 +367,7 @@ function cellItems(reg: EngRegister, from: DocRecipient, to: DocRecipient): Pill
         border: r.outdated ? ENG_COLOR.accent700 : ENG_COLOR.n800,
         dot: r.outdated ? ENG_COLOR.accent : r.acknowledged ? ENG_COLOR.n300 : ENG_COLOR.n500,
         dotBorder: ENG_COLOR.transparent,
+        state: r.outdated ? 'Outdated revision' : r.acknowledged ? 'Acknowledged' : 'Not acknowledged',
       }));
   }
   return reg.deliverables
