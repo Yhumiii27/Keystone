@@ -8,21 +8,21 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-29 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 118 faits, 28 en cours, 63 à faire, sur 209 points.
+**Avancement** : 121 faits, 27 en cours, 61 à faire, sur 209 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
 | Bloquant production | 15 | ≈ 102 |
 | Prochaine étape | 20 | ≈ 168 |
 | À décider | 36 | ≈ 329 |
-| Plus tard | 20 | ≈ 74 |
-| **Total** | **91** | **≈ 672** |
+| Plus tard | 17 | ≈ 62 |
+| **Total** | **88** | **≈ 660** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
-| Non commencé | 41 |
+| Non commencé | 38 |
 | Partiel | 10 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
@@ -43,7 +43,7 @@ L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il
 | Portefeuille, pilotage et indicateurs | 0 | 0 | 2 | 0 | 2 | 8 |
 | Portail client | 0 | 0 | 1 | 2 | 3 | 3 |
 | SAV et parc installé | 0 | 0 | 0 | 1 | 1 | 3 |
-| Ergonomie, langues et accessibilité | 0 | 1 | 1 | 3 | 5 | 10 |
+| Ergonomie, langues et accessibilité | 0 | 1 | 1 | 0 | 2 | 13 |
 | Dette technique | 0 | 1 | 0 | 3 | 4 | 3 |
 | Nouveaux modules demandés ou proposés (à valider) | 0 | 0 | 9 | 0 | 9 | 1 |
 
@@ -865,7 +865,7 @@ Donner aux réclamations une fiche détaillée où le SAV fait avancer les statu
 « Coût garantie depuis le début de l’année » ne doit compter que les réclamations non facturables de l’année civile en cours, selon reportedOn. L’alerte « fin de garantie < 90 jours » et le statut doivent suivre la garantie réellement en vigueur : la fin prolongée (extendedUntil), et le passage automatique à « Hors garantie » à l’échéance, alors que le statut est aujourd’hui stocké et figé. Mettre à jour les tests golden en citant NEW-D5-2. L’« année en cours » dépend encore du « maintenant » du prototype (NOW_ISO/PG_NOW = 30 sept. 2026).  
 *Avancement : Livraison 8 : coût garantie de l’année civile, extension en vigueur (NEW-D5-2). · Sources : NEW-D5-2, Q-8, DELIVERY-5.md §6*
 
-### 2.15 Ergonomie, langues et accessibilité (5 restants, 10 faits)
+### 2.15 Ergonomie, langues et accessibilité (2 restants, 13 faits)
 
 **R-147 · Ajouter un libellé anglais à chaque terme métier** — *Prochaine étape · non commencé · effort M*  
 Étapes du cycle de vie, livrables d’étape, jalons, modèles de projet (descriptions de l’assistant) et données chantier doivent avoir un libellé anglais en mode EN ; ils s’affichent aujourd’hui en français dans les deux langues. Proposer le glossaire et le faire valider.  
@@ -874,18 +874,6 @@ Donner aux réclamations une fiche détaillée où le SAV fait avancer les statu
 **R-209 · Multilingue au-delà du français et de l’anglais pour les filiales pays** — *À décider · non commencé · effort L*  
 Ajouter d’autres langues d’interface (espagnol, portugais… selon les filiales) : dictionnaires supplémentaires dans src/i18n, règles de complétude par langue, libellés des termes métier (R-147) et choix de langue par utilisateur (R-018). Standard du marché. Aujourd’hui FR / EN seulement. Analyse comparative du 25 oct. 2026 : besoin transverse, à décider selon les langues des filiales utilisatrices.  
 *Avancement : Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire. · Attend : Liste des langues des filiales, validation du responsable produit · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
-
-**R-154 · Harmoniser les couleurs de statut et doubler chaque couleur d’un texte** — *Plus tard · non commencé · effort M*  
-Un même statut a la même couleur sur tous les écrans (par exemple CR approuvée en neutre, activité en cours en contour), et aucune information n’est portée par la seule couleur (WCAG AA). Cela demande un audit des points et pastilles sans libellé.  
-*Sources : X-13a, X-13b, 02 Q-1, Q-5, Q-6, 10 OQ9, DELIVERY-5.md §7*
-
-**R-157 · Corriger les finitions d’ergonomie relevées par les revues** — *Plus tard · non commencé · effort M* · **en cours (Livraison 8)**  
-Reprendre les petits défauts listés aux livraisons 1–6 : messages de refus génériques, textes des connecteurs en anglais en mode français, recherche de la nomenclature limitée aux noms anglais, colonnes Début/Fin exportées en texte, IF-02 / IF-05 non cliquables, boutons de statut « outline » au fond gris du navigateur, mention « Modifiable » montrée en lecture seule, focus perdu après « Marquer payée », vues Décisions/Actions vides sans message, et l’analyseur local de transcriptions qui ignore les actions à la 2e personne (« tu vas », « vous allez »).  
-*Avancement : Livraison 8 : textes des connecteurs en français dans Activité & intégrations (point 2) ; les autres finitions restent à faire. · Sources : X-13b, S-10, DELIVERY-1.md §6, DELIVERY-3.md §5, DELIVERY-4.md §6, DELIVERY-5.md §6, DELIVERY-6.md §6 Minor points, docs/delivery-6/notes-exports.md §7.4*
-
-**R-183 · Auditer l'accessibilité (WCAG 2.1 AA) et automatiser des contrôles axe** — *Plus tard · non commencé · effort M*  
-La spécification vise WCAG 2.1 AA avec des contrôles automatiques (axe) et des parcours au clavier, mais aucun outil n'est en place et seules des corrections ponctuelles ont été faites. Faire un audit complet (contraste accent-300, rôles ARIA des onglets et segments, focus après action, lien d'évitement), corriger, puis ajouter les contrôles axe aux tests de bout en bout.  
-*Sources : 00 §7.15, 00 §8.14, X-13a, X-7, DELIVERY-5.md §6 (focus non déplacé, initiales d'avatar lues avant le nom)*
 
 **~~R-146 · Rendre Keystone utilisable sur tablette~~** — *Prochaine étape · non commencé · effort L* · **fait (Livraison 7)**  
 Menu latéral repliable et mises en page tablette, en commençant par Chantier, Réserves et Livraisons, en ligne. Le shell est figé à 232 px sans point de rupture ; c’est un préalable à toute application chantier hors ligne (P8).  
@@ -915,6 +903,10 @@ Afficher « Demande RQ-xxx envoyée » même quand on est redirigé vers les dem
 Supprimer le sous-titre « projet courant » des formulaires de listes communes : types de machine, connecteurs, nouvel article, synchro du coffre PDM, ajout de machine et nouvelle réclamation de garantie. Le garder sur « Nouvelle consultation » : la RFQ créée est bien rattachée au projet courant.  
 *Avancement : Livraison 8 : plus de nom de projet sur les formulaires qui ne visent pas un projet (X-10). · Sources : X-10, 01 OQ14, 06 OQ14, DELIVERY-4.md §7.1, DELIVERY-5.md §7.1*
 
+**~~R-154 · Harmoniser les couleurs de statut et doubler chaque couleur d’un texte~~** — *Plus tard · non commencé · effort M* · **fait (Livraison 9)**  
+Un même statut a la même couleur sur tous les écrans (par exemple CR approuvée en neutre, activité en cours en contour), et aucune information n’est portée par la seule couleur (WCAG AA). Cela demande un audit des points et pastilles sans libellé.  
+*Avancement : Mêmes couleurs pour un même statut (X-13b « Harmoniser ») et aucune information portée par la seule couleur (icône d’alerte, textes). · Sources : X-13a, X-13b, 02 Q-1, Q-5, Q-6, 10 OQ9, DELIVERY-5.md §7*
+
 **~~R-155 · Corriger le message de zone vide des listes de machines~~** — *Plus tard · non commencé · effort S* · **fait (Livraison 8)**  
 Parc installé et Garantie doivent afficher « Aucune machine dans cette zone » au lieu du message prévu pour les projets ; ajouter la traduction et mettre à jour les tests.  
 *Avancement : Livraison 8 : message de zone vide des listes de machines (X-16). · Sources : X-16, 01 §7.2, 07 A.1, 12 §5, DELIVERY-5.md §6, §7*
@@ -922,6 +914,14 @@ Parc installé et Garantie doivent afficher « Aucune machine dans cette zone »
 **~~R-156 · Traduire l’étape « Handover » par « Transfert »~~** — *Plus tard · partiel · effort S* · **fait (Livraison 8)**  
 L’étape « Handover » de l’écran Mise en service s’affiche « Livraison » ; la traduire par « Transfert » et aligner les phrases dérivées encore en « livraison » / « réception » (« Livraison prévue », chemin critique, « j sur la livraison », jalons du portefeuille, alertes). Le « Dossier de transfert » est déjà traduit ainsi.  
 *Avancement : Livraison 8 : l’étape Handover se dit « Transfert » en français (NEW-D5-3 'a'). · Sources : NEW-D5-3, DELIVERY-5.md §6, §7, 11*
+
+**~~R-157 · Corriger les finitions d’ergonomie relevées par les revues~~** — *Plus tard · non commencé · effort M* · **fait (Livraison 9)**  
+Reprendre les petits défauts listés aux livraisons 1–6 : messages de refus génériques, textes des connecteurs en anglais en mode français, recherche de la nomenclature limitée aux noms anglais, colonnes Début/Fin exportées en texte, IF-02 / IF-05 non cliquables, boutons de statut « outline » au fond gris du navigateur, mention « Modifiable » montrée en lecture seule, focus perdu après « Marquer payée », vues Décisions/Actions vides sans message, et l’analyseur local de transcriptions qui ignore les actions à la 2e personne (« tu vas », « vous allez »).  
+*Avancement : Messages de refus précis (Chantier, Qualité), textes des connecteurs en français, recherche de la nomenclature en français sans accents, vraies dates dans les exports, IF-xx cliquables, boutons « outline », lecture seule des pondérations, focus conservé, vues vides des réunions, actions à la 2e personne. · Sources : X-13b, S-10, DELIVERY-1.md §6, DELIVERY-3.md §5, DELIVERY-4.md §6, DELIVERY-5.md §6, DELIVERY-6.md §6 Minor points, docs/delivery-6/notes-exports.md §7.4*
+
+**~~R-183 · Auditer l'accessibilité (WCAG 2.1 AA) et automatiser des contrôles axe~~** — *Plus tard · non commencé · effort M* · **fait (Livraison 9)**  
+La spécification vise WCAG 2.1 AA avec des contrôles automatiques (axe) et des parcours au clavier, mais aucun outil n'est en place et seules des corrections ponctuelles ont été faites. Faire un audit complet (contraste accent-300, rôles ARIA des onglets et segments, focus après action, lien d'évitement), corriger, puis ajouter les contrôles axe aux tests de bout en bout.  
+*Avancement : Contrôles axe (WCAG 2.1 AA) dans les tests de bout en bout existants (tous les écrans du directeur, écrans principaux des autres profils), lien d’évitement, contrastes corrigés. · Sources : 00 §7.15, 00 §8.14, X-13a, X-7, DELIVERY-5.md §6 (focus non déplacé, initiales d'avatar lues avant le nom)*
 
 **~~R-184 · Contrôler automatiquement la complétude de la traduction française~~** — *Plus tard · non commencé · effort M* · **fait (Livraison 8)**  
 L'interface passe par le moteur de traduction du prototype (dictionnaire exact puis règles regex) sans aucun test qui vérifie que chaque libellé affiché a sa traduction ; des textes écrits par le DAL restent en anglais en français. Ajouter un contrôle de complétude dans les tests et stocker les textes système (journal, synchronisations) sous forme de code et paramètres plutôt qu'en phrases anglaises.  
@@ -1001,6 +1001,7 @@ Module demandé mais à cadrer avec le responsable produit avant construction : 
 
 ## 3. Mises à jour
 
+- 2026-10-29 — R-157, R-154 et R-183 faits : finitions d’ergonomie, couleurs de statut harmonisées, accessibilité WCAG 2.1 AA avec contrôles axe.
 - 2026-10-29 — R-010 fait : verrouillage optimiste des fiches (« modifiée entre-temps par X »), numérotation et contrôles sûrs en concurrence (migrations 0068-0069).
 - 2026-10-29 — R-051 fait : suppléance des validations sur une période ; R-064 : partie technique vérifiée, attend S-5.
 - 2026-10-29 — R-015 fait et R-036 avancé : notifications par e-mail (immédiat / résumé quotidien, préférences), avis aux personnes concernées, alertes d’indicateur (migration 0066).
