@@ -29,6 +29,7 @@ import { vigieNcrUrl } from '@/server/integrations/vigie/links';
 import { isClientContactOf, isIsoDate, optionalDate, optionalText, projectOf, requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
 import { afterPunchItemChange } from './shipment-reception';
 import { onProjectTeam } from './team-guard';
+import { notifyInspectionFailed } from './event-notices';
 
 export type { Actor };
 type Q = DB | Tx;
@@ -367,7 +368,7 @@ export async function recordItpResult(projectCode: string, number: string, input
   const comment = optionalText(input.comment, 'Comment', 1000);
   if (input.result !== 'passed' && !comment) throw new Error('A comment is required for a failure or reservations');
   const db = await getDb();
-  return db.transaction(async (tx) => {
+  const done = await db.transaction(async (tx) => {
     const p = await projectOf(tx, projectCode);
     const plans = await plansOf(tx, p.id);
     if (!plans.length) throw new Error(`No inspection plan on ${projectCode}`);
@@ -388,8 +389,11 @@ export async function recordItpResult(projectCode: string, number: string, input
       entityType: 'itp_inspection', entityId: i.id, projectId: p.id,
       activity: { text: `Recorded result ${label} for inspection ${number} ${i.name}`, kind: 'quality' },
     });
-    return number;
+    return { name: i.name, actorPersonId: who.personId };
   });
+  // R-015: a failure is told to the project's leads and its quality / engineering referents (after the commit, best effort).
+  if (input.result === 'failed') await notifyInspectionFailed(projectCode, { number, name: done.name, comment }, done.actorPersonId);
+  return number;
 }
 
 /** One inspection of a project's plans ("I-03", any equipment line); null when unknown. */

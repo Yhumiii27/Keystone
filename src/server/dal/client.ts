@@ -6,7 +6,7 @@ import 'server-only';
 // documents the Codex records shared with the client (documents.ts `listSharedDocuments`, acknowledged there).
 // R-137 (L-6): the project manager is notified of a new issue, takes it in charge (In progress), answers and closes it
 // from the project's Stakeholders & RACI screen; the client is notified of the answer and of the closure (Keystone
-// notifications; no e-mail is sent, X-6). The client sees the answer and the status, never the internal handling.
+// notifications, and the e-mail each person chose, R-036). The client sees the answer and the status, never the internal handling.
 import { and, asc, eq, inArray, or } from 'drizzle-orm';
 import { currentStep } from '@/domain/change-control';
 import { registerReconciliation } from '@/domain/cost-control';
@@ -195,7 +195,7 @@ export async function raiseClientIssue(projectCode: string, title: string, actor
     });
     return { number, pmPersonId: p.pmPersonId, raisedBy: who.personId };
   }).then(async (r) => {
-    // L-6: the project manager is told (Keystone notification; X-6: no e-mail is sent).
+    // L-6: the project manager is told (Keystone notification; R-036: and by e-mail as they chose).
     await notifyPersons([r.pmPersonId], r.raisedBy, {
       kind: 'request', title: ISSUE_NOTICE.raised, sub: `${r.number} · ${text}`, screen: 'stakeholders', params: { issue: r.number }, projectCode,
     });

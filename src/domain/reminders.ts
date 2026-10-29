@@ -21,6 +21,7 @@
 //   project (PM of record, co-PMs, deputies), and the portfolio overview to the directors. Sent by the first run of the week —
 //   Monday at the reminders hour; a Monday missed is caught up the next morning, never twice in a week.
 import { addDaysIso, daysBetweenIso, shortDateOfIso } from '@/server/db/codes';
+import { DEFAULT_NOTIFICATION_MODES, formOfModes, modesOfForm, modesLabel, normaliseModes, sameModes, type NotificationModes } from './notification-mail';
 
 // ── Preferences ───────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -33,10 +34,14 @@ export interface ReminderPrefs {
   offsets: number[];
   /** Remind once when the due date has passed. */
   overdue: boolean;
+  /** R-036: the e-mail of the other bell notifications, per family (src/domain/notification-mail.ts). */
+  notifications: NotificationModes;
 }
 
 /** Keystone's default until the director changes it in Settings (app setting `reminders.defaults`). */
-export const DEFAULT_REMINDER_PREFS: ReminderPrefs = { emailReminders: true, emailReports: true, offsets: [7, 1], overdue: true };
+export const DEFAULT_REMINDER_PREFS: ReminderPrefs = {
+  emailReminders: true, emailReports: true, offsets: [7, 1], overdue: true, notifications: { ...DEFAULT_NOTIFICATION_MODES },
+};
 
 /** Offsets a person may choose (days before the due date). */
 export const OFFSET_RANGE = { min: 0, max: 30, count: 4 } as const;
@@ -75,23 +80,29 @@ export function normalisePrefs(v: unknown, fallback: ReminderPrefs = DEFAULT_REM
     emailReports: bool(o.emailReports, fallback.emailReports),
     offsets: parseOffsets(o.offsets) ?? [...fallback.offsets],
     overdue: bool(o.overdue, fallback.overdue),
+    notifications: normaliseModes(o.notifications, fallback.notifications ?? DEFAULT_NOTIFICATION_MODES),
   };
 }
 
-/** Form values ("on" / "off", offsets preset) → preferences; null when a value is not one the form offers. */
-export function prefsOfForm(v: Record<string, unknown>): ReminderPrefs | null {
+/**
+ * Form values ("on" / "off", offsets preset, a mode per notification family) → preferences; null when a value is not one the form
+ * offers. A notification family left out keeps `fallback` (R-036).
+ */
+export function prefsOfForm(v: Record<string, unknown>, fallback: NotificationModes = DEFAULT_NOTIFICATION_MODES): ReminderPrefs | null {
   const onOff = (x: unknown) => (x === 'on' ? true : x === 'off' ? false : null);
   const emailReminders = onOff(v.emailReminders);
   const emailReports = onOff(v.emailReports);
   const overdue = onOff(v.overdue);
   const offsets = parseOffsets(v.offsets);
-  if (emailReminders == null || emailReports == null || overdue == null || !offsets) return null;
-  return { emailReminders, emailReports, offsets, overdue };
+  const notifications = modesOfForm(v, fallback);
+  if (emailReminders == null || emailReports == null || overdue == null || !offsets || !notifications) return null;
+  return { emailReminders, emailReports, offsets, overdue, notifications };
 }
 
 /** Preferences → the form's values. */
 export const formOfPrefs = (p: ReminderPrefs): Record<string, string> => ({
   emailReminders: p.emailReminders ? 'on' : 'off', emailReports: p.emailReports ? 'on' : 'off', offsets: p.offsets.join(','), overdue: p.overdue ? 'on' : 'off',
+  ...formOfModes(p.notifications),
 });
 
 /** The fields that differ (audit before / after, R-168). */
@@ -100,6 +111,7 @@ export function prefsChanges(before: ReminderPrefs, after: ReminderPrefs): { bef
   const a: Record<string, unknown> = {};
   for (const k of ['emailReminders', 'emailReports', 'overdue'] as const) if (before[k] !== after[k]) [b[k], a[k]] = [before[k], after[k]];
   if (before.offsets.join(',') !== after.offsets.join(',')) [b.offsets, a.offsets] = [offsetsLabel(before.offsets), offsetsLabel(after.offsets)];
+  if (!sameModes(before.notifications, after.notifications)) [b.notifications, a.notifications] = [modesLabel(before.notifications), modesLabel(after.notifications)];
   return Object.keys(a).length ? { before: b, after: a } : null;
 }
 
@@ -252,7 +264,7 @@ export interface MailT {
   dt: (typed: string) => string;
 }
 
-const MAIL_FOOT = 'Automatic message from Keystone · change your reminder and report e-mails from the notifications bell › Reminders & reports';
+const MAIL_FOOT = 'Automatic message from Keystone · change your reminder and report e-mails from the notifications bell › Notifications & reminders';
 
 /**
  * The e-mail of one person's reminders (French by default): greeting, the items overdue then by window, each with its project,

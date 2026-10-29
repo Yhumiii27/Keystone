@@ -166,6 +166,32 @@ const RUNS: Record<JobName, () => Promise<JobOutcome>> = {
       warn: r.emailFailed > 0,
     };
   },
+  // ── Delivery 9 · R-036: the immediate e-mails a crash or a restart left waiting; rows stuck "sending" given up (failed).
+  'notification-mails': async (): Promise<JobOutcome> => {
+    const m = await import('@/server/dal/notification-mail');
+    const expired = await m.expireStaleSending();
+    const r = await m.sendImmediateMails();
+    return {
+      summary: `Notification e-mails · ${r.claimed} waiting · ${r.sent} sent · ${r.failed} failed · ${r.skipped} not sent · ${expired} interrupted`,
+      counts: { claimed: r.claimed, sent: r.sent, failed: r.failed, skipped: r.skipped, expired }, warn: r.failed + expired > 0,
+    };
+  },
+  // ── Delivery 9 · R-036: the daily digest of the notifications not sent at once, one e-mail per person and day.
+  'notification-digest': async (): Promise<JobOutcome> => {
+    const r = await (await import('@/server/dal/notification-mail')).runNotificationDigest();
+    return {
+      summary: `Notification digest at ${r.today} · ${r.persons} persons · ${r.sent} notices sent · ${r.failed} failed · ${r.skipped} not sent`,
+      counts: { persons: r.persons, claimed: r.claimed, sent: r.sent, failed: r.failed, skipped: r.skipped }, warn: r.failed > 0,
+    };
+  },
+  // ── Delivery 9 · R-015: the portfolio alert rules as notices, once per alert while it lasts.
+  'indicator-alerts': async (): Promise<JobOutcome> => {
+    const r = await (await import('@/server/dal/event-notices')).runIndicatorAlerts();
+    return {
+      summary: `Indicator alerts at ${r.today} · ${r.alerts} active · ${r.raised} new · ${r.notified} persons notified · ${r.cleared} cleared`,
+      counts: { alerts: r.alerts, raised: r.raised, notified: r.notified, cleared: r.cleared },
+    };
+  },
 };
 
 export const JOB_DEFINITIONS: readonly JobDefinition[] = JOB_SCHEDULES.map((s) => ({ ...s, run: RUNS[s.name] }));

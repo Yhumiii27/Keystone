@@ -1,5 +1,5 @@
 import 'server-only';
-// Task notifications in Keystone's bell (X-6a, X-6b: no e-mail yet — R-036): the people @mentioned in a task comment (R-149,
+// Task notifications in Keystone's bell (X-6a; X-6b, R-036: and by e-mail as each person chose — at once by default): the people @mentioned in a task comment (R-149,
 // R-8b a) and the assignee of a task created for them by someone else (R-015: meeting follow-ups, Plan to-dos; tasks born from
 // resource requests are announced by the requests feature). Sent after the writer's transaction committed, never inside it
 // (createNotification has its own transaction): a failure is logged and never undoes the write. Titles are fixed English

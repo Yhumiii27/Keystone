@@ -145,6 +145,8 @@ describe('reminder jobs: once per morning', () => {
       ['site-prerequisite-alerts', '06:30'], ['undeclared-resource-alerts', '06:30'], ['cursus-tasks', '02:00'],
       // R-199: deadline reminders and weekly reports in the morning too.
       ['deadline-reminders', '06:30'], ['scheduled-reports', '06:30'],
+      // R-015, R-036: the indicator alerts and the notification digest.
+      ['indicator-alerts', '06:30'], ['notification-digest', '06:30'],
     ]);
     expect(entries.find((e) => e.name === 'vigie-outbox')).toMatchObject({ everyMs: 300_000, dailyAt: null });
   });

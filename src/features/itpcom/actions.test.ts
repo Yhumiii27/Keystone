@@ -151,7 +151,8 @@ describe('ITP · commissioning Server Functions', () => {
     viewer.role = 'director';
     expect(await planSatAction('NDC-031', { system: 'Structure', date: '10 Dec 2026' })).toEqual({ error: 'Unknown system' });
     expect(await planSatAction('NDC-031', { date: '' })).toEqual({ error: 'Date is required' });
-    expect(await planSatAction('NDC-031', { date: '3 Feb 2027', client: 'K. Doucouré' })).toEqual({ toast: 'SAT planned · invitation sent to the client' });
+    // R-015 / R-036: NDC-031's client has no client account in the demo — nobody to invite, the toast says so.
+    expect(await planSatAction('NDC-031', { date: '3 Feb 2027', client: 'K. Doucouré' })).toEqual({ toast: 'SAT planned · no client contact to invite' });
     expect(await getCommissioning('NDC-031')).toBeNull();
     const [audit] = await listAudit({ projectCode: 'NDC-031', limit: 1 });
     expect([audit.who, audit.object, audit.change, audit.area]).toEqual(['Marie Lefebvre', 'SAT · General', 'SAT planned 3 Feb 2027 · witnesses K. Doucouré', 'Commissioning']);
