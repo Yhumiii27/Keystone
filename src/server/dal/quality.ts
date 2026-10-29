@@ -25,6 +25,7 @@ import type { Tx } from '@/server/db/types';
 import { getVigieQualityConnector, type NcrProgressReceipt, type VigieNcr } from '@/server/integrations/vigie/quality-connector';
 import { vigieNcrListUrl, vigieNcrUrl, vigieReportNcrUrl } from '@/server/integrations/vigie/links';
 import { initialsOf, isClientContactOf, isIsoDate, managesProject, optionalText, projectOf, requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
+import { notifyDeliverableDecided, notifyDeliverableSubmitted } from './event-notices';
 
 export type { Actor, NcrProgressReceipt, VigieNcr };
 export { vigieNcrListUrl, vigieNcrUrl, vigieReportNcrUrl };
@@ -307,7 +308,7 @@ export async function moveDeliverable(
   if (actor.role === 'client') throw new Error('The client accepts or rejects submitted deliverables only');
   const day = on ?? (await businessToday());
   const db = await getDb();
-  await db.transaction(async (tx) => {
+  const done = await db.transaction(async (tx) => {
     const { p, d } = await loadOne(tx, projectCode, number);
     if (expected && d.status !== expected) throw new Error(`${number} has moved on`);
     if (PRODUCER_NEXT[d.status] !== to) throw new Error(`${number} cannot move from ${deliverableStatus.label(d.status)} to ${deliverableStatus.label(to)}`);
@@ -342,7 +343,10 @@ export async function moveDeliverable(
             ? { text: `Started revision ${revision} of deliverable ${number} ${d.title} after the client's rejection`, kind: 'quality' }
             : undefined,
     });
+    return { title: d.title, actorPersonId: who.personId };
   });
+  // R-015: a submission asks the client contacts to accept (after the commit, best effort).
+  if (to === 'submitted') await notifyDeliverableSubmitted(projectCode, { number, title: done.title }, done.actorPersonId);
 }
 
 /**
@@ -357,7 +361,7 @@ export async function decideDeliverable(
   const note = optionalText(comments, 'Comments');
   const day = on ?? (await businessToday());
   const db = await getDb();
-  await db.transaction(async (tx) => {
+  const done = await db.transaction(async (tx) => {
     const { p, d } = await loadOne(tx, projectCode, number);
     if (!(await isClientContactOf(tx, actor, p.clientId))) throw new Error('Only the client accepts or rejects deliverables');
     if (d.status !== 'submitted') throw new Error(`${number} is not submitted to the client`);
@@ -377,7 +381,10 @@ export async function decideDeliverable(
       entityType: 'deliverable', entityId: d.id, projectId: p.id,
       activity: { text: decision === 'accepted' ? `Accepted deliverable ${number} ${d.title} (PV signed)` : `Rejected deliverable ${number} ${d.title} · comments issued`, kind: 'client' },
     });
+    return { title: d.title, actorPersonId: who.personId };
   });
+  // R-015: the deliverable's R and the project's leads learn the client's decision (after the commit, best effort).
+  await notifyDeliverableDecided(projectCode, { number, title: done.title }, decision, done.actorPersonId);
 }
 
 export interface NewDeliverableInput {

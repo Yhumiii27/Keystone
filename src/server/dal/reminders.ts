@@ -232,7 +232,7 @@ export async function runDeadlineReminders(on?: string): Promise<ReminderRun> {
       const target = reminderTarget(list);
       code = await createNotification({
         kind: list.some((p) => p.slot.overdue) ? 'alert' : 'task', title: REMINDER_NOTICE_TITLE, sub: reminderNoticeSub(list), screen: target.screen, params: target.params,
-        projectCode: target.projectCode, audience: r.roles, toPersonIds: [personId],
+        projectCode: target.projectCode, audience: r.roles, toPersonIds: [personId], email: false,
       });
       run.persons++;
     } catch (e) {
@@ -267,7 +267,7 @@ async function sendReminderMail(
 export type SendKey = { personId: string; itemKey: string; slot: string; occurrence: string };
 
 /** Inserts the send rows; returns the keys this run claimed (`sendKeyText`; a conflict = already sent). */
-export async function claimSends(keys: readonly SendKey[], kind: 'reminder' | 'report', today: string): Promise<Set<string>> {
+export async function claimSends(keys: readonly SendKey[], kind: 'reminder' | 'report' | 'digest' | 'alert', today: string): Promise<Set<string>> {
   const db = await getDb();
   return db.transaction(async (tx) => {
     const got = new Set<string>();
