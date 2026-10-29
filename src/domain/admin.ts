@@ -295,10 +295,12 @@ export interface AuditCsvRow {
   reason?: string | null;
   before?: Record<string, unknown> | null;
   after?: Record<string, unknown> | null;
+  /** R-051 (P-7d): the approver a substitute decided for (the actor is the substitute). */
+  onBehalfOf?: string | null;
 }
 
 /** Column titles of the ISO 9001 audit CSV (EN source strings; the route translates them). */
-export const AUDIT_CSV_HEADERS: readonly string[] = ['When (UTC)', 'Who', 'Object', 'Change', 'Area', 'Project', 'User', 'Reason', 'Before', 'After'];
+export const AUDIT_CSV_HEADERS: readonly string[] = ['When (UTC)', 'Who', 'Object', 'Change', 'Area', 'Project', 'User', 'Reason', 'Before', 'After', 'On behalf of'];
 
 /** RFC 4180 cell; a cell starting with = + - @ (or a tab / CR) is prefixed with ' so a spreadsheet never runs it as a formula. */
 const csvCell = (raw: string) => {
@@ -312,13 +314,13 @@ const jsonCell = (v: Record<string, unknown> | null | undefined) => (v && Object
 /**
  * ISO 9001 export of the audit trail: one row per entry, newest first, RFC 4180 (comma separator, CRLF, quoted cells
  * when needed), timestamps in ISO 8601 UTC, values verbatim. R-168: after the prototype's columns, the user account that
- * acted (e-mail), the reason and the values before / after (JSON). `headers` = the column titles in the viewer's language.
+ * acted (e-mail), the reason and the values before / after (JSON); R-051: the approver a substitute decided for. `headers` = the column titles in the viewer's language.
  */
 export function auditCsv(rows: readonly AuditCsvRow[], headers: readonly string[] = AUDIT_CSV_HEADERS): string {
   if (headers.length !== AUDIT_CSV_HEADERS.length) throw new Error(`The audit CSV has ${AUDIT_CSV_HEADERS.length} columns`);
   const lines = [headers.map(csvCell).join(',')];
   for (const r of rows) {
-    lines.push([r.occurredAt, r.who, r.object, r.change, r.area, r.projectCode ?? '', r.userEmail ?? '', r.reason ?? '', jsonCell(r.before), jsonCell(r.after)].map(csvCell).join(','));
+    lines.push([r.occurredAt, r.who, r.object, r.change, r.area, r.projectCode ?? '', r.userEmail ?? '', r.reason ?? '', jsonCell(r.before), jsonCell(r.after), r.onBehalfOf ?? ''].map(csvCell).join(','));
   }
   return lines.join('\r\n') + '\r\n';
 }

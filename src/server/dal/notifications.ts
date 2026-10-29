@@ -135,6 +135,8 @@ export interface ActivityRow {
   messageParams: Record<string, unknown> | null;
   kind: ActivityKind;
   projectCode: string | null;
+  /** R-051 (P-7d): the approver a substitute acted for (`who` is the substitute); null otherwise. */
+  onBehalfOf?: string | null;
 }
 
 /** Activity feed, newest first (optionally one kind — the source chips). */
@@ -149,7 +151,7 @@ export async function listActivity(opts: { kind?: ActivityKind; limit?: number }
     .limit(opts.limit ?? 500);
   return rows.map(({ a, code }) => ({
     occurredAt: a.occurredAt.toISOString(), when: stampText(a.occurredAt), who: a.actorName, what: a.text, messageKey: a.messageKey, messageParams: a.messageParams,
-    kind: a.kind, projectCode: code,
+    kind: a.kind, projectCode: code, onBehalfOf: a.onBehalfOfName,
   }));
 }
 
@@ -181,6 +183,8 @@ export interface AuditRow {
   /** R-184: the system message the change text was built from (null for plain-text rows). */
   messageKey: string | null;
   messageParams: Record<string, unknown> | null;
+  /** R-051 (P-7d): the approver a substitute decided for (`who` is the substitute); null otherwise. */
+  onBehalfOf?: string | null;
 }
 
 /** Number of audit entries (R-017: the pager of the audit trail). */
@@ -205,7 +209,7 @@ export async function listAudit(opts: { limit?: number; offset?: number; project
     .offset(opts.offset ?? 0);
   return rows.map(({ a, code, email }) => ({
     occurredAt: a.occurredAt.toISOString(), when: stampText(a.occurredAt), who: a.actorName, object: a.objectRef, change: a.change, area: a.area, projectCode: code,
-    userEmail: email, reason: a.reason, before: a.before, after: a.after, messageKey: a.messageKey, messageParams: a.messageParams,
+    userEmail: email, reason: a.reason, before: a.before, after: a.after, messageKey: a.messageKey, messageParams: a.messageParams, onBehalfOf: a.onBehalfOfName,
   }));
 }
 
