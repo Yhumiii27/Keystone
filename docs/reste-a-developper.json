@@ -202,6 +202,10 @@
   {
    "date": "2026-10-29",
    "text": "R-198 et R-199 faits : Gantt interactif ; rappels d’échéances et rapports programmés (migration 0065)."
+  },
+  {
+   "date": "2026-10-29",
+   "text": "R-015 fait et R-036 avancé : notifications par e-mail (immédiat / résumé quotidien, préférences), avis aux personnes concernées, alertes d’indicateur (migration 0066)."
   }
  ],
  "items": [
@@ -638,9 +642,9 @@
     "src/server/db/codes.ts:290 types mention, task, eco, invoice, delivery, quality définis mais jamais produits"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8",
-    "note": "Livraison 8 : avis des demandes de modification, des réceptions refusées, des tâches affectées et des réunions faits ; d’autres avis restent à faire."
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Avis adressés aux personnes : SAT planifiée et livrable soumis (client externe), décision client sur un livrable, inspection non conforme, alertes d’indicateur (R-130) ; ECO et NCR partiront avec l’API Vigie (R-023)."
    }
   },
   {
@@ -1253,7 +1257,9 @@
     "DECISIONS.md X-6b choix « mail » (Keystone + e-mail), pas « mail_teams » ; aucun planificateur pour le résumé quotidien"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 9",
+    "note": "Livraison 9 : e-mail immédiat ou résumé quotidien par famille et par personne, invitations SAT envoyées, pied du panneau corrigé (sans Teams) ; reste le transport réel (relais SMTP ou Microsoft 365 Mail.Send), l’expéditeur et l’URL publique, fournis par la DSI."
    }
   },
   {

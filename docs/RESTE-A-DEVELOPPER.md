@@ -8,28 +8,28 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-29 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 115 faits, 29 en cours, 65 à faire, sur 209 points.
+**Avancement** : 116 faits, 29 en cours, 64 à faire, sur 209 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
 | Bloquant production | 16 | ≈ 106 |
-| Prochaine étape | 21 | ≈ 172 |
+| Prochaine étape | 20 | ≈ 168 |
 | À décider | 36 | ≈ 329 |
 | Plus tard | 21 | ≈ 78 |
-| **Total** | **94** | **≈ 684** |
+| **Total** | **93** | **≈ 680** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
 | Non commencé | 43 |
-| Partiel | 11 |
+| Partiel | 10 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
 
 | Domaine | Bloquant production | Prochaine étape | À décider | Plus tard | Restants | Faits |
 |---|---:|---:|---:|---:|---:|---:|
-| Plateforme et mise en production | 7 | 4 | 0 | 2 | 13 | 13 |
+| Plateforme et mise en production | 7 | 3 | 0 | 2 | 12 | 14 |
 | Authentification, utilisateurs et droits | 1 | 0 | 2 | 1 | 4 | 13 |
 | Intégrations avec les autres systèmes | 5 | 6 | 4 | 5 | 20 | 6 |
 | Projets, cycle de vie et modèles par type de machine | 0 | 1 | 2 | 2 | 5 | 5 |
@@ -129,7 +129,7 @@ Décisions à prendre et données à fournir avant de pouvoir développer. Les q
 
 ## 2. Liste détaillée par domaine
 
-### 2.1 Plateforme et mise en production (13 restants, 13 faits)
+### 2.1 Plateforme et mise en production (12 restants, 14 faits)
 
 **R-003 · Héberger une instance multi-utilisateur (bêta puis production)** — *Bloquant production · partiel · effort M* · **en cours (Livraison 8)**  
 La PR #1 (ouverte, non fusionnée) apporte un Dockerfile Coolify : un seul conteneur next start sur le port 3000, PGlite et fichiers sur un volume /data. Il reste à la rebaser sur la livraison 6, construire et tester l’image, ajouter NEXT_PUBLIC_CODEX_URL aux arguments de build, configurer TLS et domaine, et protéger l’accès tant que l’authentification manque. Ensuite viennent la préproduction et la production avec PostgreSQL et un worker ; leur cible (Azure, serveur interne ou cloud) reste à décider. Analyse comparative du 25 oct. 2026 : l’hébergement d’une instance multi-utilisateur est un prérequis de production (bloquant), rappelé par l’analyse comparative ; aucun changement de priorité.  
@@ -162,10 +162,6 @@ Les seules revues de sécurité sont les revues internes des livraisons. Avant d
 **R-005 · Déplacer le stockage des fichiers hors du disque local** — *Prochaine étape · partiel · effort M*  
 Pièces jointes, transcriptions, fichiers d’import et futures photos sont écrits sur le disque du serveur (<data dir>/files). Le volume persistant /data de la PR #1 suffit pour une instance unique. Pour plusieurs instances, ou chez un hébergeur sans volume, il faut un stockage objet (S3, Azure Blob) derrière la même API storeFile / streamStoredFile.  
 *Attend : Hébergement choisi (I-1a) · Sources : I-1a, R-8a, X-15, SC-4a, 00 §8.13*
-
-**R-015 · Notifier les événements clés aux personnes concernées (X-6a)** — *Prochaine étape · partiel · effort M* · **en cours (Livraison 8)**  
-Créer les notifications choisies : CR soumise, NCR, livraison refusée, ECO à approuver, mention @, tâche assignée, facture bloquée, alerte d’indicateur. Elles doivent aller à l’approbateur, au demandeur, au responsable ou à la personne citée, et non à tout un rôle. Le ciblage par personne n’a de sens qu’avec de vrais comptes, car la table users n’a qu’un utilisateur par rôle. Analyse comparative du 25 oct. 2026 : les notifications hors application (e-mail, Teams, Outlook) et les rappels d’échéances sont un standard du marché ; Keystone reste in-app seulement, sans dépendance SMTP. Priorité suggérée P1, avec R-036 et R-037.  
-*Avancement : Livraison 8 : avis des demandes de modification, des réceptions refusées, des tâches affectées et des réunions faits ; d’autres avis restent à faire. · Attend : Comptes utilisateurs réels (R-038, R-039) pour cibler des personnes plutôt que des rôles · Sources : X-6a, 01 §5.5, OQ19, 00 §7.7, DELIVERY-2.md §5, §7, Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **R-177 · Rédiger le guide utilisateur, former par rôle et organiser le support** — *Prochaine étape · non commencé · effort M* · **en cours (Livraison 8)**  
 Il n'existe aucune documentation pour les utilisateurs : le README et docs/ s'adressent aux développeurs. Avant la bêta multi-utilisateur, préparer un guide par rôle (8 profils), des scénarios de recette pour les bêta-testeurs, une formation, un canal de support et un dossier d'exploitation pour la DSI (déploiement, configuration des connecteurs, restauration).  
@@ -214,6 +210,10 @@ Introduire une source de date unique, injectable dans les tests, à la place de 
 **~~R-001 · Fusionner la livraison 6 dans main~~** — *Prochaine étape · non commencé · effort S* · **fait (Livraison 8)**  
 La branche main-2a2fep (livraisons 1–6) a 30 commits d’avance sur origin/main (95412b5), et aucune PR n’est ouverte pour elle. La fusion peut se faire en avance rapide et seule la migration 0006 est nouvelle (0005 est déjà sur main). Il faut ouvrir et relire la PR, relancer typecheck, lint, tests et build, rebaser ensuite la PR #1 (Dockerfile Coolify, partie de 95412b5), puis supprimer les 3 worktrees et branches worktree-agent-*.  
 *Avancement : PR #2 fusionnée dans main le 15 oct. 2026 par le responsable produit (livraisons 1 à 8, commit e302703) ; CI verte avant fusion (types, lint, tests, build, bout en bout, image conteneur) ; la PR #1 était déjà dans main ; worktrees et branches worktree-agent-\* supprimés. · Attend : Relecture et accord du responsable produit · Sources : CLAUDE.md, DELIVERY-6.md §1, docs/delivery-6/notes-planning.md §3*
+
+**~~R-015 · Notifier les événements clés aux personnes concernées (X-6a)~~** — *Prochaine étape · partiel · effort M* · **fait (Livraison 9)**  
+Créer les notifications choisies : CR soumise, NCR, livraison refusée, ECO à approuver, mention @, tâche assignée, facture bloquée, alerte d’indicateur. Elles doivent aller à l’approbateur, au demandeur, au responsable ou à la personne citée, et non à tout un rôle. Le ciblage par personne n’a de sens qu’avec de vrais comptes, car la table users n’a qu’un utilisateur par rôle. Analyse comparative du 25 oct. 2026 : les notifications hors application (e-mail, Teams, Outlook) et les rappels d’échéances sont un standard du marché ; Keystone reste in-app seulement, sans dépendance SMTP. Priorité suggérée P1, avec R-036 et R-037.  
+*Avancement : Avis adressés aux personnes : SAT planifiée et livrable soumis (client externe), décision client sur un livrable, inspection non conforme, alertes d’indicateur (R-130) ; ECO et NCR partiront avec l’API Vigie (R-023). · Attend : Comptes utilisateurs réels (R-038, R-039) pour cibler des personnes plutôt que des rôles · Sources : X-6a, 01 §5.5, OQ19, 00 §7.7, DELIVERY-2.md §5, §7, Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **~~R-016 · Mettre en place l’intégration continue et versionner les tests de bout en bout~~** — *Prochaine étape · partiel · effort M* · **fait (Livraison 7)**  
 Créer un pipeline CI (typecheck, lint, vitest, build) sur chaque PR, puis un pipeline de déploiement. Versionner les 14 scénarios Playwright et la matrice des routes (3 520 requêtes) de la livraison 6, exécutés hors du dépôt, et supprimer les worktrees d’agents qui obligent à passer --ignore-pattern au lint.  
@@ -347,9 +347,9 @@ Les absences validées (dates et type simple) doivent arriver de Cursus, aliment
 Synchroniser chaque heure les données des plans (numéro, titre, révision, état, article lié) et l’aperçu PDF des révisions diffusées, avec un vrai lien « Ouvrir dans PDM » depuis Plans et P&ID et les aperçus des feuilles P&ID (X-15). Aujourd’hui la synchro du coffre est simulée et recopie le volume précédent. Le périmètre dépend du référentiel articles (A-1b).  
 *Attend : Accès API ou export SolidWorks PDM / 3DX (IT et ingénierie) ; décision A-1b · Sources : E-7, X-15, A-1b, I-3a, 09 OQ17, DELIVERY-4.md §8, DELIVERY-6.md §6*
 
-**R-036 · Envoyer les notifications par e-mail, avec préférences par utilisateur** — *Prochaine étape · non commencé · effort L*  
+**R-036 · Envoyer les notifications par e-mail, avec préférences par utilisateur** — *Prochaine étape · non commencé · effort L* · **en cours (Livraison 9)**  
 Ajouter le canal e-mail (Microsoft Graph via l’application Entra, ou SMTP) : envoi immédiat pour ce qui attend une action et pour les clients, résumé quotidien pour le reste, préférences réglées par chacun. Les invitations SAT et les notifications client, affichées comme envoyées, ne partent pas aujourd’hui, et le pied du panneau de notifications annonce à tort un résumé e-mail, un canal Teams (non retenu par X-6b) et des préférences inexistantes. Analyse comparative du 25 oct. 2026 : le canal e-mail avec rappels d’échéances et rapports programmés est un standard du marché (Smartsheet, Wrike, MS Project) ; aucune dépendance SMTP ni Graph n’est encore en place. Priorité suggérée P1 (voir aussi R-199 pour les rappels et rapports programmés).  
-*Attend : IT : relais SMTP ou déclaration de Keystone dans Microsoft 365 ; comptes réels avec adresse e-mail · Sources : X-6b, I-3c, DELIVERY-5.md §6, §8 X-6, DELIVERY-6.md §6 (Mail), Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+*Avancement : Livraison 9 : e-mail immédiat ou résumé quotidien par famille et par personne, invitations SAT envoyées, pied du panneau corrigé (sans Teams) ; reste le transport réel (relais SMTP ou Microsoft 365 Mail.Send), l’expéditeur et l’URL publique, fournis par la DSI. · Attend : IT : relais SMTP ou déclaration de Keystone dans Microsoft 365 ; comptes réels avec adresse e-mail · Sources : X-6b, I-3c, DELIVERY-5.md §6, §8 X-6, DELIVERY-6.md §6 (Mail), Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **R-181 · Décider qui crée le projet dans Codex et Vigie à sa création dans Keystone** — *À décider · attend le responsable produit · effort M*  
 Keystone créera le chantier Cursus (NEW-CURSUS-1), mais rien n'est décidé pour Codex (espace documentaire du projet) ni pour Vigie, qui utilise ses propres identifiants de projet. Décider si la création d'un projet dans Keystone ouvre automatiquement le projet dans Codex et Vigie avec le code commun, puis le construire dans les connecteurs.  
@@ -1001,6 +1001,7 @@ Module demandé mais à cadrer avec le responsable produit avant construction : 
 
 ## 3. Mises à jour
 
+- 2026-10-29 — R-015 fait et R-036 avancé : notifications par e-mail (immédiat / résumé quotidien, préférences), avis aux personnes concernées, alertes d’indicateur (migration 0066).
 - 2026-10-29 — R-198 et R-199 faits : Gantt interactif ; rappels d’échéances et rapports programmés (migration 0065).
 - 2026-10-29 — R-198 et R-199 validés et lancés (Gantt interactif ; rappels d’échéances et rapports programmés).
 - 2026-10-26 — Analyse comparative avec les solutions du commerce (25 oct. 2026) : 12 items ajoutés (R-198 à R-209), 18 items existants annotés.
