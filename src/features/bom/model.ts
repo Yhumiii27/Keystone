@@ -168,7 +168,7 @@ export function flatView(
   const eqFilter = eqLines ? equipmentFilterOf(state.eq ?? null, eqLines.map((l) => l.ref)) : 'all';
   const eq = eqFilter === 'all' ? null : eqFilter;
   const byEquipment = eqLines ? filterByEquipment(lines.map((l) => ({ ...l, equipmentRef: l.equipmentRef ?? null })), eqFilter) : lines;
-  const shown = sortBomLines(filterBomLines(byEquipment, { q: state.q, type, mfr }), state.sort);
+  const shown = sortBomLines(filterBomLines(byEquipment, { q: state.q, type, mfr }, (l) => dataT(l.name, lang)), state.sort);
   const keep = { ...state, type, mfr, eq, part: null, node: null };
   const typeOptions: LinkOption[] = [
     { value: '', label: t(`All types · ${lines.length}`), href: bomHref(code, { ...keep, type: null }), active: !type },

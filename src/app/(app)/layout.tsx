@@ -13,11 +13,15 @@ import { ROLE_LABEL } from '@/domain/auth';
 import { authMode } from '@/server/auth/config';
 import { businessToday } from '@/server/clock';
 import { getShellNav, zoneLabel } from '@/server/dal/shell';
-import { getLastProject, getNavOpen, getViewer, getZone } from '@/server/session';
+import { getI18n, getLastProject, getNavOpen, getViewer, getZone } from '@/server/session';
+import { FocusKeeper } from '@/components/app/shell/focus-keeper';
+
+/** Id of the main region: the skip link's target and the focus keeper's fallback (R-183). */
+const MAIN_ID = 'main-content';
 
 export default async function AppLayout({ children }: LayoutProps<'/'>) {
   const viewer = await getViewer();
-  const [navOpen, lastProject, zone, nav, today] = await Promise.all([getNavOpen(), getLastProject(), getZone(), getShellNav(viewer), businessToday()]);
+  const [navOpen, lastProject, zone, nav, today, { t }] = await Promise.all([getNavOpen(), getLastProject(), getZone(), getShellNav(viewer), businessToday(), getI18n()]);
   const zoneName = await zoneLabel(zone);
   const codes = nav.projects.map((p) => p.code);
   const entra = authMode() === 'entra';
@@ -26,6 +30,10 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
       <ShellProvider initialProject={codes.includes(lastProject) ? lastProject : codes[0]} projectCodes={codes}>
         {/* DS toast (docs/spec/01 §9): its live region renders after the grid, outside <main>'s flex gap. */}
         <ToastProvider>
+          {/* R-183 (WCAG 2.4.1): the first stop of the keyboard skips the sidebar. */}
+          <a href={`#${MAIN_ID}`} className="skip-link">
+            {t('Skip to main content')}
+          </a>
           <div className={styles.root}>
             <Sidebar
               role={viewer.role}
@@ -41,7 +49,8 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
               globalBadges={nav.globalBadges}
               projectBadges={nav.projectBadges}
             />
-            <main className={styles.main}>
+            <main id={MAIN_ID} tabIndex={-1} className={styles.main}>
+              <FocusKeeper fallbackId={MAIN_ID} />
               <NavToggle />
               {children}
             </main>

@@ -17,7 +17,7 @@ import { healthThresholds } from '@/server/dal/health-thresholds';
 import { getPortfolioOverview } from '@/server/dal/portfolio';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportWorkbook } from '../types';
-import { col, compact, filterLine, kpiSheet, monthIso, param, pctNum, sheet } from './common';
+import { col, compact, filterLine, kpiSheet, monthIso, monthOfText, param, pctNum, sheet } from './common';
 import { projectFilter } from './scope';
 import { dataText } from '@/i18n/data-text';
 
@@ -35,12 +35,12 @@ async function overviewWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
     filters: compact([zoneLine(ctx)]),
     sheets: [
       sheet(t('Active projects'), [
-        col('code', t('Code'), 'text', 10), col('name', t('Project'), 'text', 36), col('pm', t('Project manager'), 'text', 14), col('finish', t('Finish'), 'text', 10),
+        col('code', t('Code'), 'text', 10), col('name', t('Project'), 'text', 36), col('pm', t('Project manager'), 'text', 14), col('finish', t('Finish'), 'month', 10),
         col('health', t('Health'), 'text', 12), col('progress', t('Progress'), 'percent'), col('budget', t('Budget'), 'money_keur'), col('actual', t('Actual cost'), 'money_keur'),
         col('earned', t('Earned value'), 'money_keur'), col('cpi', 'CPI', 'number', 8, { decimals: 2 }), col('spi', 'SPI', 'number', 8, { decimals: 2 }),
         col('eac', 'EAC', 'money_keur'), col('variance', t('Variance'), 'money_keur'),
       ], rows.map((p) => ({
-        code: p.code, name: dataText(p.name, ctx.lang), pm: p.pm, finish: t(p.finish), health: p.metrics.health ? t(HEALTH_LABEL[p.metrics.health]) : '—', progress: p.progress, budget: p.budget, actual: p.actual,
+        code: p.code, name: dataText(p.name, ctx.lang), pm: p.pm, finish: monthOfText(p.finish), health: p.metrics.health ? t(HEALTH_LABEL[p.metrics.health]) : '—', progress: p.progress, budget: p.budget, actual: p.actual,
         earned: Math.round(p.metrics.earned), cpi: p.metrics.cpi, spi: p.metrics.spi, eac: Math.round(p.metrics.eac), variance: Math.round(p.metrics.variance),
       }))),
       kpiSheet(ctx, kpis.map((k) => ({ label: t(k.label), value: k.value, sub: t(k.sub) }))),
@@ -73,11 +73,11 @@ async function pfplanWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
     sheets: [
       sheet(t('Projects'), [
         col('group', t('Group'), 'text', 12), col('code', t('Code'), 'text', 10), col('name', t('Project'), 'text', 36), col('pm', t('Project manager'), 'text', 26),
-        col('stage', t('Stage'), 'text', 22), col('execStart', t('Execution start'), 'date'), col('finish', t('Finish'), 'text', 10), col('gate', t('Next gate'), 'text', 24),
+        col('stage', t('Stage'), 'text', 22), col('execStart', t('Execution start'), 'date'), col('finish', t('Finish'), 'month', 10), col('gate', t('Next gate'), 'text', 24),
         col('gateSub', t('Details'), 'text', 22), col('pending', t('Decision pending'), 'boolean'),
       ], shown.map(({ g, r, i }) => ({
         group: t(g.label), code: r.code, name: dataText(r.name, ctx.lang), pm: t(r.pmLine), stage: t(r.status), execStart: i.pipeline ? monthIso(i.execStart) : null,
-        finish: t(i.project.finish), gate: t(r.gate), gateSub: t(r.gateSub), pending: r.decisionPending,
+        finish: monthOfText(i.project.finish), gate: t(r.gate), gateSub: t(r.gateSub), pending: r.decisionPending,
       }))),
       sheet(t('Stage plan'), [col('code', t('Code'), 'text', 10), col('window', t('Stage'), 'text', 16), col('start', t('Start date'), 'date'), col('end', t('Finish'), 'date'), col('period', t('Period'), 'text', 22)],
         shown.flatMap(({ r, i }) => i.windows.map((w) => ({ code: r.code, window: t(WINDOW_LABEL[w.window] ?? w.window), start: monthIso(w.start), end: monthIso(w.end), period: `${t(monthText(w.start))} → ${t(monthText(w.end))}` })))),

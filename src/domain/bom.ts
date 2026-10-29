@@ -102,14 +102,21 @@ export interface BomFilter {
   mfr?: string | null;
 }
 
-/** Flat-list filter (`bomRows` 4208): type, supplier and the search over "ref name mfr mfrRef". */
-export function filterBomLines<T extends BomListItem>(lines: readonly T[], f: BomFilter): T[] {
-  const q = (f.q ?? '').trim().toLowerCase();
+/** Search folding: lower case, accents removed ("Câble" and "cable" match). */
+const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+
+/**
+ * Flat-list filter (`bomRows` 4208): type, supplier and the search over "ref name mfr mfrRef". R-157: the search also
+ * reads the article name as displayed (`displayName`, e.g. its French label) and ignores case and accents — the prototype
+ * searched the English name only.
+ */
+export function filterBomLines<T extends BomListItem>(lines: readonly T[], f: BomFilter, displayName?: (l: T) => string): T[] {
+  const q = fold((f.q ?? '').trim());
   return lines.filter(
     (l) =>
       (!f.type || l.type === f.type) &&
       (!f.mfr || l.manufacturer === f.mfr) &&
-      (!q || `${l.ref} ${l.name} ${l.manufacturer ?? ''} ${l.manufacturerRef ?? ''}`.toLowerCase().includes(q)),
+      (!q || fold(`${l.ref} ${l.name} ${displayName ? displayName(l) : ''} ${l.manufacturer ?? ''} ${l.manufacturerRef ?? ''}`).includes(q)),
   );
 }
 

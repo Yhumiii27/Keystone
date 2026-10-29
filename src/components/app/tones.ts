@@ -107,12 +107,12 @@ export const STATUS_TONES = {
   stageMode: T({ forced: 'accent', auto: 'neutral' }, 'neutral'),
   /** Plan activity row statusClass (4007). */
   activity: T({ behind: 'accent', in_progress: 'outline', completed: 'neutral', not_started: 'muted' }, 'muted'),
-  /** Selected-activity drawer (4020) — inverted vs. the row (Q-6). */
-  activityDetail: T({ in_progress: 'accent', not_started: 'outline', completed: 'neutral' }, 'outline'),
+  /** Selected-activity drawer (4020). The prototype inverted it vs. the row (02 Q-6); harmonised with `activity` (owner, X-13b). */
+  activityDetail: T({ behind: 'accent', in_progress: 'outline', completed: 'neutral', not_started: 'muted' }, 'muted'),
   /** Schedule milestone (3856). */
   milestone: T({ late: 'accent', done: 'neutral' }, 'outline'),
-  /** Budget › Change requests list (4053) — differs from change control (Q-5). */
-  budgetChange: T({ approved: 'accent', pending: 'outline', in_review: 'outline' }, 'neutral'),
+  /** Budget › Change requests list (4053). The prototype differed from change control (02 Q-5); harmonised with `change` (owner, X-13b): approved = neutral, awaiting a decision = accent. */
+  budgetChange: T({ approved: 'neutral', pending: 'accent', in_review: 'accent', rejected: 'outline', draft: 'outline' }, 'outline'),
   /** Change control crTag (4594). */
   change: T({ in_review: 'accent', approved: 'neutral' }, 'outline'),
   /** CR approval chain step (4609). */
@@ -214,13 +214,15 @@ export function riskLevel(score: number): RiskLevel {
 export function riskCell(p: number, i: number): { bg: string; fg: string } {
   const sc = p * i;
   const bg = sc >= 15 ? 'var(--color-accent-500)' : sc >= 8 ? 'var(--color-accent-700)' : sc >= 4 ? 'var(--color-accent-900)' : 'var(--color-neutral-900)';
-  return { bg, fg: sc >= 8 ? 'var(--color-accent-100)' : 'var(--color-neutral-300)' };
+  // R-183 (WCAG 1.4.3): dark text on the accent-500 cells (accent-100 on accent-500 gave 2.7:1).
+  return { bg, fg: sc >= 15 ? 'var(--color-bg)' : sc >= 8 ? 'var(--color-accent-100)' : 'var(--color-neutral-300)' };
 }
 
 /** shade (3867): allocation % heat cell. >115 · >100 · ≥90 · ≥60 · else. */
 export function shade(v: number): { bg: string; fg: string } {
   if (v > 115) return { bg: 'var(--color-accent-400)', fg: 'var(--color-bg)' };
-  if (v > 100) return { bg: 'var(--color-accent-600)', fg: 'var(--color-accent-100)' };
+  // R-183 (WCAG 1.4.3): accent-700 ground — accent-100 on the prototype's accent-600 gave 4.1:1.
+  if (v > 100) return { bg: 'var(--color-accent-700)', fg: 'var(--color-accent-100)' };
   if (v >= 90) return { bg: 'var(--color-accent-800)', fg: 'var(--color-accent-200)' };
   if (v >= 60) return { bg: 'var(--color-accent-900)', fg: 'var(--color-neutral-300)' };
   return { bg: 'var(--color-neutral-900)', fg: 'var(--color-neutral-400)' };

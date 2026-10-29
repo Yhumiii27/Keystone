@@ -123,6 +123,17 @@ export const filterLine = (label: string, value: string | null | undefined) => (
 
 export const compact = <X>(xs: (X | null | undefined | false)[]): X[] => xs.filter((x): x is X => x !== null && x !== undefined && x !== false);
 
+/**
+ * R-157: ISO month ('YYYY-MM') of a month-precision text as the screens print it ("Dec 2026"), for a `month` column; the
+ * text itself when it is not a month ("—").
+ */
+export function monthOfText(text: string): string {
+  const m = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})$/.exec(text.trim());
+  if (!m) return text;
+  const i = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(m[1]);
+  return `${m[2]}-${String(i + 1).padStart(2, '0')}`;
+}
+
 /** ISO date of a month offset from Jan 2026 (fractions = days, as the Gantt charts draw them). */
 export function monthIso(m: number): string {
   const whole = Math.floor(m);

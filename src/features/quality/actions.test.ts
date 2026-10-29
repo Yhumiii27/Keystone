@@ -84,14 +84,15 @@ describe('Quality Server Functions', () => {
 
   it('NCR step: the next step only, sent to Vigie ("pending sync"), one at a time; the status stays Vigie’s', async () => {
     as('pm');
-    const gone = { ok: false, error: 'This step is not available any more' };
-    expect(await advanceNcrAction({ projectCode: HLT, number: 'NCR-030', step: 'root_cause' })).toEqual(gone);
-    expect(await advanceNcrAction({ projectCode: HLT, number: 'NCR-027', step: 'closed' })).toEqual(gone); // closed in Vigie
+    // R-157: each refusal says why.
+    const gone = (error: string) => ({ ok: false, error });
+    expect(await advanceNcrAction({ projectCode: HLT, number: 'NCR-030', step: 'root_cause' })).toEqual(gone('NCR-030 · This NCR has moved to another step'));
+    expect(await advanceNcrAction({ projectCode: HLT, number: 'NCR-027', step: 'closed' })).toEqual(gone('NCR-027 · This NCR is closed in Vigie'));
     expect(await advanceNcrAction({ projectCode: HLT, number: 'NCR-026', step: 'verification' })).toEqual({
       ok: true, toast: 'NCR-026 · Verification requested · Pending sync with Vigie',
     });
     expect(revalidatePath).toHaveBeenCalledWith('/', 'layout');
-    expect(await advanceNcrAction({ projectCode: HLT, number: 'ncr-026', step: 'verification' })).toEqual(gone);
+    expect(await advanceNcrAction({ projectCode: HLT, number: 'ncr-026', step: 'verification' })).toEqual(gone('NCR-026 · A request on this NCR already waits for Vigie'));
     const n = (await getNcr(HLT, 'NCR-026'))!;
     expect([n.status, n.requestedStatus, n.pendingSyncLabel]).toEqual(['corrective_action', 'verification', 'Pending sync with Vigie']);
     expect(await lastAudit()).toMatchObject({ who: 'Romain Aubert', object: 'NCR-026', area: 'Quality' });
@@ -113,30 +114,30 @@ describe('Quality Server Functions', () => {
     ]);
     expect(await inbox('pm', 'ncr')).toEqual([]);
     as('pm');
-    expect(await advanceNcrAction({ projectCode: HLT, number: 'NCR-028', step: 'closed' })).toEqual({ ok: false, error: 'This step is not available any more' });
+    expect(await advanceNcrAction({ projectCode: HLT, number: 'NCR-028', step: 'closed' })).toEqual({ ok: false, error: 'NCR-028 · In verification, only the quality manager decides' });
     expect(await verifyNcrAction({ projectCode: HLT, number: 'NCR-028', decision: 'approved' })).toEqual({ ok: false, error: 'Only the quality manager verifies and closes NCRs' });
     as('quality');
-    expect(await verifyNcrAction({ projectCode: HLT, number: 'NCR-029', decision: 'approved' })).toEqual({ ok: false, error: 'This decision is not waiting for you any more' });
+    expect(await verifyNcrAction({ projectCode: HLT, number: 'NCR-029', decision: 'approved' })).toEqual({ ok: false, error: 'NCR-029 · This NCR is not in verification' });
     expect(await verifyNcrAction({ projectCode: HLT, number: 'NCR-028', decision: 'yes' })).toEqual({ ok: false, error: 'Invalid request' });
     expect(await verifyNcrAction({ projectCode: HLT, number: 'NCR-028', decision: 'rejected' })).toEqual({
       ok: true, toast: 'NCR-028 · Back to corrective action requested · Pending sync with Vigie',
     });
     expect(await inbox('quality', 'ncr')).toEqual([]);
     expect((await getApprovalInbox(PERSONA_BY_ROLE.quality, { projectCode: HLT })).decided).toBeGreaterThanOrEqual(1);
-    expect(await verifyNcrAction({ projectCode: HLT, number: 'NCR-028', decision: 'approved' })).toEqual({ ok: false, error: 'This decision is not waiting for you any more' });
+    expect(await verifyNcrAction({ projectCode: HLT, number: 'NCR-028', decision: 'approved' })).toEqual({ ok: false, error: 'NCR-028 · A request on this NCR already waits for Vigie' });
     expect((await getNcr(HLT, 'NCR-028'))!.requestedStatus).toBe('corrective_action');
   });
 
   it('deliverables: Start → To internal review → Submit to client by the team; wrong or repeated steps refused', async () => {
     as('pm');
-    expect(await moveDeliverableAction({ projectCode: HLT, number: 'D-018', to: 'submitted' })).toEqual({ ok: false, error: 'This step is not available any more' });
+    expect(await moveDeliverableAction({ projectCode: HLT, number: 'D-018', to: 'submitted' })).toEqual({ ok: false, error: 'D-018 · This deliverable has moved to another step' });
     expect(await moveDeliverableAction({ projectCode: HLT, number: 'D-018', to: 'in_progress' })).toEqual({ ok: true, toast: 'D-018 · In progress' });
     as('englead');
     expect(await moveDeliverableAction({ projectCode: HLT, number: 'd-018', to: 'internal_review' })).toEqual({ ok: true, toast: 'D-018 · Internal review' });
     as('quality');
     expect(await moveDeliverableAction({ projectCode: HLT, number: 'D-018', to: 'submitted' })).toEqual({ ok: true, toast: 'D-018 · Submitted' });
     expect(await getDeliverable(HLT, 'D-018')).toMatchObject({ status: 'submitted', acceptanceText: 'Accept by 5 Oct' });
-    expect(await moveDeliverableAction({ projectCode: HLT, number: 'D-018', to: 'submitted' })).toEqual({ ok: false, error: 'This step is not available any more' });
+    expect(await moveDeliverableAction({ projectCode: HLT, number: 'D-018', to: 'submitted' })).toEqual({ ok: false, error: 'D-018 · This deliverable is already with the client' });
     expect(await lastAudit()).toMatchObject({ who: 'Gabriel Comte', object: 'D-018', change: 'status: Internal review → Submitted', area: 'Deliverables' });
   });
 
@@ -146,18 +147,19 @@ describe('Quality Server Functions', () => {
       ['D-016', 'Calculation notes · Accept by 9 Oct', { mode: 'deliverable', projectCode: HLT, number: 'D-016' }],
       ['D-018', 'Certificates (CE, lifting…) · Accept by 5 Oct', { mode: 'deliverable', projectCode: HLT, number: 'D-018' }],
     ]);
-    const notYours = { ok: false, error: 'This decision is not waiting for you any more' };
+    // R-157: each refusal says why.
+    const refused = (error: string) => ({ ok: false, error });
     as('pm');
-    expect(await decideDeliverableAction({ projectCode: HLT, number: 'D-014', decision: 'accepted' })).toEqual(notYours);
+    expect(await decideDeliverableAction({ projectCode: HLT, number: 'D-014', decision: 'accepted' })).toEqual(refused('D-014 · Only a client contact of the project accepts or rejects this deliverable'));
     as('client');
-    expect(await decideDeliverableAction({ projectCode: HLT, number: 'D-017', decision: 'accepted' })).toEqual(notYours); // not submitted
+    expect(await decideDeliverableAction({ projectCode: HLT, number: 'D-017', decision: 'accepted' })).toEqual(refused('D-017 · This deliverable is not submitted to the client'));
     expect(await decideDeliverableAction({ projectCode: HLT, number: 'D-014', decision: 'accepted' })).toEqual({ ok: true, toast: 'D-014 · Accepted' });
     expect(await getDeliverable(HLT, 'D-014')).toMatchObject({ status: 'accepted', acceptanceText: '25 Sep · N. Bensaïd' });
-    expect(await decideDeliverableAction({ projectCode: HLT, number: 'D-014', decision: 'rejected' })).toEqual(notYours);
+    expect(await decideDeliverableAction({ projectCode: HLT, number: 'D-014', decision: 'rejected' })).toEqual(refused('D-014 · The client has already accepted this deliverable'));
     as('client', 'fr');
     expect(await rejectDeliverableWithCommentsAction(HLT, 'D-016', { comments: 'Load case 4 missing' })).toEqual({ toast: 'D-016 · Refusé' });
     expect(await getDeliverable(HLT, 'D-016')).toMatchObject({ status: 'rejected', reviewComments: 'Load case 4 missing', acceptanceText: '25 Sep · comments issued' });
-    expect(await rejectDeliverableWithCommentsAction(HLT, 'D-016', { comments: '' })).toEqual({ error: 'Cette décision ne vous attend plus' });
+    expect(await rejectDeliverableWithCommentsAction(HLT, 'D-016', { comments: '' })).toEqual({ error: 'D-016 · Le client a déjà refusé ce livrable' });
     expect((await inbox('client', 'deliverable')).map((i) => i.id)).toEqual(['D-018']);
     expect((await getApprovalInbox(PERSONA_BY_ROLE.client, { projectCode: HLT })).decided).toBeGreaterThanOrEqual(2);
   });

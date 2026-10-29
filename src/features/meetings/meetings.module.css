@@ -45,7 +45,8 @@
 
 .block { display: flex; flex-direction: column; gap: 6px; }
 .blockLg { display: flex; flex-direction: column; gap: 8px; }
-.kicker { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent); }
+/* R-183: accent-500 (≥ 4.5:1 on the neutral-900 panels; the accent gave 4.4:1). */
+.kicker { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent-500); }
 .kickerMuted { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-400); }
 .push { margin-right: auto; }
 .tags { display: flex; gap: 6px; flex-wrap: wrap; }

@@ -55,7 +55,11 @@ describe('tones', () => {
     expect(statusTone('site', 'go_with_reserve')).toBe('outline');
     expect(statusTone('punch', 'open')).toBe('accent');
     expect(statusTone('change', 'draft')).toBe('outline');
-    expect(statusTone('budgetChange', 'approved')).toBe('accent');
+    // X-13b / R-154: harmonised with change control (the prototype had approved = accent here, 02 Q-5).
+    expect(statusTone('budgetChange', 'approved')).toBe('neutral');
+    expect(statusTone('budgetChange', 'in_review')).toBe(statusTone('change', 'in_review'));
+    expect(statusTone('budgetChange', 'rejected')).toBe(statusTone('change', 'rejected'));
+    expect(statusTone('activityDetail', 'in_progress')).toBe(statusTone('activity', 'in_progress'));
     expect(statusTone('activity', 'not_started')).toBe('muted');
     expect(statusTone('milestone', 'at_risk')).toBe('outline');
     expect(statusTone('po', null)).toBe('muted');
@@ -66,14 +70,15 @@ describe('tones', () => {
     expect(riskLevel(8)).toBe('high');
     expect(riskLevel(4)).toBe('medium');
     expect(riskLevel(3)).toBe('low');
-    expect(riskCell(3, 5)).toEqual({ bg: 'var(--color-accent-500)', fg: 'var(--color-accent-100)' });
+    // R-183 (WCAG 1.4.3): dark text on the accent-500 cell (the prototype's accent-100 gave 2.7:1).
+    expect(riskCell(3, 5)).toEqual({ bg: 'var(--color-accent-500)', fg: 'var(--color-bg)' });
     expect(riskCell(2, 2)).toEqual({ bg: 'var(--color-accent-900)', fg: 'var(--color-neutral-300)' });
     expect(riskCell(1, 3).bg).toBe('var(--color-neutral-900)');
   });
 
   it('allocation shade (3867), skill level (4392), RACI (4935)', () => {
     expect(shade(116)).toEqual({ bg: 'var(--color-accent-400)', fg: 'var(--color-bg)' });
-    expect(shade(101).bg).toBe('var(--color-accent-600)');
+    expect(shade(101).bg).toBe('var(--color-accent-700)'); // R-183: accent-600 gave 4.1:1 with accent-100
     expect(shade(90).bg).toBe('var(--color-accent-800)');
     expect(shade(60).bg).toBe('var(--color-accent-900)');
     expect(shade(59).bg).toBe('var(--color-neutral-900)');

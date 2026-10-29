@@ -20,7 +20,9 @@
 .high { background: var(--color-accent-700); }
 .medium { background: var(--color-accent-900); }
 .low { background: var(--color-neutral-900); }
-.cell.critical, .cell.high { color: var(--color-accent-100); }
+.cell.high { color: var(--color-accent-100); }
+/* R-183 (WCAG 1.4.3): dark text on the accent-500 cells (accent-100 gave 2.7:1), as riskCell() in tones.ts. */
+.cell.critical { color: var(--color-bg); }
 
 /* legend (template 1812) */
 .legend { display: flex; gap: 10px; font-size: 11px; color: var(--color-neutral-400); flex-wrap: wrap; }

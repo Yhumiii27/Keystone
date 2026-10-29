@@ -121,6 +121,10 @@ export function MeetingsBody({ code, view, canEdit, canWrite = canEdit, pinned, 
       )}
       {view.view === 'decisions' && (
         <SectionCard title={t('Decisions register')} scroll>
+          {/* R-157: an empty register says so. */}
+          {!view.decisions.length ? (
+            <EmptyState variant="boxed">{t('No decision in this view')}</EmptyState>
+          ) : (
           <Table size={12.5}>
             <thead>
               <tr>
@@ -155,15 +159,21 @@ export function MeetingsBody({ code, view, canEdit, canWrite = canEdit, pinned, 
               ))}
             </tbody>
           </Table>
+          )}
         </SectionCard>
       )}
 
       {view.view === 'actions' && (
         <SectionCard title={t('Actions from meetings')} subtitle={t('Tick to close · closed actions leave the carry-over list')} scroll>
+          {!view.actions.length ? (
+            <EmptyState variant="boxed">{t('No action from the meetings yet')}</EmptyState>
+          ) : (
           <Table size={12.5}>
             <thead>
               <tr>
-                <Th />
+                <Th>
+                  <span className="sr-only">{t('Done')}</span>
+                </Th>
                 <Th>{t('Action')}</Th>
                 <Th>{t('Owner')}</Th>
                 <Th>{t('Due')}</Th>
@@ -175,6 +185,7 @@ export function MeetingsBody({ code, view, canEdit, canWrite = canEdit, pinned, 
               <ActionRows code={code} rows={view.actions} canEdit={canEdit} />
             </tbody>
           </Table>
+          )}
         </SectionCard>
       )}
     </Stack>

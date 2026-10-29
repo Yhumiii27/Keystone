@@ -2,3 +2,9 @@
 :global(.tag).button { border: 0; cursor: pointer; gap: 5px; font: inherit; font-size: 11px; padding: 3px 8px 3px 10px; white-space: nowrap; }
 /* Note: border:0 also removes the outline tag's border, exactly as the prototype's inline style does. */
 .muted { white-space: nowrap; }
+/*
+ * R-157: an outline tag as a button keeps the outline tag's look — no browser grey ground (buttons get `ButtonFace`) and its
+ * accent border back (the prototype's border:0 left accent text alone, the tone carried by colour only); 1 px less padding
+ * keeps the size.
+ */
+:global(.tag-outline).button { background: transparent; border: 1px solid var(--color-accent); padding: 2px 7px 2px 9px; }

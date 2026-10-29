@@ -25,8 +25,8 @@ describe('loadBand / shade()', () => {
   it('bands follow the shade() thresholds (>115 · >100 · ≥90 · ≥60)', () => {
     const cases: [number, LoadBand][] = [[0, 'under'], [59, 'under'], [60, 'moderate'], [89, 'moderate'], [90, 'nominal'], [100, 'nominal'], [101, 'stretched'], [115, 'stretched'], [116, 'over'], [130, 'over']];
     for (const [v, b] of cases) expect([v, loadBand(v)]).toEqual([v, b]);
-    // one colour per band
-    const bg: Record<LoadBand, string> = { under: 'var(--color-neutral-900)', moderate: 'var(--color-accent-900)', nominal: 'var(--color-accent-800)', stretched: 'var(--color-accent-600)', over: 'var(--color-accent-400)' };
+    // one colour per band (R-183: "stretched" on accent-700 for contrast; the prototype had accent-600)
+    const bg: Record<LoadBand, string> = { under: 'var(--color-neutral-900)', moderate: 'var(--color-accent-900)', nominal: 'var(--color-accent-800)', stretched: 'var(--color-accent-700)', over: 'var(--color-accent-400)' };
     for (const [v] of cases) expect(shade(v).bg).toBe(bg[loadBand(v)]);
   });
 });

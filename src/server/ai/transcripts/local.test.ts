@@ -100,6 +100,28 @@ describe('local transcript analyser — fixtures', () => {
   });
 });
 
+describe('local analyser — actions in the second person (R-157)', () => {
+  const run = (text: string, participants = ['Julien Wagner', 'Léa Fabre', 'S. Haddad']) =>
+    rows(analyseLocally({ text, meetingTitle: 'Point chantier', meetingDate: '2026-10-07', today: '2026-09-25', participants }).proposals);
+
+  it('"tu vas", "vous allez", "tu dois", "tu te charges de": an action, owned by the person addressed, never the speaker', () => {
+    expect(run('Julien Wagner: Léa, tu vas relancer le grutier avant le 9 octobre.')).toEqual([['action', 'Relancer le grutier', 'Léa Fabre', '9 Oct', 'Julien Wagner']]);
+    expect(run('Julien Wagner: Vous allez envoyer le plan de levage au client.')).toEqual([['action', 'Envoyer le plan de levage au client', null, null, 'Julien Wagner']]);
+    expect(run('Léa Fabre: Alors Julien, tu dois valider la note de calcul.')).toEqual([['action', 'Valider la note de calcul', 'Julien Wagner', null, 'Léa Fabre']]);
+    expect(run('Léa Fabre: Tu te charges de la commande des élingues.')).toEqual([['action', 'La commande des élingues', null, null, 'Léa Fabre']]);
+  });
+
+  it('English: "you\'ll", "you need to", with or without a name before', () => {
+    expect(run('S. Haddad: Julien, you\'ll send the lifting plan by 12 October.')).toEqual([['action', 'Send the lifting plan', 'Julien Wagner', '12 Oct', 'S. Haddad']]);
+    expect(run('S. Haddad: You need to book the crane.')).toEqual([['action', 'Book the crane', null, null, 'S. Haddad']]);
+  });
+
+  it('a question or a flow word is not an action', () => {
+    expect(run('Julien Wagner: Est-ce que vous allez venir demain ?').map((r) => r[0])).toEqual(['question']);
+    expect(run('Julien Wagner: Tu vas commencer par le planning.')).toEqual([]);
+  });
+});
+
 describe('local analyser helpers', () => {
   it('sentences: initials and abbreviations do not end a sentence', () => {
     expect(splitSentences('S. Haddad sends rev. C today. Then we close. M. Dupont agrees!')).toEqual(['S. Haddad sends rev. C today.', 'Then we close.', 'M. Dupont agrees!']);
