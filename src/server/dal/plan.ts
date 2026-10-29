@@ -8,12 +8,15 @@ import { alias } from 'drizzle-orm/pg-core';
 import { projectCalendarCode, projectDataDate } from '@/domain/ch4-defaults';
 import { businessToday } from '@/server/clock';
 import { detectCycle } from '@/domain/cpm';
+import { yearOfIso } from '@/domain/clock';
+import { activityDateText } from '@/domain/schedule-rollup';
+import type { SystemMessage } from '@/domain/system-messages';
 import type { PlanActivity, PlanPackage, PlanRoot, PredLink, TodoStatus } from '@/domain/schedule';
 import { workingDayOf } from '@/domain/tasks';
 import { monthLabels } from '@/lib/format';
 import { getDb } from '@/server/db/client';
-import { constraintText, type LinkType } from '@/server/db/codes';
-import { findPerson, nameOf, writeAudit } from '@/server/db/helpers';
+import { constraintText, type KnownConstraintType, type LinkType } from '@/server/db/codes';
+import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
 import {
   activities, activityLinks, persons, projects, wbsNodes,
 } from '@/server/db/schema';
@@ -216,6 +219,18 @@ export interface ActivityPatch {
   eac?: number;
   preds?: PredLink[];
   pct?: number;
+  /**
+   * R-198 (Gantt): date constraint — a type with its ISO date, or null for none ("As soon as possible"). The display text
+   * ("SNET 12 Oct") is written with it.
+   */
+  constraint?: { type: KnownConstraintType; date: string } | null;
+}
+
+/** R-198: the Gantt's edits are audited (and put on the activity feed) by `updateActivity` itself, in its transaction. */
+export interface ActivityEditAudit {
+  actorName: string;
+  /** Activity-feed event ("Moved A1250 on the Gantt · start no earlier than 2026-10-12"). */
+  feed?: SystemMessage;
 }
 
 async function findActivity(tx: Tx, code: string, actId: string) {
@@ -240,12 +255,18 @@ async function findNode(tx: Tx, code: string, w: string) {
  * Applies an inline edit. Structure edits (name, owner, duration, budget, logic) stamp `updatedAt` — the
  * "edited" dot of the Structure view; progress alone does not (as `applyOv`). Returns false when not found.
  */
-export async function updateActivity(code: string, actId: string, patch: ActivityPatch): Promise<boolean> {
+export async function updateActivity(code: string, actId: string, patch: ActivityPatch, audit?: ActivityEditAudit): Promise<boolean> {
   const db = await getDb();
   return db.transaction(async (tx) => {
     const a = await findActivity(tx, code, actId);
     if (!a) return false;
     const set: Partial<typeof activities.$inferInsert> = {};
+    if (patch.constraint !== undefined) {
+      const c = patch.constraint;
+      set.constraintType = c ? c.type : null;
+      set.constraintDate = c ? c.date : null;
+      set.constraintDateText = c ? activityDateText(c.date, yearOfIso(await businessToday(tx))) : null;
+    }
     if (patch.name !== undefined) set.name = patch.name;
     if (patch.durationDays !== undefined) set.durationDays = patch.durationDays;
     if (patch.budget !== undefined) set.budgetKeur = patch.budget;
@@ -274,6 +295,29 @@ export async function updateActivity(code: string, actId: string, patch: Activit
           .map(([pred, type, lag], position) => ({ projectId: a.projectId, predecessorId: byCode.get(pred)!, successorId: a.id, type, lagDays: lag, position }));
         if (rows.length) await tx.insert(activityLinks).values(rows);
       }
+    }
+    if (audit) {
+      const before: Record<string, unknown> = {};
+      const after: Record<string, unknown> = {};
+      if (patch.durationDays !== undefined && patch.durationDays !== a.durationDays) {
+        before.durationDays = a.durationDays;
+        after.durationDays = patch.durationDays;
+      }
+      if (patch.constraint !== undefined) {
+        before.constraint = a.constraintType && a.constraintType !== 'ASAP' ? { type: a.constraintType, date: a.constraintDate } : null;
+        after.constraint = patch.constraint;
+      }
+      const parts = [
+        'durationDays' in after ? `duration ${a.durationDays} → ${patch.durationDays} d` : null,
+        'constraint' in after ? `constraint ${constraintText(a.constraintType, a.constraintDate) || 'ASAP'} → ${patch.constraint ? `${patch.constraint.type} ${patch.constraint.date}` : 'ASAP'}` : null,
+      ].filter(Boolean);
+      const actor = await findPerson(tx, audit.actorName);
+      const who = actor ? nameOf(actor) : audit.actorName;
+      await writeAudit(tx, {
+        actorName: who, actorPersonId: actor?.id, objectRef: actId, change: `Gantt edit: ${parts.join(' · ') || 'no change'}`, area: 'Planning', entityType: 'activity',
+        entityId: a.id, projectId: a.projectId, before, after,
+      });
+      if (audit.feed) await recordActivity(tx, { actorName: who, actorPersonId: actor?.id, message: audit.feed, kind: 'change', projectId: a.projectId });
     }
     return true;
   });
@@ -514,6 +558,35 @@ export async function addActivityLink(code: string, link: { pred: string; succ: 
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: link.succ,
       change: `relationship added: ${link.pred} ${link.type}${link.lag ? (link.lag > 0 ? '+' : '') + link.lag : ''} → ${link.succ}`,
       area: 'Planning', entityType: 'activity', entityId: ends.succId, projectId: ends.projectId,
+    });
+    return { ok: true as const };
+  });
+}
+
+/**
+ * R-198 (Gantt): changes the type and the lag of an existing relationship `pred` → `succ` (its place in the successor's
+ * predecessor list is kept). The ends do not change, so no loop can appear. Audited with the values before and after.
+ */
+export async function updateActivityLink(code: string, link: { pred: string; succ: string; type: LinkType; lag: number }, actorName: string): Promise<LinkWriteResult> {
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const ends = await linkEnds(tx, code, link.pred, link.succ);
+    if (!ends || !ends.predId || !ends.succId) return { error: 'unknown' as const };
+    const [cur] = await tx
+      .select({ id: activityLinks.id, type: activityLinks.type, lag: activityLinks.lagDays })
+      .from(activityLinks)
+      .where(and(eq(activityLinks.predecessorId, ends.predId), eq(activityLinks.successorId, ends.succId)));
+    if (!cur) return { error: 'missing' as const };
+    if (cur.type === link.type && cur.lag === link.lag) return { ok: true as const };
+    await tx.update(activityLinks).set({ type: link.type, lagDays: link.lag }).where(eq(activityLinks.id, cur.id));
+    await tx.update(activities).set({ updatedAt: new Date() }).where(eq(activities.id, ends.succId));
+    const label = (type: string, lag: number) => `${type}${lag ? (lag > 0 ? '+' : '') + lag : ''}`;
+    const actor = await findPerson(tx, actorName);
+    await writeAudit(tx, {
+      actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: link.succ,
+      change: `relationship changed: ${link.pred} ${label(cur.type, cur.lag)} → ${label(link.type, link.lag)} → ${link.succ}`,
+      area: 'Planning', entityType: 'activity', entityId: ends.succId, projectId: ends.projectId,
+      before: { type: cur.type, lag: cur.lag }, after: { type: link.type, lag: link.lag },
     });
     return { ok: true as const };
   });
