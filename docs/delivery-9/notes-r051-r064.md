@@ -1,7 +1,7 @@
 # Livraison 9 — lot « delegation » (R-051, R-064 partie technique)
 
-Demande du propriétaire du 29 oct. 2026 : faire tout ce qui n’attend pas d’information de sa part. Migration **0066**
-(`0066_approval_delegations.sql`, numéro donné par drizzle — à renuméroter à l’intégration si un autre lot a pris 0066).
+Demande du propriétaire du 29 oct. 2026 : faire tout ce qui n’attend pas d’information de sa part. Migration **0067**
+(`0067_approval_delegations.sql`, régénérée après la fusion de `main-2a2fep` (0066 = notification_mail)).
 
 ## 1. R-051 — délégation des validations à un suppléant (réponse P-7d)
 
