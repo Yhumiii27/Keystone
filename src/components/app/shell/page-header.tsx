@@ -12,6 +12,7 @@ import { SCREEN_BY_ID, screenHref, type ScreenId } from '@/config/screens';
 import { HEALTH_LABEL, HEALTH_TAG } from '@/domain/health';
 import { exportFormatsOf } from '@/features/exports/catalog';
 import { businessToday } from '@/server/clock';
+import { getConfig } from '@/server/config';
 import { displayOfIso } from '@/server/db/codes';
 import { dataText, fieldsText, projectLabelText } from '@/i18n/data-text';
 import { getProject, type ProjectRow } from '@/server/dal/projects';
@@ -152,7 +153,7 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
           </div>
         </div>
         <GlobalSearch />
-        <Notifications items={notifs} role={viewer.role} />
+        <Notifications items={notifs} role={viewer.role} emailOn={getConfig().mail.transport !== 'none'} />
         <div className={styles.statusDate}>
           <CalendarBlank />
           {/* R-013: the business date ("25 Sep 2026" on the demo data set), translated as the former STATUS_DATE ("25 sept. 2026"). */}

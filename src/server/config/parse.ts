@@ -68,6 +68,26 @@ export type MatrixSource = (typeof MATRIX_SOURCES)[number];
 /** Arche's local address on the owner's Mac (Arche CLAUDE.md: port 3400). */
 export const DEFAULT_ARCHE_URL = 'http://localhost:3400';
 
+/**
+ * R-199 / R-036: how Keystone sends e-mail (KEYSTONE_MAIL_TRANSPORT). `none` = nothing is sent (the reminders and reports stay
+ * in the bell); `file` = each message written as an .eml file in KEYSTONE_MAIL_DIR (demonstrations, tests, a pick-up folder).
+ * `smtp` and `graph` are named so a value IT may set is recognised, and refused until IT provides the relay or the Microsoft 365
+ * registration (`MAIL_TRANSPORTS_AWAITING_IT`).
+ */
+export const MAIL_TRANSPORTS = ['none', 'file'] as const;
+export type MailTransportMode = (typeof MAIL_TRANSPORTS)[number];
+export const MAIL_TRANSPORTS_AWAITING_IT = ['smtp', 'graph'] as const;
+/** Sender of Keystone's e-mails when KEYSTONE_MAIL_FROM is unset (a domain that never delivers: IT names the real one). */
+export const DEFAULT_MAIL_FROM = 'Keystone <keystone@epc2i.invalid>';
+/** Keystone's address in e-mail links when neither KEYSTONE_PUBLIC_URL nor ENTRA_REDIRECT_URI is set (the Mac, port 3000). */
+export const DEFAULT_PUBLIC_URL = 'http://localhost:3000';
+
+/** "Keystone <keystone@epc2i.fr>" or "keystone@epc2i.fr" → its address; null when not one. */
+export function mailAddressOf(v: string): string | null {
+  const m = /^(?:[^<>@]*<([^<>\s@]+@[^<>\s@]+\.[^<>\s@]+)>|([^<>\s@]+@[^<>\s@]+\.[^<>\s@]+))$/.exec(v.trim());
+  return m ? (m[1] ?? m[2]) : null;
+}
+
 export interface KeystoneConfig {
   env: RuntimeEnv;
   production: boolean;
@@ -95,6 +115,11 @@ export interface KeystoneConfig {
    * R-121: automatic reminders arrive in the morning (src/domain/jobs.ts).
    */
   remindersAt: string;
+  /**
+   * R-199 / R-036: e-mail. `transport` none | file; `dir` = the .eml folder of the file transport; `from` = the sender;
+   * `publicUrl` = Keystone's address in the links of an e-mail (KEYSTONE_PUBLIC_URL, else the origin of ENTRA_REDIRECT_URI).
+   */
+  mail: { transport: MailTransportMode; dir: string | null; from: string; publicUrl: string };
   /**
    * R-017: the in-process read caches (src/server/cache/read-cache.ts — the derived figures exact while the database is
    * unchanged, the shell's badges for 30 s); KEYSTONE_READ_CACHE=off reads everything from the database (diagnosis).
@@ -191,6 +216,24 @@ const VARS = {
     .string()
     .transform((v, ctx) => parseTimeOfDay(v) ?? (ctx.addIssue({ code: 'custom', message: 'must be a time of day HH:MM (Europe/Paris), e.g. 07:00' }), z.NEVER))
     .optional(),
+  // R-199 / R-036: e-mail transport (none by default), its .eml folder, the sender, and Keystone's address in the links.
+  KEYSTONE_MAIL_TRANSPORT: z
+    .string()
+    .transform((v) => v.toLowerCase())
+    .transform((v, ctx) =>
+      (MAIL_TRANSPORTS as readonly string[]).includes(v)
+        ? (v as MailTransportMode)
+        : (ctx.addIssue({
+          code: 'custom',
+          message: (MAIL_TRANSPORTS_AWAITING_IT as readonly string[]).includes(v)
+            ? `"${v}" awaits IT (an SMTP relay or the Microsoft 365 registration of Keystone, R-036): use "none" or "file" until then`
+            : 'must be "none" or "file" ("smtp" and "graph" await IT)',
+        }), z.NEVER),
+    )
+    .optional(),
+  KEYSTONE_MAIL_DIR: z.string().optional(),
+  KEYSTONE_MAIL_FROM: z.string().refine((v) => mailAddressOf(v) != null, 'must be an e-mail address, optionally with a name: Keystone <keystone@epc2i.fr>').optional(),
+  KEYSTONE_PUBLIC_URL: httpUrl.optional(),
   // R-017: the in-process read caches, on unless "off".
   KEYSTONE_READ_CACHE: onOff.optional(),
   LOG_LEVEL: z.enum(LOG_LEVELS, { message: `must be one of ${LOG_LEVELS.join(', ')}` }).optional(),
@@ -373,6 +416,20 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
     for (const [name, app] of [['NEXT_PUBLIC_CODEX_URL', 'Codex'], ['NEXT_PUBLIC_CURSUS_URL', 'Cursus'], ['NEXT_PUBLIC_VIGIE_URL', 'Vigie']] as const)
       if (!v[name]) warnings.push({ variable: name, message: `is not set: links open ${app} on localhost` });
 
+  // R-199 / R-036: e-mail. The file transport writes into KEYSTONE_MAIL_DIR (default <data dir>/mail), never inside the stored
+  // files (the orphan prune would delete the messages) nor the PGlite folder.
+  const mailTransport: MailTransportMode = v.KEYSTONE_MAIL_TRANSPORT ?? 'none';
+  const mailDir = mailTransport === 'file' ? (v.KEYSTONE_MAIL_DIR ? path.resolve(opts.cwd, v.KEYSTONE_MAIL_DIR) : path.join(dataDir, 'mail')) : null;
+  if (mailDir && (inside(mailDir, path.join(dataDir, 'files')) || inside(mailDir, path.join(dataDir, 'pg'))))
+    errors.push({ variable: 'KEYSTONE_MAIL_DIR', message: 'must be outside the data directory\'s files and pg folders' });
+  if (mailTransport !== 'file' && v.KEYSTONE_MAIL_DIR != null) warnings.push({ variable: 'KEYSTONE_MAIL_DIR', message: 'is ignored unless KEYSTONE_MAIL_TRANSPORT=file' });
+  if (production && mailTransport === 'file')
+    warnings.push({ variable: 'KEYSTONE_MAIL_TRANSPORT', message: 'is "file": e-mails are written to a folder, not delivered (an SMTP relay or Microsoft 365 awaits IT, R-036)' });
+  const entraOrigin = v.ENTRA_REDIRECT_URI ? new URL(v.ENTRA_REDIRECT_URI).origin : null;
+  const publicUrl = v.KEYSTONE_PUBLIC_URL ?? entraOrigin ?? DEFAULT_PUBLIC_URL;
+  if (production && mailTransport !== 'none' && !v.KEYSTONE_PUBLIC_URL && !entraOrigin)
+    warnings.push({ variable: 'KEYSTONE_PUBLIC_URL', message: `is not set: the links of the e-mails open ${DEFAULT_PUBLIC_URL}` });
+
   // R-187: Arche's views are read on the shared server only (a PGlite database has no arche schema).
   if (v.ARCHE_SOURCE === 'server' && !v.DATABASE_URL) errors.push({ variable: 'ARCHE_SOURCE', message: 'is "server" but DATABASE_URL is not set (Arche’s views are read on the shared PostgreSQL server)' });
   const archeSource: ArcheSource = v.ARCHE_SOURCE && !(v.ARCHE_SOURCE === 'server' && !v.DATABASE_URL) ? v.ARCHE_SOURCE : v.DATABASE_URL ? 'server' : 'simulation';
@@ -442,6 +499,7 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
       seedExplicit: v.KEYSTONE_SEED != null,
       clock: v.KEYSTONE_CLOCK ?? null,
       remindersAt: v.KEYSTONE_REMINDERS_AT ?? DEFAULT_REMINDERS_AT,
+      mail: { transport: mailTransport, dir: mailDir, from: v.KEYSTONE_MAIL_FROM ?? DEFAULT_MAIL_FROM, publicUrl },
       readCache: v.KEYSTONE_READ_CACHE !== 'off',
       log: { level: v.LOG_LEVEL ?? 'info', format: v.LOG_FORMAT ?? (production ? 'json' : 'pretty') },
       cursus: { apiUrl: v.CURSUS_API_URL ?? null, apiKey: cursusApiKey, eventsKey: cursusEventsKey, directory: v.CURSUS_DIRECTORY === 'on' },

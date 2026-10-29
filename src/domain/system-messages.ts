@@ -83,6 +83,37 @@ const MESSAGES = {
     (p) => `CAPEX milestone of ${p.milestone}: ${p.from} → ${p.to}`,
     (p, f) => `Jalon CAPEX de ${f.data(p.milestone)} : ${f.label(p.from)} → ${f.label(p.to)}`,
   ),
+  // R-198: edits made on the Schedule screen's interactive Gantt (activity feed; "FS+5" relationship labels as the Plan writes them).
+  'gantt.moved': def(
+    { activity: 'ref', date: 'date' },
+    (p) => `Moved ${p.activity} on the Gantt · start no earlier than ${p.date}`,
+    (p, f) => `${p.activity} déplacée sur le Gantt · début au plus tôt le ${f.date(p.date)}`,
+  ),
+  'gantt.durationChanged': def(
+    { activity: 'ref', days: 'count' },
+    (p) => `Changed the duration of ${p.activity} on the Gantt · ${p.days} working days`,
+    (p, f) => `Durée de ${p.activity} modifiée sur le Gantt · ${f.plural(p.days, 'jour ouvré', 'jours ouvrés')}`,
+  ),
+  'gantt.constraintCleared': def(
+    { activity: 'ref' },
+    (p) => `Removed the date constraint of ${p.activity} on the Gantt`,
+    (p) => `Contrainte de date de ${p.activity} retirée sur le Gantt`,
+  ),
+  'gantt.linkAdded': def(
+    { pred: 'ref', succ: 'ref', link: 'ref' },
+    (p) => `Linked ${p.pred} → ${p.succ} on the Gantt · ${p.link}`,
+    (p) => `Lien ${p.pred} → ${p.succ} créé sur le Gantt · ${p.link}`,
+  ),
+  'gantt.linkChanged': def(
+    { pred: 'ref', succ: 'ref', link: 'ref' },
+    (p) => `Changed the link ${p.pred} → ${p.succ} on the Gantt · ${p.link}`,
+    (p) => `Lien ${p.pred} → ${p.succ} modifié sur le Gantt · ${p.link}`,
+  ),
+  'gantt.linkRemoved': def(
+    { pred: 'ref', succ: 'ref' },
+    (p) => `Removed the link ${p.pred} → ${p.succ} on the Gantt`,
+    (p) => `Lien ${p.pred} → ${p.succ} supprimé sur le Gantt`,
+  ),
   // R-190: the project's client flagged as a group subsidiary (internal client) or back to external ('—' = subsidiary code not known).
   'client.internalSet': def(
     { client: 'data', subsidiary: 'ref' },

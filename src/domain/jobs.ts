@@ -51,6 +51,11 @@ export type JobName =
   | 'capex-needs'
   // ── Delivery 9 · Matrix D21: Matrix's view pub_filiales (the group's subsidiaries) read into the subsidiaries mirror, hourly.
   | 'matrix-subsidiaries'
+  // ── Delivery 9 · R-199: deadline reminders (tasks, activities, milestones, deliverables, meeting actions, client prerequisites)
+  // at J-n and once overdue, one per person and run, in the bell and by e-mail; and the weekly reports (project status report to
+  // the leads, portfolio to the directors), sent by the first run of each ISO week (Monday morning). Both reminder jobs.
+  | 'deadline-reminders'
+  | 'scheduled-reports'
   ;
 
 export interface JobSchedule {
@@ -114,6 +119,11 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
   // ── Delivery 9 · Matrix D21: the group's subsidiaries read from Matrix every hour (the list changes rarely; nothing with
   // MATRIX_SOURCE=off, or the simulation on a non-demo database).
   { name: 'matrix-subsidiaries', everyMs: HOUR, leaseMs: 10 * MIN, firstDelayMs: 75_000 },
+  // ── Delivery 9 · R-199: every morning at the reminders hour (07:00 Paris by default); the send log keeps each reminder and each
+  // weekly report to one send whatever the runs. Reports: a daily run that sends only once per ISO week (the Monday run), so a
+  // worker stopped on Monday catches the week's reports up the next morning. Longer leases: reports render PDFs.
+  { name: 'deadline-reminders', everyMs: 24 * HOUR, leaseMs: 30 * MIN, firstDelayMs: 80_000, daily: 'reminders' },
+  { name: 'scheduled-reports', everyMs: 24 * HOUR, leaseMs: HOUR, firstDelayMs: 85_000, daily: 'reminders' },
 ];
 
 export const JOB_NAMES: readonly JobName[] = JOB_SCHEDULES.map((j) => j.name);

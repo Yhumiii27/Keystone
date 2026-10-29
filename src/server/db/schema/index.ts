@@ -35,3 +35,4 @@ export * from './share';
 export * from './capex';
 export * from './matrix';
 export * from './shipments';
+export * from './reminders';

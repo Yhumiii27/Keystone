@@ -77,12 +77,14 @@ import d9EstimateClass from './d9-estimate-class.json';
 import d9CapexMilestones from './d9-capex-milestones.json';
 import d9EngineeringPack from './d9-engineering-pack.json';
 import d9Volumes from './d9-volumes.json';
+import d9Gantt from './d9-gantt.json';
 import d9Shipments from './d9-shipments.json';
 import d9ShipmentsB from './d9-shipments-b.json';
 import d9CapexNeeds from './d9-capex-needs.json';
 import d9InternalClient from './d9-internal-client.json';
 import d9MatrixSubsidiaries from './d9-matrix-subsidiaries.json';
 import d9CatalogueScreen from './d9-catalogue-screen.json';
+import d9Reminders from './d9-reminders.json';
 
 export const EXTRA_FR: Record<string, string> = {
   ...common,
@@ -164,6 +166,8 @@ export const EXTRA_FR: Record<string, string> = {
   ...d9CapexMilestones,
   ...d9EngineeringPack,
   ...d9Volumes,
+  ...d9Gantt,
   ...d9Shipments,
   ...d9ShipmentsB,
+  ...d9Reminders,
 };
