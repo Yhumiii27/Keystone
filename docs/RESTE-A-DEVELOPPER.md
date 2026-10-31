@@ -169,7 +169,7 @@ Les Paramètres (catégories de risques et de coûts, compétences, types de liv
 
 **R-210 · Application Windows (.exe) à côté de l’accès web** — *Prochaine étape · non commencé · effort M* · **en cours (Livraison 9)**  
 Le responsable produit (31 oct. 2026, questionnaire L9-X2) : l’accès web reste la solution pour accéder à Keystone de n’importe où ; une application Windows (.exe), installable par ceux qui le souhaitent, coexiste avec lui pour laisser le choix à l’utilisateur. Fenêtre native (WebView2) sur le serveur Keystone d’EPC2i, connexion Microsoft habituelle, sans serveur local.  
-*Avancement : Validé le 31 oct. 2026 ; en construction. · Sources : Questionnaire de la livraison 9, L9-X2 (31 oct. 2026)*
+*Avancement : 31 oct. 2026 : application construite (C# Windows Forms + WebView2, .NET 10, Keystone.exe autonome win-x64, docs/delivery-9/notes-r210-windows-app.md) ; compilée sous Linux, fabrication à la demande (windows-app.yml). Reste : essai sur un PC Windows avec un serveur hébergé (I-1a), signature de code et mode de diffusion (DSI). · Sources : Questionnaire de la livraison 9, L9-X2 (31 oct. 2026)*
 
 **R-018 · Mémoriser les préférences par utilisateur (langue, menu, projet, zone)** — *Plus tard · partiel · effort S*  
 Une fois l’authentification en place, stocker en base, par utilisateur, la langue (français par défaut, choix FR/EN suivant l’utilisateur sur tous ses postes, X-1), l’état du menu, le dernier projet, la zone et les préférences de notification, qui vivent aujourd’hui dans des cookies du navigateur.  
@@ -1005,6 +1005,7 @@ Module demandé mais à cadrer avec le responsable produit avant construction : 
 
 ## 3. Mises à jour
 
+- 2026-10-31 — R-210 : application Windows construite (en attente d’un essai sur PC Windows et de l’hébergement).
 - 2026-10-31 — L9-X3 fait : documents d’expédition pré-versés dans Codex dans la démonstration.
 - 2026-10-31 — Questionnaire de la livraison 9 : 20 choix par défaut confirmés ; démo avec documents d’expédition versés dans Codex (L9-X3) ; portail des filiales = Arche, accès web gardé et application Windows validée (R-210, nouvel item).
 - 2026-10-31 — R-064 fait (S-5 confirmé : 30 jours, 20 entrées, CP et directeur) ; vérifié que Matrix a recopié et accordé pub_pack_ingenierie, pub_expeditions et la nouvelle pub_jalons_projets (29 oct.).

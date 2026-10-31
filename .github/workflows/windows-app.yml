@@ -1,0 +1,38 @@
+# Windows application (R-210): builds Keystone.exe (desktop/windows, WebView2 window on the EPC2i Keystone server) and
+# offers it for download as the run's artifact "Keystone-windows-x64".
+# Started by hand only ("Run workflow" on the Actions tab): Actions minutes are counted (owner, 22 Oct 2026) and Windows
+# runners count double, so it never runs on a push or a pull request. On a Windows PC, desktop/windows/build.ps1 does the
+# same without Actions.
+name: Windows app
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-app-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Keystone.exe
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: Test and publish
+        shell: pwsh
+        run: ./desktop/windows/build.ps1
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Keystone-windows-x64
+          path: |
+            desktop/windows/dist/Keystone.exe
+            desktop/windows/dist/keystone.example.json
+          if-no-files-found: error
+          retention-days: 30
