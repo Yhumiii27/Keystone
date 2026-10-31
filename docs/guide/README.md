@@ -29,6 +29,9 @@ Le guide du **client** attend l’ouverture du portail client (I-2b, R-179). Les
 - **Se connecter.** En production : « Se connecter avec Microsoft » (compte EPC2i). Sur la bêta de démonstration : le
   sélecteur **« Voir en tant que »** en bas de la barre latérale choisit un profil (aucun mot de passe : la bêta est protégée
   par l’identification du serveur).
+- **Navigateur ou application Windows.** Keystone s’ouvre dans un navigateur, de n’importe où ; sous Windows, ceux qui le
+  souhaitent peuvent aussi utiliser l’application `Keystone.exe`, une fenêtre sur le même serveur
+  ([application-windows.md](application-windows.md)).
 - **Rôle actif.** Une personne qui a plusieurs rôles choisit son **rôle actif** dans le menu de son compte : les écrans et les
   droits suivent le rôle actif.
 - **Barre latérale.** En haut : Accueil, Mes projets, Mes tâches, Mes approbations, Documents · Codex. Puis les sections
