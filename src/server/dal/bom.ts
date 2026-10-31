@@ -24,7 +24,7 @@ import { projectFxOf, toEur } from '@/domain/currency';
 import { getDb } from '@/server/db/client';
 import { bomScope, revisionDiffKind, stage as stageCodec, type BomScope, type PartStatus, type RevisionDiffKind, type StageCode, type WearSpare } from '@/server/db/codes';
 import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
-import type { Tx } from '@/server/db/types';
+import type { DB, Tx } from '@/server/db/types';
 import {
   activities, assemblyLinks, parts, poLines, projectAssemblyRoots, projectBomLines, projectEquipments, projects, purchaseOrders, revisionDiffLines, revisionDiffs,
   spareListLines,
@@ -91,14 +91,14 @@ export type PartValuation = { unitEur: number; source: BomPriceSource };
  * approved, partly or fully received), else the last purchase price, else the catalogue price. Unknown refs are left out.
  * A line price is in its order's currency (C-9, R-075): converted to euros at the project's budget rate first.
  */
-export async function projectPartValuation(projectId: string, refs: readonly string[]): Promise<Map<string, PartValuation>> {
+export async function projectPartValuation(projectId: string, refs: readonly string[], q?: DB | Tx): Promise<Map<string, PartValuation>> {
   if (!refs.length) return new Map();
-  const db = await getDb();
+  const db = q ?? (await getDb());
   const [ordered, info, [project]] = await Promise.all([
     db.select({ ref: parts.ref, qty: poLines.orderedQty, unitPrice: poLines.unitPriceEur, currency: purchaseOrders.currency })
       .from(poLines).innerJoin(purchaseOrders, eq(purchaseOrders.id, poLines.poId)).innerJoin(parts, eq(parts.id, poLines.partId))
       .where(and(eq(purchaseOrders.projectId, projectId), inArray(purchaseOrders.status, [...ORDERED_PO_STATUSES]), inArray(parts.ref, [...refs]))),
-    getPartsByRef([...refs]),
+    getPartsByRef([...refs], db),
     db.select({ currency: projects.currency, budgetRate: projects.budgetRate }).from(projects).where(eq(projects.id, projectId)),
   ]);
   const fx = projectFxOf(project ?? {});
@@ -152,6 +152,34 @@ export async function getProjectBom(projectCode: string): Promise<ProjectBom | n
     };
   });
   return { projectCode: p.code, shortCode: p.short, lines: out, summary: { ...bomSummary(out), possibleDuplicates: dup.pairs }, hasTree: roots.length > 0 };
+}
+
+/** The BOM fields the shipments read (packing control, customs values of the shipping documents). */
+export type ShipmentBomLine = Pick<BomLine, 'ref' | 'name' | 'equipmentRef' | 'quantity' | 'unitPriceEur' | 'hsCode' | 'hsNotApplicable' | 'exportRestriction'>;
+
+/**
+ * The project's BOM lines as the shipments read them, on `q` (a seed's database, a transaction): the same lines, names, HS codes
+ * and valuation (`projectPartValuation`) as `getProjectBom`, without what only the BOM screen needs (assembly tree, ECOs,
+ * duplicates). L9-X3: the demo seed files EXP-01's documents through it (getDb() is not open yet while the database is seeded).
+ */
+export async function projectShipmentBomOn(q: DB | Tx, projectId: string): Promise<{ lines: ShipmentBomLine[] }> {
+  const lines = await q
+    .select({ ref: parts.ref, qty: projectBomLines.quantity, eq: projectEquipments.ref })
+    .from(projectBomLines).innerJoin(parts, eq(parts.id, projectBomLines.partId)).leftJoin(projectEquipments, eq(projectEquipments.id, projectBomLines.equipmentId))
+    .where(eq(projectBomLines.projectId, projectId)).orderBy(asc(parts.position), asc(projectBomLines.position));
+  const refs = lines.map((l) => l.ref);
+  const rows = await getPartsByRef(refs, q);
+  const value = await projectPartValuation(projectId, refs, q);
+  const byRef = new Map(rows.map((r) => [r.ref, r]));
+  return {
+    lines: lines.map((l) => {
+      const r = byRef.get(l.ref)!;
+      return {
+        ref: l.ref, name: r.name, equipmentRef: l.eq ?? null, quantity: l.qty, unitPriceEur: (value.get(l.ref) ?? { unitEur: r.listPriceEur }).unitEur,
+        hsCode: r.hsCode, hsNotApplicable: r.hsNotApplicable, exportRestriction: r.exportRestriction,
+      };
+    }),
+  };
 }
 
 /**

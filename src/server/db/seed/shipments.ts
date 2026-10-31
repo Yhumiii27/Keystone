@@ -5,16 +5,21 @@
 // shows their quantities against the BOM, the export-restriction alert of the OCR cameras and the per-HS-code summary.
 // Lot B (R-158): the shipment dated so that it has happened at the demo date (validated 17 Sep, picked up 21 Sep, arrived 22 Sep
 // 2026), a partial site reception pointed on 23 Sep by the site team (the second container's OCR cameras: one damaged → one punch
-// item). Its eight shipping documents are generated on demand; none is filed in Codex in the demo data set (the prototype's
-// document vault stays as it is — the filing is exercised by src/features/shipments/lot-b.test.ts).
+// item). Its eight shipping documents are generated on demand.
+// L9-X3 (owner, 31 Oct 2026): three of them are filed in Codex in the demo data set — the packing list when the packing was
+// validated, the CMR and the delivery note at the pick-up — through the real filing (`fileShippingDocumentOn`: PDF generated and
+// kept as filed, Codex index record SHP-HLT-0nn rev A released, deposit pending in the Codex outbox), after the seed's transaction.
 import { and, eq, sql } from 'drizzle-orm';
+import type { ShippingDocKind } from '@/domain/shipping-documents';
+import { makeT } from '@/i18n/translate';
+import { isoOfDemoDate, parisInstant } from '../codes';
 import { nextBusinessNumber } from '../codes';
 import { demoFloor } from '../helpers';
 import { STANDARD_INCOTERMS } from '@/domain/incoterms';
 import { itemKey } from '@/domain/shipments';
 import { findPerson } from '../helpers';
 import {
-  contracts, incoterms, parts, projectEquipments, projects, punchItems, shipmentEquipments,
+  contracts, incoterms, parts, projectEquipments, projects, punchItems, shipmentDocuments, shipmentEquipments,
   shipmentGapReasons, shipmentItems, shipmentLoads, shipmentPunchItems, shipmentReceptionLines, shipments, shipmentSteps,
 } from '../schema';
 import type { DB, Tx } from '../types';
@@ -176,5 +181,49 @@ export async function demoShipmentLotBToBackfill(db: DB | Tx): Promise<boolean> 
 /** A demo database seeded before R-158: no shipment yet. Backfilled once (index.ts). */
 export async function demoShipmentsToBackfill(db: DB | Tx): Promise<boolean> {
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(shipments);
+  return n === 0;
+}
+
+/**
+ * L9-X3 — EXP-01's documents already filed in Codex in the demo, by the logistics coordinator (`DEMO_SHIPMENT.by`), in French
+ * (the default language): the packing list once the packing was validated (17 Sep), the CMR and the delivery note on the pick-up
+ * day (21 Sep). The other five stay generated on demand.
+ */
+export const DEMO_FILED_SHIPPING_DOCUMENTS: readonly { kind: ShippingDocKind; on: string; time: string }[] = [
+  { kind: 'packing_list', on: '17 Sep', time: '17:30' },
+  { kind: 'cmr', on: '21 Sep', time: '07:40' },
+  { kind: 'delivery_note', on: '21 Sep', time: '07:45' },
+];
+
+/**
+ * Files `DEMO_FILED_SHIPPING_DOCUMENTS` through the real filing, dated on their day (demo seed, after its transaction; and once on
+ * a demo database whose EXP-01 has none filed). Each filing runs in its own transaction: the PDF is generated, passed to the
+ * antivirus and stored, the Codex index record created and its deposit queued; the deposit is left pending (as the mock connector
+ * does — with the HTTP connector the "codex-outbox" job delivers it). Returns how many were filed.
+ */
+export async function fileDemoShippingDocuments(db: DB): Promise<number> {
+  const d = DEMO_SHIPMENT;
+  // Loaded at call time: the filing reaches the PDF export and the Codex connector, which the seed's modules never load otherwise.
+  const { fileShippingDocumentOn } = await import('@/server/dal/shipment-documents');
+  const { getProjectShipmentsOn } = await import('@/server/dal/shipments');
+  const actor = { name: d.by, role: 'logistics' };
+  const lang = 'fr' as const;
+  let n = 0;
+  for (const f of DEMO_FILED_SHIPPING_DOCUMENTS) {
+    const on = isoOfDemoDate(f.on)!;
+    const data = await getProjectShipmentsOn(db, d.project);
+    if (!data?.shipments.some((s) => s.ref === d.ref)) return n;
+    await fileShippingDocumentOn(db, d.project, d.ref, f.kind, actor, { t: makeT(lang), lang }, { today: on, at: parisInstant(on, f.time), data });
+    n++;
+  }
+  return n;
+}
+
+/** A demo database whose EXP-01 has left (lot B) but has no document filed: the L9-X3 documents are filed once (index.ts). */
+export async function demoShippingDocumentsToBackfill(db: DB | Tx): Promise<boolean> {
+  const [r] = await db.select({ id: shipments.id, status: shipments.status }).from(shipments).innerJoin(projects, eq(projects.id, shipments.projectId))
+    .where(and(eq(projects.code, DEMO_SHIPMENT.project), eq(shipments.ref, DEMO_SHIPMENT.ref)));
+  if (!r || r.status === 'draft' || r.status === 'prepared') return false;
+  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(shipmentDocuments).where(eq(shipmentDocuments.shipmentId, r.id));
   return n === 0;
 }

@@ -257,11 +257,11 @@ describe('Activity & integrations Server Functions and the audit export', () => 
     expect(await syncConnectorAction('E-mail (SMTP)')).toEqual({ error: 'E-mail (SMTP) n’est pas connecté — rien à synchroniser' });
     expect((await listAudit()).length).toBe(audits);
     const before = (await getCodexSyncState())!;
-    expect(await syncConnectorAction('Codex')).toEqual({ ok: true, toast: 'Codex · synchro simulée (connecteur simulé) · 412 fiches' });
+    expect(await syncConnectorAction('Codex')).toEqual({ ok: true, toast: 'Codex · synchro simulée (connecteur simulé) · 415 fiches' }); // L9-X3: + the demo's 3 shipping documents
     expect((await getCodexSyncState())!.syncedAt > before.syncedAt).toBe(true);
     expect((await listAudit())[0]).toMatchObject({ who: 'Romain Aubert', object: 'Connector Codex', change: 'sync (simulated) · 412 records · 38 linked to HLT-026' });
     const codex = (await listAdminConnectors()).find((c) => c.name === 'Codex')!;
-    expect([codex.mode, codex.state, codex.lastSyncAt, codex.lastVolume]).toEqual(['mock', 'mock', null, '412 records · 38 linked to HLT-026']);
+    expect([codex.mode, codex.state, codex.lastSyncAt, codex.lastVolume]).toEqual(['mock', 'mock', null, '415 records · 38 linked to HLT-026']); // L9-X3: + the demo's 3 shipping documents
     as('director');
     expect(await syncConnectorAction('Vigie')).toEqual({ ok: true, toast: 'Vigie · simulated sync (mock connector) · 0 sent · 0 pending · 0 refreshed' });
     const cursus = await syncConnectorAction('Cursus');

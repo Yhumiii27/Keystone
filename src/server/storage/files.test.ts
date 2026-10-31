@@ -58,7 +58,9 @@ describe('store, read, delete', () => {
     const back = await readStoredFile(f.id);
     if (!back || back.blocked) throw new Error('stored file expected'); // R-175: { blocked } only for a flagged file
     expect(Buffer.from(back.data).equals(Buffer.from(PDF))).toBe(true);
-    const files = fs.readdirSync(dir, { recursive: true }).map(String).filter((p) => p.endsWith('.pdf'));
+    // L9-X3: the demo seed stored the PDFs of the three shipping documents it files in Codex; this one is the only other.
+    const files = fs.readdirSync(dir, { recursive: true }).map(String).filter((p) => p.endsWith('.pdf') && p.includes(f.id));
+    expect(fs.readdirSync(dir, { recursive: true }).map(String).filter((p) => p.endsWith('.pdf'))).toHaveLength(1 + 3);
     expect(files).toHaveLength(1);
     expect(files[0]).not.toContain('Spec');
     await setFileOwner(f.id, { ownerType: 'task_attachment', ownerId: '00000000-0000-4000-8000-000000000001' });
@@ -74,7 +76,7 @@ describe('store, read, delete', () => {
     expect(await deleteStoredFile(f.id)).toBe(true);
     expect(await getStoredFile(f.id)).toBeNull();
     expect(await readStoredFile(f.id)).toBeNull();
-    expect(fs.readdirSync(dir, { recursive: true }).map(String).filter((p) => p.endsWith('.pdf'))).toHaveLength(0);
+    expect(fs.readdirSync(dir, { recursive: true }).map(String).filter((p) => p.endsWith('.pdf'))).toHaveLength(3); // L9-X3: the demo's filed PDFs remain
   });
 
   it('stores an uploaded file and reads text without its BOM', async () => {

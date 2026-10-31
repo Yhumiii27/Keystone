@@ -113,7 +113,7 @@ describe('Codex vault writers', () => {
       confidentiality: 'internal', tagsText: 'PO-2026-118 · CR-RAIL-A100', isNew: true, dateText: '25 Sep', // R-013: the business date, not Codex's 29 Sep
     });
     expect(all[0].links.map((l) => [l.kindLabel, l.ref])).toEqual([['Purchase order', 'PO-2026-118'], ['Article', 'CR-RAIL-A100']]);
-    expect((await getCodexSyncState())!.records).toBe(413);
+    expect((await getCodexSyncState())!.records).toBe(416); // L9-X3: 412 + the demo's 3 shipping documents + this one
     expect(await depositInCodex({ typeCode: 'PID', project: 'HLT-026', revisionOf: 'PID-HLT-026' }, 'Pauline Noguès')).toEqual({ number: 'PID-HLT-026', created: false });
     const pid = (await getDocumentRecord('PID-HLT-026'))!;
     expect([pid.status, pid.revision, pid.shared, pid.approvals.map((a) => a.signed)]).toEqual(['draft', 'D', false, [true, false, false]]);

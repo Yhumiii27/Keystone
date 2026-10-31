@@ -20,6 +20,7 @@ import { DEPOSIT_TYPES } from '@/server/db/codes';
 import { openDatabase } from '@/server/db/open';
 import { getCodexSyncState, getDocumentRecord, listDocumentTypes, listVaultDocuments } from '@/server/dal/documents';
 import { docsBadge } from '@/server/dal/docs-badge';
+import { L9X3_FILED, withoutL9X3, withoutL9X3Type } from '@/test/l9-x3';
 import GOLD from './docs.golden.json';
 import { depositHref, docHref, documentsHref } from './links';
 import { depositView, docTypesView, drawerView, vaultView, type DocsState } from './model';
@@ -47,7 +48,8 @@ beforeAll(async () => {
 
 async function vault(lang: Lang, state: Partial<DocsState> = {}, project = 'HLT-026') {
   const [docs, sync] = await Promise.all([listVaultDocuments(), getCodexSyncState()]);
-  return vaultView({ project, docs, sync, state: { ...S0, ...state } }, makeT(lang), lang);
+  // L9-X3: the prototype's vault, without the three shipping documents the demo files in Codex (src/test/l9-x3.ts).
+  return vaultView({ project, docs: withoutL9X3(docs), sync: sync && { ...sync, records: sync.records - L9X3_FILED }, state: { ...S0, ...state } }, makeT(lang), lang);
 }
 const chips = (xs: { label: string; count: number }[]) => xs.map((x) => ({ label: x.label, count: String(x.count) }));
 const ids = (v: Awaited<ReturnType<typeof vault>>) => v.rows.map((r) => r.number);
@@ -296,7 +298,8 @@ describe('"Deposit in Codex" hand-off (depVals) — EN and FR', () => {
 
 describe('document types register (docTypesRows) — EN and FR', () => {
   it.each(LANGS)('%s: rows, "In Codex" counts', async (lang) => {
-    const rows = docTypesView(await listDocumentTypes(), makeT(lang), lang);
+    // L9-X3: the prototype's register, without the SHP type the demo's filing adds.
+    const rows = withoutL9X3Type(docTypesView(await listDocumentTypes(), makeT(lang), lang));
     expect(rows.map((r) => ({ code: r.code, label: r.label, famLabel: r.family, circuit: r.circuit, retention: r.retention, iso: r.iso, clientText: r.client, count: r.count }))).toEqual(
       G[lang].doctypes.map((r: any) => ({ ...r, label: frGap(lang, r.label), circuit: lang === 'fr' ? r.circuit.replace('Sens', 'Direction') : r.circuit })),
     );
