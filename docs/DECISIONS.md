@@ -252,3 +252,50 @@ C'est une matrice par role, il faudra donc que tu identifie chaque role de la ma
 - **NEW-D5-2 · Garantie : coût de l'année et prolongations** (Plus tard) : Année civile + date de fin prolongée ★
 - **NEW-D4-5 · Grue EQ-CRN-250T et ASM-RMG-250 : un ou deux équipements ?** (Plus tard) : À faire vérifier par le bureau d'études ★
 - **NEW-D5-3 · Mot français pour l'étape « Handover »** (Plus tard) : Transfert ★
+
+## Questionnaire de la livraison 9 (réponses du 31/10/2026)
+
+Questionnaire publié en artefact (https://claude.ai/artifact/1exn6XRVeQRgTtz5ZAYmKy, collection `answers`), questions dans `docs/decisions/questions-livraison-9.json`. ★ = choix par défaut confirmé.
+
+### Gantt interactif (R-198)
+
+- **L9-G1 · Le recalcul immédiat du chemin critique doit-il valoir aussi pour le tableau du Plan ?** : Gantt seulement : le Plan garde le recalcul manuel ★
+- **L9-G2 · Quand on dépose une barre plus tôt que ses prédécesseurs ne le permettent ?** : Garder la contrainte « au plus tôt » : la logique l’emporte, sans message ★
+- **L9-G3 · Sur quelle vue l’écran Planning s’ouvre-t-il ?** : Lots de travaux ★
+- **L9-G4 · Faut-il un filtre par ligne d’équipement sur le Gantt des activités ?** : Non pour l’instant ★
+- **L9-G5 · Faut-il pouvoir déplacer un lot de travaux entier d’un seul glisser ?** : Non ★
+
+### Rappels d’échéances et rapports programmés (R-199)
+
+- **L9-R1 · Quand rappeler une échéance ?** : J-7, J-1, puis un seul rappel une fois en retard ★
+- **L9-R2 · Qui reçoit les rappels des jalons et des prérequis clients ?** : Le chef de projet en titre ★
+- **L9-R3 · Quel rapport hebdomadaire envoyer aux responsables du projet ?** : Version « pilotage » ★
+- **L9-R4 · Qui reçoit le rapport portefeuille hebdomadaire ?** : Les directeurs ★
+- **L9-R5 · Quel jour et à quelle heure partent les rapports ?** : Le lundi matin, à l’heure des rappels ★
+- **L9-R6 · L’e-mail est-il activé par défaut pour tout le monde ?** : Oui, activé par défaut ★
+
+### Notifications par e-mail (R-036)
+
+- **L9-N1 · Comment envoyer les notifications par défaut ?** : E-mail immédiat pour ce qui attend une action, résumé quotidien pour le reste ★
+- **L9-N2 · À quelle heure part le résumé quotidien ?** : 7 h ★
+- **L9-N3 · Les alertes d’indicateur (règles R-130) vont-elles aussi à la Finance ?** : Non ★
+- **L9-N4 · L’invitation à la SAT part-elle aussi aux témoins qui n’ont pas de compte ?** : Non, seulement les contacts du client externe qui ont un compte ★
+
+### Suppléance des validations (R-051)
+
+- **L9-D1 · Le nom du suppléant doit-il figurer sur la pièce elle-même ?** : Non, l’audit suffit ★
+- **L9-D2 · Faut-il signaler à Codex et à Vigie qu’une décision a été prise par un suppléant ?** : Non ★
+
+### Fiche modifiée entre-temps (R-010)
+
+- **L9-C1 · Faut-il étendre le contrôle « fiche modifiée entre-temps, rechargez » à d’autres écrans ?** : Non pour l’instant ★
+
+### Pack d’ingénierie (R-191)
+
+- **L9-E1 · Qui peut modifier la liste standard du pack d’ingénierie par type de machine ?** : Directeur, chef de projet, responsable ingénierie et qualité ★
+
+### Expéditions (R-158)
+
+- **L9-X1 · La liste des documents générés par Keystone vous convient-elle ?** : Oui, cette liste ★
+- **L9-X2 · Le portail client reste-t-il réservé aux clients externes ?** : Autre réponse — *Le portail sera accessible à tout le monde (le groupe, nous, les filiales), mais pas aux externes au groupe. Par contre des .exe qui tournent sous Windows seront bienvenus pour les utilisateurs qui le souhaitent.* — **à préciser** (contredit la décision 6 du 25/10/2026 ; questions posées au responsable produit)
+- **L9-X3 · La démonstration doit-elle contenir des documents d’expédition déjà déposés dans Codex ?** : Oui, en pré-déposer quelques-uns
