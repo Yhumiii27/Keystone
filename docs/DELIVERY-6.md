@@ -355,7 +355,7 @@ Delivery 1–5 deviations still apply. New in chapter 4:
 | S-4 | What moves the per-project data date (Friday job, PM action, Reschedule) and what the Friday freeze records | a `projects.data_date` writer |
 | S-3 | Should a rejected baseline proposal be removed or shown as rejected? Should Schedule "Re-baseline" become the same link as Plan after BL1? | baselines |
 | L-2 | Should setting BL1 tick the stage deliverable "Planning BL1 posé"? | lifecycle |
-| S-5 | Purge horizon (30 days, 20 entries) and whether only the PM and director may remove plan rows | Plan |
+| S-5 | Purge horizon (30 days, 20 entries) and whether only the PM and director may remove plan rows — **confirmed by the owner on 31 Oct 2026** | Plan |
 | D-5 | Delete `client_communications` and its data? Is a "client decision" any external meeting (a supplier review would count) or does a meeting need a "client present" flag? | Site, Meetings |
 | L-3b | Geocoding source for new sites (else missing from the world map); per-phase durations from the machine-type standard (A-2 / L-3a) | wizard, world map |
 | S-7 | Should Select skip a lever already requested from a suggestion or another scenario? Formal approval of a scenario? Baseline-based scenarios, horizon beyond 8 weeks? | what-if |
