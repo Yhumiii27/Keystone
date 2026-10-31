@@ -176,6 +176,13 @@ jobs:
       - name: Install
         run: npm ci
 
+      # pg_dump / pg_restore of the server's major version, as in the worker image (postgresql-client-16): the runner's newer
+      # client writes `SET transaction_timeout`, which a PostgreSQL 16 server refuses at restore.
+      - name: PostgreSQL 16 client tools
+        run: |
+          sudo apt-get install -y -q postgresql-client-16
+          echo /usr/lib/postgresql/16/bin >> "$GITHUB_PATH"
+
       - name: Base layer (roles, schemas, rights)
         run: |
           for v in KEYSTONE_APP_PASSWORD CODEX_APP_PASSWORD CURSUS_APP_PASSWORD VIGIE_APP_PASSWORD MATRIX_APP_PASSWORD EPC2I_SAUVEGARDE_PASSWORD; do
