@@ -8,28 +8,28 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-31 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 122 faits, 26 en cours, 61 à faire, sur 209 points.
+**Avancement** : 122 faits, 27 en cours, 61 à faire, sur 210 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
 | Bloquant production | 15 | ≈ 102 |
-| Prochaine étape | 20 | ≈ 168 |
+| Prochaine étape | 21 | ≈ 172 |
 | À décider | 36 | ≈ 329 |
 | Plus tard | 16 | ≈ 60 |
-| **Total** | **87** | **≈ 658** |
+| **Total** | **88** | **≈ 662** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
-| Non commencé | 38 |
+| Non commencé | 39 |
 | Partiel | 9 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
 
 | Domaine | Bloquant production | Prochaine étape | À décider | Plus tard | Restants | Faits |
 |---|---:|---:|---:|---:|---:|---:|
-| Plateforme et mise en production | 6 | 3 | 0 | 2 | 11 | 15 |
+| Plateforme et mise en production | 6 | 4 | 0 | 2 | 12 | 15 |
 | Authentification, utilisateurs et droits | 1 | 0 | 2 | 0 | 3 | 14 |
 | Intégrations avec les autres systèmes | 5 | 6 | 4 | 5 | 20 | 6 |
 | Projets, cycle de vie et modèles par type de machine | 0 | 1 | 2 | 2 | 5 | 5 |
@@ -129,7 +129,7 @@ Décisions à prendre et données à fournir avant de pouvoir développer. Les q
 
 ## 2. Liste détaillée par domaine
 
-### 2.1 Plateforme et mise en production (11 restants, 15 faits)
+### 2.1 Plateforme et mise en production (12 restants, 15 faits)
 
 **R-003 · Héberger une instance multi-utilisateur (bêta puis production)** — *Bloquant production · partiel · effort M* · **en cours (Livraison 8)**  
 La PR #1 (ouverte, non fusionnée) apporte un Dockerfile Coolify : un seul conteneur next start sur le port 3000, PGlite et fichiers sur un volume /data. Il reste à la rebaser sur la livraison 6, construire et tester l’image, ajouter NEXT_PUBLIC_CODEX_URL aux arguments de build, configurer TLS et domaine, et protéger l’accès tant que l’authentification manque. Ensuite viennent la préproduction et la production avec PostgreSQL et un worker ; leur cible (Azure, serveur interne ou cloud) reste à décider. Analyse comparative du 25 oct. 2026 : l’hébergement d’une instance multi-utilisateur est un prérequis de production (bloquant), rappelé par l’analyse comparative ; aucun changement de priorité.  
@@ -167,13 +167,17 @@ Il n'existe aucune documentation pour les utilisateurs : le README et docs/ s'ad
 Les Paramètres (catégories de risques et de coûts, compétences, types de livrables, statuts, lieux de stockage), la grille de taux, les services et les clients viennent des constantes du prototype, et « Rétablir les valeurs par défaut » recharge SETTINGS0. Il faut que la direction fournisse les vraies listes et qu'une reprise les charge, en complément du démarrage sans données de démonstration.  
 *Avancement : Livraison 8 : coefficients de production en attente (valeurs provisoires) et fiche de collecte des données de référence ; vraies valeurs attendues de la direction. · Attend : Listes métier validées par la direction (catégories, compétences, taux, services, clients, lieux) · Sources : A-14, A-15, A-10, 10 §1 (Paramètres)*
 
+**R-210 · Application Windows (.exe) à côté de l’accès web** — *Prochaine étape · non commencé · effort M* · **en cours (Livraison 9)**  
+Le responsable produit (31 oct. 2026, questionnaire L9-X2) : l’accès web reste la solution pour accéder à Keystone de n’importe où ; une application Windows (.exe), installable par ceux qui le souhaitent, coexiste avec lui pour laisser le choix à l’utilisateur. Fenêtre native (WebView2) sur le serveur Keystone d’EPC2i, connexion Microsoft habituelle, sans serveur local.  
+*Avancement : Validé le 31 oct. 2026 ; en construction. · Sources : Questionnaire de la livraison 9, L9-X2 (31 oct. 2026)*
+
 **R-018 · Mémoriser les préférences par utilisateur (langue, menu, projet, zone)** — *Plus tard · partiel · effort S*  
 Une fois l’authentification en place, stocker en base, par utilisateur, la langue (français par défaut, choix FR/EN suivant l’utilisateur sur tous ses postes, X-1), l’état du menu, le dernier projet, la zone et les préférences de notification, qui vivent aujourd’hui dans des cookies du navigateur.  
 *Attend : Authentification réelle et vrais comptes (R-038, R-039) · Sources : X-1, X-6b, 01 OQ1, 00 §7.2, DELIVERY-1.md §7*
 
 **R-019 · Adapter ou retirer l’application macOS Keystone.app** — *Plus tard · attend le responsable produit · effort S*  
 Keystone.app lance un serveur local avec sa propre base PGlite sur le port 3000. Avec un serveur hébergé, il faut soit la faire pointer vers l’URL du serveur (fenêtre WebKit seule), soit l’abandonner.  
-*Attend : Décision du responsable produit une fois l’hébergement choisi (I-1a) · Sources : I-1a*
+*Avancement : 31 oct. 2026 : le responsable produit garde le choix web ou application ; l’application macOS sera adaptée comme l’application Windows (R-210) pour pointer vers le serveur hébergé. · Attend : Décision du responsable produit une fois l’hébergement choisi (I-1a) · Sources : I-1a*
 
 **~~R-002 · Passer de PGlite à un serveur PostgreSQL~~** — *Bloquant production · non commencé · effort M* · **fait (Livraison 7)**  
 Remplacer PGlite (base embarquée, une seule connexion) par PostgreSQL serveur via drizzle-orm/node-postgres et un pool de connexions. Les migrations doivent tourner au déploiement et non au premier getDb() d’un processus, pour que plusieurs instances partagent la base.  
@@ -1001,6 +1005,7 @@ Module demandé mais à cadrer avec le responsable produit avant construction : 
 
 ## 3. Mises à jour
 
+- 2026-10-31 — Questionnaire de la livraison 9 : 20 choix par défaut confirmés ; démo avec documents d’expédition versés dans Codex (L9-X3) ; portail des filiales = Arche, accès web gardé et application Windows validée (R-210, nouvel item).
 - 2026-10-31 — R-064 fait (S-5 confirmé : 30 jours, 20 entrées, CP et directeur) ; vérifié que Matrix a recopié et accordé pub_pack_ingenierie, pub_expeditions et la nouvelle pub_jalons_projets (29 oct.).
 - 2026-10-29 — R-157, R-154 et R-183 faits : finitions d’ergonomie, couleurs de statut harmonisées, accessibilité WCAG 2.1 AA avec contrôles axe.
 - 2026-10-29 — R-010 fait : verrouillage optimiste des fiches (« modifiée entre-temps par X »), numérotation et contrôles sûrs en concurrence (migrations 0068-0069).

@@ -222,6 +222,10 @@
   {
    "date": "2026-10-31",
    "text": "R-064 fait (S-5 confirmé : 30 jours, 20 entrées, CP et directeur) ; vérifié que Matrix a recopié et accordé pub_pack_ingenierie, pub_expeditions et la nouvelle pub_jalons_projets (29 oct.)."
+  },
+  {
+   "date": "2026-10-31",
+   "text": "Questionnaire de la livraison 9 : 20 choix par défaut confirmés ; démo avec documents d’expédition versés dans Codex (L9-X3) ; portail des filiales = Arche, accès web gardé et application Windows validée (R-210, nouvel item)."
   }
  ],
  "items": [
@@ -763,7 +767,8 @@
     "desktop/KeystoneApp.swift:10 : Codex pointe vers Keystone via NEXT_PUBLIC_KEYSTONE_URL (port 3000), à mettre à jour avec l’URL hébergée"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "a_faire",
+    "note": "31 oct. 2026 : le responsable produit garde le choix web ou application ; l’application macOS sera adaptée comme l’application Windows (R-210) pour pointer vers le serveur hébergé."
    }
   },
   {
@@ -6085,6 +6090,29 @@
    "progress": {
     "state": "a_faire",
     "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-210",
+   "verdict": "ajout_critique",
+   "title": "Application Windows (.exe) à côté de l’accès web",
+   "description": "Le responsable produit (31 oct. 2026, questionnaire L9-X2) : l’accès web reste la solution pour accéder à Keystone de n’importe où ; une application Windows (.exe), installable par ceux qui le souhaitent, coexiste avec lui pour laisser le choix à l’utilisateur. Fenêtre native (WebView2) sur le serveur Keystone d’EPC2i, connexion Microsoft habituelle, sans serveur local.",
+   "category": "plateforme_production",
+   "kind": "fonction_manquante",
+   "priority": "prochaine_etape",
+   "status": "non_commence",
+   "waiting_on": "",
+   "effort": "M",
+   "sources": [
+    "Questionnaire de la livraison 9, L9-X2 (31 oct. 2026)"
+   ],
+   "evidence": [
+    "desktop/KeystoneApp.swift (équivalent macOS, R-019)"
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 9",
+    "note": "Validé le 31 oct. 2026 ; en construction."
    }
   }
  ]
