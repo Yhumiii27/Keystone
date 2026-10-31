@@ -125,6 +125,7 @@ Je vais devoir te fournir les données standard (WBS, budgets, etc.) par type de
 - **S-3 · Références de planning (BL0, BL1, BL2…)** (Prochaine étape · défaut appliqué au chapitre 4) : Références successives, nouvelle via une modification ★
 - **S-4 · Date de situation et horloge réelle** (Bloquant production) : Date de situation par projet, gel hebdo le vendredi ★
 - **S-5 · Suppression d'un lot et contrôle des liens** (Plus tard · défaut appliqué au chapitre 4) : À discuter — *Nous devons demander une confirmation et garder la possibilité d'annulation.*
+  - **Confirmé le 31/10/2026** : corbeille conservée 30 jours, 20 entrées au plus par projet, suppression et restauration réservées aux responsables du projet (chef de projet en titre, co-chef de projet, adjoint) et au directeur.
 - **S-6 · Données propres aux lots de travaux** (Prochaine étape) : À discuter — *les codes analystiques que sage utilise sont redécoupés en codes NIM, je ferais une extraction pour que tu puisses avoir le détails et ainsi nous pourront attribuer par tache au projet le bon code analytique et le bon code NIM, ces codes NIM devraient aussi être affectés a des budgets. Le découpage des budgets projets doit être revus, nous en discuterons plus tard.*
 - **S-7 · Scénarios « what-if » de nivellement des ressources** (Plus tard · défaut appliqué au chapitre 4) : Scénarios enregistrés ; « Appliquer » crée des demandes ★
 - **S-8 · Unité des durées, marges et glissements** (Plus tard · défaut appliqué au chapitre 4) : Jours ouvrés partout ★
