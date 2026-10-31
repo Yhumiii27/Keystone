@@ -347,8 +347,7 @@ EXP-01 de HLT-026 redatée avant la date de démonstration (validée le 17 sept.
 lot A : 12 → 14 oct.), **arrivée**, réception **partielle** pointée le 23 sept. par Julien Wagner (les deux conteneurs reçus, les
 lidars et anémomètres reçus, 11 caméras OCR reçues et **1 endommagée** — catégorie B choisie : la caméra fonctionne, son boîtier est
 à remplacer avant la SAT —, les kits de fusibles pas encore pointés) → **réserve P-10** sur EQ-02. Ses **huit documents** se génèrent à la
-demande (« PDF ») ; **aucun n’est versé dans Codex dans le jeu de démonstration** : le coffre documentaire reproduit celui du
-prototype (tests dorés), le versement est couvert par `src/features/shipments/lot-b.test.ts`. Une base de démonstration existante
+demande (« PDF ») ; depuis la décision L9-X3, **trois sont déjà versés dans Codex** (§ 21). Une base de démonstration existante
 reçoit ces données une fois (EXP-01 encore « préparée », rien de pointé).
 
 ## 19. Décisions prises sans demander (lot B)
@@ -361,7 +360,7 @@ reçoit ces données une fois (EXP-01 encore « préparée », rien de pointé).
 5. Réception sans écart : « réceptionnée », clôture à la main sans motif ; avec écarts : clôture automatique à la dernière réserve.
 6. Type documentaire **SHP** ajouté au registre de Keystone au premier versement (famille Site, conservation 10 ans, ISO 8.5.4,
    circuit : l’auteur), fiches **diffusées** dès le versement, confidentialité interne ; une fiche par expédition et type, un
-   indice par versement. Démonstration : documents générés à la demande, aucun versé (coffre du prototype inchangé).
+   indice par versement. Démonstration : documents générés à la demande ; depuis L9-X3, trois versés (§ 21).
 7. PDF versé conservé dans Keystone jusqu’à la prise en charge par Codex ; envoi au connecteur HTTP en base64 (à valider avec Codex).
 8. Jalon `arrivee_site` décidé par les expéditions dès qu’une est envoyée (les brouillons ne comptent pas) ; ETD / ETA en date
    prévue seulement à défaut d’autre source.
@@ -376,3 +375,51 @@ reçoit ces données une fois (EXP-01 encore « préparée », rien de pointé).
 - **Matrix** : copie de `pub_expeditions` (et de la nouvelle définition de `pub_jalons_projets`) dans `partage/30-keystone.sql`,
   droit de lecture `arche_app` (`partage/90-droits.sql`) — demande à présenter au responsable produit avant toute écriture.
 - Pays de destination structuré (texte de la fiche chantier aujourd’hui) ; coûts de fret et assurance (à cadrer, Sage X3).
+
+## 21. Documents déjà versés dans la démonstration (décision L9-X3, 31 oct. 2026)
+
+Le responsable produit a demandé (questionnaire de la livraison 9, L9-X3) que le jeu de démonstration contienne des documents
+d’expédition déjà versés dans Codex. EXP-01 (HLT-026, arrivée le 22 sept.) a donc trois documents versés, **par le vrai chemin
+« Verser dans Codex »** et non par des lignes écrites à la main :
+
+| Document | Versé le | Fiche Codex |
+|---|---|---|
+| Liste de colisage | 17 sept. 17:30 (jour de la validation du colisage) | `SHP-HLT-040` indice A, diffusée |
+| Lettre de voiture CMR | 21 sept. 07:40 (enlèvement) | `SHP-HLT-041` indice A, diffusée |
+| Bon de livraison | 21 sept. 07:45 (enlèvement) | `SHP-HLT-042` indice A, diffusée |
+
+Versés par la coordinatrice logistique (Camille Verdier, profil Logistique), en français (langue par défaut). Pour chacun : PDF
+généré par les gabarits, passé à l’antivirus et **conservé tel que versé** (`stored_files`, propriétaire `shipment_document`),
+fiche de l’index Codex créée (le type `SHP` est ajouté au registre au premier versement), entrée **`deposit` « en attente de
+synchro »** dans l’outbox Codex, ligne `shipment_documents`, audit (expédition et fiche) et fil d’activité — tous datés du jour
+du versement. Les cinq autres documents restent générés à la demande.
+
+- **Code.** `fileShippingDocument` est scindé : `fileShippingDocumentOn(db, …, { today, at, data })` fait le versement sur une base
+  donnée, pour un jour ouvré et un instant donnés ; l’action « Verser dans Codex » l’appelle avec `businessToday()` puis remet le
+  dépôt au connecteur, comme avant. La lecture des expéditions sans `getDb()` (`getProjectShipmentsOn`, nomenclature lue par
+  `projectShipmentBomOn` : mêmes lignes, désignations, codes SH et valorisation que `getProjectBom`) sert à la graine, qui tourne
+  avant que `getDb()` soit ouvert. `storeFile` et `trace` acceptent une date (`at`) pour dater ce qu’écrit une graine.
+- **Graine.** `fileDemoShippingDocuments(db)` (`src/server/db/seed/shipments.ts`, liste `DEMO_FILED_SHIPPING_DOCUMENTS`) tourne
+  **après** la transaction de la graine de démonstration (une erreur d’antivirus ou de disque ne fait pas échouer la graine : elle
+  est journalisée et le rattrapage la reprend). Base de démonstration existante : même mécanisme que le lot B (§ 18) — à
+  l’ouverture, si EXP-01 est partie (ni brouillon ni « préparée ») et n’a **aucun** document versé
+  (`demoShippingDocumentsToBackfill`), les trois documents sont versés une fois. La graine de production n’est pas touchée.
+- **Tests.** Les tests dorés comparent le coffre, le registre des types, le fil d’activité et la piste d’audit au prototype
+  **sans** ces trois documents (`src/test/l9-x3.ts`) ; les comptes qui les incluent sont corrigés avec un commentaire « L9-X3 »
+  (index 412 → 415 fiches, coffre HLT-026 40 → 43, registre 28 → 29 types, connecteur Codex « 3 en attente de synchro », audit des
+  7 derniers jours + 4, fichiers stockés + 3). Démonstration et rattrapage : `src/features/shipments/lot-b.test.ts`,
+  `src/server/db/seed/shipping-documents-backfill.test.ts`. Les tests ouvrent leurs bases avec `KEYSTONE_DATA_DIR` dans un dossier
+  temporaire (`vitest.config.ts`) et `scripts/db-check.ts` range les PDF dans son dossier temporaire : plus de fichiers dans `./.data`.
+
+Décisions prises sans demander (L9-X3) :
+
+1. **Lesquels** : liste de colisage, CMR et bon de livraison (ceux qu’une expédition arrivée a forcément émis) ; marquage,
+   instructions d’expédition, demande d’origine et déclaration d’export restent à la demande.
+2. **Qui et quand** : la coordinatrice logistique, le jour de la validation du colisage puis de l’enlèvement ; en français.
+3. **Dépôts laissés en attente** : la graine n’appelle pas le connecteur (comme le mock) ; avec le connecteur HTTP, le premier
+   « Synchroniser » (ou la tâche `codex-outbox`) les envoie à Codex — c’est le comportement réel d’un dépôt en attente.
+4. **Rattrapage « une fois »** : il ne se déclenche que si EXP-01 n’a aucun document versé ; si un utilisateur a déjà versé un
+   document d’EXP-01 sur une base existante, rien n’est ajouté. Les trois versements sont trois transactions : un échec au milieu
+   laisse les premiers (le rattrapage ne repasse pas).
+5. Effet visible attendu : le compteur « décisions en attente de synchro avec Codex » de « Synchroniser » compte aussi ces trois
+   dépôts (comportement existant de tout dépôt en attente).

@@ -43,9 +43,10 @@ const filesRoot = () => path.join(tmp, 'data', 'files');
 
 beforeAll(async () => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'keystone-r004-'));
+  // L9-X3: set before the seed, which stores the PDFs of the shipping documents it files in Codex.
+  setFilesRoot(filesRoot());
   db = await openDatabase();
   setDb(db);
-  setFilesRoot(filesRoot());
 }, 60_000);
 afterAll(() => {
   setFilesRoot(null);
@@ -92,13 +93,14 @@ describe('snapshot and restore (PGlite)', () => {
     expect(m).toMatchObject({ format: 'keystone-backup/1', name: '20261012T100000000Z', driver: 'pglite', seed: 'demo', keystoneVersion: '0.1.0', database: { file: 'database.tar.gz' } });
     expect(m.migrations.applied).toBe(migrationFiles().length);
     expect(m.counts['public.projects']).toBe((await listProjects()).length);
-    expect(m.counts['public.stored_files']).toBe(2);
-    expect(m.filesSummary).toEqual({ stored: 2, copied: 2, missing: 0, mismatch: 0 });
+    // L9-X3: + the PDFs of the three shipping documents the demo files in Codex.
+    expect(m.counts['public.stored_files']).toBe(2 + 3);
+    expect(m.filesSummary).toEqual({ stored: 2 + 3, copied: 2 + 3, missing: 0, mismatch: 0 });
     for (const f of m.files) expect(sha(fs.readFileSync(blobPath(dir, f.sha256)))).toBe(f.sha256);
     expect(sha(fs.readFileSync(path.join(first.path, 'database.tar.gz')))).toBe(m.database.sha256);
     expect(fs.existsSync(`${first.path}.partial`)).toBe(false);
     const second = await createSnapshot({ dir, source: { kind: 'pglite', client: clientOf(db) }, filesRoot: filesRoot(), now: new Date('2026-10-12T10:10:00Z') });
-    expect(second.manifest.filesSummary).toMatchObject({ stored: 2, copied: 0 });
+    expect(second.manifest.filesSummary).toMatchObject({ stored: 2 + 3, copied: 0 }); // L9-X3
     expect((await listSnapshots(dir)).map((s) => s.name)).toEqual(['20261012T100000000Z', '20261012T101000000Z']);
   }, 60_000);
 
@@ -107,7 +109,7 @@ describe('snapshot and restore (PGlite)', () => {
     const target = path.join(tmp, 'restored-1');
     const lines: string[] = [];
     const report = await restoreSnapshot({ snapshotPath: snapPath, target: { kind: 'pglite', dataDir: target }, progress: (l) => lines.push(l) });
-    expect(report).toMatchObject({ ok: true, snapshot: '20261012T100000000Z', files: { restored: 2, missingAtBackup: 0, problems: [] }, counts: { mismatches: [] }, pendingMigrations: 0 });
+    expect(report).toMatchObject({ ok: true, snapshot: '20261012T100000000Z', files: { restored: 2 + 3, missingAtBackup: 0, problems: [] }, counts: { mismatches: [] }, pendingMigrations: 0 }); // L9-X3: + the demo's 3 filed PDFs
     expect(report.counts.checked).toBeGreaterThan(100);
     expect(report.durationMs).toBeGreaterThanOrEqual(0);
     expect(report.notes.join(' ')).toContain(`point KEYSTONE_DATA_DIR at ${target}`);

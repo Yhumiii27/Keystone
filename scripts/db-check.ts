@@ -15,6 +15,7 @@ import { getTableName, is, sql } from 'drizzle-orm';
 import { PgTable } from 'drizzle-orm/pg-core';
 import { healthOf } from '@/domain/health';
 import { D7_ACTUAL, D7_HEALTH, D7_PROGRESS_PCT, D7_SPI } from '@/test/d7-cost-control';
+import { L9X3_AUDIT_ROWS, L9X3_FILED, isL9X3Activity, isL9X3Audit, withoutL9X3, withoutL9X3Type } from '@/test/l9-x3';
 import { CATALOGUE_VIEW_TYPES, EXPEDITIONS_FORBIDDEN_COLUMN, EXPEDITIONS_VIEW_TYPES, INTERNAL_MONEY_COLUMN, PACK_VIEW_TYPES, REPONSES_VIEW_TYPES, REX_VIEW_TYPES, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COLUMNS, SHARE_VIEW_COUNT } from '@/server/db/share-contracts';
 import { refreshShareProgress } from '@/server/dal/share-progress';
 import { getCostControl, listChangeRequests } from '@/server/dal/cost';
@@ -73,6 +74,7 @@ import { getSite, remindInCursus, saveDailyReport } from '@/server/dal/site';
 import { setDb } from '@/server/db/client';
 import { riskCategory, riskResponse, riskStatus, stage } from '@/server/db/codes';
 import { openDatabase } from '@/server/db/open';
+import { setFilesRoot } from '@/server/storage/files';
 import * as schema from '@/server/db/schema';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
 import { schedule } from '@/domain/cpm';
@@ -95,7 +97,8 @@ const D2_COUNTS: Record<string, number> = {
   allocations: 64, rate_roles: 10, rate_role_rates: 10, rate_multipliers: 5, rate_multiplier_rates: 5, skills: 10, person_skills: 80, certifications: 8, leave_types: 2,
   leave_entries: 12, public_holidays: 11, hours_imports: 1, hours_lines: 10, unassigned_hours: 2,
   whatif_levers: 5, whatif_auto_levers: 9, whatif_contexts: 1, whatif_scenarios: 2, whatif_scenario_levers: 10,
-  notifications: 10, notification_recipients: 24, activity_events: 12, audit_entries: 8,
+  // L9-X3: + one activity event and two audit rows per shipping document the demo files in Codex (3).
+  notifications: 10, notification_recipients: 24, activity_events: 12 + 3, audit_entries: 8 + 6,
 };
 
 /**
@@ -107,8 +110,9 @@ const D2_COUNTS: Record<string, number> = {
  * MEETINGS 6 (25 invitees, 14 agenda points, 18 lines, 3 transcripts with 13 proposals); SCORES 10 × 5 axes.
  */
 const D3_COUNTS: Record<string, number> = {
-  document_types: 28, document_type_circuit_steps: 65, document_approver_assignments: 10, documents: 42, document_revisions: 68, document_approvals: 96,
-  document_links: 18, document_acknowledgements: 7, document_deposits: 0, document_index_syncs: 1, codex_index_awaiting: 0,
+  // L9-X3: + the SHP type (circuit: the author) and the three shipping documents the demo files in Codex (rev A, one link each).
+  document_types: 28 + 1, document_type_circuit_steps: 65 + 1, document_approver_assignments: 10, documents: 42 + 3, document_revisions: 68 + 3, document_approvals: 96 + 3,
+  document_links: 18 + 3, document_acknowledgements: 7, document_deposits: 0, document_index_syncs: 1, codex_index_awaiting: 0,
   contracts: 1, contract_amendments: 2, contract_bonds: 2, billing_plans: 6, payment_milestones: 21, customer_invoices: 3, portfolio_cash_forecasts: 6,
   meetings: 6, meeting_participants: 25, meeting_agenda_points: 14, meeting_lines: 18, meeting_transcripts: 3, meeting_transcript_proposals: 13,
   client_questions: 5, stakeholders: 8, raci_matrices: 1, raci_columns: 6, raci_rows: 7, raci_cells: 35, project_interfaces: 7,
@@ -160,7 +164,7 @@ const D5_COUNTS: Record<string, number> = {
  * HLT-026) and its snapshot of every activity (ALL_BYID 145); everything else starts empty.
  */
 const CH4_COUNTS: Record<string, number> = {
-  calendars: 4, calendar_exceptions: 0, baselines: 8, baseline_activities: 145, schedule_runs: 0, stored_files: 0, import_jobs: 0, import_job_rows: 0, export_log: 0,
+  calendars: 4, calendar_exceptions: 0, baselines: 8, baseline_activities: 145, schedule_runs: 0, stored_files: 3 /* L9-X3: the filed PDFs */, import_jobs: 0, import_job_rows: 0, export_log: 0,
   client_communications: 0, whatif_scenario_actions: 0,
 };
 
@@ -172,7 +176,7 @@ const R158_COUNTS: Record<string, number> = {
   incoterms: 11, shipments: 1, shipment_equipments: 1, shipment_steps: 7, shipment_loads: 2, shipment_items: 4, shipment_gap_reasons: 1,
   // R-158 lot B: EXP-01 arrived, its partial reception (2 loads + 3 of its 4 content lines pointed), one damaged camera → one
   // punch item; no document filed in Codex in the demo data set (generated on demand).
-  shipment_reception_lines: 5, shipment_punch_items: 1, shipment_documents: 0,
+  shipment_reception_lines: 5, shipment_punch_items: 1, shipment_documents: 3 /* L9-X3 */,
 };
 
 let failures = 0;
@@ -209,6 +213,8 @@ async function openChecked(): Promise<{ db: Awaited<ReturnType<typeof openDataba
     return { db: h.db, close: () => h.close() };
   }
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'keystone-db-check-'));
+  // L9-X3: the demo seed stores the PDFs of the shipping documents it files — in the temporary directory, not ./.data.
+  setFilesRoot(path.join(dir, 'files'));
   const db = await openDatabase(path.join(dir, 'pg'));
   console.log(`Database ${dir}/pg migrated and seeded in ${Date.now() - t0} ms`);
   return { db, close: async () => fs.rmSync(dir, { recursive: true, force: true }) };
@@ -245,7 +251,7 @@ async function main() {
       refused++;
     }
   }
-  check('audit_entries refuses UPDATE, DELETE and TRUNCATE', refused === 3 && (await listAudit()).length === 8, refused);
+  check('audit_entries refuses UPDATE, DELETE and TRUNCATE', refused === 3 && (await listAudit()).length === 8 + 6, refused); // L9-X3: + the demo filing's 6 rows
 
   // Share views of the EPC2I data sharing convention (migration 0035_share, Matrix partage/30-keystone.sql).
   console.log('\nShare views (pub_)');
@@ -343,9 +349,9 @@ async function main() {
       (select reel_le::text from pub_jalons_projets where projet_code = 'HLT-026' and jalon_code = 'expedition') as expedition,
       (select reel_le::text from pub_jalons_projets where projet_code = 'HLT-026' and jalon_code = 'arrivee_site') as arrivee,
       (select count(*)::int from document_types where code = 'SHP') as shp`)).rows[0] as Record<string, unknown>;
-  check('pub_expeditions: HLT-026 EXP-01 · EQ-02 · 3 × MEMU · arrived · DAP · 21 → 22 Sep · 2 loads · 1 open punch item; milestones expedition 21 Sep, arrivee_site 22 Sep; no SHP type before a first filing (R-158)',
+  check('pub_expeditions: HLT-026 EXP-01 · EQ-02 · 3 × MEMU · arrived · DAP · 21 → 22 Sep · 2 loads · 1 open punch item; milestones expedition 21 Sep, arrivee_site 22 Sep; SHP type added by the demo\'s filings (R-158, L9-X3)',
     exp.rows === 'HLT-026:EXP-01:EQ-02 · 3 × MEMU:arrived:DAP:2026-09-21:2026-09-22:-:2:1' && exp.expedition === '2026-09-21' && exp.arrivee === '2026-09-22'
-    && exp.shp === 0, exp);
+    && exp.shp === 1, exp);
   // Arche K-02 / K-03 / K-10 (R-187, 0049_capex_needs, 0050_capex_needs_share): the answers' view types and the demo answers.
   const repTypes = (await db.execute(sql`select column_name as c, data_type as t from information_schema.columns where table_schema = current_schema()
       and table_name = 'pub_reponses_besoins' order by ordinal_position`)).rows as { c: string; t: string }[];
@@ -591,7 +597,9 @@ async function main() {
     && same(wi.levers.slice(0, 3).map((l) => l.code), ['extra_resource:A1250:julien-wagner', 'overtime:A1250:steel-erection-crew', 'extra_resource:A1250:steel-erection-crew'])
     && same(wi.scenarios.map((x) => x.name), ['A', 'B']));
   check('unread notifications per role 3/4/1/2/1/1/1/1', same(await Promise.all(['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'].map(countUnreadNotifications)), [3, 4, 1, 2, 1, 1, 1, 1]));
-  check('ACTIVITY and AUDIT reproduced', same((await listActivity()).map((a) => [a.when, a.who, a.what, a.kind]), PROTO.ACTIVITY) && same((await listAudit()).map((a) => [a.when, a.who, a.object, a.change, a.area]), PROTO.AUDIT));
+  // L9-X3: without the rows of the shipping documents the demo files in Codex.
+  check('ACTIVITY and AUDIT reproduced', same((await listActivity()).filter((a) => !isL9X3Activity(a)).map((a) => [a.when, a.who, a.what, a.kind]), PROTO.ACTIVITY)
+    && same((await listAudit()).filter((a) => !isL9X3Audit(a)).map((a) => [a.when, a.who, a.object, a.change, a.area]), PROTO.AUDIT));
 
   await delivery3Reads();
   await delivery4Reads();
@@ -622,7 +630,7 @@ async function main() {
     (await approveResourceRequest('RQ-043', 'Marion Kerviel')) === 'T-2341' && (await getTask('T-2341'))?.assignee === 'Fabien Bertrand'
       && (await getTask('T-2341'))?.contractRole === 'Contract structural engineer');
   // L-4c (Delivery 7, R-055): the automatic stage change is audited too.
-  check('audit rows appended (8 seed + 4 + the stage change)', (await listAudit()).length === 13);
+  check('audit rows appended (8 seed + 4 + the stage change)', (await listAudit()).length === 13 + L9X3_AUDIT_ROWS);
   await delivery3Writes();
   await delivery4Writes();
   await delivery5Writes();
@@ -636,19 +644,20 @@ async function main() {
 /** Delivery 3 data through the DAL vs the prototype figures quoted by the specs (10 §4–5, 04 §3–4, 03 §3, §6–7, 05 §3, §5–6, 07 §2.5). */
 async function delivery3Reads() {
   console.log('\nDelivery 3 data (DAL vs prototype)');
-  const docs = await listProjectDocuments('HLT-026');
+  // L9-X3: the prototype's vault, without the three shipping documents the demo files in Codex.
+  const docs = withoutL9X3(await listProjectDocuments('HLT-026'));
   check('vault HLT-026 + QMS: 40 records · 28 released · 1 awaiting approval · 7 shared · 1 acknowledgement pending · 25 withdrawn revisions',
     same([docs.length, docs.filter((d) => d.status === 'released').length, docs.filter((d) => d.status === 'release_proposed').length, docs.filter((d) => d.shared).length,
       docs.filter((d) => d.shared && !d.acknowledged).length, docs.reduce((s, d) => s + d.withdrawnRevisions, 0)], [40, 28, 1, 7, 1, 25]));
-  check('vault all projects: 42 records (DOCS)', same((await listVaultDocuments()).map((d) => d.number), PROTO.DOCS.map((d: { id: string }) => d.id)));
+  check('vault all projects: 42 records (DOCS)', same(withoutL9X3(await listVaultDocuments()).map((d) => d.number), PROTO.DOCS.map((d: { id: string }) => d.id)));
   const sync = await getCodexSyncState();
-  check('Codex sync 08:02 · 412 records', sync?.time === '08:02' && sync.records === 412, sync);
+  check('Codex sync 08:02 · 412 records', sync?.time === '08:02' && sync.records === 412 + L9X3_FILED, sync); // L9-X3
   const pid = await getDocumentRecord('PID-HLT-026');
   // D-2 = a (R-127): the drawer reads the current revision only (rows C, B, A stay stored for the "Obsolete revisions" KPI).
   check('PID-HLT-026: rev D (current revision only), proof signed 24/25/26 Sep, client acknowledgement pending',
     same(pid?.revisions.map((r) => [r.revision, r.issuedOn, r.withdrawnOn]), [['D', '2026-09-26', null]])
       && same(pid?.approvals.map((a) => a.signedOn), ['2026-09-24', '2026-09-25', '2026-09-26']) && pid?.acknowledged === false, pid?.revisions);
-  const types = await listDocumentTypes();
+  const types = withoutL9X3Type(await listDocumentTypes()); // L9-X3: without SHP
   check('document types register = DOC_TYPES, In Codex counts', same(types.map((t) => [t.code, t.label, t.circuitText, t.retention, t.isoClause, t.isClientDeliverable]),
     PROTO.DOC_TYPES.map((t: { code: string; label: string; circuit: string; retention: string; iso: string; client: boolean }) => [t.code, t.label, t.circuit, t.retention, t.iso, t.client]))
     && types.find((t) => t.code === 'LST')?.inCodex === 4);
@@ -716,7 +725,7 @@ async function delivery3Writes() {
   // S-12 a (R-067): every internal action owner gets a task (L. Fabre too, outside the resource pool).
   check('MTG-118 minutes → MIN-HLT-027, tasks T-2342 / T-2343 / T-2344', same(sent, { minutesNumber: 'MIN-HLT-027', invited: 5, tasks: ['T-2342', 'T-2343', 'T-2344'] }), sent);
   check('new interface IF-10', (await createInterface('HLT-026', { title: 'Check', keystoneSide: 'site', otherParty: 'Client', dataExpected: 'Data', neededBy: '2026-11-02', owner: 'R. Aubert' }, 'Romain Aubert')) === 'IF-10');
-  check('audit rows appended (13 + 7)', (await listAudit()).length === 20);
+  check('audit rows appended (13 + 7)', (await listAudit()).length === 20 + L9X3_AUDIT_ROWS);
 }
 
 /** Delivery 4 data through the DAL vs the prototype figures quoted by the specs (09 §1–5, 08 §1–4, §7.5). */
@@ -804,7 +813,7 @@ async function delivery4Writes() {
   const rec = await recordEcoProgress('ECO-2026-015', { key: 'pm', decision: 'ok' }, { name: 'Romain Aubert', role: 'pm' });
   check('ECO-2026-015 PM approval recorded, pending sync with Vigie (Vigie status unchanged)', rec.syncStatus === 'pending' && (await getEco('ECO-2026-015'))?.status === 'in_approval'
     && (await getEco('ECO-2026-015'))?.approvalsView.find((a) => a.key === 'pm')?.pendingSync === true);
-  check('audit rows appended (20 + 21)', (await listAudit()).length === before + 21 && before === 20, [before, (await listAudit()).length]);
+  check('audit rows appended (20 + 21)', (await listAudit()).length === before + 21 && before === 20 + L9X3_AUDIT_ROWS, [before, (await listAudit()).length]);
 }
 
 async function delivery5Reads() {
@@ -892,9 +901,9 @@ async function delivery5Reads() {
   const pc = await getPlumbingCounts();
   // A-12: "Events today" = events of the data date (Paris day); the prototype's 6 included one of 26 Sep.
   // R-021 (NEW-CURSUS-4): Lucca is no longer listed (hours come from Cursus) — 8 + Vigie; R-187: + Arche (the CAPEX application).
-  check('connectors: 8 + Vigie (live: 6 ECOs · 15 NCRs · 5 HSE items) + Arche · Cursus live · 1 warning · 5 events today · 8 audit entries · 6 formats',
+  check('connectors: 8 + Vigie (live: 6 ECOs · 15 NCRs · 5 HSE items) + Arche · Cursus live · 1 warning · 5 events today · 8 + 4 audit entries · 6 formats',
     same([conns.length, conns.find((c) => c.name === 'Vigie')!.lastVolume, conns.find((c) => c.name === 'Cursus')!.lastVolume, conns.filter((c) => c.status === 'warning').map((c) => c.name), pc.eventsToday,
-      pc.auditLast7Days, (await listImportFormats()).length], [10, '6 ECOs · 15 NCRs · 5 HSE items', '5 people · HLT-026', ['Outlook / Exchange'], 5, 8, 6]));
+      pc.auditLast7Days, (await listImportFormats()).length], [10, '6 ECOs · 15 NCRs · 5 HSE items', '5 people · HLT-026', ['Outlook / Exchange'], 5, 8 + 4, 6])); // L9-X3: + the 4 audit rows of the 21 Sep filings
   check('My approvals: client contact D-014, D-016 · quality no NCR in verification',
     same([(await deliverableAcceptanceQueue('HLT-026', { name: 'Nadia Bensaïd', role: 'client' })).map((d) => d.number), (await ncrVerificationQueue('HLT-026', { name: 'Gabriel Comte', role: 'quality' })).length],
       [['D-014', 'D-016'], 0]));

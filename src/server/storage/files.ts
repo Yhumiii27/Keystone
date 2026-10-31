@@ -141,6 +141,8 @@ export interface StoreFileInput {
   ownerType?: string | null;
   ownerId?: string | null;
   actor: { name: string; personId?: string | null };
+  /** When the file was stored (default: now) — a seed dates the files it stores (L9-X3: the demo's filed shipping documents). */
+  at?: Date;
 }
 
 const toMeta = (r: typeof storedFiles.$inferSelect): StoredFileMeta => ({
@@ -160,7 +162,7 @@ export async function storeFile(input: StoreFileInput, q?: Q): Promise<StoredFil
   if (!mark && getConfig().fileScan.mode === 'clamav') throw new Error('storeFile: the bytes were not checked by the antivirus (call scanUpload first)');
   const { ext, mime, name } = checkUpload(input.purpose, input.name, data.byteLength, data);
   const id = randomUUID();
-  const now = new Date();
+  const now = input.at ?? new Date();
   const rel = path.posix.join(String(now.getUTCFullYear()), String(now.getUTCMonth() + 1).padStart(2, '0'), `${id}.${ext}`);
   const abs = path.join(/*turbopackIgnore: true*/ filesRoot(), rel);
   await fs.mkdir(path.dirname(abs), { recursive: true });

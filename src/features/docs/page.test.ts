@@ -64,7 +64,8 @@ describe('/projects/[code]/documents', () => {
     const primary = p.PageHeader.props.primary as El;
     expect(primary.props).toMatchObject({ href: '/projects/HLT-026/documents?deposit=new', variant: 'primary' });
     const view = p.DocsVault.props.view as VaultView;
-    expect([view.rows.length, view.kpis[0].value, view.title]).toEqual([40, '40', 'Vault · 40 / 40 documents']);
+    // L9-X3: the prototype's 40 records + the three shipping documents the demo files in Codex (SHP-HLT-040 to 042).
+    expect([view.rows.length, view.kpis[0].value, view.title]).toEqual([43, '43', 'Vault · 43 / 43 documents']);
     // R-033: "Open Codex" opens Codex in a new tab (it was the toast "Opening Codex · project HLT-026").
     expect(p.DocsVault.props).toMatchObject({ canEdit: true, codexHref: 'http://localhost:3100/?project=HLT-026' });
   });
@@ -74,7 +75,7 @@ describe('/projects/[code]/documents', () => {
     expect(view.rows.map((r) => r.number)).toEqual(['PRO-QMS-001', 'PRO-QMS-014', 'FRM-QMS-022', 'AUD-QMS-003']);
     expect([view.scope.value, view.views.value, view.families.value, view.statuses.value, view.q]).toEqual(['all', 'audit', 'quality', 'released', 'iso']);
     const bad = (await page({ scope: 'x', view: 'folders', fam: 'Engineering', status: 'Released' })).DocsVault.props.view as VaultView;
-    expect([bad.scope.value, bad.views.value, bad.families.value, bad.statuses.value, bad.rows.length]).toEqual(['proj', 'all', 'all', 'all', 40]);
+    expect([bad.scope.value, bad.views.value, bad.families.value, bad.statuses.value, bad.rows.length]).toEqual(['proj', 'all', 'all', 'all', 43]); // L9-X3: 40 + 3 shipping documents
   });
 
   it('?doc= opens the record drawer for any record (also another project\'s), an unknown one opens nothing', async () => {
@@ -146,7 +147,7 @@ describe('/admin/document-types', () => {
     const tree = async () => parts(await DocumentTypesPage());
     const p = await tree();
     expect(p.PageHeader.props).toMatchObject({ screen: 'doctypes' });
-    expect((p.DocTypesRegister.props.rows as unknown[]).length).toBe(28);
+    expect((p.DocTypesRegister.props.rows as unknown[]).length).toBe(29); // L9-X3: the prototype's 28 + SHP, added by the demo's filing
     // R-033: "Edit in Codex" opens Codex's register (it was the toast "Opening Codex · project HLT-026"; TODO(codex) D-1).
     expect(p.DocTypesRegister.props.editHref).toBe('http://localhost:3100/?view=document-types');
     for (const [role, edit] of [['pm', true], ['quality', true], ['member', false], ['englead', false]] as const) {
