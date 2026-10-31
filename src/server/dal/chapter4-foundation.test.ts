@@ -249,7 +249,8 @@ describe('task attachments', () => {
     expect(await getTaskFile('T-2318', id)).toBeNull();
     await removeTaskFile('T-2314', id, 'Julien Wagner');
     expect((await listTaskFiles('T-2314')).some((f) => f.id === id)).toBe(false);
-    expect(await (await getDb()).select().from(storedFiles)).toHaveLength(0);
+    // L9-X3: only the PDFs of the three shipping documents the demo files in Codex remain.
+    expect((await (await getDb()).select().from(storedFiles)).map((f) => f.ownerType)).toEqual(['shipment_document', 'shipment_document', 'shipment_document']);
     await expect(attachTaskFile('T-2314', { name: 'virus.exe', data: pdf }, 'Julien Wagner')).rejects.toThrow('File type not accepted');
   });
 });

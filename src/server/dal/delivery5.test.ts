@@ -641,7 +641,8 @@ describe('administration (09 §9, 10 §1–2)', () => {
     // A-12 (chapter 4, 10 OQ4): "Events today" counts the events of the data date (Paris day) — 5 on 25 Sep; the
     // prototype's 6 included an event of 26 Sep.
     expect(g.kpis[0].value).toBe(6);
-    expect([counts.eventsToday, counts.auditLast7Days]).toEqual([5, g.kpis[3].value]);
+    // L9-X3: + the four audit rows of the CMR and delivery note the demo files in Codex on 21 Sep (within the last 7 days).
+    expect([counts.eventsToday, counts.auditLast7Days]).toEqual([5, g.kpis[3].value + 4]);
   });
 });
 

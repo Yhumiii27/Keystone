@@ -67,6 +67,8 @@ export type TraceInput = {
   objectRef: string; area: string; entityType?: string; entityId?: string | null; projectId?: string | null;
   before?: Record<string, unknown> | null; after?: Record<string, unknown> | null; reason?: string | null;
   activity?: { kind: ActivityKind } & TraceText<'text'>;
+  /** When it happened (default: now) — a seed dates the rows it writes (L9-X3). */
+  at?: Date;
 } & TraceText<'change'>;
 
 /**
@@ -78,11 +80,12 @@ export async function trace(q: Q, actor: { personId: string | null; who: string;
     actorName: actor.who, actorPersonId: actor.personId, objectRef: e.objectRef, area: e.area, entityType: e.entityType ?? null, entityId: e.entityId ?? null,
     projectId: e.projectId ?? null, before: e.before ?? null, after: e.after ?? null, reason: e.reason ?? null,
     ...(actor.userId !== undefined ? { actorUserId: actor.userId } : {}),
+    ...(e.at ? { occurredAt: e.at } : {}),
   };
   await writeAudit(q, e.message ? { ...base, message: e.message } : { ...base, change: e.change! });
   const a = e.activity;
   if (a) {
-    const act = { actorName: actor.who, actorPersonId: actor.personId, kind: a.kind, projectId: e.projectId ?? null };
+    const act = { actorName: actor.who, actorPersonId: actor.personId, kind: a.kind, projectId: e.projectId ?? null, ...(e.at ? { occurredAt: e.at } : {}) };
     await recordActivity(q, a.message ? { ...act, message: a.message } : { ...act, text: a.text! });
   }
 }

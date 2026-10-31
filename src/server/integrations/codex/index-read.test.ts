@@ -7,6 +7,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { and, eq } from 'drizzle-orm';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
+import { closeCodexEntries, openCodexEntries } from '@/server/integrations/codex/outbox';
 import { documentApprovals, documentIndexSyncs, documentRevisions, documents } from '@/server/db/schema';
 import { listAdminConnectors, syncAdminConnector } from '@/server/dal/admin-connectors';
 import {
@@ -148,6 +149,10 @@ describe('HTTP connector: the index read, the Codex row and "Sync now"', () => {
   it('Activity & integrations: the Codex row is live (last read, outbox counts); "Sync now" delivers then reads; a failure marks the row', async () => {
     vi.stubEnv('CODEX_API_URL', 'http://codex.test');
     let codex = (await listAdminConnectors()).find((c) => c.name === 'Codex')!;
+    // L9-X3: the demo's three shipping-document deposits wait for Codex; closed here so "Sync now" has nothing to deliver.
+    expect(codex.pending).toBe(3);
+    await closeCodexEntries(await getDb(), (await openCodexEntries(await getDb())).filter((e) => e.kind === 'deposit').map((e) => e.id));
+    codex = (await listAdminConnectors()).find((c) => c.name === 'Codex')!;
     expect([codex.mode, codex.link, codex.state, codex.canSync, codex.pending, codex.failed]).toEqual(['http', 'live', 'ok', true, 0, 0]);
     expect(codex.lastSyncAt).toBe('2026-10-02T09:00:00.000Z');
     const calls = stubCodex(() => Response.json([]));

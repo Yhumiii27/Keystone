@@ -5,6 +5,7 @@
 // `fr()` accepts exactly that. Deliberate deviations asserted inline: singular forms ("1 ITP system"); the site calendar
 // selected for SPUR; Vigie as the 10th connector; Codex, Vigie and Cursus with their connector-layer mode and state
 // (Codex last sync = the Codex index sync, 29 Sep 08:02); the "Request" chip as a noun in French.
+import { withoutL9X3Plumbing } from '@/test/l9-x3';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { PERSONA_BY_ROLE } from '@/config/personas';
 import { parseActivitySource } from '@/domain/admin';
@@ -63,7 +64,9 @@ async function mtypes(lang: Lang, selected: string | null = null) {
   return machineTypesView({ types, projects, selected }, makeT(lang), lang);
 }
 async function plumbing(lang: Lang, q: { view?: string; source?: string; role?: 'director' | 'pm' } = {}) {
-  const [activity, connectors, imports, audit, counts] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), getPlumbingCounts()]);
+  const [activity0, connectors, imports, audit0, counts0] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), getPlumbingCounts()]);
+  // L9-X3: as the prototype had it, without the rows of the shipping documents the demo files in Codex (src/test/l9-x3.ts).
+  const { activity, audit, counts } = withoutL9X3Plumbing(activity0, audit0, counts0);
   const persona = PERSONA_BY_ROLE[q.role ?? 'director'];
   const unread = await countUnreadNotifications(persona.role);
   return plumbingView(
@@ -266,7 +269,8 @@ describe('Activity, integrations & audit view model', () => {
             : 'Go / no go individuel (visa, vaccinations, habilitations & badges) · congés et absences approuvés · annuaire du personnel : nom, e-mail, matricule, équipe (R-027, R-031)',
           st: mock, last: '—', tagClass: 'tag tag-outline',
         };
-      if (r.name === 'Codex') return { ...r, st: mock, last: '—', vol: lang === 'en' ? r.vol : '412 fiches · 38 liées à HLT-026', tagClass: 'tag tag-outline' };
+      // L9-X3: + the three shipping documents the demo files in Codex (412 → 415 records), their deposits pending sync.
+      if (r.name === 'Codex') return { ...r, st: mock, last: '—', vol: lang === 'en' ? `${r.vol.replace('412', '415')} · 3 pending sync` : '415 fiches · 38 liées à HLT-026 · 3 en attente de synchro', tagClass: 'tag tag-outline' };
       if (r.name === 'MS Project') return r;
       // S-11 a, X-6b, I-3c (R-037): the Microsoft 365 rows requalified — Outlook / Teams meetings into Keystone, no channel posts.
       if (r.name === 'Outlook / Exchange')
@@ -338,7 +342,9 @@ describe('Activity, integrations & audit view model', () => {
     const db = await getDb();
     await db.update(connectorsTable).set({ enabled: false }).where(eq(connectorsTable.name, 'Vigie'));
     try {
-      const [activity, connectors, imports, audit, counts] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), getPlumbingCounts()]);
+      const [activity0, connectors, imports, audit0, counts0] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), getPlumbingCounts()]);
+      // L9-X3: as the prototype had it, without the rows of the shipping documents the demo files in Codex (src/test/l9-x3.ts).
+      const { activity, audit, counts } = withoutL9X3Plumbing(activity0, audit0, counts0);
       const v = plumbingView({ view: 'connectors', source: null, activity, connectors, imports, audit, counts, unread: 0, personaTitle: 'Portfolio director', ratesVisible: true }, makeT(lang), lang);
       expect(v.connectors.find((c) => c.rawName === 'Vigie')).toMatchObject({ status: lang === 'en' ? 'Disabled' : 'Désactivé', tone: 'neutral', canSync: false, last: '—' });
     } finally {

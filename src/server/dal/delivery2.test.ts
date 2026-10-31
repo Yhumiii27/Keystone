@@ -1,6 +1,7 @@
 // Delivery 2 database layer — golden reads: an in-memory PGlite migrated from ./drizzle and seeded from the
 // prototype; the DAL getters reproduce the prototype constants (RISKS_HLT, HLT_CRS_X, HLT_SNAPS, CONTINGENCY,
 // PEOPLE, REQUESTS, TODOS…, NOTIFS, ACTIVITY, AUDIT) and the KPI figures quoted by the screen specs.
+import { isL9X3Activity, isL9X3Audit } from '@/test/l9-x3';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { setDb } from '@/server/db/client';
 import { addDaysIso, dayOffsetOfIso, dowOfIso, isoOfDayOffset, riskCategory, riskResponse, riskStatus, stepDecision } from '@/server/db/codes';
@@ -372,11 +373,12 @@ describe('notifications, activity, audit (01 §5.5, 10 §2)', () => {
   });
 
   it('activity feed = ACTIVITY (newest first; 6 events on 25–26 Sep); audit trail = AUDIT', async () => {
-    const act = await listActivity();
+    // L9-X3: the prototype's feed and trail, without the rows of the shipping documents the demo files in Codex (17 and 21 Sep).
+    const act = (await listActivity()).filter((a) => !isL9X3Activity(a));
     expect(act.map((a) => [a.when, a.who, a.what, a.kind])).toEqual(P.ACTIVITY);
     expect(act.filter((a) => /^2[56] Sep/.test(a.when)).length).toBe(6);
     expect((await listActivity({ kind: 'stock' })).length).toBe(2);
-    expect((await listAudit()).map((a) => [a.when, a.who, a.object, a.change, a.area])).toEqual(P.AUDIT);
+    expect((await listAudit()).filter((a) => !isL9X3Audit(a)).map((a) => [a.when, a.who, a.object, a.change, a.area])).toEqual(P.AUDIT);
   });
 });
 

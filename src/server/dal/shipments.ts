@@ -27,7 +27,7 @@ import {
   shipmentEquipments, shipmentGapReasons, shipmentItems, shipmentLoads, shipmentPunchItems, shipmentReceptionLines, shipments, shipmentSteps, siteSheets,
 } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
-import { getProjectBom } from './bom';
+import { getProjectBom, projectShipmentBomOn, type ShipmentBomLine } from './bom';
 import { trace, whoIs, type Actor } from './ops-common';
 import { editsShipments } from './team-guard';
 
@@ -153,11 +153,21 @@ export interface ProjectShipments {
 
 const num = (v: number | null) => (v == null ? null : Number(v));
 
-type Bom = Awaited<ReturnType<typeof getProjectBom>>;
+type Bom = { lines: ShipmentBomLine[] } | null;
 
 /** Everything the Shipments screen and the rules need for one project; null for an unknown project. */
 export async function getProjectShipments(projectCode: string): Promise<ProjectShipments | null> {
   return readShipments(await getDb(), projectCode, await getProjectBom(projectCode));
+}
+
+/**
+ * `getProjectShipments` on `q` with the BOM read on `q` too (`projectShipmentBomOn`): for a caller that holds its own database
+ * before getDb() is open — the demo seed files EXP-01's documents through it (L9-X3).
+ */
+export async function getProjectShipmentsOn(q: Q, projectCode: string): Promise<ProjectShipments | null> {
+  const [p] = await q.select({ id: projects.id }).from(projects).where(eq(projects.code, projectCode));
+  if (!p) return null;
+  return readShipments(q, projectCode, await projectShipmentBomOn(q, p.id));
 }
 
 /**
