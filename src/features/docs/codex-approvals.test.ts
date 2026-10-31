@@ -21,6 +21,7 @@ import { desc, eq } from 'drizzle-orm';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { codexDocumentOutbox } from '@/server/db/schema';
+import { closeCodexEntries, openCodexEntries } from '@/server/integrations/codex/outbox';
 import { getDocumentRecord } from '@/server/dal/documents';
 import { listAudit } from '@/server/dal/notifications';
 import { makeT } from '@/i18n/translate';
@@ -85,6 +86,8 @@ describe('Codex document decisions from My approvals (R-124)', () => {
 
   it('HTTP connector: a failed delivery stays in the outbox; the next sync delivers it and Codex’s answer becomes the index state', async () => {
     as('Marie Lefebvre', 'M. Lefebvre', 'director');
+    // L9-X3: the demo's three shipping-document deposits wait in the outbox too; closed here so the sync follows RPT-HLT-014 alone.
+    await closeCodexEntries(await getDb(), (await openCodexEntries(await getDb())).filter((e) => e.kind === 'deposit').map((e) => e.id));
     vi.stubEnv('CODEX_API_URL', 'http://codex.test/');
     const calls: { url: string; method: string; body: unknown }[] = [];
     let up = false;
@@ -105,7 +108,8 @@ describe('Codex document decisions from My approvals (R-124)', () => {
     r = await syncCodexAction('HLT-026');
     // R-033: the outbox is delivered, the records concerned refreshed, then Codex's index read (the stub's records are not
     // index records: skipped and logged); the count is Keystone's index (42 records), not the mock's 412.
-    expect(r).toEqual({ ok: true, toast: 'Codex sync · index up to date · 42 records · 1 sent · 0 pending · 1 refreshed' });
+    // L9-X3: 45 = 42 + the demo's three shipping documents.
+    expect(r).toEqual({ ok: true, toast: 'Codex sync · index up to date · 45 records · 1 sent · 0 pending · 1 refreshed' });
     expect(calls.map((c) => [c.method, c.url])).toEqual([
       ['POST', 'http://codex.test/api/documents/RPT-HLT-014/approvals'], ['GET', 'http://codex.test/api/documents/state?numbers=RPT-HLT-014'],
       ['GET', 'http://codex.test/api/documents'],

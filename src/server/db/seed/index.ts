@@ -38,7 +38,9 @@ import { seedSite } from './site';
 import { seedStock } from './stock';
 import { demoReferentsToBackfill, seedDemoReferents } from './project-team';
 import { backfillDemoUsers, demoUsersToBackfill, financeUserToBackfill, logisticsUserToBackfill, seedFinanceUser, seedLogisticsUser } from './users';
-import { demoShipmentLotBToBackfill, demoShipmentsToBackfill, seedDemoShipmentLotB, seedDemoShipments, seedIncoterms } from './shipments';
+import {
+  demoShipmentLotBToBackfill, demoShipmentsToBackfill, demoShippingDocumentsToBackfill, fileDemoShippingDocuments, seedDemoShipmentLotB, seedDemoShipments, seedIncoterms,
+} from './shipments';
 import { seedVigie, seedVigieQuality } from './vigie';
 import { seedWork } from './work';
 import { readSeedRecord, writeSeedRecord } from './mode';
@@ -209,6 +211,10 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
     if (await demoShipmentLotBToBackfill(db)) {
       await db.transaction(async (tx) => { await seedDemoShipmentLotB(tx); }).catch((e) => logError('Delivery 9 demo shipment lot B backfill', e, { component: 'seed' }));
     }
+    // L9-X3: EXP-01's packing list, CMR and delivery note filed in Codex (once: while EXP-01 has left and has no document filed).
+    if (await demoShippingDocumentsToBackfill(db)) {
+      await fileDemoShippingDocuments(db).catch((e) => logError('Delivery 9 demo shipping documents backfill', e, { component: 'seed' }));
+    }
     // ── Delivery 8 · demo backfills · connectors ──
     // Databases seeded before delivery 7 adopt their (demo) record.
     if (!record) await writeSeedRecord(db, 'demo').catch((e) => logError('Seed record', e, { component: 'seed' }));
@@ -227,5 +233,8 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
     return true;
   });
   if (seeded) log.info('Database seeded', { component: 'seed', seed: mode });
+  // L9-X3: EXP-01's documents filed in Codex through the real filing (PDF, antivirus, stored file — outside the seed's transaction:
+  // a failure leaves the demo without them, filed at the next start by the backfill above).
+  if (seeded && mode === 'demo') await fileDemoShippingDocuments(db).catch((e) => logError('Delivery 9 demo shipping documents', e, { component: 'seed' }));
   return seeded;
 }

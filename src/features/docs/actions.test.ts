@@ -81,7 +81,7 @@ describe('documents Server Functions', () => {
       confidentiality: 'internal', title: 'Material certificate 3.1 — S355 · heat 7781', tags: ['PO-2026-118', 'CR-RAIL-A100'],
     });
     expect(first.links.map((l) => [l.kind, l.ref])).toEqual([['purchase_order', 'PO-2026-118'], ['article', 'CR-RAIL-A100']]);
-    expect((await getCodexSyncState())!.records).toBe(413);
+    expect((await getCodexSyncState())!.records).toBe(416); // L9-X3: 412 + the demo's 3 shipping documents + this one
     expect((await listAudit())[0]).toMatchObject({ who: 'Romain Aubert', object: 'CER-HLT-042' });
     // The next certificate takes the next number.
     expect(await depositInCodexAction({ project: 'HLT-026', type: 'CER', title: 'Second certificate' })).toMatchObject({ number: 'CER-HLT-043', created: true });
@@ -166,7 +166,8 @@ describe('documents Server Functions', () => {
     const r = await syncCodexAction('HLT-026');
     // R-021 (A-15): the prototype's "Codex sync · index up to date · 414 records" claimed an exchange with Codex that the mock
     // connector does not make. R-124: RPT-HLT-014's two approvals wait for Codex (GA-HLT-026's were reflected by Codex's answer above).
-    expect(r).toEqual({ ok: true, toast: 'Codex · simulated sync (mock connector) · 414 records · 2 decisions pending sync with Codex' });
+    // L9-X3: + the demo's three shipping documents (records) and their deposits, pending sync with Codex.
+    expect(r).toEqual({ ok: true, toast: 'Codex · simulated sync (mock connector) · 417 records · 5 decisions pending sync with Codex' });
   });
 
   it('client "Acknowledge receipt": the client of the project only, shared records only', async () => {

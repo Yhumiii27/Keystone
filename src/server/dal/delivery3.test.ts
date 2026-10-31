@@ -18,6 +18,7 @@ import { addDaysIso, beforePgNow, monthIndexOfIso, shortDateOfIso } from '@/serv
 import { DEMO_TODAY_ISO, monthNowOf } from '@/domain/clock';
 import { openDatabase } from '@/server/db/open';
 import { PROTO } from '@/server/prototype';
+import { L9X3_FILED, withoutL9X3, withoutL9X3Type } from '@/test/l9-x3';
 import { getBudgetContract } from './budget';
 import { getCashFlow, getPortfolioCashForecast, listBillingPlans } from './cashflow';
 import { getContract, getContractHeader, lateBillingMilestonesByProject } from './contract';
@@ -78,8 +79,9 @@ function vaultKpis(rows: VaultDocument[]) {
 const kpiPairs = (ks: any[]) => ks.map((k) => [k.value, k.sub]);
 
 describe('documents — Codex index (10 §4)', () => {
+  // L9-X3: the demo files three shipping documents in Codex (SHP type, 3 records); the prototype's index is compared without them.
   it('vault rows of HLT-026 + QMS reproduce dvList (status, revision, sharing, acknowledgement, next approver)', async () => {
-    const rows = await listProjectDocuments('HLT-026');
+    const rows = withoutL9X3(await listProjectDocuments('HLT-026'));
     const got = rows.map((d) => ({
       id: d.number, type: d.type, proj: d.project, rev: d.revision, status: d.statusLabel, shared: d.shared, ack: d.acknowledged, typeLabel: d.typeLabel,
       famLabel: d.familyLabel, svcLabel: d.serviceLabel, conf: d.confidentialityLabel, tags: d.tagsText, isNew: d.isNew,
@@ -92,14 +94,14 @@ describe('documents — Codex index (10 §4)', () => {
   });
 
   it('KPI tiles — project scope, all projects, NDC-031 (obsolete revisions = withdrawn revision rows)', async () => {
-    expect(vaultKpis(await listProjectDocuments('HLT-026'))).toEqual(kpiPairs(G.docs.kpis));
-    expect(vaultKpis(await listVaultDocuments())).toEqual(kpiPairs(G.docs.allKpis));
+    expect(vaultKpis(withoutL9X3(await listProjectDocuments('HLT-026')))).toEqual(kpiPairs(G.docs.kpis));
+    expect(vaultKpis(withoutL9X3(await listVaultDocuments()))).toEqual(kpiPairs(G.docs.allKpis));
     expect(vaultKpis(await listProjectDocuments('NDC-031'))).toEqual(kpiPairs(G.docs.ndcKpis));
     expect(await countDocumentsAwaitingApproval()).toBe(1);
   });
 
   it('saved views, families and statuses counts', async () => {
-    const rows = await listProjectDocuments('HLT-026');
+    const rows = withoutL9X3(await listProjectDocuments('HLT-026'));
     const view = {
       all: rows, bpe: rows.filter((d) => d.status === 'released' && d.project === 'HLT-026'),
       audit: rows.filter((d) => ['REC', 'NCR', 'AUD', 'PRO', 'FRM', 'CER', 'COC', 'PV', 'RPT'].includes(d.type) && d.status !== 'draft'),
@@ -115,11 +117,11 @@ describe('documents — Codex index (10 §4)', () => {
 
   it('Codex sync "Last sync 08:02 · 412 records"', async () => {
     const s = (await getCodexSyncState())!;
-    expect(`Last sync ${s.time} · ${s.records} records`).toBe(G.docs.sync);
+    expect(`Last sync ${s.time} · ${s.records - L9X3_FILED} records`).toBe(G.docs.sync);
   });
 
   it('every record drawer: identity, current revision, approval proof, distribution, relations', async () => {
-    const all = await listVaultDocuments();
+    const all = withoutL9X3(await listVaultDocuments());
     for (const doc of all) {
       const r = (await getDocumentRecord(doc.number))!;
       const g = G.docs.drawers[doc.number];
@@ -149,7 +151,7 @@ describe('documents — Codex index (10 §4)', () => {
   });
 
   it('document types register with "In Codex" counts (10 §5)', async () => {
-    const types = await listDocumentTypes();
+    const types = withoutL9X3Type(await listDocumentTypes());
     expect(types.map((t) => [t.code, t.label, t.familyLabel, t.circuitText, t.retention, t.isoClause, t.isClientDeliverable ? 'Yes' : '—', t.inCodex]))
       .toEqual(G.docs.types.map((t: any) => [t.code, t.label, t.famLabel, t.circuit, t.retention, t.iso, t.clientText, t.count]));
     expect(await getApproverDirectory()).toMatchObject({ engineering_lead: 'A. Girard', quality_manager: 'G. Comte', direction: 'M. Lefebvre', hse_officer: 'L. Fabre' });
