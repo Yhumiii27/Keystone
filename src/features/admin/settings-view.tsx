@@ -9,7 +9,7 @@
 // note. "Remove" toasts whether the value was deleted or deactivated (still in use / a default). The health card states
 // the one rule every screen applies.
 import {
-  CalendarX, Certificate, ClockCountdown, Coins, CurrencyEur, Files, Flag, Gavel, Heartbeat, LockSimple, Plus, Warehouse, Warning, X,
+  CalendarX, Certificate, ChartLineUp, ClockCountdown, Coins, CurrencyEur, Files, Flag, Gavel, Heartbeat, LockSimple, Plus, Warehouse, Warning, X,
 } from '@phosphor-icons/react/dist/ssr';
 import type { Icon } from '@phosphor-icons/react';
 import Link from 'next/link';
@@ -24,7 +24,9 @@ import type { SettingsIcon } from '@/domain/admin';
 import { REQUIRED_STAGES } from '@/domain/settings-rules';
 import { useI18n } from '@/i18n/client';
 import type { LocationType } from '@/server/db/codes';
-import { addSettingsEntryAction, removeSettingsEntryAction, setCcbThresholdAction, setHealthThresholdAction, setHoursVarianceAction, type AdminActionResult } from './actions';
+import {
+  addSettingsEntryAction, removeSettingsEntryAction, setCcbThresholdAction, setDcmaThresholdAction, setHealthThresholdAction, setHoursVarianceAction, type AdminActionResult,
+} from './actions';
 import type { SettingsCardView, SettingsView } from './model';
 import s from './admin.module.css';
 import st from './settings-ch4.module.css';
@@ -109,6 +111,21 @@ export function SettingsBody({ view, canEdit, directorOnlyNote = false }: { view
             <span className={st.rule}>{t('Applies to change requests submitted afterwards')}</span>
           </div>
           <CcbField key={`ccb-${view.ccb.text}`} initial={view.ccb.text} label={t('Board above (k€)')} canEdit={canEdit} />
+        </div>
+      </div>
+      {/* R-206 (K-206b): the schedule quality thresholds (DCMA 14 points), the standard by default. */}
+      <div className={cx('card', 'elev-sm', s.healthCard)}>
+        <div className={s.healthHead}>
+          <ChartLineUp className={s.accent} aria-hidden />
+          <div className={s.healthTitle}>
+            <div className="card-title">{t('Schedule quality')}</div>
+            <span className={s.muted12}>{t('Thresholds of the DCMA 14-point checks on the Schedule screen · the standard by default')}</span>
+          </div>
+        </div>
+        <div className={st.dcmaGrid}>
+          {view.dcma.map((f) => (
+            <DcmaField key={`${f.key}-${f.value}`} field={f} canEdit={canEdit} standardLabel={t('DCMA standard')} />
+          ))}
         </div>
       </div>
       <div className={s.cardGrid}>
@@ -213,6 +230,42 @@ function CcbField({ initial, label, canEdit }: { initial: string; label: string;
           if (e.key === 'Enter') commit();
         }}
       />
+    </div>
+  );
+}
+
+/** R-206: one schedule quality threshold, saved on blur / Enter when changed; read-only for non-directors. */
+function DcmaField({ field, canEdit, standardLabel }: { field: SettingsView['dcma'][number]; canEdit: boolean; standardLabel: string }) {
+  const [value, setValue] = useState(field.value);
+  const [pending, start] = useTransition();
+  const id = `dcma-${field.key}`;
+  const commit = () => {
+    if (!canEdit || pending || value.trim() === field.value) return;
+    start(async () => {
+      if (!(await attempt(setDcmaThresholdAction(field.key, value)))) setValue(field.value);
+    });
+  };
+  return (
+    <div className={cx('field', st.dcmaField)}>
+      <label htmlFor={id}>{field.label}</label>
+      <input
+        id={id}
+        className={cx('input', s.thresholdInput)}
+        type="number"
+        min={field.min}
+        max={field.max}
+        step={field.step}
+        value={value}
+        readOnly={!canEdit}
+        aria-busy={pending || undefined}
+        aria-describedby={`${id}-std`}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+        }}
+      />
+      <span id={`${id}-std`} className={st.dcmaStd}>{`${standardLabel} ${field.standard}`}</span>
     </div>
   );
 }

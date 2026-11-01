@@ -89,6 +89,7 @@ import d9UxA11y from './d9-ux-a11y.json';
 import d9Delegations from './d9-delegations.json';
 import d9NotificationMail from './d9-notification-mail.json';
 import d9Concurrency from './d9-concurrency.json';
+import d9ScheduleQuality from './d9-schedule-quality.json';
 
 export const EXTRA_FR: Record<string, string> = {
   ...common,
@@ -178,4 +179,5 @@ export const EXTRA_FR: Record<string, string> = {
   ...d9Delegations,
   ...d9NotificationMail,
   ...d9Concurrency,
+  ...d9ScheduleQuality,
 };
