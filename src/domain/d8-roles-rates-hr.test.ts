@@ -36,7 +36,8 @@ describe('R-044 · the Finance role and persona', () => {
   it('workspace: home, my projects, documents, overview, cash, contract, billing, budget, hours, rates, plan, my work, leave, meetings — no Prioritisation', () => {
     const finance = ROLE_SCREENS.finance!;
     expect([...finance].sort()).toEqual(
-      ['billing', 'budget', 'cash', 'contract', 'docs', 'home', 'hours', 'leave', 'meetings', 'mywork', 'myprojects', 'overview', 'plan', 'rates', 'task'].sort(),
+      // R-203: My dashboards for every internal role.
+      ['billing', 'budget', 'cash', 'contract', 'dashboards', 'docs', 'home', 'hours', 'leave', 'meetings', 'mywork', 'myprojects', 'overview', 'plan', 'rates', 'task'].sort(),
     );
     expect(canSee('finance', 'portfolio')).toBe(false);
     expect(canSee('finance', 'myapprovals')).toBe(false);

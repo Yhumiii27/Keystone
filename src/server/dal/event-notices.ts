@@ -123,6 +123,7 @@ export const ALERT_KIND_TITLE: Record<PortfolioAlert['kind'], string> = {
   over_allocation: 'Indicator alert · Over-allocation',
   approvals_waiting: 'Indicator alert · Approvals waiting',
   milestone_late: 'Indicator alert · Late milestone',
+  risk_forecast: 'Indicator alert · Low chance of meeting the end date',
 };
 
 /** The send-log key of an alert while it lasts; a cleared alert's rows are renamed `cleared:<date>` so it can be raised again. */

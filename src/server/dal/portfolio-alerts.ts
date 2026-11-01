@@ -19,6 +19,7 @@ import { getContract } from './contract';
 import { healthThresholds } from './health-thresholds';
 import { getApproverIdentity } from './myapprovals-identity';
 import { listScheduleSummaries } from './planning';
+import { latestRiskAnalysisRunsByCode } from './risk-analysis';
 import { listProjects, type ProjectRow } from './projects';
 import { getResourcePool } from './resources';
 
@@ -91,8 +92,13 @@ export async function getPortfolioAlerts(lang: Lang, on?: string): Promise<Portf
   return versionedRead(`portfolio-alerts|${lang}|${asOf}`, () => computePortfolioAlerts(lang, asOf));
 }
 
+function runOf(runs: Awaited<ReturnType<typeof latestRiskAnalysisRunsByCode>>, code: string): AlertProject['riskAnalysis'] {
+  const r = runs.get(code);
+  return r ? { probOnTarget: r.result.finish.probOnTarget, p80Finish: r.result.finish.dates.p80, target: r.result.finish.target } : null;
+}
+
 async function computePortfolioAlerts(lang: Lang, asOf: string): Promise<PortfolioAlert[]> {
-  const [all, sched, health] = await Promise.all([listProjects(), listScheduleSummaries(), healthThresholds()]);
+  const [all, sched, health, runs] = await Promise.all([listProjects(), listScheduleSummaries(), healthThresholds(), latestRiskAnalysisRunsByCode()]);
   const t = makeT(lang);
   const rows = all.filter(inExecution);
   const projects: AlertProject[] = await Promise.all(rows.map(async (p) => {
@@ -104,6 +110,8 @@ async function computePortfolioAlerts(lang: Lang, asOf: string): Promise<Portfol
         lateMilestones: s.milestones.filter((m) => m.status === 'late').map((m) => dataText(m.name, lang)),
       } : null,
       billing: await billingOf(p.code, lang),
+      // R-208: the latest stored Monte-Carlo run (one read for the portfolio, no simulation here).
+      riskAnalysis: runOf(runs, p.code),
     };
   }));
   const [people, approvals] = await Promise.all([overAllocated(asOf, ALERT_RULE_DEFAULTS.overAllocatedPct), directorQueue(rows, lang, asOf)]);

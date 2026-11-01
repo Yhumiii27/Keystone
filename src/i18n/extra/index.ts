@@ -78,6 +78,7 @@ import d9CapexMilestones from './d9-capex-milestones.json';
 import d9EngineeringPack from './d9-engineering-pack.json';
 import d9Volumes from './d9-volumes.json';
 import d9Gantt from './d9-gantt.json';
+import d9RiskAnalysis from './d9-risk-analysis.json';
 import d9Shipments from './d9-shipments.json';
 import d9ShipmentsB from './d9-shipments-b.json';
 import d9CapexNeeds from './d9-capex-needs.json';
@@ -87,8 +88,10 @@ import d9CatalogueScreen from './d9-catalogue-screen.json';
 import d9Reminders from './d9-reminders.json';
 import d9UxA11y from './d9-ux-a11y.json';
 import d9Delegations from './d9-delegations.json';
+import d9Dashboards from './d9-dashboards.json';
 import d9NotificationMail from './d9-notification-mail.json';
 import d9Concurrency from './d9-concurrency.json';
+import d9ScheduleQuality from './d9-schedule-quality.json';
 import d9RdRecurring from './d9-rd-recurring.json';
 
 export const EXTRA_FR: Record<string, string> = {
@@ -172,6 +175,7 @@ export const EXTRA_FR: Record<string, string> = {
   ...d9EngineeringPack,
   ...d9Volumes,
   ...d9Gantt,
+  ...d9RiskAnalysis,
   ...d9Shipments,
   ...d9ShipmentsB,
   ...d9Reminders,
@@ -179,5 +183,7 @@ export const EXTRA_FR: Record<string, string> = {
   ...d9Delegations,
   ...d9NotificationMail,
   ...d9Concurrency,
+  ...d9ScheduleQuality,
   ...d9RdRecurring,
+  ...d9Dashboards,
 };

@@ -246,6 +246,10 @@
   {
    "date": "2026-11-01",
    "text": "R-196 et R-201 faits : catégorie R&D des projets ; tâches récurrentes."
+  },
+  {
+   "date": "2026-11-01",
+   "text": "R-205, R-206, R-208 faits ; R-203 : tableaux de bord configurables faits, Power BI attend Matrix et la DSI."
   }
  ],
  "items": [
@@ -5972,7 +5976,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "Livraison 9",
-    "note": "01/11/2026 (K-203, K-203b) : tableaux de bord configurables lancés ; Power BI par les vues pub_ (demande à Matrix et à la DSI)."
+    "note": "01/11/2026 : écran « Mes tableaux de bord » (62e écran) : vignettes sur les indicateurs existants, filtres, partage en lecture avec droits du lecteur (migration 0072). Reste Power BI par les vues pub_ (demande Matrix #54 et DSI)."
    }
   },
   {
@@ -6018,9 +6022,9 @@
     "src/domain/cpm.ts"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 9",
-    "note": "01/11/2026 (K-205, K-205b) : Monte-Carlo délai et coût, fourchettes saisies par le CP (défaut −10 % / +25 %) ; en construction."
+    "note": "01/11/2026 : analyse Monte-Carlo délai et coût sous le registre des risques (fourchettes du CP, −10 % / +25 % par défaut, risques liés, P10-P90, courbes, criticité, tornado ; migration 0073)."
    }
   },
   {
@@ -6042,9 +6046,9 @@
     "src/domain/schedule.ts"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 9",
-    "note": "01/11/2026 (K-206, K-206b) : carte « Qualité du planning », 14 contrôles DCMA aux seuils du standard (modifiables) et analyse des retards ; en construction."
+    "note": "01/11/2026 : carte « Qualité du planning » (14 contrôles DCMA, seuils du standard modifiables dans Paramètres) et « Analyse des retards » (référence / actuel ou deux références, glissement du chemin critique) sur l’écran Planning ; lecture seule."
    }
   },
   {
@@ -6089,9 +6093,9 @@
     "src/domain/schedule-rollup.ts"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 9",
-    "note": "01/11/2026 (K-208) : première version fondée sur les règles et la valeur acquise ; en construction."
+    "note": "01/11/2026 : « Dérive prévue » fondée sur des règles (valeur acquise, planning, P80 Monte-Carlo) avec 11 règles de mitigation et alerte portefeuille ; à enrichir quand un historique réel existera."
    }
   },
   {

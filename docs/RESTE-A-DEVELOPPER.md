@@ -8,21 +8,21 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-11-01 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 124 faits, 31 en cours, 55 à faire, sur 210 points.
+**Avancement** : 127 faits, 28 en cours, 55 à faire, sur 210 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
 | Bloquant production | 15 | ≈ 102 |
-| Prochaine étape | 26 | ≈ 242 |
+| Prochaine étape | 23 | ≈ 196 |
 | À décider | 26 | ≈ 191 |
 | Plus tard | 19 | ≈ 122 |
-| **Total** | **86** | **≈ 657** |
+| **Total** | **83** | **≈ 611** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
-| Non commencé | 37 |
+| Non commencé | 34 |
 | Partiel | 9 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
@@ -33,14 +33,14 @@ L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il
 | Authentification, utilisateurs et droits | 1 | 0 | 2 | 0 | 3 | 14 |
 | Intégrations avec les autres systèmes | 5 | 6 | 2 | 6 | 19 | 7 |
 | Projets, cycle de vie et modèles par type de machine | 0 | 1 | 2 | 1 | 4 | 6 |
-| Planning | 1 | 2 | 3 | 1 | 7 | 5 |
-| Coûts, contrat et finance | 0 | 3 | 2 | 0 | 5 | 13 |
+| Planning | 1 | 1 | 3 | 1 | 6 | 6 |
+| Coûts, contrat et finance | 0 | 2 | 2 | 0 | 4 | 14 |
 | Ressources et RH | 0 | 2 | 1 | 1 | 4 | 5 |
 | Achats et stock | 2 | 1 | 2 | 0 | 5 | 4 |
 | Ingénierie et PLM | 0 | 1 | 1 | 0 | 2 | 10 |
 | Qualité, chantier et mise en service | 0 | 1 | 2 | 0 | 3 | 10 |
 | Documents | 0 | 1 | 0 | 0 | 1 | 4 |
-| Portefeuille, pilotage et indicateurs | 0 | 2 | 0 | 0 | 2 | 8 |
+| Portefeuille, pilotage et indicateurs | 0 | 1 | 0 | 0 | 1 | 9 |
 | Portail client | 0 | 0 | 1 | 2 | 3 | 3 |
 | SAV et parc installé | 0 | 0 | 0 | 1 | 1 | 3 |
 | Ergonomie, langues et accessibilité | 0 | 1 | 0 | 1 | 2 | 13 |
@@ -447,7 +447,7 @@ E-9 veut que la modification d’un type de machine ne touche que les nouveaux p
 Permettre de créer des tâches récurrentes (hebdomadaire, mensuelle, à chaque jalon) et d’automatiser les tâches répétitives dans « Mon travail » : règle de récurrence sur la tâche, génération de l’occurrence suivante à la clôture, affichage dans les vues liste, tableau et calendrier. Standard du marché (Wrike, Asana). Aujourd’hui les vues existent (src/app/(app)/my/tasks/page.tsx) mais le modèle ne porte aucune récurrence (src/server/db/schema/work.ts). Analyse comparative du 25 oct. 2026 : priorité P2.  
 *Avancement : 01/11/2026 : tâches récurrentes (toutes les n semaines / n mois, ou à chaque jalon), occurrence suivante créée à la clôture, jours ouvrés du projet, marque ↻ dans les vues (migration 0070). · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
-### 2.5 Planning (7 restants, 5 faits)
+### 2.5 Planning (6 restants, 6 faits)
 
 **R-060 · Gérer la date de situation par projet et le gel hebdomadaire du vendredi** — *Bloquant production · attend le responsable produit · effort L*  
 Écrire projects.data_date (date de situation par projet, que le CP fait avancer) et l’utiliser pour l’avancement et les coûts ; tous les lecteurs passent déjà par projectDataDate() et le Plan l’affiche déjà, il ne manque que l’écrivain. Un gel le vendredi doit enregistrer l’instantané de la semaine (Tendances : CPI, SPI, EAC, marge, risques ; période EVM ; avancement) : freezeSnapshot existe mais n’est jamais appelé, et l’historique des Tendances et de l’EVM vient uniquement du seed (contraire à A-15). Volet lié de S-4 : les retards, échéances et horodatages doivent suivre l’horloge réelle, alors que TODAY/STATUS_ISO restent figés au 25 sept. 2026 dans environ 46 fichiers.  
@@ -456,10 +456,6 @@ Permettre de créer des tâches récurrentes (hebdomadaire, mensuelle, à chaque
 **R-204 · Planning multi-niveaux : consolidation des plannings fournisseurs et codes d’activité** — *Prochaine étape · non commencé · effort L*  
 Modéliser les plannings fournisseurs (lots d’achat) dans le CPM et les consolider dans le planning projet (sous-réseaux, liens vers les activités de réception), avec des codes d’activité (lot d’achat, site, équipement) pour filtrer et regrouper. Fonction avancée du marché (Planisware, Primavera P6). Aujourd’hui les plannings fournisseurs ne sont pas modélisés dans le CPM. Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
 *Avancement : 01/11/2026 (K-204) : lancé en entier (plannings fournisseurs consolidés et codes d’activité) ; construit après le diagnostic du planning. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
-
-**R-206 · Diagnostic de la qualité du planning (métriques DCMA 14 points, analyse forensique des retards)** — *Prochaine étape · non commencé · effort M* · **en cours (Livraison 9)**  
-Évaluer la qualité d’un planning avec les 14 contrôles DCMA (liens manquants, contraintes dures, marges négatives, durées longues, retards, liens début-fin…) et fournir une analyse forensique des retards (comparaison référence / actuel par activité, glissement du chemin critique). Fonction différenciante du marché (Deltek Acumen). Absent aujourd’hui. Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
-*Avancement : 01/11/2026 (K-206, K-206b) : carte « Qualité du planning », 14 contrôles DCMA aux seuils du standard (modifiables) et analyse des retards ; en construction. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **R-063 · Trancher les règles restantes des références de planning (S-3)** — *À décider · attend le responsable produit · effort S*  
 Trois choix restent : une référence proposée dont la CR est rejetée est-elle supprimée ou marquée rejetée ? Après BL1, « Re-baseline » du Planning devient-il le même lien vers une CR que le Plan ? Quand une ancienne CR est approuvée après une plus récente (CR-009 / BL2 après CR-011 / BL3), la dernière approbation l’emporte-t-elle ou garde-t-on la BLn la plus haute ?  
@@ -489,6 +485,10 @@ En plus du lot, une CR peut citer, en option, les activités touchées et leur n
 Rendre le Gantt du planning interactif : déplacer et redimensionner les activités par glisser-déposer, zoom jour / semaine / mois, création et édition des liens et des durées directement dans le diagramme, avec recalcul CPM immédiat. Standard du marché (Smartsheet, MS Project, Wrike). Aujourd’hui le Gantt est un rendu serveur en lecture seule à l’échelle mensuelle sur 13 mois (src/components/charts/project-gantt.tsx). Analyse comparative du 25 oct. 2026 : priorité P1, condition du remplacement de MS Project.  
 *Avancement : Gantt des activités interactif (zoom jour/semaine/mois, glisser-déposer, liens, recalcul CPM immédiat, saisie au clavier) ; questions ouvertes dans notes-r198-gantt.md § 5. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
+**~~R-206 · Diagnostic de la qualité du planning (métriques DCMA 14 points, analyse forensique des retards)~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 9)**  
+Évaluer la qualité d’un planning avec les 14 contrôles DCMA (liens manquants, contraintes dures, marges négatives, durées longues, retards, liens début-fin…) et fournir une analyse forensique des retards (comparaison référence / actuel par activité, glissement du chemin critique). Fonction différenciante du marché (Deltek Acumen). Absent aujourd’hui. Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
+*Avancement : 01/11/2026 : carte « Qualité du planning » (14 contrôles DCMA, seuils du standard modifiables dans Paramètres) et « Analyse des retards » (référence / actuel ou deux références, glissement du chemin critique) sur l’écran Planning ; lecture seule. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+
 **~~R-064 · Corbeille du Plan : confirmer rétention et droits, purge planifiée~~** — *Plus tard · partiel · effort S* · **fait (Livraison 9)**  
 La confirmation et l’annulation demandées en S-5 sont livrées. Reste à faire confirmer les limites (30 jours, 20 entrées par projet) et la règle qui réserve suppression et restauration au CP et au directeur. Côté technique, à faire sans attendre la réponse : purger par tâche planifiée plutôt qu’à la suppression suivante, et renuméroter les positions en double après une restauration.  
 *Avancement : S-5 confirmé le 31 oct. 2026 : 30 jours, 20 entrées par projet, suppression et restauration par les responsables du projet et le directeur ; purge planifiée toutes les heures et positions après restauration en place. · Sources : S-5, DELIVERY-6.md §6 Minor points, §8 S-5, docs/delivery-6/notes-planning.md §2, §3*
@@ -497,7 +497,7 @@ La confirmation et l’annulation demandées en S-5 sont livrées. Reste à fair
 À l’envoi du compte rendu, une action confiée à un externe (client, fournisseur) doit créer une tâche de suivi pour le responsable interne de la relation : stakeholders.owner_person_id, ou à défaut le CP. Toute tâche doit reprendre l’échéance saisie, déjà stockée dans meeting_lines.due_date, au lieu de J+3. Elle doit aussi reprendre l’activité liée, ce qui demande une colonne activity_id sur meeting_lines (migration) et un sélecteur d’activité dans le formulaire d’action.  
 *Avancement : Livraison 8 : tâches de suivi des actions de compte rendu avec l’échéance saisie (S-12). · Sources : S-12, 05 OQ16-18, DELIVERY-3.md §5, §7*
 
-### 2.6 Coûts, contrat et finance (5 restants, 13 faits)
+### 2.6 Coûts, contrat et finance (4 restants, 14 faits)
 
 **R-074 · Alimenter le coût réel depuis Cursus et Sage X3** — *Prochaine étape · attend un système externe · effort L*  
 Coût réel = heures validées Cursus × taux en vigueur, plus achats à la réception, sous-traitance et locations sur facture validée dans Sage X3. Aujourd’hui seules les étiquettes de source existent et les colonnes actual / committed ne sont écrites que par le seed. Analyse comparative du 25 oct. 2026 : l’alimentation du réalisé depuis l’ERP (factures, réceptions) est attendue d’un connecteur ERP réel (Deltek, Planview) ; mock uniquement aujourd’hui. Priorité suggérée P1 avec R-034.  
@@ -506,10 +506,6 @@ Coût réel = heures validées Cursus × taux en vigueur, plus achats à la réc
 **R-082 · Affecter codes analytiques et codes NIM par tâche, budgets par code NIM** — *Prochaine étape · attend le responsable produit · effort L*  
 Le responsable produit fournira une extraction Sage des codes analytiques et de leur découpage en codes NIM. Chaque tâche recevra son code analytique et son code NIM, et les budgets seront rattachés aux codes NIM ; le découpage des budgets projet reste à revoir avec lui.  
 *Attend : Extraction Sage des codes analytiques et NIM, puis discussion sur le découpage des budgets · Sources : S-6, NEW-SYS-1, I-3b, 05 OQ9, 04 §1, DELIVERY-6.md §5*
-
-**R-205 · Analyse de risques Monte-Carlo sur coût et délai** — *Prochaine étape · non commencé · effort L* · **en cours (Livraison 9)**  
-Simuler l’incertitude des durées et des coûts (lois triangulaires sur les activités et les risques liés) pour produire des distributions de fin de projet et de coût à terminaison avec niveaux de confiance (P50 / P80). Fonction avancée du marché (Primavera Cloud). Aujourd’hui le registre des risques est en probabilité × impact seulement ; le lien risque ↔ activité existe déjà dans le modèle (risks.activity_id). Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
-*Avancement : 01/11/2026 (K-205, K-205b) : Monte-Carlo délai et coût, fourchettes saisies par le CP (défaut −10 % / +25 %) ; en construction. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **R-078 · Définir avec la finance la retenue de garantie et les cautions** — *À décider · attend le responsable produit · effort M*  
 Le responsable produit doit vérifier avec la finance les types de retenues et garanties (retenue déduite des factures puis libérée, caution…) avant de choisir le calcul. Aujourd’hui la retenue est indicative, calculée sur les montants payés, sans effet sur les factures ni la trésorerie.  
@@ -554,6 +550,10 @@ Chaque contrat choisit sa règle : N jours date de facture, 45 jours fin de mois
 **~~R-079 · Donner aux avenants leurs propres jalons et un cycle de signature~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 7)**  
 Un avenant signé doit porter ses propres échéances au lieu de re-chiffrer tous les jalons, y compris ceux déjà facturés (NEW-D3-3). Il faut modéliser les jalons par avenant, leur saisie, revoir le plan de facturation et les écarts jalon / facture, et ajouter les transitions brouillon → envoyé pour signature → signé ainsi que la libération des cautions.  
 *Sources : NEW-D3-3, A-5, C-7, 11 §6.3 Amendment / Bond, DELIVERY-3.md §5*
+
+**~~R-205 · Analyse de risques Monte-Carlo sur coût et délai~~** — *Prochaine étape · non commencé · effort L* · **fait (Livraison 9)**  
+Simuler l’incertitude des durées et des coûts (lois triangulaires sur les activités et les risques liés) pour produire des distributions de fin de projet et de coût à terminaison avec niveaux de confiance (P50 / P80). Fonction avancée du marché (Primavera Cloud). Aujourd’hui le registre des risques est en probabilité × impact seulement ; le lien risque ↔ activité existe déjà dans le modèle (risks.activity_id). Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
+*Avancement : 01/11/2026 : analyse Monte-Carlo délai et coût sous le registre des risques (fourchettes du CP, −10 % / +25 % par défaut, risques liés, P10-P90, courbes, criticité, tornado ; migration 0073). · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **~~R-188 · Classe d’estimation des budgets et des offres (±50 % / ±30 % / +10 −5 %)~~** — *À décider · non commencé · effort M* · **fait (9)**  
 Chaque version de budget et chaque offre porte une classe d’estimation, la fourchette est affichée, un indicateur « écart d’incertitude » est au tableau de bord ; une offre ferme exige la classe +10/−5 %.  
@@ -773,15 +773,11 @@ Keystone ne reprend de Codex que la fiche, la révision en cours et le circuit e
 Dans le tiroir d’un document, seules les relations Article et CR sont des liens ; Livrable, Commande d’achat et Réserve restent inertes alors que ces écrans existent depuis les livraisons 4–5.  
 *Avancement : Livraison 8 : relations Livrable, Commande et Réserve cliquables ; les lignes de réserve ont leur ancre (R-117). · Sources : 10 OQ15, DELIVERY-3.md §5*
 
-### 2.12 Portefeuille, pilotage et indicateurs (2 restants, 8 faits)
+### 2.12 Portefeuille, pilotage et indicateurs (1 restants, 9 faits)
 
 **R-203 · Tableaux de bord configurables par l’utilisateur et connecteur Power BI / Dataverse** — *Prochaine étape · non commencé · effort L* · **en cours (Livraison 9)**  
 Laisser chaque utilisateur composer ses tableaux de bord (widgets, filtres, indicateurs, enregistrement et partage) et ouvrir les données à Power BI / Dataverse (vues pub_ ou flux OData / API) pour les analyses du groupe. Standard du marché (Wrike, Planner Premium). Aujourd’hui les écrans de pilotage sont fixes et seul l’export CSV / XLSX existe. Analyse comparative du 25 oct. 2026 : priorité P2, à valider par le responsable produit ; le connecteur Power BI peut s’appuyer sur les vues pub_ déjà publiées.  
-*Avancement : 01/11/2026 (K-203, K-203b) : tableaux de bord configurables lancés ; Power BI par les vues pub_ (demande à Matrix et à la DSI). · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
-
-**R-208 · IA prédictive de dérive délai / coût et suggestions de mitigation** — *Prochaine étape · non commencé · effort XL* · **en cours (Livraison 9)**  
-Prédire la dérive de délai et de coût d’un projet à partir de l’historique (référence, avancement, valeur acquise, REX) et proposer des mitigations (réaffectation, resserrement, alerte précoce). Fonction avancée du marché (Planview, Planisware). Aujourd’hui l’IA ne sert qu’à l’analyse des transcriptions de réunion (src/server/ai/transcripts/). Analyse comparative du 25 oct. 2026 : priorité P3, à décider ; suppose un historique réel de projets.  
-*Avancement : 01/11/2026 (K-208) : première version fondée sur les règles et la valeur acquise ; en construction. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+*Avancement : 01/11/2026 : écran « Mes tableaux de bord » (62e écran) : vignettes sur les indicateurs existants, filtres, partage en lecture avec droits du lecteur (migration 0072). Reste Power BI par les vues pub_ (demande Matrix #54 et DSI). · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **~~R-129 · Vue d’ensemble : ne compter que les projets en exécution~~** — *Prochaine étape · non commencé · effort S* · **fait (Livraison 7)**  
 Appliquer A-3 : la Vue d’ensemble, l’accueil directeur (tuiles et demandes de modification) et Mes projets doivent suivre le registre en direct et retenir les projets dont l’étape appartient au groupe « execution » (Études → Mise en service), et non plus ceux qui ont des données de contrôle (hasData). Les libellés « FY2026 », figés dans l’indice de carte et dans le fil d’Ariane, doivent venir de la date de données. Les tests golden doivent être mis à jour avec un commentaire citant A-3. La règle de santé unique (A-13) est déjà appliquée.  
@@ -802,6 +798,10 @@ La marge du portefeuille utilise déjà (contrat − EAC) / contrat. Les marges 
 **~~R-133 · Répartir le reste à dépenser de la trésorerie selon la courbe prévue~~** — *Prochaine étape · partiel · effort S* · **fait (Livraison 7)**  
 C-10a demande que les décaissements restants suivent la courbe prévue du planning. Le calcul actuel répartit l’ETC à parts égales jusqu’au mois de fin. Les encaissements suivent déjà le plan de facturation. La courbe PV par période existe (evm_periods) et peut servir de clé de répartition.  
 *Sources : C-10a, A-12*
+
+**~~R-208 · IA prédictive de dérive délai / coût et suggestions de mitigation~~** — *Prochaine étape · non commencé · effort XL* · **fait (Livraison 9)**  
+Prédire la dérive de délai et de coût d’un projet à partir de l’historique (référence, avancement, valeur acquise, REX) et proposer des mitigations (réaffectation, resserrement, alerte précoce). Fonction avancée du marché (Planview, Planisware). Aujourd’hui l’IA ne sert qu’à l’analyse des transcriptions de réunion (src/server/ai/transcripts/). Analyse comparative du 25 oct. 2026 : priorité P3, à décider ; suppose un historique réel de projets.  
+*Avancement : 01/11/2026 : « Dérive prévue » fondée sur des règles (valeur acquise, planning, P80 Monte-Carlo) avec 11 règles de mitigation et alerte portefeuille ; à enrichir quand un historique réel existera. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **~~R-134 · Noter les propositions de projet sur les 5 axes du classement~~** — *Plus tard · non commencé · effort S* · **fait (Livraison 8)**  
 « Noter une proposition » doit saisir les 5 axes du classement, dont l’adéquation des ressources et la priorité client, au lieu de 3. Les 2 autres axes reçoivent aujourd’hui 1 par défaut.  
@@ -995,6 +995,7 @@ Module demandé mais à cadrer avec le responsable produit avant construction : 
 
 ## 3. Mises à jour
 
+- 2026-11-01 — R-205, R-206, R-208 faits ; R-203 : tableaux de bord configurables faits, Power BI attend Matrix et la DSI.
 - 2026-11-01 — R-196 et R-201 faits : catégorie R&D des projets ; tâches récurrentes.
 - 2026-11-01 — R-195 fait : la vue pub_jalons existe déjà (0038) et Matrix l’accorde à Crucible.
 - 2026-11-01 — Cadrage des lots R-195 à R-209 (questionnaire) : lancés R-196, R-201, R-203, R-205, R-206, R-208, puis R-204 ; R-195 et Power BI par Matrix ; plus tard R-197, R-200, R-202, R-207, R-209.

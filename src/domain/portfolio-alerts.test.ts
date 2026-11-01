@@ -1,6 +1,6 @@
 // R-130 (NEW-D1-1 a): "Needs attention" computed by rules — one case per rule, the order, the cap and the thresholds.
 import { describe, expect, it } from 'vitest';
-import type { T } from '@/i18n/translate';
+import { makeT, type T } from '@/i18n/translate';
 import { ALERT_RULE_DEFAULTS, DEFAULT_ALERT_THRESHOLDS, portfolioAlertRules, type AlertInput, type AlertProject } from './portfolio-alerts';
 
 const t: T = ((s: string) => s) as T;
@@ -13,7 +13,7 @@ const input = (over: Partial<AlertInput> = {}): AlertInput => ({ projects: [], p
 
 describe('portfolio alert rules', () => {
   it('defaults: Settings health thresholds; 5 days, 110 %, 8 alerts', () => {
-    expect(ALERT_RULE_DEFAULTS).toEqual({ approvalDays: 5, overAllocatedPct: 110, maxAlerts: 8 });
+    expect(ALERT_RULE_DEFAULTS).toEqual({ approvalDays: 5, overAllocatedPct: 110, maxAlerts: 8, onTimeChance: 0.2 }); // R-208: Monte-Carlo chance under 20 %.
     expect(DEFAULT_ALERT_THRESHOLDS.health).toEqual({ risk: 0.97, off: 0.9 });
   });
 
@@ -119,5 +119,22 @@ describe('portfolio alert rules', () => {
     expect(all.map((a) => a.key)).toEqual(['off-O-1', 'slip-S-2', 'slip-S-1', 'cost-C-1', 'people', 'approvals']);
     const capped = portfolioAlertRules(input({ projects, people: { over: ['A'], peakWeeks: [42] } }), 'en', t, { ...DEFAULT_ALERT_THRESHOLDS, maxAlerts: 2 });
     expect(capped.map((a) => a.key)).toEqual(['off-O-1', 'slip-S-2']);
+  });
+});
+
+describe('R-208: Monte-Carlo chance of meeting the end date', () => {
+  const p = (riskAnalysis: AlertProject['riskAnalysis']): AlertProject => ({
+    code: 'HLT-026', name: 'Harbor Line', health: 'on_track', budget: 1000, actual: 400, progress: 0.4, spi: 1, schedule: null, billing: null, riskAnalysis,
+  });
+  const run = (projects: AlertProject[]) => portfolioAlertRules({ projects, people: null, approvals: [], asOf: '2026-09-25' }, 'en', makeT('en'));
+  it('lists a project whose latest run gives less than 20 % (stored values only)', () => {
+    const a = run([p({ probOnTarget: 0.12, p80Finish: '2027-02-05', target: '2026-12-18' })]);
+    expect(a.map((x) => [x.kind, x.title, x.action, x.target])).toEqual([
+      ['risk_forecast', 'Harbor Line — low chance of meeting the end date', 'Open risk register', { screen: 'risks', code: 'HLT-026' }],
+    ]);
+    expect(a[0].detail).toMatch(/^Monte-Carlo risk analysis: 12 % · P80 finish .+ \(target .+\)\.$/);
+    expect(run([p({ probOnTarget: 0.35, p80Finish: '2027-02-05', target: '2026-12-18' })])).toEqual([]);
+    expect(run([p(null)])).toEqual([]);
+    expect(run([p(undefined)])).toEqual([]);
   });
 });

@@ -19,7 +19,7 @@ import { BASE_CURRENCY, moneyIn, type CurrencyCode } from './currency';
 import { DEFAULT_HEALTH_THRESHOLDS, clampHealthCpi, type Health, type HealthThresholds } from './health';
 import { OVER_ALLOCATED_PCT, weekRangesText } from './resources';
 
-export type AlertKind = 'off_track' | 'critical_slip' | 'cost_overrun' | 'billing_late' | 'over_allocation' | 'approvals_waiting' | 'milestone_late';
+export type AlertKind = 'off_track' | 'critical_slip' | 'cost_overrun' | 'billing_late' | 'over_allocation' | 'approvals_waiting' | 'milestone_late' | 'risk_forecast';
 export type AlertIcon = 'lightning' | 'coins' | 'users-three' | 'clock-countdown' | 'receipt' | 'stamp' | 'warning';
 
 /** "Needs attention" item. `target` is the screen opened by the action button. */
@@ -45,6 +45,8 @@ export const ALERT_RULE_DEFAULTS = {
   overAllocatedPct: OVER_ALLOCATED_PCT,
   /** At most this many alerts are listed (worst first). */
   maxAlerts: 8,
+  /** R-208: a Monte-Carlo chance of meeting the end date below this is an alert (DRIFT_RULES.probabilityVeryLow). */
+  onTimeChance: 0.2,
 } as const;
 
 export interface AlertThresholds {
@@ -53,6 +55,8 @@ export interface AlertThresholds {
   approvalDays: number;
   overAllocatedPct: number;
   maxAlerts: number;
+  /** R-208 (optional for callers built before it): Monte-Carlo chance of meeting the end date under which a project is listed. */
+  onTimeChance?: number;
 }
 
 export const DEFAULT_ALERT_THRESHOLDS: AlertThresholds = { health: DEFAULT_HEALTH_THRESHOLDS, ...ALERT_RULE_DEFAULTS };
@@ -76,6 +80,11 @@ export interface AlertProject {
     /** Planned billable milestones past their contractual date (number, label translated, ISO date). */
     late: { number: string; label: string; dueOn: string }[];
   } | null;
+  /**
+   * R-205 / R-208: the project's latest Monte-Carlo risk analysis (stored run, no computation here): chance of meeting the target
+   * finish, P80 finish and the target (ISO). Absent or null without a run.
+   */
+  riskAnalysis?: { probOnTarget: number | null; p80Finish: string; target: string | null } | null;
 }
 
 export interface AlertPeople {
@@ -103,7 +112,7 @@ export interface AlertInput {
 }
 
 const RANK: Record<AlertKind, number> = {
-  off_track: 0, critical_slip: 1, cost_overrun: 2, billing_late: 3, over_allocation: 4, approvals_waiting: 5, milestone_late: 6,
+  off_track: 0, critical_slip: 1, cost_overrun: 2, billing_late: 3, over_allocation: 4, approvals_waiting: 5, milestone_late: 6, risk_forecast: 7,
 };
 
 const dec = (v: number, lang: Lang) => (lang === 'fr' ? v.toFixed(2).replace('.', ',') : v.toFixed(2));
@@ -181,6 +190,21 @@ export function portfolioAlertRules(input: AlertInput, lang: Lang, t: T, th: Ale
             : `${ms.number} ${ms.label} · contractual date ${dayDate(ms.dueOn, t)}, not invoiced${more(b.late.length)}.`,
         action: 'Open billing', target: { screen: 'billing', code: p.code },
       }, 0, order);
+    }
+    // 7. R-208: the latest Monte-Carlo risk analysis gives a low chance of meeting the end date.
+    const ra = p.riskAnalysis;
+    const chance = th.onTimeChance ?? ALERT_RULE_DEFAULTS.onTimeChance;
+    if (ra && ra.probOnTarget != null && ra.probOnTarget < chance) {
+      const pc = `${Math.round(ra.probOnTarget * 100)} %`;
+      const target = ra.target ? (fr ? ` (cible ${dayDate(ra.target, t)})` : ` (target ${dayDate(ra.target, t)})`) : '';
+      push({
+        key: `mc-${p.code}`, kind: 'risk_forecast', icon: 'warning', code: p.code,
+        title: fr ? `${p.name} — faible probabilité de tenir la date de fin` : `${p.name} — low chance of meeting the end date`,
+        detail: fr
+          ? `Analyse de risques Monte-Carlo : ${pc} · fin P80 ${dayDate(ra.p80Finish, t)}${target}.`
+          : `Monte-Carlo risk analysis: ${pc} · P80 finish ${dayDate(ra.p80Finish, t)}${target}.`,
+        action: 'Open risk register', target: { screen: 'risks', code: p.code },
+      }, ra.probOnTarget, order);
     }
   });
 
