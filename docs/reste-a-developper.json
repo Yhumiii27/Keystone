@@ -242,6 +242,10 @@
   {
    "date": "2026-11-01",
    "text": "R-195 fait : la vue pub_jalons existe déjà (0038) et Matrix l’accorde à Crucible."
+  },
+  {
+   "date": "2026-11-01",
+   "text": "R-196 et R-201 faits : catégorie R&D des projets ; tâches récurrentes."
   }
  ],
  "items": [
@@ -5799,9 +5803,9 @@
     "src/server/db/schema/portfolio.ts (projects.kind, machine_type_code)"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 9",
-    "note": "01/11/2026 (K-196) : nature de projet « R&D » à la création, colonne en fin de pub_projets ; en construction."
+    "note": "01/11/2026 : catégorie de projet (client / R&D) à la création et sur l’écran Contrat, publiée en fin de pub_projets (colonne categorie, migrations 0070-0071) ; reste la recopie de la vue par Matrix."
    }
   },
   {
@@ -5918,9 +5922,9 @@
     "src/server/db/schema/work.ts"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 9",
-    "note": "01/11/2026 (K-201) : lancé ; en construction."
+    "note": "01/11/2026 : tâches récurrentes (toutes les n semaines / n mois, ou à chaque jalon), occurrence suivante créée à la clôture, jours ouvrés du projet, marque ↻ dans les vues (migration 0070)."
    }
   },
   {
