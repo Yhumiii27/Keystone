@@ -8,7 +8,7 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-11-01 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 127 faits, 28 en cours, 55 à faire, sur 210 points.
+**Avancement** : 127 faits, 29 en cours, 54 à faire, sur 210 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
@@ -453,9 +453,9 @@ Permettre de créer des tâches récurrentes (hebdomadaire, mensuelle, à chaque
 Écrire projects.data_date (date de situation par projet, que le CP fait avancer) et l’utiliser pour l’avancement et les coûts ; tous les lecteurs passent déjà par projectDataDate() et le Plan l’affiche déjà, il ne manque que l’écrivain. Un gel le vendredi doit enregistrer l’instantané de la semaine (Tendances : CPI, SPI, EAC, marge, risques ; période EVM ; avancement) : freezeSnapshot existe mais n’est jamais appelé, et l’historique des Tendances et de l’EVM vient uniquement du seed (contraire à A-15). Volet lié de S-4 : les retards, échéances et horodatages doivent suivre l’horloge réelle, alors que TODAY/STATUS_ISO restent figés au 25 sept. 2026 dans environ 46 fichiers.  
 *Attend : Précision du responsable produit : ce qui fait avancer la date (tâche du vendredi, action du CP, Replanifier) et ce que le gel enregistre (DELIVERY-6 §8 S-4) · Sources : S-4, A-15, 04 §2, Q11, 11 §3.3, DELIVERY-6.md §3, §8 S-4, docs/delivery-6/notes-planning.md §3 gap (6)*
 
-**R-204 · Planning multi-niveaux : consolidation des plannings fournisseurs et codes d’activité** — *Prochaine étape · non commencé · effort L*  
+**R-204 · Planning multi-niveaux : consolidation des plannings fournisseurs et codes d’activité** — *Prochaine étape · non commencé · effort L* · **en cours (Livraison 9)**  
 Modéliser les plannings fournisseurs (lots d’achat) dans le CPM et les consolider dans le planning projet (sous-réseaux, liens vers les activités de réception), avec des codes d’activité (lot d’achat, site, équipement) pour filtrer et regrouper. Fonction avancée du marché (Planisware, Primavera P6). Aujourd’hui les plannings fournisseurs ne sont pas modélisés dans le CPM. Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
-*Avancement : 01/11/2026 (K-204) : lancé en entier (plannings fournisseurs consolidés et codes d’activité) ; construit après le diagnostic du planning. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+*Avancement : 01/11/2026 (K-204 « lancer tout ») : codes d’activité et plannings fournisseurs consolidés dans le CPM ; en construction. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **R-063 · Trancher les règles restantes des références de planning (S-3)** — *À décider · attend le responsable produit · effort S*  
 Trois choix restent : une référence proposée dont la CR est rejetée est-elle supprimée ou marquée rejetée ? Après BL1, « Re-baseline » du Planning devient-il le même lien vers une CR que le Plan ? Quand une ancienne CR est approuvée après une plus récente (CR-009 / BL2 après CR-011 / BL3), la dernière approbation l’emporte-t-elle ou garde-t-on la BLn la plus haute ?  
@@ -995,6 +995,7 @@ Module demandé mais à cadrer avec le responsable produit avant construction : 
 
 ## 3. Mises à jour
 
+- 2026-11-01 — R-204 lancé : planning multi-niveaux (codes d’activité, plannings fournisseurs).
 - 2026-11-01 — R-205, R-206, R-208 faits ; R-203 : tableaux de bord configurables faits, Power BI attend Matrix et la DSI.
 - 2026-11-01 — R-196 et R-201 faits : catégorie R&D des projets ; tâches récurrentes.
 - 2026-11-01 — R-195 fait : la vue pub_jalons existe déjà (0038) et Matrix l’accorde à Crucible.
