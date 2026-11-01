@@ -7,6 +7,7 @@
 // C-9 (R-075): a Draft's currency (EUR or the project currency) for editors when the project has another currency.
 import { TreeStructure, Warning } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { Callout } from '@/components/app/Callout';
 import { ClickableRow } from '@/components/app/ClickableRow';
 import { KeyValueList } from '@/components/app/KeyValueList';
@@ -27,9 +28,11 @@ export interface OrderDrawerProps {
   /** "Push to X3" allowed (not outside the workspace, not a read-only project). */
   canEdit: boolean;
   t: T;
+  /** R-204: the order's supplier schedule (src/features/supplier-schedules/supplier-schedule-section.tsx), under the details. */
+  supplierSchedule?: ReactNode;
 }
 
-export function OrderDrawer({ code, view, canEdit, t }: OrderDrawerProps) {
+export function OrderDrawer({ code, view, canEdit, t, supplierSchedule }: OrderDrawerProps) {
   return (
     <Drawer open closeHref={view.closeHref} id={view.head} meta={<span className={view.statusClass}>{view.status}</span>}>
       <FlowStepper steps={view.steps} />
@@ -98,6 +101,7 @@ export function OrderDrawer({ code, view, canEdit, t }: OrderDrawerProps) {
           </div>
         </div>
       </div>
+      {supplierSchedule}
     </Drawer>
   );
 }

@@ -9,7 +9,9 @@
 // Projects without orders show the empty list (never Harbor Line's orders).
 import { PageHeader } from '@/components/app/shell/page-header';
 import { isPoStatus } from '@/domain/orders';
-import { canSeeSupplierPrices } from '@/domain/rights';
+import { canEditSupplierSchedule, canSeeSupplierPrices, canTieSupplierSchedule } from '@/domain/rights';
+import { supplierSchedulesView } from '@/features/supplier-schedules/model';
+import { SupplierScheduleSection } from '@/features/supplier-schedules/supplier-schedule-section';
 import { ordersView } from '@/features/orders/model';
 import { CreateDraftsButton } from '@/features/orders/order-buttons';
 import { OrdersBody } from '@/features/orders/orders-view';
@@ -32,12 +34,27 @@ export default async function OrdersPage({ params, searchParams }: { params: Pro
   const prices = canSeeSupplierPrices(ctx.viewer.role);
   const view = ordersView({ code: projectCode, data, filter: isPoStatus(status) ? status : null, selected: first(sp.po)?.toUpperCase() ?? null, prices, x3 }, t, lang);
 
+  // R-204: the open order's supplier schedule (procurement, the project's leads and the director edit it; the leads tie it).
+  const po = view.drawer?.number ?? null;
+  const suppliers = po ? await supplierSchedulesView(projectCode) : null;
+  const supplierSchedule = po && suppliers && suppliers.orderStatus[po] ? (
+    <SupplierScheduleSection
+      code={projectCode}
+      po={po}
+      schedule={suppliers.schedules.find((x) => x.po === po) ?? null}
+      projectActivities={suppliers.projectActivities}
+      canEdit={canEditSupplierSchedule(ctx.viewer.role, ctx.access, canEdit)}
+      canTie={canTieSupplierSchedule(ctx.viewer.role, ctx.access, ctx.canEdit('plan'))}
+      cancelled={suppliers.orderStatus[po] === 'cancelled'}
+    />
+  ) : undefined;
+
   const primary = canEdit && view.shortfall ? <CreateDraftsButton code={projectCode} place="header" afterHref={view.afterDraftsHref} /> : undefined;
 
   return (
     <>
       <PageHeader screen="orders" projectCode={projectCode} primary={primary} />
-      <OrdersBody view={view} canEdit={canEdit} t={t} />
+      <OrdersBody view={view} canEdit={canEdit} t={t} supplierSchedule={supplierSchedule} />
     </>
   );
 }
