@@ -376,6 +376,10 @@ async function main() {
     { nulls: number; internal_projects: number; internal_clients: string | null };
   check('pub_projets: client_interne never null; demo internal client Sahel Agro Industries (SAI), no project yet (R-190)',
     internal.nulls === 0 && internal.internal_projects === 0 && internal.internal_clients === 'Sahel Agro Industries:SAI', internal);
+  // R-196 (0070, 0071_project_category_share): the project's category at the end of pub_projets, never null; no demo R&D project.
+  const category = (await db.execute(sql`select (select count(*)::int from pub_projets where categorie is null) as nulls,
+      (select count(*)::int from pub_projets where categorie not in ('client', 'rd')) as others`)).rows[0] as { nulls: number; others: number };
+  check('pub_projets: categorie never null, client or rd (R-196)', category.nulls === 0 && category.others === 0, category);
   let subsidiaryChecked = false;
   try {
     await db.execute(sql`update clients set subsidiary_code = 'ZZZ' where not is_internal`);

@@ -4,7 +4,9 @@
 //
 // Dates: the prototype keeps working-day offsets from Mon 21 Sep 2026 (`start`, `due`, `propStart`…); they are
 // stored as ISO dates and converted back with codes.ts dayOffsetOfIso (the DAL returns both).
-import { boolean, date, index, integer, pgTable, primaryKey, text, timestamp, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { boolean, check, date, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import type { RecurrenceKind } from '@/domain/task-recurrence';
 import type { AttachmentKind, Priority, RequestEventAction, RequestStatus, TaskOrigin, TaskStatus, TimeEntrySource } from '../codes';
 import { id, num, timestamps } from './_common';
 import { storedFiles } from './files';
@@ -50,7 +52,26 @@ export const tasks = pgTable('tasks', {
   /** Chapter 4: where the task comes from ('activity_todo' = Plan drawer composer); null for the seed and older tasks. */
   origin: text('origin').$type<TaskOrigin>(),
   ...timestamps,
-}, (t) => [index('tasks_project_id_idx').on(t.projectId), index('tasks_assignee_person_id_idx').on(t.assigneePersonId), index('tasks_activity_id_idx').on(t.activityId)]);
+  /**
+   * R-201 (K-201): recurrence rule (src/domain/task-recurrence.ts) — weekly / monthly every `interval` weeks / months counted
+   * from `recurrenceAnchor` (a due date), or at each schedule milestone of the project; no occurrence due after
+   * `recurrenceUntil`. Null kind = not recurring. Closing the task (Done) creates the next occurrence, which carries the rule on.
+   */
+  recurrenceKind: text('recurrence_kind').$type<RecurrenceKind>(),
+  recurrenceInterval: integer('recurrence_interval'),
+  recurrenceAnchor: date('recurrence_anchor', { mode: 'string' }),
+  recurrenceUntil: date('recurrence_until', { mode: 'string' }),
+  /** R-201: the occurrence this one follows (created when it was closed); one next occurrence per task. */
+  recurrencePreviousTaskId: uuid('recurrence_previous_task_id').references((): AnyPgColumn => tasks.id, { onDelete: 'set null' }),
+}, (t) => [
+  index('tasks_project_id_idx').on(t.projectId), index('tasks_assignee_person_id_idx').on(t.assigneePersonId), index('tasks_activity_id_idx').on(t.activityId),
+  uniqueIndex('tasks_recurrence_previous_task_id_unique').on(t.recurrencePreviousTaskId),
+  check('tasks_recurrence_kind_check', sql`${t.recurrenceKind} in ('weekly', 'monthly', 'milestone')`),
+  check(
+    'tasks_recurrence_rule_check',
+    sql`(${t.recurrenceKind} is null) = (${t.recurrenceAnchor} is null) and (${t.recurrenceKind} is null) = (${t.recurrenceInterval} is null) and (${t.recurrenceInterval} is null or ${t.recurrenceInterval} between 1 and 12)`,
+  ),
+]);
 
 /** Checklist items (CHECKS 3257). */
 export const taskChecklistItems = pgTable('task_checklist_items', {
