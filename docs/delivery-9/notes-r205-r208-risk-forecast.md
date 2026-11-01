@@ -2,7 +2,7 @@
 
 Réponses du propriétaire du 1er nov. 2026 (`docs/DECISIONS.md` § « Cadrage des prochains lots ») : **K-205** (lancer, sur le
 délai et le coût), **K-205b** (fourchettes saisies par le chef de projet, défaut −10 % / +25 %), **K-208 alt1** (première
-version fondée sur les règles et la valeur acquise). Migration **0070** (`drizzle/0070_risk_analysis.sql`, générée ; numéro à
+version fondée sur les règles et la valeur acquise). Migration **0072** (`drizzle/0072_risk_analysis.sql`, générée ; numéro à
 recaler à l’intégration).
 
 ## 1. R-205 — analyse de risques Monte-Carlo (délai et coût)
@@ -33,7 +33,7 @@ recaler à l’intégration).
 - **Performance** : ~0,3 s pour 2 000 itérations sur HLT-026 (21 activités) ; un réseau de 120 activités × 2 000 itérations
   passe en quelques secondes (test de bornage, pas de test de charge en CI).
 
-### Données (`src/server/db/schema/risk-analysis.ts`, migration 0070)
+### Données (`src/server/db/schema/risk-analysis.ts`, migration 0072)
 
 | Table | Rôle |
 |---|---|
@@ -139,6 +139,6 @@ engagements ouverts ; provision restante ; dernière analyse Monte-Carlo).
 
 ## 6. Fichiers partagés touchés
 
-`src/server/db/schema/index.ts`, `drizzle/meta/_journal.json` (+ `0070_snapshot.json`), `src/domain/system-messages.ts`,
+`src/server/db/schema/index.ts`, `drizzle/meta/_journal.json` (+ `0072_snapshot.json`), `src/domain/system-messages.ts`,
 `src/domain/portfolio-alerts.ts` (+ test), `src/server/dal/portfolio-alerts.ts`, `src/server/dal/event-notices.ts`,
 `src/i18n/extra/index.ts`, `src/app/(app)/projects/[code]/risks/page.tsx`, `src/app/(app)/projects/[code]/trends/page.tsx`.
