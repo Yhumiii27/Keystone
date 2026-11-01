@@ -87,6 +87,7 @@ import d9CatalogueScreen from './d9-catalogue-screen.json';
 import d9Reminders from './d9-reminders.json';
 import d9UxA11y from './d9-ux-a11y.json';
 import d9Delegations from './d9-delegations.json';
+import d9Dashboards from './d9-dashboards.json';
 import d9NotificationMail from './d9-notification-mail.json';
 import d9Concurrency from './d9-concurrency.json';
 
@@ -178,4 +179,5 @@ export const EXTRA_FR: Record<string, string> = {
   ...d9Delegations,
   ...d9NotificationMail,
   ...d9Concurrency,
+  ...d9Dashboards,
 };

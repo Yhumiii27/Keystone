@@ -35,7 +35,7 @@ async function auditAll(page: Page, paths: string[]): Promise<void> {
 }
 
 const GLOBAL = [
-  '/', '/my/projects', '/my/tasks', '/my/tasks/T-2314', '/my/approvals', '/portfolio/overview', '/portfolio/projects', '/portfolio/schedule', '/portfolio/map',
+  '/', '/my/projects', '/my/tasks', '/my/tasks/T-2314', '/my/approvals', '/my/dashboards', '/portfolio/overview', '/portfolio/projects', '/portfolio/schedule', '/portfolio/map',
   '/portfolio/prioritisation', '/portfolio/cash', '/reference/parts', '/reference/eco', '/reference/drawings', '/purchasing/sourcing', '/purchasing/stock',
   '/after-sales/fleet', '/after-sales/claims', '/resources', '/resources/requests', '/resources/approvals', '/resources/what-if?project=HLT-026',
   '/resources/skills', '/resources/leave', '/resources/rates', '/admin/settings', '/admin/machine-types', '/admin/document-types', '/admin/integrations', '/catalogue/machines',
@@ -58,7 +58,7 @@ test('axe: every screen as the director (EN), no serious or critical WCAG 2.1 AA
 const PERSONA_SCREENS: Record<Exclude<Role, 'director'>, string[]> = {
   pm: ['/', '/my/projects', '/my/approvals', '/projects/HLT-026/plan', '/projects/HLT-026/budget', '/projects/HLT-026/changes', '/projects/HLT-026/billing'],
   depthead: ['/', '/resources', '/resources/requests', '/portfolio/prioritisation'],
-  member: ['/', '/my/tasks', '/my/tasks/T-2314'],
+  member: ['/', '/my/tasks', '/my/tasks/T-2314', '/my/dashboards'],
   englead: ['/', '/projects/HLT-026/engineering', '/projects/HLT-026/bom', '/projects/HLT-026/itp'],
   quality: ['/', '/projects/HLT-026/quality', '/projects/HLT-026/itp', '/my/approvals'],
   procurement: ['/', '/projects/HLT-026/orders', '/purchasing/sourcing', '/purchasing/stock'],

@@ -9,7 +9,7 @@
 export type RoleKey = 'director' | 'pm' | 'depthead' | 'member' | 'englead' | 'quality' | 'procurement' | 'finance' | 'logistics' | 'client';
 
 export type ScreenId =
-  | 'home' | 'myprojects' | 'client' | 'mywork' | 'task' | 'myapprovals' | 'docs'
+  | 'home' | 'myprojects' | 'client' | 'mywork' | 'task' | 'myapprovals' | 'dashboards' | 'docs'
   | 'overview' | 'projects' | 'pfplan' | 'worldmap' | 'portfolio' | 'cash'
   | 'contract' | 'billing' | 'plan' | 'schedule' | 'budget' | 'hours' | 'contingency' | 'presources'
   | 'meetings' | 'stakeholders' | 'interfaces'
@@ -49,6 +49,8 @@ export const SCREENS: ScreenDef[] = [
   S({ id: 'mywork', title: 'My work', navLabel: 'My tasks', nav: 'fixed', scope: 'global', slug: 'my/tasks', built: true }),
   S({ id: 'task', title: 'Task', scope: 'global', slug: 'my/tasks/[taskId]', built: true }),
   S({ id: 'myapprovals', title: 'My approvals', navLabel: 'My approvals', nav: 'fixed', scope: 'global', slug: 'my/approvals', built: true }),
+  // R-203 (K-203, owner 1 Nov 2026): each user's own dashboards, composed from Keystone's existing indicators and lists.
+  S({ id: 'dashboards', title: 'My dashboards', navLabel: 'My dashboards', nav: 'fixed', scope: 'global', slug: 'my/dashboards', built: true }),
   S({ id: 'docs', title: 'Documents — Codex index', navLabel: 'Documents · Codex', nav: 'fixed', scope: 'project', slug: 'documents', built: true }),
   // Portfolio
   S({ id: 'overview', title: 'Portfolio overview', navLabel: 'Overview', nav: 'portfolio', scope: 'zone', slug: 'portfolio/overview', built: true }),
@@ -140,7 +142,7 @@ export const SECTIONS: { key: SectionKey; label: string }[] = [
 export const PROJECT_GROUPS = ['Contract', 'Steering', 'Team & exchanges', 'Project engineering', 'Control', 'Site & handover', 'Project review'];
 
 /** Fixed entries order (docs/spec/01 §4.3). `client` replaces `myprojects` for the client role. */
-export const FIXED_ORDER: ScreenId[] = ['home', 'myprojects', 'client', 'mywork', 'myapprovals', 'docs'];
+export const FIXED_ORDER: ScreenId[] = ['home', 'myprojects', 'client', 'mywork', 'myapprovals', 'dashboards', 'docs'];
 
 /** Default project (prototype `state.project`). */
 export const DEFAULT_PROJECT = 'HLT-026';

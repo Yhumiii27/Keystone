@@ -48,6 +48,8 @@ base.client.push('meetings', 'itp', 'commissioning');
 for (const k of Object.keys(base) as (keyof typeof base)[]) {
   base[k].push('docs');
   if (k !== 'client') base[k].push('myprojects');
+  // R-203 (K-203): My dashboards for every internal role (a client is refused: its widgets read internal indicators).
+  if (k !== 'client') base[k].push('dashboards');
   if (k === 'quality' || k === 'pm') base[k].push('doctypes');
 }
 

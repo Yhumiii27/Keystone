@@ -47,7 +47,7 @@ Keystone PM is EPC2i's project and portfolio management tool. It is a Next.js 16
 ## Conventions
 
 - **Must read first:** `docs/ARCHITECTURE.md`, then the spec in `docs/spec/`: 00 overview and open questions §10, 01–10 by module, 11 data model, 12 coverage.
-- **Routing:** `src/config/screens.ts` holds the 61 screens (Shipments, R-158, is the 61st). Use `screenHref`, `canSee` and `ROLE_SCREENS`. The registry imports no component (icons are in `src/config/screen-icons.ts`) so server code and `tsx` scripts can load it; server rules take `canSee` from `src/config/role-screens.ts`.
+- **Routing:** `src/config/screens.ts` holds the 62 screens (Shipments, R-158, is the 61st; My dashboards, R-203, the 62nd). Use `screenHref`, `canSee` and `ROLE_SCREENS`. The registry imports no component (icons are in `src/config/screen-icons.ts`) so server code and `tsx` scripts can load it; server rules take `canSee` from `src/config/role-screens.ts`.
 - **Viewer:** `getViewer()` (`src/server/session.ts`). `KEYSTONE_AUTH=demo` (default, tests and development): the "View as" cookie (`ks-role`) picks a persona. `KEYSTONE_AUTH=entra`: Microsoft Entra ID sign-in (R-038), the user's roles and person from the database; `ks-role` is ignored.
 - **Project rights (R-041):** `getProjectContext` / `projectAccessResolver` (`src/server/project-context.ts`) over `projectAccess` (`src/domain/rights.ts`): `isLead` for PM rights (PM of record, co-PM, deputy, director), `isMine` for team members; a client is sent home outside their workspace (`refuseClient`).
 - **Typed text (R-148):** what people typed (names, titles, notes) is shown with `dataText` / `projectLabelText` / `fieldsText` (`src/i18n/data-text.ts`), never through `t()`, which is for Keystone's own vocabulary.
