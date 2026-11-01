@@ -7,16 +7,21 @@
 //   remove it;
 // - keyboard: every bar is a button — Enter opens the activity dialog (start, duration, constraint, predecessors), which does
 //   everything a drag does.
+// R-204: the supplier schedules tied to the project appear under a « Suppliers » band (one collapsible group per purchase order,
+// read-only: they are edited on the purchase order); every group folds; the rows can be filtered and grouped by activity code.
 // While a drag runs, and until the server answers, the bars show the optimistic preview: the same CPM as "Reschedule"
 // (src/domain/gantt-edit.ts `previewSchedule`). The Server Functions re-validate, write, reschedule and revalidate the page.
 import { useEffect, useId, useMemo, useOptimistic, useRef, useState, useTransition, type PointerEvent as ReactPointerEvent } from 'react';
+import { CaretDown, CaretRight, Truck } from '@phosphor-icons/react/dist/ssr';
 import { showToast } from '@/components/ds/Toast';
+import { Select } from '@/components/ds/Field';
 import { cx } from '@/components/ds/cx';
 import { useToday } from '@/components/app/clock';
 import { useI18n } from '@/i18n/client';
 import { dataText } from '@/i18n/data-text';
 import { intlLocale } from '@/i18n/translate';
 import { linkCycleText } from '@/features/plan/i18n';
+import { NO_CODE_VALUE, NO_CODE_VALUE_LABEL, groupByCode, matchesCodeFilter, parseCodeFilter, type ActivityCodeMap, type CodeType } from '@/domain/activity-codes';
 import {
   GANTT_EDIT_ERRORS, applyGanttEdits, barBox, buildCalendars, calendarOf, dragEdit, ganttRange, ganttScale, isoWeekNumber, linkKey, linkLabel, linkPath, lockOf,
   offDays, previewSchedule, storedDates, xOf, type BarBox, type GanttActivity, type GanttDates, type GanttEdit, type GanttEditResult, type GanttLink, type GanttNetwork,
@@ -53,7 +58,10 @@ type Drag = {
   over?: string | null;
 };
 
-type Row = { kind: 'package'; key: string; code: string; name: string; ids: string[] } | { kind: 'activity'; key: string; a: GanttActivity };
+type Row =
+  | { kind: 'package'; key: string; code: string; name: string; ids: string[]; supplier?: boolean }
+  | { kind: 'band'; key: string; name: string }
+  | { kind: 'activity'; key: string; a: GanttActivity };
 
 type DialogState = { kind: 'activity'; id: string } | { kind: 'link'; pred: string; succ: string } | null;
 
@@ -102,23 +110,48 @@ export function InteractiveGantt({ code, network, zoom, editable, showBaseline =
   const preview = useMemo(() => (draft === network ? null : previewSchedule(draft, cals)), [draft, network, cals]);
   const dates: Record<string, GanttDates> = preview?.ok ? preview.dates : stored;
 
-  // Rows: work packages in WBS order with their activities, then activities of no known package.
+  // R-204: filter and grouping by activity code (this view only), folded groups.
+  const codeTypes = useMemo(() => network.codeTypes ?? [], [network.codeTypes]);
+  const [codeFilter, setCodeFilter] = useState('');
+  const [groupBy, setGroupBy] = useState('');
+  const [folded, setFolded] = useState<Record<string, boolean>>({});
+  const codeMap = useMemo((): ActivityCodeMap => Object.fromEntries(optimistic.activities.map((a) => [a.id, a.codes ?? {}])), [optimistic.activities]);
+  const filter = useMemo(() => parseCodeFilter(codeFilter, codeTypes), [codeFilter, codeTypes]);
+  const group = codeTypes.find((x) => x.key === groupBy) ?? null;
+  const typeName = (x: CodeType) => (x.derived ? t(x.name) : dataText(x.name, lang));
+
+  // Rows: work packages in WBS order with their activities, then activities of no known package, then the « Suppliers » band
+  // (R-204) — or, grouped by a code, one group per value.
   const rows = useMemo(() => {
     const out: Row[] = [];
-    const seen = new Set<string>();
-    for (const p of optimistic.packages) {
-      const acts = optimistic.activities.filter((a) => a.wbs === p.code);
-      if (!acts.length) continue;
-      out.push({ kind: 'package', key: `wp:${p.code}`, code: p.code, name: p.name, ids: acts.map((a) => a.id) });
-      for (const a of acts) {
-        out.push({ kind: 'activity', key: a.id, a });
-        seen.add(a.id);
-      }
+    const visible = optimistic.activities.filter((a) => matchesCodeFilter(codeMap, a.id, filter));
+    const pushGroup = (key: string, code: string, name: string, acts: GanttActivity[], supplier?: boolean) => {
+      if (!acts.length) return;
+      out.push({ kind: 'package', key, code, name, ids: acts.map((a) => a.id), supplier });
+      if (!folded[key]) for (const a of acts) out.push({ kind: 'activity', key: a.id, a });
+    };
+    if (group) {
+      for (const g of groupByCode(visible, codeMap, group))
+        pushGroup(`code:${g.group.key}`, g.group.code, g.group.none ? t(NO_CODE_VALUE_LABEL) : dataText(g.group.label, lang), g.activities);
+      return out;
     }
-    for (const a of optimistic.activities) if (!seen.has(a.id)) out.push({ kind: 'activity', key: a.id, a });
+    const seen = new Set<string>();
+    const projectPkgs = optimistic.packages.filter((p) => !p.supplier);
+    for (const p of projectPkgs) {
+      const acts = visible.filter((a) => !a.source && a.wbs === p.code);
+      acts.forEach((a) => seen.add(a.id));
+      pushGroup(`wp:${p.code}`, p.code, dataText(p.name, lang), acts);
+    }
+    for (const a of visible) if (!a.source && !seen.has(a.id)) out.push({ kind: 'activity', key: a.id, a });
+    const supplierPkgs = optimistic.packages.filter((p) => p.supplier && visible.some((a) => a.source === p.code));
+    if (supplierPkgs.length) {
+      out.push({ kind: 'band', key: 'band:suppliers', name: t('Suppliers') });
+      for (const p of supplierPkgs) pushGroup(`po:${p.code}`, p.code, dataText(p.name, lang), visible.filter((a) => a.source === p.code), true);
+    }
     return out;
-  }, [optimistic]);
+  }, [optimistic, codeMap, filter, group, folded, t, lang]);
   const rowOf = useMemo(() => new Map(rows.flatMap((r, i) => (r.kind === 'activity' ? [[r.a.id, i] as const] : []))), [rows]);
+  const toggleGroup = (key: string) => setFolded((f) => ({ ...f, [key]: !f[key] }));
 
   // Scale: the range covers the stored and previewed dates, the baseline, the data date and today.
   const scale = useMemo(() => {
@@ -179,7 +212,7 @@ export function InteractiveGantt({ code, network, zoom, editable, showBaseline =
 
   function onPointerDown(e: ReactPointerEvent<HTMLElement>, a: GanttActivity, mode: Drag['mode']) {
     moved.current = false;
-    if (!editable || pending || e.button !== 0) return;
+    if (!editable || pending || e.button !== 0 || a.source) return;
     const lock = lockOf(a);
     if (mode === 'move' && lock) return; // a click still opens the dialog (onClick)
     if (mode === 'resize' && (lock === 'complete' || a.duration === 0)) return;
@@ -199,7 +232,8 @@ export function InteractiveGantt({ code, network, zoom, editable, showBaseline =
       const p = pointInTimeline(e);
       const el = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('[data-gantt-act]');
       const over = el?.dataset.ganttAct ?? null;
-      setDrag({ ...drag, dx, px: p.x, py: p.y, over: over && over !== drag.id ? over : null });
+      const target = over && over !== drag.id && !byId.get(over)?.source ? over : null;
+      setDrag({ ...drag, dx, px: p.x, py: p.y, over: target });
     } else setDrag({ ...drag, dx });
   }
 
@@ -244,6 +278,7 @@ export function InteractiveGantt({ code, network, zoom, editable, showBaseline =
   const todayX = today >= scale.origin && today <= scale.end ? xOf(scale, today) : null;
   const dlgActivity = dialog?.kind === 'activity' ? byId.get(dialog.id) : undefined;
   const dlgLink = dialog?.kind === 'link' ? optimistic.links.find((l) => l.pred === dialog.pred && l.succ === dialog.succ) : undefined;
+  const isSupplier = (id: string) => !!byId.get(id)?.source;
   const nameOf = (id: string) => {
     const a = byId.get(id);
     return a ? `${a.id} · ${dataText(a.name, lang)}` : id;
@@ -251,6 +286,30 @@ export function InteractiveGantt({ code, network, zoom, editable, showBaseline =
 
   return (
     <div className={s.wrap} aria-busy={pending || undefined}>
+      {codeTypes.length > 0 && (
+        <div className={s.codeBar}>
+          <Select
+            size="inline"
+            aria-label={t('Filter by code')}
+            value={filter ? codeFilter : ''}
+            onChange={(e) => setCodeFilter(e.target.value)}
+            options={[
+              { value: '', label: t('All activities') },
+              ...codeTypes.flatMap((x) => [
+                ...x.values.map((v) => ({ value: `${x.key}~${v.key}`, label: `${typeName(x)} · ${v.code}${v.label && v.label !== v.code ? ` · ${dataText(v.label, lang)}` : ''}` })),
+                { value: `${x.key}~${NO_CODE_VALUE}`, label: `${typeName(x)} · ${t(NO_CODE_VALUE_LABEL)}` },
+              ]),
+            ]}
+          />
+          <Select
+            size="inline"
+            aria-label={t('Group by')}
+            value={group ? groupBy : ''}
+            onChange={(e) => setGroupBy(e.target.value)}
+            options={[{ value: '', label: t('Group by work package') }, ...codeTypes.map((x) => ({ value: x.key, label: `${t('Group by')} · ${typeName(x)}` }))]}
+          />
+        </div>
+      )}
       {preview && !preview.ok && <div className={s.warn}>{preview.cycle ? linkCycleText(preview.cycle, lang) : t('The schedule data is invalid')}</div>}
       <div className={s.scroller}>
         <div className={s.inner} style={{ width: NAME_W + scale.width }}>
@@ -296,7 +355,8 @@ export function InteractiveGantt({ code, network, zoom, editable, showBaseline =
               {optimistic.links.map((l) => {
                 const p = boxes.get(l.pred);
                 const q = boxes.get(l.succ);
-                if (!p || !q) return null;
+                // Folded or filtered out rows: no arrow.
+                if (!p || !q || !rowOf.has(l.pred) || !rowOf.has(l.succ)) return null;
                 const d = linkPath(l.type, p, q, yOf(l.pred), yOf(l.succ));
                 const on = dialog?.kind === 'link' && dialog.pred === l.pred && dialog.succ === l.succ;
                 const crit = dates[l.pred]?.critical && dates[l.succ]?.critical;
@@ -326,12 +386,29 @@ export function InteractiveGantt({ code, network, zoom, editable, showBaseline =
 
             <div ref={timelineRef} className={s.rows}>
               {rows.map((r) =>
-                r.kind === 'package' ? (
-                  <PackageRow key={r.key} name={`${r.code} · ${dataText(r.name, lang)}`} boxes={r.ids.map((id) => boxes.get(id)).filter((b): b is BarBox => !!b)} width={scale.width} />
+                r.kind === 'band' ? (
+                  <div key={r.key} className={cx(s.row, s.bandRow)}>
+                    <div className={cx(s.nameCell, s.bandName)}>
+                      <Truck aria-hidden />
+                      {r.name}
+                    </div>
+                    <div className={s.track} style={{ width: scale.width }} />
+                  </div>
+                ) : r.kind === 'package' ? (
+                  <PackageRow
+                    key={r.key}
+                    name={`${r.code} · ${r.name}`}
+                    boxes={r.ids.map((id) => boxes.get(id)).filter((b): b is BarBox => !!b)}
+                    width={scale.width}
+                    folded={!!folded[r.key]}
+                    onToggle={() => toggleGroup(r.key)}
+                    supplier={r.supplier}
+                    toggleLabel={t(folded[r.key] ? 'Expand' : 'Collapse')}
+                  />
                 ) : (
                   <div key={r.key} className={s.row}>
-                    <div className={s.nameCell} title={nameOf(r.a.id)}>
-                      <span className={s.actId}>{r.a.id}</span>
+                    <div className={cx(s.nameCell, r.a.source && s.supplierName)} title={nameOf(r.a.id)}>
+                      <span className={s.actId}>{r.a.source ? r.a.id.slice(r.a.source.length + 1) : r.a.id}</span>
                       <span className={s.actName}>{dataText(r.a.name, lang)}</span>
                     </div>
                     <div className={s.track} style={{ width: scale.width }}>
@@ -344,8 +421,8 @@ export function InteractiveGantt({ code, network, zoom, editable, showBaseline =
                         if (!b || !d) return null;
                         const lock = lockOf(r.a);
                         const label = `${r.a.id} · ${dataText(r.a.name, lang)} · ${dayText(d.start)} → ${dayText(d.finish)}`;
-                        const canMove = editable && !lock;
-                        const canResize = editable && lock !== 'complete' && r.a.duration > 0;
+                        const canMove = editable && !lock && !r.a.source;
+                        const canResize = editable && lock !== 'complete' && r.a.duration > 0 && !r.a.source;
                         const ghost = drag && drag.id === r.a.id && drag.mode !== 'link' && Math.abs(drag.dx) > CLICK_SLOP ? ghostBox(stored[r.a.id], drag) : null;
                         return (
                           <>
@@ -357,7 +434,7 @@ export function InteractiveGantt({ code, network, zoom, editable, showBaseline =
                             title={label}
                             data-gantt-act={r.a.id}
                             className={cx(
-                              s.bar, b.milestone && s.milestone, d.critical && s.crit, lock === 'complete' && s.done, canMove && s.movable,
+                              s.bar, b.milestone && s.milestone, d.critical && s.crit, lock === 'complete' && s.done, canMove && s.movable, r.a.source && s.supplierBar,
                               drag?.mode === 'link' && drag.over === r.a.id && s.dropTarget, drag && drag.id === r.a.id && s.dragging,
                             )}
                             style={barStyle(b)}
@@ -381,7 +458,7 @@ export function InteractiveGantt({ code, network, zoom, editable, showBaseline =
                                 onPointerDown={(e) => onPointerDown(e, r.a, 'resize')}
                               />
                             )}
-                            {editable && (
+                            {editable && !r.a.source && (
                               <span
                                 className={s.linkHandle}
                                 aria-hidden
@@ -408,7 +485,7 @@ export function InteractiveGantt({ code, network, zoom, editable, showBaseline =
           activity={dlgActivity}
           network={optimistic}
           dates={dates[dlgActivity.id] ?? null}
-          editable={editable}
+          editable={editable && !dlgActivity.source}
           pending={pending}
           nameOf={nameOf}
           dayText={dayText}
@@ -422,7 +499,7 @@ export function InteractiveGantt({ code, network, zoom, editable, showBaseline =
       {dlgLink && (
         <GanttLinkDialog
           link={dlgLink}
-          editable={editable}
+          editable={editable && !isSupplier(dlgLink.pred) && !isSupplier(dlgLink.succ)}
           pending={pending}
           nameOf={nameOf}
           onClose={() => setDialog(null)}
@@ -436,13 +513,16 @@ export function InteractiveGantt({ code, network, zoom, editable, showBaseline =
 
 const barStyle = (b: BarBox) => (b.milestone ? { left: b.left } : { left: b.left, width: b.width });
 
-/** Work package summary row: a thin bar from its first start to its last finish. */
-function PackageRow({ name, boxes, width }: { name: string; boxes: BarBox[]; width: number }) {
+/** Work package (or code / supplier group) summary row: a thin bar from its first start to its last finish; folds its rows. */
+function PackageRow({ name, boxes, width, folded, onToggle, supplier, toggleLabel }: { name: string; boxes: BarBox[]; width: number; folded: boolean; onToggle: () => void; supplier?: boolean; toggleLabel: string }) {
   const left = boxes.length ? Math.min(...boxes.map((b) => b.left)) : 0;
   const right = boxes.length ? Math.max(...boxes.map((b) => b.left + b.width)) : 0;
   return (
-    <div className={cx(s.row, s.pkgRow)}>
+    <div className={cx(s.row, s.pkgRow, supplier && s.supplierPkg)}>
       <div className={cx(s.nameCell, s.pkgName)} title={name}>
+        <button type="button" className={s.fold} aria-expanded={!folded} aria-label={`${toggleLabel} · ${name}`} onClick={onToggle}>
+          {folded ? <CaretRight aria-hidden /> : <CaretDown aria-hidden />}
+        </button>
         {name}
       </div>
       <div className={s.track} style={{ width }}>

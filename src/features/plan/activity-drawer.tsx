@@ -33,6 +33,8 @@ export interface ActivityDrawerProps {
   linkOptions?: string[];
   /** Translated "#026 · Harbor Line…" (dialog sub-line). */
   context?: string;
+  /** R-204: the activity's codes and supplier ties (src/features/activity-codes/activity-codes-section.tsx), after General. */
+  codes?: ReactNode;
 }
 
 const LINE_TONE: Record<DrawerLine['tone'], string | undefined> = { driving: s.relDriving, lo: s.lo, normal: undefined, none: s.relNone };
@@ -51,7 +53,7 @@ function Lines({ lines, remove }: { lines: DrawerLine[]; remove?: (line: DrawerL
   });
 }
 
-export function ActivityDrawer({ view, closeHref, scheduleHref, t, code, canEdit = false, linkOptions = [], context = '' }: ActivityDrawerProps) {
+export function ActivityDrawer({ view, closeHref, scheduleHref, t, code, canEdit = false, linkOptions = [], context = '', codes }: ActivityDrawerProps) {
   return (
     <Drawer
       open
@@ -80,6 +82,8 @@ export function ActivityDrawer({ view, closeHref, scheduleHref, t, code, canEdit
             </div>
           ))}
         </section>
+
+        {codes}
 
         <section className={s.section} aria-label={t('Relationships')}>
           <span className={s.kicker}>{t('Relationships')}</span>

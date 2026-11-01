@@ -35,7 +35,7 @@ import { getProjectEvm } from './evm';
 import { loadWorkCalendars } from './calendars';
 import { getMilestones, getScheduleBars, getScheduleControl, type ScheduleControl } from './planning';
 import { applyApprovedChangeDurations } from './change-activities';
-import { loadScheduleNetwork, recordScheduleRun, toCpmActivity } from './schedule-network';
+import { loadScheduleNetwork, networkInput, recordScheduleRun, toCpmActivity } from './schedule-network';
 
 type Q = DB | Tx;
 
@@ -367,7 +367,8 @@ export async function rescheduleProject(code: string, actorName: string): Promis
   const db = await getDb();
   // NEW-D2-2 (R-062): the approved change requests' new activity durations enter the plan at the next Reschedule.
   const appliedChanges = await applyApprovedChangeDurations(code, actorName);
-  const net = await loadScheduleNetwork(code);
+  // R-204: the supplier schedules tied to the project are consolidated (their slips drive the activities they are tied to).
+  const net = await loadScheduleNetwork(code, undefined, { suppliers: true });
   if (!net) throw new Error(`Unknown project ${code}`);
   const dataDate = net.dataDate;
   if (!net.activities.length) return { ok: false, reason: 'empty', dataDate };
@@ -380,7 +381,7 @@ export async function rescheduleProject(code: string, actorName: string): Promis
   });
   let result: CpmResult;
   try {
-    result = schedule({ ...net.input, activities: progressed.map(toCpmActivity) });
+    result = schedule(networkInput(net, progressed.map(toCpmActivity)));
   } catch (e) {
     if (e instanceof CpmCycleError) {
       await recordScheduleRun(code, { outcome: 'cycle', dataDate, message: e.message, details: { cycle: e.cycle } }, actorName);

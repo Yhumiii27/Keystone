@@ -308,3 +308,13 @@ export const canEditPlanStructure = (planEditable: boolean, a: Pick<ProjectAcces
 /** % complete of an activity: the PM team and the director, and the activity's owner for their own activities (P-9a). */
 export const canEditActivityProgress = (planEditable: boolean, a: Pick<ProjectAccess, 'lead'>, ownsActivity: boolean) =>
   planEditable && (a.lead || ownsActivity);
+
+/**
+ * R-204: a supplier schedule (its milestones / activities, their logic and the progress the supplier reports) — the project's
+ * leads and the director, and procurement (the buyer), on a project whose purchase orders they may edit; never the client.
+ */
+export const canEditSupplierSchedule = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>, ordersEditable: boolean) =>
+  role !== 'client' && ordersEditable && (a.lead || role === 'procurement');
+
+/** R-204: the ties consolidating a supplier schedule into the project's CPM — the project's leads and the director (structure). */
+export const canTieSupplierSchedule = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>, planEditable: boolean) => role !== 'client' && planEditable && a.lead;

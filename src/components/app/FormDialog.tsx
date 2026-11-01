@@ -117,6 +117,8 @@ function FormBody({ fields, submit, kind = 'create', note, onClose, onSubmit, in
     const v = values[f.id] ?? '';
     const ph = f.placeholder ? tr(f.placeholder) : undefined;
     switch (f.type) {
+      case 'date':
+        return <Input id={id} type="date" value={v} aria-required={f.required || undefined} onChange={(e) => set(f.id, e.target.value)} />;
       case 'number':
         return <Input id={id} type="number" value={v} placeholder={ph} aria-required={f.required || undefined} onChange={(e) => set(f.id, e.target.value)} />;
       case 'textarea':

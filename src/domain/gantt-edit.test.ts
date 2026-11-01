@@ -205,3 +205,34 @@ describe('scale and geometry', () => {
     expect(linkPath('SF', { left: 100, width: 20, milestone: false }, q, 16, 48)).toBe('M100,16 H92 V32 H118 V48 H110');
   });
 });
+
+describe('R-204 supplier activities (read-only on the Gantt)', () => {
+  const withSupplier = (): GanttNetwork => {
+    const n = net();
+    return {
+      ...n,
+      packages: [...n.packages, { code: 'PO-1', name: 'Acme', supplier: true }],
+      activities: [...n.activities, act('PO-1/F10', { wbs: 'PO-1', source: 'PO-1', duration: 4, constraint: { type: 'SNET', date: '2026-10-05' } })],
+      links: [...n.links, { pred: 'PO-1/F10', succ: 'A1030', type: 'FS', lag: 0 }],
+    };
+  };
+
+  it('refuses every edit of a supplier activity and of a relationship touching one', () => {
+    const n = withSupplier();
+    expect(applyGanttEdit(n, { kind: 'move', id: 'PO-1/F10', start: '2026-10-12' }, cals)).toEqual({ ok: false, error: 'supplier' });
+    expect(applyGanttEdit(n, { kind: 'duration', id: 'PO-1/F10', days: 2 }, cals)).toEqual({ ok: false, error: 'supplier' });
+    expect(applyGanttEdit(n, { kind: 'clearConstraint', id: 'PO-1/F10' }, cals)).toEqual({ ok: false, error: 'supplier' });
+    expect(applyGanttEdit(n, { kind: 'addLink', link: { pred: 'A1010', succ: 'PO-1/F10', type: 'FS', lag: 0 } }, cals)).toEqual({ ok: false, error: 'supplier' });
+    expect(applyGanttEdit(n, { kind: 'editLink', link: { pred: 'PO-1/F10', succ: 'A1030', type: 'SS', lag: 0 } }, cals)).toEqual({ ok: false, error: 'supplier' });
+    expect(applyGanttEdit(n, { kind: 'removeLink', pred: 'PO-1/F10', succ: 'A1030' }, cals)).toEqual({ ok: false, error: 'supplier' });
+    // The project's own edits are unchanged.
+    expect(applyGanttEdit(n, { kind: 'duration', id: 'A1030', days: 4 }, cals).ok).toBe(true);
+  });
+
+  it('the preview dates the supplier activity and its tie drives the project activity', () => {
+    const p = previewSchedule(withSupplier(), cals);
+    if (!p.ok) throw new Error('preview failed');
+    // Supplier 4 d from Mon 5 Oct → Thu 8 Oct; A1030 starts Fri 9 Oct (was 5 Oct without the tie).
+    expect([p.dates['PO-1/F10'].start, p.dates['PO-1/F10'].finish, p.dates.A1030.start]).toEqual(['2026-10-05', '2026-10-08', '2026-10-09']);
+  });
+});

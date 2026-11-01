@@ -130,7 +130,7 @@ export async function latestRiskAnalysis(code: string, q?: Q): Promise<StoredRun
 /** Everything the "Risk analysis" section shows; null for an unknown project. */
 export async function getRiskAnalysis(code: string, q?: Q): Promise<RiskAnalysisData | null> {
   const db = q ?? (await getDb());
-  const network = await loadScheduleNetwork(code, db);
+  const network = await loadScheduleNetwork(code, db, { suppliers: true });
   if (!network) return null;
   const pid = network.projectId;
   const [acts, ranges, riskRows, delays, latest, target] = await Promise.all([
@@ -218,7 +218,7 @@ export class RiskAnalysisError extends Error {}
  */
 export async function runRiskAnalysis(code: string, iterations: number, actor: Actor): Promise<StoredRun> {
   const db = await getDb();
-  const network = await loadScheduleNetwork(code, db);
+  const network = await loadScheduleNetwork(code, db, { suppliers: true });
   if (!network) throw new RiskAnalysisError('Unknown project');
   const data = await getRiskAnalysis(code, db);
   if (!data || !network.input.activities.length) throw new RiskAnalysisError('The project has no activity to simulate');
