@@ -138,8 +138,8 @@ describe('add-forms', () => {
   const team = ['Romain Aubert', 'Amélie Ollivier', 'Sami Haddad'];
 
   it('"Add stakeholder": required name and organisation, Client by default, first TEAM owner, e-mail checked', () => {
-    expect(parseNewStakeholder({ name: ' Yves Morel ', org: 'Bureau Veritas', role: 'Inspector', type: 'third_party', contact: 'y.morel@bv.com', owner: 'Amélie Ollivier' }, team)).toEqual({
-      ok: true, value: { name: 'Yves Morel', organisation: 'Bureau Veritas', role: 'Inspector', type: 'third_party', contactEmail: 'y.morel@bv.com', owner: 'Amélie Ollivier' },
+    expect(parseNewStakeholder({ name: ' Yves Morel ', org: 'Bureau Veritas', role: 'Inspector', type: 'third_party', contact: 'y.morel@controle-exemple.com', owner: 'Amélie Ollivier' }, team)).toEqual({
+      ok: true, value: { name: 'Yves Morel', organisation: 'Bureau Veritas', role: 'Inspector', type: 'third_party', contactEmail: 'y.morel@controle-exemple.com', owner: 'Amélie Ollivier' },
     });
     expect(parseNewStakeholder({ name: 'A', org: 'B' }, team)).toEqual({
       ok: true, value: { name: 'A', organisation: 'B', role: '', type: 'client', contactEmail: null, owner: 'Romain Aubert' },

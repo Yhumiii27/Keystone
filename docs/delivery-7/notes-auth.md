@@ -143,7 +143,7 @@ unique constraints `users_person_id_unique`, `users_entra_object_id_unique`. Dat
    production seed (R-011, reference data only) nobody can sign in until the staff directory is loaded (R-027, Cursus
    import) or a first list of people with their e-mails is provided. Which comes first?
 2. **E-mail domain of the demo personas.** Assumed `prenom.nom@epc2i.fr` (the client persona keeps the prototype's
-   `n.bensaid@port-lehavre.fr`). Only the demo data set uses it.
+   `n.bensaid@port-exemple.fr`). Only the demo data set uses it.
 3. **Role order.** The default active role of a multi-role user is the highest in the order director, pm, depthead,
    englead, quality, procurement, member, client. Confirm, and confirm that rights follow the active role only.
 4. **Session length and revocation.** 12 h absolute by default; removing a role in Entra takes effect at the next

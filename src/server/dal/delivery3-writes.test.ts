@@ -218,7 +218,7 @@ describe('meetings writers', () => {
 
 describe('stakeholders, interfaces, prioritisation writers', () => {
   it('add a stakeholder: owner normalised to the short name, last contact on the business date (25 Sep), notes "New"', async () => {
-    await addStakeholder('HLT-026', { name: 'Yves Morel', organisation: 'Bureau Veritas', role: 'Inspector', type: 'third_party', contactEmail: 'y.morel@bv.com', owner: 'Amélie Ollivier' }, 'Romain Aubert');
+    await addStakeholder('HLT-026', { name: 'Yves Morel', organisation: 'Bureau Veritas', role: 'Inspector', type: 'third_party', contactEmail: 'y.morel@controle-exemple.com', owner: 'Amélie Ollivier' }, 'Romain Aubert');
     const r = (await getStakeholderRegister('HLT-026')).stakeholders.at(-1)!;
     // R-013: last contact = the business date (25 Sep 2026 on the demo data set), not the prototype's 30 Sep.
     expect(r).toMatchObject({ name: 'Yves Morel', owner: 'A. Ollivier', lastText: '25 Sep', notes: 'New', stale: false, typeLabel: 'Third party', initials: 'YM' });

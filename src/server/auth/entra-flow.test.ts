@@ -151,7 +151,7 @@ describe('Entra ID sign-in', () => {
   });
 
   it('gives a client user their own organisation (no more CLIENT_ORG constant)', async () => {
-    const r = await signIn({ oid: 'oid-nadia', email: 'n.bensaid@port-lehavre.fr', roles: ['client'] });
+    const r = await signIn({ oid: 'oid-nadia', email: 'n.bensaid@port-exemple.fr', roles: ['client'] });
     useSession(r);
     expect(await getViewer()).toMatchObject({ role: 'client', organisation: 'Port authority', title: 'Client — Port authority' });
   });
