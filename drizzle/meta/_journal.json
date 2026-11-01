@@ -512,6 +512,13 @@
       "when": 1793540257665,
       "tag": "0072_dashboards",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1793544698230,
+      "tag": "0073_risk_analysis",
+      "breakpoints": true
     }
   ]
 }
