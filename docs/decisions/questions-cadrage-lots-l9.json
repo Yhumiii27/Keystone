@@ -1,0 +1,35 @@
+{
+ "title": "Cadrage des prochains lots",
+ "updated": "2026-11-01",
+ "intro": "Pour chaque lot : faut-il le lancer, puis comment le cadrer. Le choix « recommandé » est ma proposition ; « Plus tard » garde le lot dans le reste à faire sans le construire.",
+ "sections": [
+  {"id": "crucible", "title": "Demandes de Crucible", "item": "R-195 · R-196 · R-197", "questions": [
+   {"id": "K-195", "q": "Publier pour Crucible les échéances des projets ?", "context": "Crucible veut anticiper les besoins d’essais. La vue pub_jalons_projets publiée pour Arche contient déjà les 8 jalons CAPEX ; Crucible voudrait aussi les jalons propres à chaque projet, avec l’activité liée.", "default": "Oui : Crucible lit pub_jalons_projets telle qu’elle est (droit à accorder par Matrix), sans nouvelle vue", "alts": ["Oui : nouvelle vue pub_jalons avec tous les jalons du planning", "Plus tard"]},
+   {"id": "K-196", "q": "Comment reconnaître un projet R&D (pour le filtre de Crucible) ?", "context": "Une colonne serait ajoutée en fin de pub_projets.", "default": "Une nature de projet « R&D » choisie à la création du projet", "alts": ["Le type de machine « R&D » (déjà existant)", "Une étiquette libre sur le projet", "Plus tard"]},
+   {"id": "K-197", "q": "Afficher dans le planning d’un projet les essais réservés dans Crucible ?", "context": "Lecture seule, avec lien vers Crucible. Suppose que Crucible publie sa vue des réservations.", "default": "Plus tard, quand Crucible aura publié sa vue", "alts": ["Oui, dès que possible"]}
+  ]},
+  {"id": "planning", "title": "Planning avancé", "item": "R-206 · R-200 · R-204", "questions": [
+   {"id": "K-206", "q": "Diagnostic de qualité du planning (14 contrôles DCMA) et analyse des retards ?", "context": "Liens manquants, contraintes dures, marges négatives, durées trop longues… et comparaison référence / réel par activité, glissement du chemin critique. Ne change aucune donnée : c’est un rapport.", "default": "Lancer : une carte « Qualité du planning » sur l’écran Planning, avec le détail par contrôle", "alts": ["Lancer, mais seulement les 14 contrôles (sans l’analyse des retards)", "Plus tard", "Non"]},
+   {"id": "K-206b", "q": "Les seuils des contrôles DCMA sont-ils ceux du standard ?", "context": "Exemples du standard : moins de 5 % de contraintes dures, moins de 5 % d’activités de plus de 44 jours ouvrés, aucune marge négative.", "default": "Oui, les seuils du standard, modifiables plus tard dans Paramètres", "alts": ["Seuils propres à EPC2i, que je donnerai"]},
+   {"id": "K-200", "q": "Nivellement automatique des ressources ?", "context": "Décaler les activités non critiques pour respecter la capacité des ressources, sur une copie du planning comparée à la référence avant d’être adoptée.", "default": "Plus tard : la capacité réelle attend les absences de Cursus (R-084)", "alts": ["Lancer maintenant, sur la capacité théorique", "Non"]},
+   {"id": "K-204", "q": "Planning multi-niveaux (plannings fournisseurs consolidés, codes d’activité) ?", "context": "Modéliser les plannings des fournisseurs dans le chemin critique et les relier aux réceptions ; filtrer par lot d’achat, site ou équipement.", "default": "Plus tard", "alts": ["Lancer seulement les codes d’activité (filtres et regroupements)", "Lancer tout", "Non"]}
+  ]},
+  {"id": "risques", "title": "Risques et prévisions", "item": "R-205 · R-208", "questions": [
+   {"id": "K-205", "q": "Analyse de risques Monte-Carlo sur le délai et le coût ?", "context": "Durées et coûts en fourchette (minimum, probable, maximum) sur les activités et les risques liés ; résultat : date de fin et coût à terminaison à 50 % et 80 % de confiance.", "default": "Lancer, sur le délai et le coût", "alts": ["Lancer sur le délai seulement", "Plus tard", "Non"]},
+   {"id": "K-205b", "q": "Qui saisit les fourchettes de durée ?", "context": null, "default": "Le chef de projet, avec une fourchette par défaut (−10 % / +25 %) proposée pour chaque activité", "alts": ["Les responsables d’activité, chacun pour les siennes"]},
+   {"id": "K-208", "q": "IA prédictive de dérive délai / coût ?", "context": "Suppose un historique de projets réels : la base n’en a pas encore.", "default": "Plus tard, après une année de projets réels dans Keystone", "alts": ["Lancer une première version fondée sur les règles et la valeur acquise", "Non"]}
+  ]},
+  {"id": "ouverture", "title": "Ouverture des données", "item": "R-203 · R-202", "questions": [
+   {"id": "K-203", "q": "Tableaux de bord configurables par l’utilisateur ?", "context": "Chacun compose ses tableaux (indicateurs, filtres) et peut les partager. Aujourd’hui les écrans de pilotage sont fixes.", "default": "Plus tard", "alts": ["Lancer", "Non"]},
+   {"id": "K-203b", "q": "Ouvrir les données à Power BI ?", "context": "Power BI peut lire directement les vues pub_ du serveur PostgreSQL commun, avec un compte en lecture seule créé par Matrix et la DSI : rien à construire dans Keystone.", "default": "Oui, par les vues pub_ (demande à Matrix et à la DSI)", "alts": ["Oui, par un flux OData construit dans Keystone", "Pas maintenant"]},
+   {"id": "K-202", "q": "API REST publique, webhooks et connecteurs Power Automate ?", "context": "Exposer projets, planning, tâches, coûts et registres à d’autres outils, avec jetons d’accès. Demande l’accord de la DSI (exposition d’une API).", "default": "Plus tard, après l’hébergement et l’avis de la DSI", "alts": ["Lancer maintenant en lecture seule", "Non"]}
+  ]},
+  {"id": "travail", "title": "Travail quotidien", "item": "R-201 · R-207", "questions": [
+   {"id": "K-201", "q": "Tâches récurrentes dans « Mon travail » ?", "context": "Une tâche hebdomadaire, mensuelle ou à chaque jalon : la suivante est créée à la clôture de la précédente.", "default": "Lancer", "alts": ["Plus tard", "Non"]},
+   {"id": "K-207", "q": "Automatisations sans code (règles « si / alors » configurables) ?", "context": "Par exemple : « si une commande dépasse 50 k€, prévenir le directeur » ou « approuver automatiquement sous un seuil ». Les circuits d’approbation sont aujourd’hui fixés dans le code.", "default": "Plus tard : d’abord la procédure d’achats (R-094)", "alts": ["Lancer une version limitée aux notifications (pas d’approbation automatique)", "Non"]}
+  ]},
+  {"id": "langues", "title": "Langues", "item": "R-209", "questions": [
+   {"id": "K-209", "q": "Ajouter d’autres langues que le français et l’anglais ?", "context": "Les filiales passent par Arche ; Keystone sert surtout aux équipes d’EPC2i.", "default": "Non pour Keystone ; la question se pose pour Arche", "alts": ["Oui (précisez les langues dans la note)", "Plus tard"]}
+  ]}
+ ]
+}
