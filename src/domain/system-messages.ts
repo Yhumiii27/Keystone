@@ -83,6 +83,32 @@ const MESSAGES = {
     (p) => `CAPEX milestone of ${p.milestone}: ${p.from} → ${p.to}`,
     (p, f) => `Jalon CAPEX de ${f.data(p.milestone)} : ${f.label(p.from)} → ${f.label(p.to)}`,
   ),
+  // R-205 (K-205, K-205b): the Monte-Carlo risk analysis of the Risk register (audit trail and activity feed).
+  'riskAnalysis.run': def(
+    { iterations: 'count', p80: 'date', p80Cost: 'count' },
+    (p) => `Monte-Carlo risk analysis run · ${p.iterations} iterations · P80 finish ${p.p80} · P80 cost ${p.p80Cost} k€`,
+    (p, f) => `Analyse de risques Monte-Carlo lancée · ${f.count(p.iterations)} itérations · fin P80 ${f.date(p.p80)} · coût P80 ${f.count(p.p80Cost)} k€`,
+  ),
+  'riskAnalysis.rangeSet': def(
+    { activity: 'ref' },
+    (p) => `Risk analysis: three-point estimate of ${p.activity} set`,
+    (p) => `Analyse de risques : estimation à trois points de ${p.activity} saisie`,
+  ),
+  'riskAnalysis.rangeCleared': def(
+    { activity: 'ref' },
+    (p) => `Risk analysis: ${p.activity} back to the default range`,
+    (p) => `Analyse de risques : ${p.activity} revient à la fourchette par défaut`,
+  ),
+  'riskAnalysis.delaySet': def(
+    { risk: 'ref', days: 'count' },
+    (p) => `Risk analysis: delay of ${p.risk} if it occurs · ${p.days} working days`,
+    (p, f) => `Analyse de risques : retard de ${p.risk} s’il survient · ${f.plural(p.days, 'jour ouvré', 'jours ouvrés')}`,
+  ),
+  'riskAnalysis.delayCleared': def(
+    { risk: 'ref' },
+    (p) => `Risk analysis: delay of ${p.risk} back to the default`,
+    (p) => `Analyse de risques : retard de ${p.risk} revenu à la valeur par défaut`,
+  ),
   // R-198: edits made on the Schedule screen's interactive Gantt (activity feed; "FS+5" relationship labels as the Plan writes them).
   'gantt.moved': def(
     { activity: 'ref', date: 'date' },
