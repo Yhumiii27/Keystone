@@ -45,7 +45,7 @@ concurrency:
 jobs:
   checks:
     name: Typecheck, lint, tests, build, end-to-end
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
       NEXT_TELEMETRY_DISABLED: '1'
@@ -104,7 +104,7 @@ jobs:
   image:
     name: Container image (build, start, health)
     if: github.event_name != 'push'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
@@ -151,7 +151,7 @@ jobs:
   postgres:
     name: PostgreSQL 16 (shared server layout)
     if: github.event_name != 'push'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     services:
       postgres:

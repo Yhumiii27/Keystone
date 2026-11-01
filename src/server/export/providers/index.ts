@@ -19,3 +19,4 @@ import './resources';
 import './admin';
 import './catalogue';
 import './shipments';
+import './dashboards';

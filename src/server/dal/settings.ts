@@ -12,12 +12,13 @@ import { yearOfIso } from '@/domain/clock';
 import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import {
-  APP_SETTING_CCB, APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, REFERENCE_LIST_KEYS, locationType, slugOf,
+  APP_SETTING_CCB, APP_SETTING_DCMA, APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, REFERENCE_LIST_KEYS, locationType, slugOf,
   type LocationType, type ReferenceListKey,
 } from '@/server/db/codes';
 import { SETTINGS_CARDS } from '@/domain/admin';
 import { DEFAULT_CCB_THRESHOLD_KEUR, isCcbThreshold } from '@/domain/change-control';
 import { isHoursVariancePct } from '@/domain/hr';
+import { DCMA_STANDARD, DCMA_THRESHOLD_FIELDS, DCMA_THRESHOLD_RANGE, parseDcmaThreshold, type DcmaThresholdKey, type DcmaThresholds } from '@/domain/schedule-quality';
 import {
   APP_SETTING_DEFAULTS, defaultHoursVariance, defaultsOfList, fallbackSettingsDefaults, holidayCode, parseSettingsDefaults, type SettingsDefaults,
 } from '@/domain/settings-defaults';
@@ -29,6 +30,7 @@ import { appSettings, referenceValues, skills, storageLocations } from '@/server
 import type { Tx } from '@/server/db/types';
 import { readCcbThreshold } from './change-settings';
 import { readHealthThresholds } from './health-thresholds';
+import { readDcmaThresholds } from './dcma-thresholds';
 import { readHoursVariance } from './hours-variance';
 import { requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
 import { referenceUsage } from './settings-lists';
@@ -53,6 +55,8 @@ export interface SettingsData {
   hoursVariance: number;
   /** Delivery 8 (R-069, P-6c): change control board threshold, k€ (optional for callers building the data by hand). */
   ccbThresholdKeur?: number;
+  /** R-206 (K-206b): the schedule quality thresholds (optional for callers building the data by hand: the standard). */
+  dcma?: DcmaThresholds;
 }
 
 /** Active values of one list, in order. */
@@ -70,15 +74,16 @@ export async function getHealthThresholds(): Promise<HealthThresholds> {
 /** Everything the Settings screen shows. */
 export async function getSettings(): Promise<SettingsData> {
   const db = await getDb();
-  const [values, locs, health, hoursVariance, ccbThresholdKeur] = await Promise.all([
+  const [values, locs, health, hoursVariance, ccbThresholdKeur, dcma] = await Promise.all([
     db.select().from(referenceValues).where(eq(referenceValues.active, true)).orderBy(asc(referenceValues.position)),
     db.select().from(storageLocations).where(eq(storageLocations.active, true)).orderBy(asc(storageLocations.position)),
     getHealthThresholds(),
     readHoursVariance(),
     readCcbThreshold(),
+    readDcmaThresholds(),
   ]);
   const lists = Object.fromEntries(REFERENCE_LIST_KEYS.map((k) => [k, values.filter((v) => v.listKey === k).map((v) => ({ code: v.code, label: v.label }))])) as Record<ReferenceListKey, ReferenceValueRow[]>;
-  return { lists, locations: locs.map((l) => ({ name: l.name, type: l.type, typeLabel: locationType.label(l.type) })), health, hoursVariance, ccbThresholdKeur };
+  return { lists, locations: locs.map((l) => ({ name: l.name, type: l.type, typeLabel: locationType.label(l.type) })), health, hoursVariance, ccbThresholdKeur, dcma };
 }
 
 /** Writers: the Settings workspace, and only the roles that edit Settings (A-14: the portfolio director). */
@@ -263,6 +268,33 @@ export async function setHoursVariance(pct: unknown, actor: Actor): Promise<numb
 }
 
 /**
+ * R-206 (K-206b): one threshold of the schedule quality checks (A-14: the portfolio director). Audit (before / after) and activity
+ * "Schedule quality · High float above (working days): 44 → 30". Returns the stored value.
+ */
+export async function setDcmaThreshold(key: DcmaThresholdKey, raw: unknown, actor: Actor): Promise<number> {
+  ST(actor);
+  const field = DCMA_THRESHOLD_FIELDS.find((f) => f.key === key);
+  if (!field) throw new Error('Unknown threshold');
+  const v = parseDcmaThreshold(key, raw);
+  if (v === null) throw new Error(DCMA_THRESHOLD_RANGE);
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const cur = await readDcmaThresholds(tx);
+    if (cur[key] === v) return v;
+    const who = await whoIs(tx, actor);
+    const value = { ...cur, [key]: v };
+    await tx.insert(appSettings).values({ key: APP_SETTING_DCMA, value, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
+    const change = `${field.label}: ${cur[key]} → ${v}`;
+    await trace(tx, who, {
+      objectRef: 'Schedule quality thresholds', change, area: 'Settings', entityType: 'app_setting', before: { [key]: cur[key] }, after: { [key]: v },
+      activity: { text: `Schedule quality · ${change}`, kind: 'change' },
+    });
+    return v;
+  });
+}
+
+/**
  * The stored "Reset to defaults" document (R-170: app_settings "settings.defaults", written with the reference data);
  * null when none is stored or it does not validate.
  */
@@ -316,6 +348,10 @@ export async function resetSettings(actor: Actor): Promise<void> {
     const hours = { pct: defaultHoursVariance(defaults) };
     await tx.insert(appSettings).values({ key: APP_SETTING_HOURS_VARIANCE, value: hours, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
       .onConflictDoUpdate({ target: appSettings.key, set: { value: hours, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
+    // R-206 (K-206b): the schedule quality thresholds go back to the DCMA standard.
+    const dcma = { ...DCMA_STANDARD };
+    await tx.insert(appSettings).values({ key: APP_SETTING_DCMA, value: dcma, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value: dcma, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
     await tx.insert(appSettings).values({ key: APP_SETTING_CCB, value: { keur: ccb }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
       .onConflictDoUpdate({ target: appSettings.key, set: { value: { keur: ccb }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
     await trace(tx, who, { objectRef: 'Settings', change: 'reset to defaults', area: 'Settings', activity: { text: 'Reset the settings lists to their defaults', kind: 'change' } });

@@ -1094,6 +1094,8 @@ export const HEALTH_DEFAULTS = { risk: 0.97, off: 0.9 } as const;
 export const APP_SETTING_HEALTH = 'health.thresholds';
 /** R-088 (R-6b): the hours-variance threshold { pct } (default and bounds: src/domain/hr.ts HOURS_VARIANCE_*). */
 export const APP_SETTING_HOURS_VARIANCE = 'hours.variance';
+/** R-206 (K-206b): the thresholds of the schedule quality checks (DCMA 14 points), src/domain/schedule-quality.ts DcmaThresholds. */
+export const APP_SETTING_DCMA = 'schedule.dcma';
 
 /** Slug of a free label (custom Settings entries, custom machine types): "Permits & fees" → "permits_fees". */
 export const slugOf = (label: string) =>

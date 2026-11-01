@@ -25,10 +25,11 @@ import {
 import { PACK_FAMILIES, PACK_INVALID_ERROR, isPackFamily, packStandardError, type PackStandardRow } from '@/domain/engineering-pack';
 import type { Actor } from '@/server/dal/ops-common';
 import {
-  CCB_THRESHOLD_ERROR, HOURS_VARIANCE_RANGE, addLocation, addReferenceValue, getHealthThresholds, removeLocation, removeReferenceValue, resetSettings, setCcbThreshold, setHealthThresholds, setHoursVariance,
+  CCB_THRESHOLD_ERROR, HOURS_VARIANCE_RANGE, addLocation, addReferenceValue, getHealthThresholds, removeLocation, removeReferenceValue, resetSettings, setCcbThreshold, setDcmaThreshold, setHealthThresholds, setHoursVariance,
 } from '@/server/dal/settings';
 import { isCcbThreshold } from '@/domain/change-control';
 import { parseHoursVarianceInput } from '@/domain/hr';
+import { DCMA_THRESHOLD_RANGE, isDcmaThresholdKey, parseDcmaThreshold } from '@/domain/schedule-quality';
 import { translateMessage } from '@/server/interchange/messages';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n } from '@/server/session';
@@ -181,6 +182,24 @@ export async function setHoursVarianceAction(raw: unknown): Promise<AdminActionR
   if (pct === null) return fail(HOURS_VARIANCE_RANGE);
   try {
     await setHoursVariance(pct, ok.actor);
+  } catch (e) {
+    return failure(e);
+  }
+  refresh();
+  return { ok: true };
+}
+
+/**
+ * R-206 (K-206b): one threshold of the schedule quality checks (DCMA 14 points; the standard by default) — the director only; the
+ * Schedule screens follow it at once.
+ */
+export async function setDcmaThresholdAction(key: unknown, raw: unknown): Promise<AdminActionResult> {
+  const ok = await settingsEditor();
+  if ('error' in ok) return ok;
+  if (!isDcmaThresholdKey(key)) return fail('Invalid request');
+  if (parseDcmaThreshold(key, raw) === null) return fail(DCMA_THRESHOLD_RANGE);
+  try {
+    await setDcmaThreshold(key, raw, ok.actor);
   } catch (e) {
     return failure(e);
   }
