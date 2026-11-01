@@ -8,21 +8,21 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-11-01 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 127 faits, 29 en cours, 54 à faire, sur 210 points.
+**Avancement** : 128 faits, 28 en cours, 54 à faire, sur 210 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
 | Bloquant production | 15 | ≈ 102 |
-| Prochaine étape | 23 | ≈ 196 |
+| Prochaine étape | 22 | ≈ 184 |
 | À décider | 26 | ≈ 191 |
 | Plus tard | 19 | ≈ 122 |
-| **Total** | **83** | **≈ 611** |
+| **Total** | **82** | **≈ 599** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
-| Non commencé | 34 |
+| Non commencé | 33 |
 | Partiel | 9 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
@@ -33,7 +33,7 @@ L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il
 | Authentification, utilisateurs et droits | 1 | 0 | 2 | 0 | 3 | 14 |
 | Intégrations avec les autres systèmes | 5 | 6 | 2 | 6 | 19 | 7 |
 | Projets, cycle de vie et modèles par type de machine | 0 | 1 | 2 | 1 | 4 | 6 |
-| Planning | 1 | 1 | 3 | 1 | 6 | 6 |
+| Planning | 1 | 0 | 3 | 1 | 5 | 7 |
 | Coûts, contrat et finance | 0 | 2 | 2 | 0 | 4 | 14 |
 | Ressources et RH | 0 | 2 | 1 | 1 | 4 | 5 |
 | Achats et stock | 2 | 1 | 2 | 0 | 5 | 4 |
@@ -447,15 +447,11 @@ E-9 veut que la modification d’un type de machine ne touche que les nouveaux p
 Permettre de créer des tâches récurrentes (hebdomadaire, mensuelle, à chaque jalon) et d’automatiser les tâches répétitives dans « Mon travail » : règle de récurrence sur la tâche, génération de l’occurrence suivante à la clôture, affichage dans les vues liste, tableau et calendrier. Standard du marché (Wrike, Asana). Aujourd’hui les vues existent (src/app/(app)/my/tasks/page.tsx) mais le modèle ne porte aucune récurrence (src/server/db/schema/work.ts). Analyse comparative du 25 oct. 2026 : priorité P2.  
 *Avancement : 01/11/2026 : tâches récurrentes (toutes les n semaines / n mois, ou à chaque jalon), occurrence suivante créée à la clôture, jours ouvrés du projet, marque ↻ dans les vues (migration 0070). · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
-### 2.5 Planning (6 restants, 6 faits)
+### 2.5 Planning (5 restants, 7 faits)
 
 **R-060 · Gérer la date de situation par projet et le gel hebdomadaire du vendredi** — *Bloquant production · attend le responsable produit · effort L*  
 Écrire projects.data_date (date de situation par projet, que le CP fait avancer) et l’utiliser pour l’avancement et les coûts ; tous les lecteurs passent déjà par projectDataDate() et le Plan l’affiche déjà, il ne manque que l’écrivain. Un gel le vendredi doit enregistrer l’instantané de la semaine (Tendances : CPI, SPI, EAC, marge, risques ; période EVM ; avancement) : freezeSnapshot existe mais n’est jamais appelé, et l’historique des Tendances et de l’EVM vient uniquement du seed (contraire à A-15). Volet lié de S-4 : les retards, échéances et horodatages doivent suivre l’horloge réelle, alors que TODAY/STATUS_ISO restent figés au 25 sept. 2026 dans environ 46 fichiers.  
 *Attend : Précision du responsable produit : ce qui fait avancer la date (tâche du vendredi, action du CP, Replanifier) et ce que le gel enregistre (DELIVERY-6 §8 S-4) · Sources : S-4, A-15, 04 §2, Q11, 11 §3.3, DELIVERY-6.md §3, §8 S-4, docs/delivery-6/notes-planning.md §3 gap (6)*
-
-**R-204 · Planning multi-niveaux : consolidation des plannings fournisseurs et codes d’activité** — *Prochaine étape · non commencé · effort L* · **en cours (Livraison 9)**  
-Modéliser les plannings fournisseurs (lots d’achat) dans le CPM et les consolider dans le planning projet (sous-réseaux, liens vers les activités de réception), avec des codes d’activité (lot d’achat, site, équipement) pour filtrer et regrouper. Fonction avancée du marché (Planisware, Primavera P6). Aujourd’hui les plannings fournisseurs ne sont pas modélisés dans le CPM. Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
-*Avancement : 01/11/2026 (K-204 « lancer tout ») : codes d’activité et plannings fournisseurs consolidés dans le CPM ; en construction. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **R-063 · Trancher les règles restantes des références de planning (S-3)** — *À décider · attend le responsable produit · effort S*  
 Trois choix restent : une référence proposée dont la CR est rejetée est-elle supprimée ou marquée rejetée ? Après BL1, « Re-baseline » du Planning devient-il le même lien vers une CR que le Plan ? Quand une ancienne CR est approuvée après une plus récente (CR-009 / BL2 après CR-011 / BL3), la dernière approbation l’emporte-t-elle ou garde-t-on la BLn la plus haute ?  
@@ -484,6 +480,10 @@ En plus du lot, une CR peut citer, en option, les activités touchées et leur n
 **~~R-198 · Gantt interactif : glisser-déposer, zoom jour/semaine, édition des liens et des durées~~** — *Prochaine étape · non commencé · effort L* · **fait (Livraison 9)**  
 Rendre le Gantt du planning interactif : déplacer et redimensionner les activités par glisser-déposer, zoom jour / semaine / mois, création et édition des liens et des durées directement dans le diagramme, avec recalcul CPM immédiat. Standard du marché (Smartsheet, MS Project, Wrike). Aujourd’hui le Gantt est un rendu serveur en lecture seule à l’échelle mensuelle sur 13 mois (src/components/charts/project-gantt.tsx). Analyse comparative du 25 oct. 2026 : priorité P1, condition du remplacement de MS Project.  
 *Avancement : Gantt des activités interactif (zoom jour/semaine/mois, glisser-déposer, liens, recalcul CPM immédiat, saisie au clavier) ; questions ouvertes dans notes-r198-gantt.md § 5. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+
+**~~R-204 · Planning multi-niveaux : consolidation des plannings fournisseurs et codes d’activité~~** — *Prochaine étape · non commencé · effort L* · **fait (Livraison 9)**  
+Modéliser les plannings fournisseurs (lots d’achat) dans le CPM et les consolider dans le planning projet (sous-réseaux, liens vers les activités de réception), avec des codes d’activité (lot d’achat, site, équipement) pour filtrer et regrouper. Fonction avancée du marché (Planisware, Primavera P6). Aujourd’hui les plannings fournisseurs ne sont pas modélisés dans le CPM. Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
+*Avancement : 01/11/2026 : codes d’activité (équipement et lot d’achat déduits, site et types libres) avec filtre et regroupement sur le Plan et le Gantt ; plannings fournisseurs par commande consolidés dans le CPM (rattachements fin-début), suivi de l’avancement et du glissement fournisseur (migration 0074). Options non faites : filtre par code sur la qualité du planning, alerte de glissement fournisseur. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **~~R-206 · Diagnostic de la qualité du planning (métriques DCMA 14 points, analyse forensique des retards)~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 9)**  
 Évaluer la qualité d’un planning avec les 14 contrôles DCMA (liens manquants, contraintes dures, marges négatives, durées longues, retards, liens début-fin…) et fournir une analyse forensique des retards (comparaison référence / actuel par activité, glissement du chemin critique). Fonction différenciante du marché (Deltek Acumen). Absent aujourd’hui. Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
@@ -995,6 +995,7 @@ Module demandé mais à cadrer avec le responsable produit avant construction : 
 
 ## 3. Mises à jour
 
+- 2026-11-01 — R-204 fait : planning multi-niveaux (codes d’activité, plannings fournisseurs consolidés).
 - 2026-11-01 — R-204 lancé : planning multi-niveaux (codes d’activité, plannings fournisseurs).
 - 2026-11-01 — R-205, R-206, R-208 faits ; R-203 : tableaux de bord configurables faits, Power BI attend Matrix et la DSI.
 - 2026-11-01 — R-196 et R-201 faits : catégorie R&D des projets ; tâches récurrentes.

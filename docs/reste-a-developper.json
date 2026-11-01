@@ -254,6 +254,10 @@
   {
    "date": "2026-11-01",
    "text": "R-204 lancé : planning multi-niveaux (codes d’activité, plannings fournisseurs)."
+  },
+  {
+   "date": "2026-11-01",
+   "text": "R-204 fait : planning multi-niveaux (codes d’activité, plannings fournisseurs consolidés)."
   }
  ],
  "items": [
@@ -6002,9 +6006,9 @@
     "src/server/db/schema/purchasing.ts"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 9",
-    "note": "01/11/2026 (K-204 « lancer tout ») : codes d’activité et plannings fournisseurs consolidés dans le CPM ; en construction."
+    "note": "01/11/2026 : codes d’activité (équipement et lot d’achat déduits, site et types libres) avec filtre et regroupement sur le Plan et le Gantt ; plannings fournisseurs par commande consolidés dans le CPM (rattachements fin-début), suivi de l’avancement et du glissement fournisseur (migration 0074). Options non faites : filtre par code sur la qualité du planning, alerte de glissement fournisseur."
    }
   },
   {
