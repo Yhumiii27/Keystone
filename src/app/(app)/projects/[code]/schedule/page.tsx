@@ -4,6 +4,8 @@
 // `?baseline=0` hides the baseline geometry (prototype app prop `showBaseline`, default true).
 // R-198: `?gantt=activities` shows the interactive activity Gantt instead of the package Gantt, `?zoom=day|week|month` its zoom
 // (default week). Its edits (project's PMs and the director) go through src/features/schedule/gantt-actions.ts.
+// R-206: the Schedule quality card (DCMA 14 points) and the Delay analysis (`?from=BL1&to=current|BL2`), read-only, for whoever
+// sees the schedule.
 import { SectionCard } from '@/components/app/SectionCard';
 import { EmptyState } from '@/components/app/EmptyState';
 import { PageHeader } from '@/components/app/shell/page-header';
@@ -21,6 +23,8 @@ import { getGanttNetwork } from '@/server/dal/gantt';
 import { listCapexMilestones } from '@/server/dal/capex-milestones';
 import { ScheduleView } from '@/features/schedule/schedule-view';
 import { getScheduleData } from '@/server/dal/schedule';
+import { getScheduleQuality } from '@/server/dal/schedule-quality';
+import { ScheduleQualityCards } from '@/features/schedule/schedule-quality-card';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { projectLabelText } from '@/i18n/data-text';
@@ -60,6 +64,18 @@ export default async function SchedulePage({
     />
   );
   const network = level === 'activities' ? await getGanttNetwork(ctx.project.code) : null;
+  const quality = data ? await getScheduleQuality(ctx.project.code, { from: first(sp.from), to: first(sp.to) }) : null;
+  // The forensic pair keeps the page's other parameters (baseline, Gantt level, zoom).
+  const pairHref = (from: string, to: string) => {
+    const u = new URLSearchParams();
+    for (const [k, v] of Object.entries(sp)) {
+      const one = first(v);
+      if (one && k !== 'from' && k !== 'to') u.set(k, one);
+    }
+    u.set('from', from);
+    u.set('to', to);
+    return `${base}?${u.toString()}`;
+  };
 
   const primary =
     data && ctx.canEdit('schedule') ? <RebaselineButton code={ctx.project.code} context={projectLabelText(ctx.project, lang)} defaultClass={stageEstimateClass(ctx.project.stage)} /> : undefined;
@@ -86,6 +102,7 @@ export default async function SchedulePage({
               />
             ) : undefined
           }
+          quality={quality ? <ScheduleQualityCards code={ctx.project.code} data={quality} pairHref={pairHref} /> : undefined}
           capex={{
             rows: capexRows.map((r) => ({ id: r.id, capexCode: r.capexCode })),
             editCode: canSetCapexMilestone(ctx.viewer.role, ctx.access) && ctx.canEdit('schedule') ? ctx.project.code : undefined,

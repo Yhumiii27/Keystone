@@ -29,7 +29,7 @@ export interface ScheduleCapexMilestones {
 }
 
 export async function ScheduleView({
-  view, showBaseline = true, capex, ganttSwitch, activityGantt,
+  view, showBaseline = true, capex, ganttSwitch, activityGantt, quality,
 }: {
   view: ScheduleModel;
   showBaseline?: boolean;
@@ -38,6 +38,8 @@ export async function ScheduleView({
   ganttSwitch?: ReactNode;
   /** R-198: the interactive activity Gantt card, shown instead of the package Gantt card. */
   activityGantt?: ReactNode;
+  /** R-206: the Schedule quality and Delay analysis cards, after the progression and milestones. */
+  quality?: ReactNode;
 }) {
   const { t, lang } = await getI18n();
   const capexOptions = [{ value: '', label: t(NO_CAPEX_MILESTONE) }, ...CAPEX_MILESTONE_CODES.map((c) => ({ value: c, label: t(CAPEX_MILESTONE_LABELS[c]) }))];
@@ -127,6 +129,8 @@ export async function ScheduleView({
           ))}
         </SectionCard>
       </CardGrid>
+
+      {quality}
     </Stack>
   );
 }

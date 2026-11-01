@@ -11,6 +11,7 @@ import {
 } from '@/domain/admin';
 import { IMPORTS_ENABLED } from '@/domain/ch4-defaults';
 import { DEFAULT_CCB_THRESHOLD_KEUR } from '@/domain/change-control';
+import { DCMA_STANDARD, DCMA_THRESHOLD_FIELDS, type DcmaThresholdKey } from '@/domain/schedule-quality';
 import { HOURS_VARIANCE_RULE, ratesMaskedActivity, ratesMaskedAudit } from '@/domain/hr';
 import { connectorStateTone } from '@/domain/connectors';
 import { PACK_FAMILY_LABELS, type PackFamily } from '@/domain/engineering-pack';
@@ -62,6 +63,8 @@ export interface SettingsView {
   hoursVariance: { pct: number; text: string };
   /** Delivery 8 (R-069, P-6c): the change control board threshold as the field shows it ("50"). */
   ccb: { text: string };
+  /** R-206 (K-206b): the schedule quality thresholds (DCMA 14 points), one field per threshold, values as the fields show them. */
+  dcma: { key: DcmaThresholdKey; label: string; value: string; standard: string; min: number; max: number; step: string }[];
   cards: SettingsCardView[];
   /** Location type options of the Locations card (shortened labels). */
   locTypes: { value: LocationType; label: string }[];
@@ -85,6 +88,10 @@ export function settingsView(data: SettingsData, t: T, lang: Lang): SettingsView
     health: { risk: data.health.risk, off: data.health.off, riskText: thresholdText(data.health.risk), offText: thresholdText(data.health.off), text: t(healthRuleText(data.health)) },
     hoursVariance: { pct: data.hoursVariance, text: t(HOURS_VARIANCE_RULE) },
     ccb: { text: String(data.ccbThresholdKeur ?? DEFAULT_CCB_THRESHOLD_KEUR) },
+    dcma: DCMA_THRESHOLD_FIELDS.map((f) => ({
+      key: f.key, label: t(f.label), value: String((data.dcma ?? DCMA_STANDARD)[f.key]), standard: String(DCMA_STANDARD[f.key]), min: f.min, max: f.max,
+      step: f.integer ? '1' : 'any',
+    })),
     cards: SETTINGS_CARDS.map((c) => ({ key: c.key, title: t(c.title), sub: t(c.sub), icon: c.icon, count: String(items[c.key].length), isLoc: c.key === 'locations', items: items[c.key] })),
     locTypes: locTypeCodes.map((code) => ({ value: code, label: t(locationTypeShortLabel(locationType.label(code))) })),
   };
