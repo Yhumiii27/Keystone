@@ -44,6 +44,8 @@ export interface RegisterRow {
   metaLine: string;
   /** R-190: the client is a group subsidiary — the "Internal" badge after the meta line (absent for an external client). */
   clientInternal?: true;
+  /** R-196: an R&D project — the "R&D" badge and the register's category filter (absent for a client project). */
+  rd?: true;
   health: { label: string; tone: Tone };
   spiText: string;
   spiColor: string;
@@ -152,6 +154,7 @@ export function buildRegisterModel(data: RegisterInput, zone: ZoneKey | null, t:
       idLine: `${p.analytic ?? '—'} · ${p.das ? 'DAS ' + p.das : '—'} · ${p.equipment ?? p.machineType ?? '—'}`,
       metaLine: `${p.pm} · ${dataText(p.client, lang)} · ${t(`${p.start} → ${p.finish}`)}`,
       ...(p.clientInternal ? { clientInternal: true as const } : {}),
+      ...(p.rd ? { rd: true as const } : {}),
       health: live && p.health ? { label: t(HEALTH_LABEL[p.health]), tone: healthTone(p.health) } : { label: '—', tone: 'muted' },
       spiText: ind.spiText,
       spiColor: TINT[ind.spiTint],

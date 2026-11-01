@@ -4,9 +4,10 @@
 // state (useOptimistic) is shared through context by the body and the header's "Mark done" primary, so the status
 // ⇄ % coupling, ticks, comments and time entries show at once and reconcile when the Server Function revalidates.
 import {
-  ArrowLeft, ArrowSquareOut, DownloadSimple, File, FileDoc, FilePdf, FileXls, Image as ImageIcon, Lightning, Paperclip, Plus, Trash, TreeStructure, UserPlus,
+  ArrowLeft, ArrowsClockwise, ArrowSquareOut, DownloadSimple, File, FileDoc, FilePdf, FileXls, Image as ImageIcon, Lightning, Paperclip, Plus, Trash, TreeStructure, UserPlus,
 } from '@phosphor-icons/react/dist/ssr';
 import type { Icon } from '@phosphor-icons/react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createContext, useContext, useOptimistic, useRef, useState, useTransition, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { Callout } from '@/components/app/Callout';
@@ -21,6 +22,8 @@ import { CardTitle } from '@/components/ds/Card';
 import { Dialog } from '@/components/ds/Dialog';
 import { DialogActions } from '@/components/ds/DialogParts';
 import { Segmented } from '@/components/ds/Segmented';
+import { Field, Input, Select } from '@/components/ds/Field';
+import { MAX_RECURRENCE_INTERVAL, RECURRENCE_KINDS, RECURRENCE_KIND_LABEL } from '@/domain/task-recurrence';
 import { useToast } from '@/components/ds/Toast';
 import { cx } from '@/components/ds/cx';
 import {
@@ -34,7 +37,7 @@ import { dayLabel } from '@/lib/format';
 import type { AttachmentKind } from '@/server/db/codes';
 import {
   addChecklistItemAction, addTaskCommentAction, logTaskTimeAction, markTaskDoneAction, nameSourcedPersonAction, removeTaskFileAction, setTaskProgressAction,
-  setTaskStatusAction, toggleChecklistItemAction, type TaskActionResult,
+  setTaskRecurrenceAction, setTaskStatusAction, toggleChecklistItemAction, type TaskActionResult,
 } from './actions';
 import { checkCountText, costNoteText, daysText } from './i18n';
 import type { TaskSheetData } from './model';
@@ -182,6 +185,7 @@ export function TaskBody() {
         <div className={s.col}>
           {data.sourcing && <SourcingCard />}
           <ProgressCard />
+          <RecurrenceCard />
           <PlanCard />
         </div>
       </div>
@@ -628,6 +632,103 @@ function PlanCard() {
         <ButtonLink variant="secondary" icon={TreeStructure} href={data.activity.href} className={s.openPlan}>
           {t('Open activity in plan')}
         </ButtonLink>
+      )}
+    </div>
+  );
+}
+
+/**
+ * R-201 (K-201): "Recurrence" — the task's rule in words and the occurrences around it; the assignee or the director sets or stops
+ * it on an open task (the next occurrence is created when the task is closed, and carries the rule on).
+ */
+function RecurrenceCard() {
+  const { t } = useI18n();
+  const toast = useToast();
+  const router = useRouter();
+  const { data, live, canEdit } = useTask();
+  const r = data.recurrence;
+  const [kind, setKind] = useState<string>(r.rule?.kind ?? '');
+  const [interval, setEvery] = useState(String(r.rule?.interval ?? 1));
+  const [until, setUntil] = useState(r.rule?.until ?? '');
+  const [pending, startTransition] = useTransition();
+  const editable = canEdit && live.status !== 'done';
+  const changed = kind !== (r.rule?.kind ?? '') || (kind !== 'milestone' && kind !== '' && interval !== String(r.rule?.interval ?? 1)) || (kind !== '' && until !== (r.rule?.until ?? ''));
+  const save = (e: FormEvent) => {
+    e.preventDefault();
+    startTransition(async () => {
+      const res = await setTaskRecurrenceAction({ taskId: data.id, kind, interval: kind === 'milestone' ? 1 : interval, until: kind ? until : '' });
+      if (!res.ok) toast.showEn(res.error);
+      else {
+        toast.show(kind ? t('Recurrence saved') : t('Recurrence stopped'));
+        router.refresh();
+      }
+    });
+  };
+  return (
+    <div className={cx('card', 'elev-sm', s.sheet, s.gap8)}>
+      <div className={s.cardHead}>
+        <CardTitle compact push>
+          {t('Recurrence')}
+        </CardTitle>
+        <ArrowsClockwise aria-hidden className={s.repeat} />
+      </div>
+      <span className={s.planValue}>{r.text ?? t('Does not repeat')}</span>
+      {(r.previous || r.next) && (
+        <div className={s.meta}>
+          {r.previous && (
+            <span>
+              {t('Follows')}{' '}
+              <Link href={r.previous.href} className={s.rowTitle}>
+                {r.previous.id}
+              </Link>
+            </span>
+          )}
+          {r.next && (
+            <span>
+              {t('Next occurrence')}{' '}
+              <Link href={r.next.href} className={s.rowTitle}>
+                {r.next.id}
+              </Link>
+            </span>
+          )}
+        </div>
+      )}
+      {r.rule && !r.next && live.status !== 'done' && <span className={s.empty}>{t('The next occurrence is created when this task is marked done')}</span>}
+      {editable && (
+        <form className={s.recForm} onSubmit={save}>
+          <Field label={t('Repeats')} htmlFor={`rec-kind-${data.id}`}>
+            <Select
+              id={`rec-kind-${data.id}`}
+              value={kind}
+              disabled={pending}
+              onChange={(e) => setKind(e.target.value)}
+              options={[{ value: '', label: t('Does not repeat') }, ...RECURRENCE_KINDS.map((k) => ({ value: k, label: t(RECURRENCE_KIND_LABEL[k]) }))]}
+            />
+          </Field>
+          {(kind === 'weekly' || kind === 'monthly') && (
+            <Field label={kind === 'weekly' ? t('Every (weeks)') : t('Every (months)')} htmlFor={`rec-int-${data.id}`}>
+              <Input
+                id={`rec-int-${data.id}`}
+                type="number"
+                min={1}
+                max={MAX_RECURRENCE_INTERVAL}
+                step={1}
+                numeric
+                value={interval}
+                disabled={pending}
+                onChange={(e) => setEvery(e.target.value)}
+              />
+            </Field>
+          )}
+          {kind !== '' && (
+            <Field label={t('Ends on (optional)')} htmlFor={`rec-until-${data.id}`}>
+              <Input id={`rec-until-${data.id}`} type="date" min={r.dueIso} value={until} disabled={pending} onChange={(e) => setUntil(e.target.value)} />
+            </Field>
+          )}
+          <Button type="submit" variant="secondary" disabled={pending || !changed} aria-busy={pending || undefined}>
+            {kind || !r.rule ? t('Save recurrence') : t('Stop recurrence')}
+          </Button>
+        </form>
       )}
     </div>
   );

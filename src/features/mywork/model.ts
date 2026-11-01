@@ -10,7 +10,8 @@ import { workingDayOf, type TaskPriority, type TaskStatus } from '@/domain/tasks
 import type { Lang, T } from '@/i18n/translate';
 import type { AttachmentKind } from '@/server/db/codes';
 import type { TaskCostNote, TaskDetail, TaskRow } from '@/server/dal/tasks';
-import { defaultDescription, freshTagText } from './i18n';
+import type { RecurrenceKind } from '@/domain/task-recurrence';
+import { defaultDescription, freshTagText, recurrenceText } from './i18n';
 import { dataText } from '@/i18n/data-text';
 
 /** URL of My work for a person (`?person=` only when it is not the viewer), keeping a view. */
@@ -60,6 +61,8 @@ export interface WorkItemData {
   /** Translated "New · approved by …" tag, null when the task is not fresh. */
   fresh: string | null;
   checklist: { done: number; total: number };
+  /** R-201: the recurrence in words ("Weekly"), present only on a recurring task (the repeat mark of the list, board, calendar). */
+  repeat?: string;
 }
 
 export function workItemData(r: TaskRow, t: T, lang: Lang): WorkItemData {
@@ -79,6 +82,7 @@ export function workItemData(r: TaskRow, t: T, lang: Lang): WorkItemData {
     labels: r.labels.map((l) => t(l)),
     fresh: r.isFresh ? freshTagText(r.department ?? 'Engineering', t, lang) : null,
     checklist: r.checklist,
+    ...(r.recurrence ? { repeat: recurrenceText(r.recurrence, t, lang) } : {}),
   };
 }
 
@@ -130,6 +134,17 @@ export interface TaskSheetData {
   plan: { activity: string; workPackage: string; finish: string; float: number | null; progress: number } | null;
   /** P-8b (R-089): a sourcing task — created from a contract-role request ("RQ-043"), the person not named yet. */
   sourcing: { contractRole: string; request: string } | null;
+  /**
+   * R-201: the task's recurrence — the rule (null = not recurring) and its words, the task's due date (ISO, the end date's lower
+   * bound) and the occurrences around it (the one it follows, the one created when it was closed).
+   */
+  recurrence: {
+    rule: { kind: RecurrenceKind; interval: number; until: string | null } | null;
+    text: string | null;
+    dueIso: string;
+    previous: { id: string; href: string } | null;
+    next: { id: string; href: string } | null;
+  };
 }
 
 /**
@@ -177,5 +192,12 @@ export function taskSheetData(d: TaskDetail, backHref: string, t: T, lang: Lang,
         }
       : null,
     sourcing: d.sourceRequest && d.contractRole ? { contractRole: d.contractRole, request: d.sourceRequest } : null,
+    recurrence: {
+      rule: d.recurrence ? { kind: d.recurrence.kind, interval: d.recurrence.interval, until: d.recurrence.until } : null,
+      text: d.recurrence ? recurrenceText(d.recurrence, t, lang) : null,
+      dueIso: d.due,
+      previous: d.series?.previous ? { id: d.series.previous, href: taskHref(d.series.previous) } : null,
+      next: d.series?.next ? { id: d.series.next, href: taskHref(d.series.next) } : null,
+    },
   };
 }

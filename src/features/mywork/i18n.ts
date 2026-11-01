@@ -3,7 +3,8 @@
 // through t() with their FR entries in src/i18n/extra/mywork.json.
 import type { TaskCost } from '@/domain/hr';
 import { moneyEur } from '@/lib/format';
-import type { Lang, T } from '@/i18n/translate';
+import { intlLocale, type Lang, type T } from '@/i18n/translate';
+import { RECURRENCE_KIND_LABEL, type TaskRecurrence } from '@/domain/task-recurrence';
 import { dataText } from '@/i18n/data-text';
 
 /**
@@ -76,4 +77,25 @@ export function costNoteText(loggedH: number, cost: TaskCost | null, target: { w
   if (cost.rate == null) return fr ? `${h} h = ${amount} de coût réel ${tail}` : `${h} h = ${amount} actual cost ${tail}`;
   const rate = moneyEur(cost.rate, fr ? 'fr' : 'en');
   return fr ? `${h} h × ${rate}/h = ${amount} de coût réel ${tail}` : `${h} h × ${rate}/h = ${amount} actual cost ${tail}`;
+}
+
+/** R-201: an ISO date as "31 Dec 2026" / "31 déc. 2026". */
+const isoDateText = (iso: string, lang: Lang) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString(intlLocale(lang), { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+
+/**
+ * R-201: a recurrence rule in words — "Every week", "Every 2 weeks", "Every month", "Every 3 months", "At each project milestone", with
+ * " · until 31 Dec 2026" when it ends (FR « Chaque semaine », « Toutes les 2 semaines », « Tous les 3 mois », « · jusqu’au … »).
+ */
+export function recurrenceText(rule: Pick<TaskRecurrence, 'kind' | 'interval' | 'until'>, t: T, lang: Lang): string {
+  const fr = lang === 'fr';
+  const n = rule.interval;
+  const base =
+    rule.kind === 'milestone' || n <= 1
+      ? t(RECURRENCE_KIND_LABEL[rule.kind])
+      : rule.kind === 'weekly'
+        ? fr ? `Toutes les ${n} semaines` : `Every ${n} weeks`
+        : fr ? `Tous les ${n} mois` : `Every ${n} months`;
+  if (!rule.until) return base;
+  return `${base} · ${fr ? 'jusqu’au' : 'until'} ${isoDateText(rule.until, lang)}`;
 }

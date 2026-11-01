@@ -7,6 +7,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { rateAt, taskLaborCost, type TaskCost } from '@/domain/hr';
 import { mentionedKeys } from '@/domain/mentions';
 import { applyProgress, applyStatus } from '@/domain/tasks';
+import type { TaskRecurrence } from '@/domain/task-recurrence';
 import { businessToday } from '@/server/clock';
 import { getDb, type Tx } from '@/server/db/client';
 import {
@@ -18,6 +19,7 @@ import {
   activities, departments, persons, projects, resourceRequests, taskAttachments, taskChecklistItems, taskComments, tasks, timeEntries, wbsNodes,
 } from '@/server/db/schema';
 import { getRateGrid } from './hr';
+import { createNextOccurrence, recurrenceLinks, recurrenceOf } from './task-recurrence';
 import { listMentionablePersons } from './task-notices';
 
 export interface TaskRow {
@@ -60,6 +62,8 @@ export interface TaskRow {
   department: string | null;
   /** Request that created it ("RQ-040"). */
   sourceRequest: string | null;
+  /** R-201: the recurrence rule; present only on a recurring task. */
+  recurrence?: TaskRecurrence;
 }
 
 export interface TaskComment {
@@ -105,6 +109,8 @@ export interface TaskDetail extends TaskRow {
   entries: TimeEntryRow[];
   /** Cost note valuation (A-10, R-083 — `taskLaborCost`): replaces the job-title rate and its 100 €/h default. */
   costNote: TaskCostNote;
+  /** R-201: the occurrence this task follows and the one created when it was closed (numbers); present only in a series. */
+  series?: { previous: string | null; next: string | null };
 }
 
 /**
@@ -171,6 +177,7 @@ export async function listTasks(filter: TaskFilter = {}): Promise<TaskRow[]> {
       estimateH: t.estimateH, loggedH: t.loggedH, pct: t.percentComplete, labels: t.labels,
       checklist: c ? { done: c.done, total: c.total } : { done: t.checklistDone, total: t.checklistTotal },
       isFresh: t.isFresh, department: r.dept, sourceRequest: r.req,
+      ...(t.recurrenceKind ? { recurrence: recurrenceOf(t)! } : {}),
     };
   });
 }
@@ -180,11 +187,11 @@ export async function getTask(number: string): Promise<TaskDetail | null> {
   const [row] = await listTasks({ number });
   if (!row) return null;
   const db = await getDb();
-  const [{ id }] = await db.select({ id: tasks.id }).from(tasks).where(eq(tasks.number, number));
+  const [{ id, previousId }] = await db.select({ id: tasks.id, previousId: tasks.recurrencePreviousTaskId }).from(tasks).where(eq(tasks.number, number));
   const author = alias(persons, 'author');
   const uploader = alias(persons, 'uploader');
   const entryPerson = alias(persons, 'entry_person');
-  const [items, comments, files, entries, [assignee], grid, today] = await Promise.all([
+  const [items, comments, files, entries, [assignee], grid, today, links] = await Promise.all([
     db.select().from(taskChecklistItems).where(eq(taskChecklistItems.taskId, id)).orderBy(asc(taskChecklistItems.position)),
     db
       .select({ c: taskComments, full: author.fullName, short: author.shortName, initials: author.initials })
@@ -207,6 +214,7 @@ export async function getTask(number: string): Promise<TaskDetail | null> {
     db.select({ rateRoleId: persons.rateRoleId }).from(tasks).innerJoin(persons, eq(persons.id, tasks.assigneePersonId)).where(eq(tasks.id, id)),
     getRateGrid(),
     businessToday(),
+    recurrenceLinks(id, previousId),
   ]);
   // R-083 (A-10): one valuation of hours — the grid role's rate in force on the date worked (no job-title rate, no 100 €/h);
   // the remaining hours at today's rate (the business date, R-013).
@@ -230,6 +238,7 @@ export async function getTask(number: string): Promise<TaskDetail | null> {
       date: e.workDate, dateText: dayLabelOfIso(e.workDate), hours: e.hours, note: e.note, person: short ? (full ?? short) : null, source: e.source,
     })),
     costNote: { ...valuation, todayRate },
+    ...(links.previous || links.next ? { series: links } : {}),
   };
 }
 
@@ -255,6 +264,8 @@ export async function setTaskStatus(number: string, status: TaskStatus, actorNam
     const next = applyStatus({ status: t.status, pct: t.percentComplete }, status);
     await tx.update(tasks).set({ status: next.status, percentComplete: next.pct, updatedAt: new Date() }).where(eq(tasks.id, t.id));
     await auditTask(tx, t, actorName, `status: ${taskStatus.label(t.status)} → ${taskStatus.label(next.status)}`);
+    // R-201: closing a recurring task creates its next occurrence.
+    if (next.status === 'done') await createNextOccurrence(tx, t, actorName, await businessToday());
   });
 }
 
@@ -279,6 +290,8 @@ export async function setTaskProgress(number: string, pct: number, actorName: st
     const { status, pct: v } = applyProgress({ status: t.status, pct: t.percentComplete }, pct);
     await tx.update(tasks).set({ percentComplete: v, status, updatedAt: new Date() }).where(eq(tasks.id, t.id));
     await auditTask(tx, t, actorName, `progress: ${t.percentComplete} % → ${v} %` + (status !== t.status ? ` · status: ${taskStatus.label(t.status)} → ${taskStatus.label(status)}` : ''));
+    // R-201: closing a recurring task creates its next occurrence.
+    if (status === 'done' && t.status !== 'done') await createNextOccurrence(tx, t, actorName, await businessToday());
   });
 }
 

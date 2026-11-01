@@ -7,7 +7,8 @@
 // portfolio director and, since R-044, Finance; also on a project without contract), the payment rule (R-076), the amendments' signature cycle and own
 // milestones, the guarantees' release (R-079). Delivery 9 (R-185): the project's "Equipment" card (equipment lines); R-190: the
 // "Client" card (external client or group subsidiary — the director sets it). R-158: the "Incoterm" card (the contract's Incoterm and
-// named place, the contract editors set it; the Shipments screen organises the transport from it).
+// named place, the contract editors set it; the Shipments screen organises the transport from it). R-196: the "Project category" card
+// (client project or R&D project — the director and the project's leads change it).
 import { EmptyState } from '@/components/app/EmptyState';
 import { Stack } from '@/components/app/SectionCard';
 import { PageHeader } from '@/components/app/shell/page-header';
@@ -18,6 +19,9 @@ import {
 } from '@/features/contract/model';
 import { EquipmentCard } from '@/features/contract/equipment-card';
 import { IncotermCard } from '@/features/contract/incoterm-card';
+import { ProjectCategoryCard } from '@/features/contract/category-card';
+import { canSetProjectCategory } from '@/domain/project-category';
+import { getProjectCategory } from '@/server/dal/project-category';
 import { getContractIncoterm, listIncoterms } from '@/server/dal/incoterms';
 import { canSetInternalClient } from '@/domain/internal-client';
 import { canSetBudgetRate, canSetCapexLink, canSetProjectEquipment } from '@/domain/rights';
@@ -37,13 +41,15 @@ export default async function ContractPage({ params }: { params: Promise<{ code:
   const ctx = await getProjectContext(code, 'contract');
   const projectCode = ctx.project.code;
   const canSetClient = canSetInternalClient(ctx.viewer.role) && ctx.canEdit('contract');
-  const [{ t, lang }, contract, capexLink, equipment, types, catalogue, client, subsidiaries] = await Promise.all([
+  const [{ t, lang }, contract, capexLink, equipment, types, catalogue, client, subsidiaries, category] = await Promise.all([
     getI18n(), getContract(projectCode), getCapexLink(projectCode), listProjectEquipments(projectCode), listMachineTypeOptions(), listCatalogueChoices(),
-    getProjectClient(projectCode), canSetClient ? listSubsidiaries() : Promise.resolve(null),
+    getProjectClient(projectCode), canSetClient ? listSubsidiaries() : Promise.resolve(null), getProjectCategory(projectCode),
   ]);
   // C-9: the portfolio director and Finance (R-044) set the project's currency and budget rate.
   const canSetRate = canSetBudgetRate(ctx.viewer.role) && ctx.canEdit('contract');
   // R-190: the director and the project's leads set its CAPEX link (also on a project without contract).
+  // R-196: client project or R&D project; the director and the project's leads change it (also on a project without contract).
+  const categoryCard = <ProjectCategoryCard category={category} code={projectCode} canEdit={canSetProjectCategory(ctx.viewer.role, ctx.access) && ctx.canEdit('contract')} t={t} />;
   const capexCard = <CapexLinkCard link={capexLink} code={projectCode} canEdit={canSetCapexLink(ctx.viewer.role, ctx.access) && ctx.canEdit('contract')} t={t} />;
   // R-190: the project's client, external or a group subsidiary; the director sets it (also on a project without contract), among
   // Matrix's subsidiaries (D21; the CAPEX mirror's while Matrix publishes none).
@@ -68,6 +74,7 @@ export default async function ContractPage({ params }: { params: Promise<{ code:
           <EmptyState variant="boxed">{t('No contract registered for this project')}</EmptyState>
           <CurrencyCard fx={currencyView(await getProjectFx(projectCode), lang)} code={projectCode} canSetRate={canSetRate} t={t} />
           {equipmentCard}
+          {categoryCard}
           {capexCard}
           {clientCard}
         </Stack>
@@ -95,7 +102,7 @@ export default async function ContractPage({ params }: { params: Promise<{ code:
   return (
     <>
       <PageHeader screen="contract" projectCode={projectCode} primary={primary} crumbExtra={contract.sheet.reference} />
-      <ContractScreen view={contractView(contract, t, lang)} code={projectCode} canEdit={canEdit} canSetRate={canSetRate} context={context} forms={forms} t={t} capexCard={<>{incotermCard}{equipmentCard}{capexCard}{clientCard}</>} />
+      <ContractScreen view={contractView(contract, t, lang)} code={projectCode} canEdit={canEdit} canSetRate={canSetRate} context={context} forms={forms} t={t} capexCard={<>{incotermCard}{equipmentCard}{categoryCard}{capexCard}{clientCard}</>} />
     </>
   );
 }
