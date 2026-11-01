@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm';
 import { boolean, check, date, doublePrecision, foreignKey, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { CalendarCode, CostType, MachineTypeCode, StageCode, StageGroup, TransitionMode, ValidationStatus, ZoneCode } from '../codes';
 import type { PackFamily } from '@/domain/engineering-pack';
+import type { ProjectCategory } from '@/domain/project-category';
 import { id, keur, months, num, timestamps } from './_common';
 import { clients, countries, persons, zones } from './organisation';
 
@@ -294,8 +295,14 @@ export const projects = pgTable('projects', {
    */
   capexCode: text('capex_code'),
   besoinRef: text('besoin_ref'),
+  /**
+   * R-196 (Crucible K-3, K-196): client project (default) or R&D project — chosen in the New project wizard, changed by the
+   * project's leads and the director on the Contract screen; published at the end of pub_projets as `categorie`.
+   */
+  category: text('category').$type<ProjectCategory>().notNull().default('client'),
 }, (t) => [
   check('projects_kind_check', sql`${t.kind} in ('client', 'internal')`),
+  check('projects_category_check', sql`${t.category} in ('client', 'rd')`),
   check('projects_capex_code_check', sql`${t.capexCode} ~ '^CPX-[A-Z]{3}-[0-9]{4}-[0-9]{2,}$'`),
   check('projects_besoin_ref_check', sql`${t.besoinRef} is null or (${t.capexCode} is not null and ${t.besoinRef} ~ '^CPX-[A-Z]{3}-[0-9]{4}-[0-9]{2,}/B[0-9]{2,}$' and starts_with(${t.besoinRef}, ${t.capexCode} || '/'))`),
 ]);

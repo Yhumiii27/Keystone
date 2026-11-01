@@ -190,3 +190,7 @@
 .planKey { color: var(--color-neutral-400); }
 .planValue { text-align: right; font-variant-numeric: tabular-nums; color: var(--v-color, var(--color-text)); }
 :global(.btn).openPlan { align-self: flex-start; font-size: 12.5px; }
+
+/* R-201: mark of a recurring task. */
+.repeat { display: inline-flex; align-items: center; flex: none; color: var(--color-neutral-400); font-size: 13px; vertical-align: -2px; }
+.recForm { display: grid; gap: 8px; }

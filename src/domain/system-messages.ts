@@ -273,6 +273,26 @@ const MESSAGES = {
     (p) => `${p.project} · shipment ${p.ref} · freight delay · risk ${p.risk} raised`,
     (p) => `${p.project} · expédition ${p.ref} · retard de fret · risque ${p.risk} ouvert`,
   ),
+  // R-196 (K-196): the project's category changed on the Contract screen (labels of src/domain/project-category.ts).
+  'project.category': def(
+    { from: 'label', to: 'label' },
+    (p) => `Project category: ${p.from} → ${p.to}`,
+    (p, f) => `Catégorie du projet : ${f.label(p.from)} → ${f.label(p.to)}`,
+  ),
+  // R-201 (K-201): a task's recurrence set or stopped on the task sheet (labels of src/domain/task-recurrence.ts), and the next
+  // occurrence created when the current one is closed.
+  'task.recurrenceSet': def(
+    { kind: 'label', interval: 'count' },
+    (p) => `Recurrence set · ${p.kind} · interval ${p.interval}`,
+    (p, f) => `Récurrence définie · ${f.label(p.kind)} · intervalle ${f.count(p.interval)}`,
+  ),
+  'task.recurrenceStopped': def({}, () => 'Recurrence stopped', () => 'Récurrence arrêtée'),
+  'task.nextOccurrence': def(
+    { task: 'ref', previous: 'ref', due: 'date' },
+    (p) => `Next occurrence ${p.task} created from ${p.previous} · due ${p.due}`,
+    (p, f) => `Occurrence suivante ${p.task} créée depuis ${p.previous} · échéance le ${f.date(p.due)}`,
+  ),
+  'task.recurrenceEnded': def({ previous: 'ref' }, (p) => `Recurrence ended with ${p.previous}`, (p) => `Récurrence terminée avec ${p.previous}`),
 } as const;
 
 export type MessageKey = keyof typeof MESSAGES;

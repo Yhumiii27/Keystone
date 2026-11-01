@@ -7,6 +7,7 @@ import 'server-only';
 // finish-to-start links, the cost categories, the ITP plan — with the chosen PM, planned window, calendar and currency.
 // Permission checks, input validation and revalidation belong to src/features/projects/actions.ts.
 import { and, asc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
+import type { ProjectCategory } from '@/domain/project-category';
 import { BL1_DELIVERABLE_MESSAGE, bl1TickRefused, hasBl1 } from '@/domain/baseline-policy';
 import { packingDeliverableRefusal } from './shipments';
 import { BUILTIN_CALENDAR_BY_CODE, WorkCalendar } from '@/domain/calendar';
@@ -316,6 +317,8 @@ export interface WizardCreateInput {
   /** Client / sponsor ('' → none, shown "—"; the Server Function requires one, L-3). */
   client: string;
   das: string;
+  /** R-196 (K-196): client project (default) or R&D project (projects.category, pub_projets.categorie). */
+  category?: ProjectCategory;
   /** The main type: the first equipment line's (R-185). */
   machineType: MachineTypeCode;
   /**
@@ -464,7 +467,7 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
       .insert(projects)
       .values({
         code: id.code, number: id.number, shortCode: id.code.slice(0, 3), name, clientId, pmPersonId: pmId,
-        stage: 'initiative', das: input.das, machineTypeCode: input.machineType, analyticCode: id.analytic,
+        stage: 'initiative', das: input.das, machineTypeCode: input.machineType, analyticCode: id.analytic, category: input.category ?? 'client',
         startText: startM.text, finishText: finishM?.text ?? '—', startMonth: startM.month, finishMonth: finishM?.month ?? null,
         plannedStartDate: plannedStart, plannedFinishDate: plannedFinish,
         budgetKeur: budget, actualKeur: 0, progress: 0, spi: 1, isNew: true,
@@ -555,7 +558,7 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
     const tplText = input.templateCode === 'blank' ? 'blank' : `${templateId(input.templateCode)} · ${plan.packages.length} work packages · ${plan.activities.length} activities`;
     const eqText = lines.length > 1 || lines[0].quantity > 1
       ? ` · equipment ${equipmentSummary(lines.map((l) => ({ typeLabel: templateId(l.machineType), quantity: l.quantity })))}` : '';
-    await writeAudit(tx, { ...who, objectRef: id.code, change: `project created · ${name} · template ${tplText}${eqText} · ${cats.length} cost categories${site ? ` · site ${site.city}, ${site.countryName}` : ''}`, area: 'Projects', entityType: 'project', entityId: projectId, projectId });
+    await writeAudit(tx, { ...who, objectRef: id.code, change: `project created · ${name} · template ${tplText}${eqText} · ${cats.length} cost categories${site ? ` · site ${site.city}, ${site.countryName}` : ''}${input.category === 'rd' ? ' · R&D project' : ''}`, area: 'Projects', entityType: 'project', entityId: projectId, projectId, after: { category: input.category ?? 'client' } });
     await recordActivity(tx, { ...who, text: `${id.code} · ${name} created at Initiative`, kind: 'change', projectId });
     if (input.afterCreate) await input.afterCreate(tx, { projectId, code: id.code, equipments: equipmentRows.map((e) => ({ id: e.id, ref: e.ref })), who });
     return { ...id, name, budget, workPackages: plan.packages.length, activities: plan.activities.length, links: plan.links.length, itpPlan, equipments: equipmentRows.length };
