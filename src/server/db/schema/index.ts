@@ -37,4 +37,5 @@ export * from './matrix';
 export * from './shipments';
 export * from './reminders';
 export * from './delegations';
+export * from './risk-analysis';
 export * from './dashboards';

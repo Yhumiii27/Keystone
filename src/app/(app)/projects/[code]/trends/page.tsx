@@ -2,6 +2,8 @@
 // URL state: `?kpi=cpi|spi|eac|float|risk|slip` selects the charted indicator (prototype `trendKpi`, default CPI).
 // Primary action "Generate status report" (AF `trends`) for viewers who may edit the project. Projects without
 // weekly snapshots show an empty state (never Harbor Line's series, 00 §7.16).
+// R-208 (K-208 alt1): the « Dérive prévue » card (rule-based forecast of the finish slip and the cost overrun, with mitigation
+// suggestions) heads the screen, snapshots or not.
 import { EmptyState } from '@/components/app/EmptyState';
 import { SectionCard } from '@/components/app/SectionCard';
 import { PageHeader } from '@/components/app/shell/page-header';
@@ -12,6 +14,9 @@ import { StatusReportButton } from '@/features/changes/change-buttons';
 import { changesT } from '@/features/changes/i18n';
 import { TrendsView } from '@/features/changes/trends-view';
 import { getTrends } from '@/server/dal/trends';
+import { getDriftForecast } from '@/server/dal/drift-forecast';
+import { DriftForecastCard } from '@/features/risk-analysis/drift-card';
+import { Stack } from '@/components/app/SectionCard';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { projectLabelText } from '@/i18n/data-text';
@@ -23,7 +28,7 @@ export default async function TrendsPage({ params, searchParams }: { params: Pro
   const [{ code }, sp] = await Promise.all([params, searchParams]);
   const ctx = await getProjectContext(code, 'trends');
   const projectCode = ctx.project.code;
-  const [i18n, data] = await Promise.all([getI18n(), getTrends(projectCode)]);
+  const [i18n, data, drift] = await Promise.all([getI18n(), getTrends(projectCode), getDriftForecast(projectCode)]);
   const { lang } = i18n;
   const t = changesT(i18n.t, lang);
 
@@ -31,10 +36,13 @@ export default async function TrendsPage({ params, searchParams }: { params: Pro
     return (
       <>
         <PageHeader screen="trends" projectCode={projectCode} />
-        <SectionCard gap={10}>
-          <CardTitle>{t('Snapshot history')}</CardTitle>
-          <EmptyState variant="boxed">{t('No snapshot recorded for this project yet')}</EmptyState>
-        </SectionCard>
+        <Stack>
+          {drift && <DriftForecastCard drift={drift} t={i18n.t} lang={lang} />}
+          <SectionCard gap={10}>
+            <CardTitle>{t('Snapshot history')}</CardTitle>
+            <EmptyState variant="boxed">{t('No snapshot recorded for this project yet')}</EmptyState>
+          </SectionCard>
+        </Stack>
       </>
     );
 
@@ -45,13 +53,16 @@ export default async function TrendsPage({ params, searchParams }: { params: Pro
   return (
     <>
       <PageHeader screen="trends" projectCode={projectCode} primary={primary} />
-      <TrendsView
-        data={{ snapshots: data.snapshots, series: data.series, bac: data.bac, contingency: data.contingency, nextReport: data.nextReport?.text ?? null }}
-        selected={parseTrendKey(first(sp.kpi))}
-        href={href}
-        lang={lang}
-        t={t}
-      />
+      <Stack>
+        {drift && <DriftForecastCard drift={drift} t={i18n.t} lang={lang} />}
+        <TrendsView
+          data={{ snapshots: data.snapshots, series: data.series, bac: data.bac, contingency: data.contingency, nextReport: data.nextReport?.text ?? null }}
+          selected={parseTrendKey(first(sp.kpi))}
+          href={href}
+          lang={lang}
+          t={t}
+        />
+      </Stack>
     </>
   );
 }
