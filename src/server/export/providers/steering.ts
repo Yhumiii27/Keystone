@@ -24,6 +24,9 @@ import type { ExportContext, ExportWorkbook, PdfBlock, PdfDocument } from '../ty
 import { yearOfIso } from '@/domain/clock';
 import { col, isoOf, kpiSheet, monthIso, param, projectRef, ratioText, sheet, todayIso } from './common';
 import { dataText } from '@/i18n/data-text';
+import { codeCell } from '@/domain/activity-codes';
+import { getActivityCodes } from '@/server/dal/activity-codes';
+import { supplierSchedulesView } from '@/features/supplier-schedules/model';
 
 // ── Plan ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 const LEVEL: Record<string, string> = { root: 'Project', wp: 'Work package', act: 'Activity' };
@@ -31,7 +34,7 @@ const LEVEL: Record<string, string> = { root: 'Project', wp: 'Work package', act
 /** The Plan's rows (every WBS row, display order) as an export sheet, with the screen's view and data. */
 async function planSheet(ctx: ExportContext) {
   if (!ctx.project) return null;
-  const [data, todos, dataDate] = await Promise.all([getPlanData(ctx.project.code), getPlanTodos(ctx.project.code), projectDataDateOf(ctx.project.code)]);
+  const [data, todos, dataDate, codes] = await Promise.all([getPlanData(ctx.project.code), getPlanTodos(ctx.project.code), projectDataDateOf(ctx.project.code), getActivityCodes(ctx.project.code)]);
   if (!data) return null;
   const t = planT(ctx.t, ctx.lang);
   const view: 'structure' | 'progress' = param(ctx, 'view') === 'structure' ? 'structure' : 'progress';
@@ -45,6 +48,8 @@ async function planSheet(ctx: ExportContext) {
       baselineFinish: isoOf(r.baselineFinish, yearOfIso(ctx.today)), variance: r.variance, float: a ? effectiveFloat(a) : r.tf, constraint: a?.constraint ? t(a.constraint) : '',
       pct: r.pct / 100, budget: r.budget, actual: a ? a.actual : null, eac: a ? a.eac : null, preds: a ? (a.preds.length ? predsLabel(a.preds) : '') : '',
       todos: r.todos.total ? `${r.todos.done}/${r.todos.total}` : '',
+      // R-204: one column per activity code type (the value codes of the activity).
+      ...Object.fromEntries((codes?.types ?? []).map((x) => [`code:${x.key}`, a ? codeCell(codes!.map, a.id, x) : ''])),
     };
   });
   const wbs = sheet(t('WBS & activities'), [
@@ -53,6 +58,7 @@ async function planSheet(ctx: ExportContext) {
         col('finishActual', t('Actual finish'), 'boolean'), col('baselineFinish', t('Baseline finish'), 'date'), col('variance', t('Variance (d)'), 'integer'),
         col('float', t('Total float (d)'), 'integer'), col('constraint', t('Constraint'), 'text', 16), col('pct', t('% complete'), 'percent'), col('budget', t('Budget'), 'money_keur'),
         col('actual', t('Actual'), 'money_keur'), col('eac', 'EAC', 'money_keur'), col('preds', t('Predecessors'), 'text', 26), col('todos', t('To-dos'), 'text', 8),
+        ...(codes?.types ?? []).map((x) => col(`code:${x.key}`, x.derived ? t(x.name) : dataText(x.name, ctx.lang), 'text', 14)),
       ], rows);
   return { t, view, data, dataDate, wbs, kpis: planKpis(view, data, t, ctx.lang, { dataDate }).map((k) => ({ label: k.label, value: k.value, sub: k.sub })) };
 }
@@ -61,10 +67,29 @@ async function planWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> 
   const p = await planSheet(ctx);
   if (!p) return null;
   const { t, view } = p;
+  // R-204: the supplier schedules (one row per supplier activity, committed vs forecast dates and slip, ties).
+  const suppliers = await supplierSchedulesView(ctx.project!.code);
+  const supplierRows = (suppliers?.schedules ?? []).flatMap((x) =>
+    x.activities.map((a) => ({
+      po: x.po, supplier: dataText(x.supplier, ctx.lang), code: a.code, name: dataText(a.name, ctx.lang), duration: a.duration, committedStart: a.committedStart,
+      committedFinish: a.committedFinish, forecastStart: a.forecastStart, forecastFinish: a.forecastFinish, actualStart: a.actualStart, actualFinish: a.actualFinish, pct: a.pct / 100,
+      slip: a.finishSlip, late: a.late,
+      ties: x.ties.filter((y) => y.supplier === a.code).map((y) => (y.direction === 'to_project' ? `→ ${y.activity}` : `${y.activity} →`)).join(', '),
+    })),
+  );
+  const supplierSheet = supplierRows.length
+    ? [sheet(t('Supplier schedules'), [
+        col('po', t('Order'), 'text', 10), col('supplier', t('Supplier'), 'text', 22), col('code', t('Code'), 'text', 7), col('name', t('Name'), 'text', 32),
+        col('duration', t('Duration (d)'), 'integer'), col('committedStart', t('Committed start'), 'date'), col('committedFinish', t('Committed finish'), 'date'),
+        col('forecastStart', t('Forecast start'), 'date'), col('forecastFinish', t('Forecast finish'), 'date'), col('actualStart', t('Actual start'), 'date'),
+        col('actualFinish', t('Actual finish'), 'date'), col('pct', t('% complete'), 'percent'), col('slip', t('Slip (wd)'), 'integer'), col('late', t('Slipping'), 'boolean'),
+        col('ties', t('Ties to the project schedule'), 'text', 20),
+      ], supplierRows)]
+    : [];
   return {
     title: t('Plan — WBS & activities'),
     filters: [`${t('Display')}: ${t(view === 'structure' ? 'Structure' : 'Progress')}`],
-    sheets: [p.wbs, kpiSheet(ctx, p.kpis)],
+    sheets: [p.wbs, ...supplierSheet, kpiSheet(ctx, p.kpis)],
   };
 }
 

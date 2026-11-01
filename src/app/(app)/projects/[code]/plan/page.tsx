@@ -1,6 +1,8 @@
 // Plan — WBS & activities — /projects/[code]/plan (docs/spec/05 §2, template 1024–1166, logic 3971–4046).
 // URL state (docs/spec/00 §8.3): `?view=structure` (default Progress), `?act=A1250` opens the activity drawer,
 // `?sel=A1250` keeps a row highlighted after the drawer closes (prototype `sel`, default A1250).
+// R-204: `?code=<type>~<value>` filters the activities by activity code, `?group=<type>` groups them by code (read-only view);
+// the Structure view shows the project's activity code dictionary; a « Supplier schedules » card lists the supplier schedules.
 // Primary action: "Update progress" (Progress view) / "Add activity" (Structure view). Edits go through the
 // Server Functions of src/features/plan/actions.ts; projects without planning data show an empty state.
 import { cookies } from 'next/headers';
@@ -40,6 +42,11 @@ import { businessToday } from '@/server/clock';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { projectLabelText } from '@/i18n/data-text';
+import { groupByCode, matchesCodeFilter, parseCodeFilter, parseCodeGroup, NO_CODE_VALUE_LABEL } from '@/domain/activity-codes';
+import { ActivityCodesCard, ActivityCodesSection, CodeFilterBar } from '@/features/activity-codes/code-controls';
+import { supplierSchedulesView } from '@/features/supplier-schedules/model';
+import { SupplierPlanCard } from '@/features/supplier-schedules/supplier-plan-card';
+import { getActivityCodes } from '@/server/dal/activity-codes';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -88,15 +95,39 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
     const qs = u.toString();
     return qs ? `${base}?${qs}` : base;
   };
-  const keep = { act: act?.id, sel: !act && selParam && ids.has(selParam) ? selParam : undefined };
+  const codeParam = first(sp.code) || undefined;
+  const groupParam = first(sp.group) || undefined;
+  const keep = { act: act?.id, sel: !act && selParam && ids.has(selParam) ? selParam : undefined, code: codeParam, group: groupParam };
   const viewHrefs: Record<PlanView, string> = { structure: href({ view: 'structure', ...keep }), progress: href(keep) };
 
   // Collapse map (cookie), with the deep-linked activity's work package expanded (`openPlan`, logic 4093).
   const collapsed = parseCollapsed(jar.get(COLLAPSE_COOKIE)?.value);
   if (act) collapsed[act.wbs] = false;
 
-  const [todos, requests, trash] = await Promise.all([getPlanTodos(projectCode), getPlanRequests(projectCode), canSchedule ? listPlanTrash(projectCode) : []]);
-  const rows = planRowViews(planRows(data, todos), data, t, lang);
+  const [todos, requests, trash, codes, suppliers] = await Promise.all([
+    getPlanTodos(projectCode), getPlanRequests(projectCode), canSchedule ? listPlanTrash(projectCode) : [], getActivityCodes(projectCode), supplierSchedulesView(projectCode),
+  ]);
+  // R-204: filter and grouping by activity code. A filter keeps the WBS (work packages without a matching activity hidden); a
+  // grouping replaces the work packages by the code's values and shows the plan read-only.
+  const codeTypes = codes?.types ?? [];
+  const codeMap = codes?.map ?? {};
+  const codeFilter = parseCodeFilter(first(sp.code), codeTypes);
+  const codeGroup = parseCodeGroup(first(sp.group), codeTypes);
+  const shown = codeFilter ? data.activities.filter((a) => matchesCodeFilter(codeMap, a.id, codeFilter)) : data.activities;
+  const shownData = codeGroup
+    ? (() => {
+        const groups = groupByCode(shown, codeMap, codeGroup);
+        return {
+          ...data,
+          packages: groups.map((g, i) => ({ code: g.group.code, name: g.group.none ? t(NO_CODE_VALUE_LABEL) : g.group.label, position: i, ownerName: null, scope: null })),
+          activities: groups.flatMap((g) => g.activities.map((a) => ({ ...a, wbs: g.group.code }))),
+        };
+      })()
+    : codeFilter
+      ? { ...data, packages: data.packages.filter((p) => shown.some((a) => a.wbs === p.code)), activities: shown }
+      : data;
+  const grouped = !!codeGroup;
+  const rows = planRowViews(planRows(shownData, todos), shownData, t, lang);
   const displayed = settings?.displayed ?? null;
   // The project's data date (its own, else the business date — R-013).
   const dataDate = settings?.dataDate ?? (await businessToday());
@@ -162,13 +193,29 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
     drawer = (
       <ActivityDrawer
         view={view_}
-        closeHref={href({ view: view === 'structure' ? 'structure' : undefined, sel: act.id })}
+        closeHref={href({ view: view === 'structure' ? 'structure' : undefined, sel: act.id, code: codeParam, group: groupParam })}
         scheduleHref={screenHref('schedule', { code: projectCode })}
         t={t}
         code={projectCode}
         canEdit={canStructure}
         context={context}
         linkOptions={data.activities.filter((a) => a.id !== act.id).map((a) => `${a.id} · ${a.name}`)}
+        codes={
+          <ActivityCodesSection
+            code={projectCode}
+            activity={act.id}
+            types={codeTypes}
+            values={codeMap[act.id] ?? {}}
+            ties={(suppliers?.schedules ?? []).flatMap((x) =>
+              x.ties.filter((y) => y.activity === act.id).map((y) => {
+                const sa = x.activities.find((z) => z.code === y.supplier);
+                const lag = y.lag ? (y.lag > 0 ? `+${y.lag}` : `−${Math.abs(y.lag)}`) : '';
+                return y.direction === 'to_project' ? `${x.po}/${y.supplier} · ${sa?.name ?? ''} → FS${lag}` : `FS${lag} → ${x.po}/${y.supplier} · ${sa?.name ?? ''}`;
+              }),
+            )}
+            canEdit={canStructure}
+          />
+        }
       />
     );
   }
@@ -202,6 +249,7 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
           canSchedule={canSchedule}
           t={t}
         />
+        <CodeFilterBar types={codeTypes} filter={codeFilter ? `${codeFilter.type}~${codeFilter.value}` : ''} group={codeGroup?.key ?? ''} />
         <KpiGrid min={150}>
           {kpis.map((k) => (
             <KpiTile key={k.label} label={k.label} value={k.value} sub={k.sub} color={k.color} />
@@ -233,13 +281,22 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
             rows={rows}
             collapsed={collapsed}
             selected={selected}
-            canEdit={canStructure}
-            progressIds={progressIds}
-            canRemove={canSchedule}
+            canEdit={canStructure && !grouped}
+            progressIds={grouped ? [] : progressIds}
+            canRemove={canSchedule && !grouped}
             owners={data.owners.map((o) => ({ value: o.code, label: o.name }))}
-            hrefOf={{ base, query: view === 'structure' ? 'view=structure&' : '' }}
+            hrefOf={{
+              base,
+              query: `${view === 'structure' ? 'view=structure&' : ''}${codeParam ? `code=${encodeURIComponent(codeParam)}&` : ''}${groupParam ? `group=${encodeURIComponent(groupParam)}&` : ''}`,
+            }}
           />
         </div>
+        {view === 'structure' && (codeTypes.length > 0 || canStructure) && (
+          <SectionCard title={t('Activity codes')} hint={t('Filter and group the plan and the Gantt · assigned in the activity drawer')}>
+            <ActivityCodesCard code={projectCode} types={codeTypes} canEdit={canStructure} />
+          </SectionCard>
+        )}
+        {suppliers && suppliers.schedules.length > 0 && <SupplierPlanCard schedules={suppliers.schedules} ordersHref={screenHref('orders', { code: projectCode })} t={i18n.t} lang={lang} />}
         {canSchedule && (
           <RecentlyDeleted
             code={projectCode}

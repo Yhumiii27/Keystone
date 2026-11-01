@@ -3,7 +3,7 @@
 // (rows open the order drawer through `?po=`; "Send for approval" / "Approve & order" for editors) and the order
 // drawer. Server Component; the buttons are client islands.
 import { Cube } from '@phosphor-icons/react/dist/ssr';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { ClickableRow } from '@/components/app/ClickableRow';
 import { FilterBar, FilterChips, FilterGroup, FilterLabel, FilterNote } from '@/components/app/Filter';
 import { KpiGrid, KpiTile } from '@/components/app/Kpi';
@@ -21,9 +21,11 @@ export interface OrdersBodyProps {
   /** Edit controls allowed (not outside the workspace, not a read-only project). */
   canEdit: boolean;
   t: T;
+  /** R-204: supplier schedule section of the open order's drawer. */
+  supplierSchedule?: ReactNode;
 }
 
-export function OrdersBody({ view, canEdit, t }: OrdersBodyProps) {
+export function OrdersBody({ view, canEdit, t, supplierSchedule }: OrdersBodyProps) {
   return (
     <Stack>
       <KpiGrid>
@@ -116,7 +118,7 @@ export function OrdersBody({ view, canEdit, t }: OrdersBodyProps) {
         {view.empty && <span className={s.empty}>{view.empty}</span>}
       </SectionCard>
 
-      {view.drawer && <OrderDrawer code={view.code} view={view.drawer} canEdit={canEdit} t={t} />}
+      {view.drawer && <OrderDrawer code={view.code} view={view.drawer} canEdit={canEdit} t={t} supplierSchedule={supplierSchedule} />}
     </Stack>
   );
 }

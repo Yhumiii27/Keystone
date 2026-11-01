@@ -50,7 +50,9 @@ export function GanttActivityDialog({ activity: a, network, dates, editable, pen
   const [error, setError] = useState<string | null>(null);
   const preds = network.links.filter((l) => l.succ === a.id);
   const succs = network.links.filter((l) => l.pred === a.id);
-  const others = network.activities.filter((x) => x.id !== a.id && !preds.some((l) => l.pred === x.id));
+  // R-204: supplier activities are tied on the purchase order, never linked here.
+  const isSupplier = (x: string) => !!network.activities.find((y) => y.id === x)?.source;
+  const others = network.activities.filter((x) => !x.source && x.id !== a.id && !preds.some((l) => l.pred === x.id));
   const [newPred, setNewPred] = useState('');
   const [newType, setNewType] = useState<CpmLinkType>('FS');
   const [newLag, setNewLag] = useState('0');
@@ -137,7 +139,7 @@ export function GanttActivityDialog({ activity: a, network, dates, editable, pen
         <div className={s.dlgTitle}>{t('Predecessors')}</div>
         {preds.length === 0 && <div className={s.dlgMuted}>{t('No predecessor')}</div>}
         {preds.map((l) => (
-          <LinkRow key={`${l.pred}:${l.type}:${l.lag}`} link={l} other={nameOf(l.pred)} editable={editable} pending={pending} typeOptions={typeOptions} onSave={onEditLink} onRemove={onRemoveLink} />
+          <LinkRow key={`${l.pred}:${l.type}:${l.lag}`} link={l} other={nameOf(l.pred)} editable={editable && !isSupplier(l.pred)} pending={pending} typeOptions={typeOptions} onSave={onEditLink} onRemove={onRemoveLink} />
         ))}
         {editable && others.length > 0 && (
           <form

@@ -15,6 +15,7 @@ import {
   CALENDAR_EPOCH, WorkCalendar, addCalendarDays, calendarDaysBetween, isIsoDate, isoWeekday, type CalendarDef, type CalendarException, type IsoDate,
 } from './calendar';
 import { DEFAULT_CPM_OPTIONS, CpmCycleError, CpmInputError, detectCycle, linkKey, schedule, type CpmActivityInput, type CpmLinkType, type CpmOptions } from './cpm';
+import type { CodeType } from './activity-codes';
 import { actualsFromProgress } from './schedule-rollup';
 
 // ── Network ────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -65,6 +66,13 @@ export interface GanttActivity {
   baselineFinish: IsoDate | null;
   /** R-010: the activity's version token as the page read it (src/domain/record-version.ts), sent back by its edits. */
   version?: string;
+  /**
+   * R-204: purchase order number of a supplier activity (a node of a supplier schedule consolidated into the network); such an
+   * activity and its relationships are edited on the purchase order, never on the Gantt. Undefined for the project's activities.
+   */
+  source?: string;
+  /** R-204: the activity's codes (type key → value keys), for the Gantt's filter and grouping. */
+  codes?: Record<string, string[]>;
 }
 
 export interface GanttLink {
@@ -77,6 +85,8 @@ export interface GanttLink {
 export interface GanttPackage {
   code: string;
   name: string;
+  /** R-204: a supplier schedule (its code is the purchase order number), shown in the « Suppliers » band. */
+  supplier?: boolean;
 }
 
 export interface GanttNetwork {
@@ -91,6 +101,8 @@ export interface GanttNetwork {
   activities: GanttActivity[];
   links: GanttLink[];
   options?: Partial<CpmOptions>;
+  /** R-204: the project's activity code dictionary (filter and grouping of the rows). */
+  codeTypes?: CodeType[];
 }
 
 export type GanttCalendars = Record<string, WorkCalendar>;
@@ -171,7 +183,7 @@ export type GanttEdit =
   | { kind: 'editLink'; link: GanttLink }
   | { kind: 'removeLink'; pred: string; succ: string };
 
-export type GanttEditError = 'unknown' | 'complete' | 'started' | 'milestone' | 'date' | 'duration' | 'type' | 'lag' | 'self' | 'duplicate' | 'missing' | 'cycle';
+export type GanttEditError = 'unknown' | 'complete' | 'started' | 'milestone' | 'date' | 'duration' | 'type' | 'lag' | 'self' | 'duplicate' | 'missing' | 'supplier' | 'cycle';
 
 export type GanttEditResult = { ok: true; net: GanttNetwork; activity?: GanttActivity; link?: GanttLink } | { ok: false; error: GanttEditError; cycle?: string[] };
 
@@ -188,6 +200,7 @@ export const GANTT_EDIT_ERRORS: Record<Exclude<GanttEditError, 'cycle'>, string>
   self: 'An activity cannot be linked to itself',
   duplicate: 'This relationship already exists',
   missing: 'This relationship no longer exists',
+  supplier: 'Supplier activities and their ties are edited on the purchase order',
 };
 
 /** Latest date a Gantt edit accepts. */
@@ -225,6 +238,11 @@ export function applyGanttEdit(net: GanttNetwork, edit: GanttEdit, cals: GanttCa
   const ids = net.activities.map((a) => a.id);
   const find = (id: string) => net.activities.find((a) => a.id === id);
   const replace = (a: GanttActivity): GanttEditResult => ({ ok: true, net: { ...net, activities: net.activities.map((x) => (x.id === a.id ? a : x)) }, activity: a });
+  // R-204: supplier activities and the relationships that touch them are read-only here.
+  const supplier = (id: string) => !!find(id)?.source;
+  if ((edit.kind === 'move' || edit.kind === 'duration' || edit.kind === 'clearConstraint') && supplier(edit.id)) return { ok: false, error: 'supplier' };
+  if ((edit.kind === 'addLink' || edit.kind === 'editLink') && (supplier(edit.link.pred) || supplier(edit.link.succ))) return { ok: false, error: 'supplier' };
+  if (edit.kind === 'removeLink' && (supplier(edit.pred) || supplier(edit.succ))) return { ok: false, error: 'supplier' };
   switch (edit.kind) {
     case 'move': {
       const a = find(edit.id);

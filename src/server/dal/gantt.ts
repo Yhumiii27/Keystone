@@ -4,11 +4,14 @@ import 'server-only';
 // updateActivityLink, removeActivityLink) and "Reschedule" (src/server/dal/schedule.ts).
 import { and, asc, eq } from 'drizzle-orm';
 import { CRITICAL_FLOAT_DAYS } from '@/domain/schedule-rollup';
-import type { GanttActivity, GanttNetwork } from '@/domain/gantt-edit';
+import { schedule, type CpmResult } from '@/domain/cpm';
+import type { GanttActivity, GanttNetwork, GanttPackage } from '@/domain/gantt-edit';
+import { isConsolidated, supplierNodeId } from '@/domain/supplier-schedule';
 import type { SystemMessage } from '@/domain/system-messages';
 import { getDb } from '@/server/db/client';
 import { findPerson, nameOf, recordActivity, requireProject } from '@/server/db/helpers';
 import { projects, wbsNodes } from '@/server/db/schema';
+import { getActivityCodes } from './activity-codes';
 import { getBaselineActivities, getDisplayedBaselineCode } from './baselines';
 import { listCalendars, settingsHolidayDates } from './calendars';
 import { tokenOf } from './record-version';
@@ -17,10 +20,11 @@ import { loadScheduleNetwork } from './schedule-network';
 /** The project's Gantt network; null for an unknown project or a project without activities. */
 export async function getGanttNetwork(code: string): Promise<GanttNetwork | null> {
   const readAt = new Date();
-  const net = await loadScheduleNetwork(code);
+  // R-204: with the supplier schedules tied to the project (a « Suppliers » band, read-only here).
+  const net = await loadScheduleNetwork(code, undefined, { suppliers: true });
   if (!net || !net.activities.length) return null;
   const db = await getDb();
-  const [nodes, cals, holidays, blCode] = await Promise.all([
+  const [nodes, cals, holidays, blCode, codes] = await Promise.all([
     db
       .select({ code: wbsNodes.code, name: wbsNodes.name })
       .from(wbsNodes)
@@ -30,6 +34,7 @@ export async function getGanttNetwork(code: string): Promise<GanttNetwork | null
     listCalendars({ projectCode: code, includeInactive: true }),
     settingsHolidayDates(),
     getDisplayedBaselineCode(code),
+    getActivityCodes(code),
   ]);
   const snapshot = blCode ? await getBaselineActivities(code, blCode) : [];
   const bl = new Map(snapshot.map((r) => [r.activityCode, r]));
@@ -44,17 +49,48 @@ export async function getGanttNetwork(code: string): Promise<GanttNetwork | null
       critical: !complete && (a.critical ?? (a.totalFloatDays != null && a.totalFloatDays <= CRITICAL_FLOAT_DAYS)),
       totalFloat: complete ? null : a.totalFloatDays, baselineStart: b?.startDate ?? null, baselineFinish: b?.finishDate ?? null,
       version: tokenOf(a.version, readAt),
+      codes: codes?.map[a.code] ?? {},
     };
   });
+  // R-204: the supplier activities, dated by the consolidated network (as the last Reschedule would date them now); their
+  // "baseline" bars are the supplier's committed dates.
+  const tied = net.suppliers.filter((x) => isConsolidated(x.input));
+  const supplierPackages: GanttPackage[] = [];
+  if (tied.length) {
+    let r: CpmResult | null = null;
+    try {
+      r = schedule(net.input);
+    } catch {
+      r = null; // a loop or invalid input: the Plan's Reschedule says it; the band is left out
+    }
+    if (r)
+      for (const sch of tied) {
+        supplierPackages.push({ code: sch.poNumber, name: sch.supplierName, supplier: true });
+        for (const a of sch.activities) {
+          const id = supplierNodeId(sch.poNumber, a.code);
+          const x = r.activities[id];
+          if (!x) continue;
+          const complete = !!a.actualStart && !!a.actualFinish;
+          activities.push({
+            id, name: a.name, wbs: sch.poNumber, duration: a.durationDays, calendar: null, pct: complete ? 100 : a.percentComplete, remaining: null,
+            startDate: x.start, finishDate: x.finish, startActual: !!a.actualStart, finishActual: complete,
+            constraint: !a.actualStart && a.committedStart ? { type: 'SNET', date: a.committedStart } : null,
+            critical: !complete && x.critical, totalFloat: complete ? null : x.totalFloat, baselineStart: a.committedStart ?? a.committedFinish,
+            baselineFinish: a.committedFinish ?? a.committedStart, source: sch.poNumber, codes: { purchase_package: [sch.poNumber] },
+          });
+        }
+      }
+  }
   return {
     dataDate: net.dataDate, projectStart: net.input.projectStart ?? null, projectCalendar: net.projectCalendar,
     calendars: cals.map((c) => ({
       def: { code: c.code, name: c.name, workDays: c.workDays, hoursPerDay: c.hoursPerDay, holidaySet: c.holidaySet, useSettingsHolidays: c.useSettingsHolidays },
       settingsHolidays: holidays, exceptions: c.exceptions,
     })),
-    packages: nodes,
+    packages: [...nodes, ...supplierPackages],
     activities,
-    links: net.links.map((l) => ({ pred: l.pred, succ: l.succ, type: l.type, lag: l.lag })),
+    links: supplierPackages.length ? net.input.links.map((l) => ({ pred: l.pred, succ: l.succ, type: l.type, lag: l.lag })) : net.links.map((l) => ({ pred: l.pred, succ: l.succ, type: l.type, lag: l.lag })),
+    codeTypes: codes?.types ?? [],
     options: net.input.options,
   };
 }

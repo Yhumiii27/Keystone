@@ -1,0 +1,19 @@
+/* R-204 — activity codes (Plan filter bar, dictionary card, drawer section). Drawer rows follow the Plan drawer (plan.module.css). */
+.bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.barIcon { color: var(--color-neutral-400); }
+.hint { font-size: 12px; color: var(--color-neutral-400); }
+.list { display: flex; flex-direction: column; gap: 12px; }
+.type { display: flex; flex-direction: column; gap: 6px; }
+.typeHead { display: flex; align-items: center; gap: 10px; }
+.typeName { font-size: 13px; font-weight: 500; }
+.kind { font-size: 11.5px; color: var(--color-neutral-400); }
+.values { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.value { display: inline-flex; align-items: center; gap: 4px; }
+.remove { display: inline-flex; padding: 0; border: 0; background: none; color: var(--color-neutral-400); cursor: pointer; }
+.remove:hover { color: var(--color-text); }
+.remove:focus-visible { outline: 2px solid var(--color-accent); border-radius: 2px; }
+.section { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.kicker { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent); margin-bottom: 4px; }
+.kv { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 12.5px; padding: 3px 0; border-bottom: 1px solid var(--color-neutral-900); }
+.kvKey { color: var(--color-neutral-400); font-size: 12.5px; }
+.kvVal { font-variant-numeric: tabular-nums; text-align: right; color: var(--color-text); font-size: 12.5px; }

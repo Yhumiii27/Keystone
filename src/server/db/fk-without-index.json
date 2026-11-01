@@ -219,6 +219,7 @@
   "supplier_invoices.decided_by_person_id": "who acted: shown with its row, never searched by it; persons are never deleted (no foreign-key check to serve)",
   "supplier_invoices.receipt_id": "link to goods_receipts read from this side (the row carries it): the screens read these rows through their project or parent key, indexed; a goods_receipts row is rarely deleted",
   "supplier_invoices.supplier_id": "reference value (suppliers): a short list read whole, never deleted while in use",
+  "supplier_schedules.created_by_person_id": "who acted: shown with its row, never searched by it; persons are never deleted (no foreign-key check to serve)",
   "task_attachments.file_id": "attached file: read from its row, files are pruned by their own key",
   "task_attachments.uploaded_by_person_id": "who acted: shown with its row, never searched by it; persons are never deleted (no foreign-key check to serve)",
   "task_comments.author_person_id": "who acted: shown with its row, never searched by it; persons are never deleted (no foreign-key check to serve)",

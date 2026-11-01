@@ -1,7 +1,7 @@
 // Field model of the generic add-form dialog (docs/spec/01 §8.2). Pure helpers, shared by FormDialog and
 // by whoever builds form definitions from the prototype `AF` catalogue (server or client).
 
-export type FormFieldType = 'text' | 'number' | 'textarea' | 'select';
+export type FormFieldType = 'text' | 'number' | 'textarea' | 'select' | 'date';
 export type FormOption = string | { value: string; label: string };
 
 export interface FormFieldDef {

@@ -250,6 +250,14 @@
   {
    "date": "2026-11-01",
    "text": "R-205, R-206, R-208 faits ; R-203 : tableaux de bord configurables faits, Power BI attend Matrix et la DSI."
+  },
+  {
+   "date": "2026-11-01",
+   "text": "R-204 lancé : planning multi-niveaux (codes d’activité, plannings fournisseurs)."
+  },
+  {
+   "date": "2026-11-01",
+   "text": "R-204 fait : planning multi-niveaux (codes d’activité, plannings fournisseurs consolidés)."
   }
  ],
  "items": [
@@ -5998,8 +6006,9 @@
     "src/server/db/schema/purchasing.ts"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": "01/11/2026 (K-204) : lancé en entier (plannings fournisseurs consolidés et codes d’activité) ; construit après le diagnostic du planning."
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "01/11/2026 : codes d’activité (équipement et lot d’achat déduits, site et types libres) avec filtre et regroupement sur le Plan et le Gantt ; plannings fournisseurs par commande consolidés dans le CPM (rattachements fin-début), suivi de l’avancement et du glissement fournisseur (migration 0074). Options non faites : filtre par code sur la qualité du planning, alerte de glissement fournisseur."
    }
   },
   {

@@ -11,7 +11,9 @@ import { getDb, type DB, type Tx } from '@/server/db/client';
 import { isConstraintType, type ScheduleRunOutcome } from '@/server/db/codes';
 import { findPerson, nameOf } from '@/server/db/helpers';
 import { activities, activityLinks, projects, scheduleRuns, wbsNodes } from '@/server/db/schema';
+import { consolidateNetwork } from '@/domain/supplier-schedule';
 import { loadWorkCalendars } from './calendars';
+import { supplierSchedulesOf, type SupplierScheduleRow } from './supplier-schedules';
 
 type Q = DB | Tx;
 
@@ -60,8 +62,24 @@ export interface ScheduleNetwork {
   calendars: Record<string, WorkCalendar>;
   activities: NetworkActivity[];
   links: NetworkLink[];
-  /** Ready for `schedule()` (activity ids are the activity codes). */
+  /**
+   * Ready for `schedule()` (activity ids are the activity codes). With `{ suppliers: true }` it also holds the supplier schedules
+   * tied to the project (R-204: nodes "PO-1082/F10" after the project's activities, see `sources`).
+   */
   input: CpmInput;
+  /** R-204: the project's supplier schedules (loaded with `{ suppliers: true }`, else []). */
+  suppliers: SupplierScheduleRow[];
+  /** R-204: supplier node id → purchase order number, for the nodes `input` holds. */
+  sources: Record<string, string>;
+}
+
+/**
+ * R-204: the engine input with these project activities (e.g. after progress), the project's links and, when the network was
+ * loaded with its supplier schedules, the tied ones consolidated (src/domain/supplier-schedule.ts).
+ */
+export function networkInput(net: ScheduleNetwork, projectActivities: CpmActivityInput[]): CpmInput {
+  const base: CpmInput = { ...net.input, activities: projectActivities, links: net.links.map((l): CpmLinkInput => ({ pred: l.pred, succ: l.succ, type: l.type, lag: l.lag })) };
+  return net.suppliers.length ? consolidateNetwork(base, net.suppliers.map((s) => s.input)).input : base;
 }
 
 /** Activity → engine input: actual dates from the "A" flags, constraint from type + ISO date (unknown types are ignored). */
@@ -74,14 +92,14 @@ export function toCpmActivity(a: NetworkActivity): CpmActivityInput {
 }
 
 /** The project's schedule network; null for an unknown project. Projects without activities give an empty network. */
-export async function loadScheduleNetwork(code: string, q?: Q): Promise<ScheduleNetwork | null> {
+export async function loadScheduleNetwork(code: string, q?: Q, opts: { suppliers?: boolean } = {}): Promise<ScheduleNetwork | null> {
   const db = q ?? (await getDb());
   const [p] = await db
     .select({ id: projects.id, code: projects.code, dataDate: projects.dataDate, calendar: projects.calendar, plannedStart: projects.plannedStartDate })
     .from(projects)
     .where(eq(projects.code, code));
   if (!p) return null;
-  const [rows, linkRows, calendars] = await Promise.all([
+  const [rows, linkRows, calendars, suppliers] = await Promise.all([
     db
       .select({ a: activities, wbs: wbsNodes.code })
       .from(activities)
@@ -90,6 +108,7 @@ export async function loadScheduleNetwork(code: string, q?: Q): Promise<Schedule
       .orderBy(asc(activities.position)),
     db.select().from(activityLinks).where(eq(activityLinks.projectId, p.id)).orderBy(asc(activityLinks.successorId), asc(activityLinks.position)),
     loadWorkCalendars(code, q),
+    opts.suppliers ? supplierSchedulesOf(db, p.id) : Promise.resolve([] as SupplierScheduleRow[]),
   ]);
   const codeOf = new Map(rows.map(({ a }) => [a.id, a.code]));
   const acts: NetworkActivity[] = rows.map(({ a, wbs }) => ({
@@ -107,11 +126,12 @@ export async function loadScheduleNetwork(code: string, q?: Q): Promise<Schedule
     .map((l): NetworkLink => ({ dbId: l.dbId, pred: l.pred, succ: l.succ, type: l.type, lag: l.lag, isDriving: l.isDriving }));
   const dataDate = projectDataDate(p, await businessToday(db));
   const projectCalendar = projectCalendarCode(p);
-  const input: CpmInput = {
+  const projectInput: CpmInput = {
     dataDate, projectStart: p.plannedStart, projectCalendar, calendars, activities: acts.map(toCpmActivity),
     links: links.map((l): CpmLinkInput => ({ pred: l.pred, succ: l.succ, type: l.type, lag: l.lag })), options: CPM_DEFAULTS,
   };
-  return { projectId: p.id, projectCode: p.code, dataDate, projectCalendar, calendars, activities: acts, links, input };
+  const { input, sources } = suppliers.length ? consolidateNetwork(projectInput, suppliers.map((s) => s.input)) : { input: projectInput, sources: {} };
+  return { projectId: p.id, projectCode: p.code, dataDate, projectCalendar, calendars, activities: acts, links, input, suppliers, sources };
 }
 
 export interface ScheduleRunInput {

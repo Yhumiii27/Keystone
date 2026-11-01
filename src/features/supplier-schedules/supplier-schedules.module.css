@@ -1,0 +1,33 @@
+/* R-204 — supplier schedules (order drawer section, Plan card). Nocturne tokens only. */
+.section { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--color-neutral-900); min-width: 0; }
+.head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.kicker { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-400); }
+.muted { font-size: 12.5px; color: var(--color-neutral-400); }
+.buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.scroll { overflow-x: auto; min-width: 0; }
+.code { color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nowrap { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.late { color: var(--color-accent-300); }
+.lateRow td:first-child { box-shadow: inset 2px 0 0 var(--color-accent-500); }
+.warnIcon { vertical-align: -2px; margin-right: 4px; }
+.rowActions { display: flex; gap: 4px; align-items: center; justify-content: flex-end; white-space: nowrap; }
+.cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.sub { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-neutral-500); }
+.line { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12.5px; min-width: 0; }
+.rel { font-weight: 500; color: var(--color-neutral-300); margin: 0 4px; }
+
+/* Plan card */
+.card { display: flex; flex-direction: column; gap: 8px; }
+.item { border: 1px solid var(--color-neutral-900); border-radius: var(--radius-md); padding: 8px 12px; }
+.item > summary { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; cursor: pointer; font-size: 13px; list-style: none; }
+.item > summary::-webkit-details-marker { display: none; }
+.item[open] > summary { margin-bottom: 8px; }
+.po { font-weight: 500; font-variant-numeric: tabular-nums; }
+.spacer { flex: 1; }
+.link { font-size: 12.5px; color: var(--color-accent-300); }
+
+@media (max-width: 640px) {
+  .cols { grid-template-columns: 1fr; }
+}
