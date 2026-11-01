@@ -34,7 +34,7 @@ describe('buildSidebar (docs/spec/01 §4.3–4.6)', () => {
 
   it('defaults: Project open with Steering group open, other sections closed with counts/badges', () => {
     const m = buildSidebar({ ...base, role: 'director', active: 'home' });
-    expect(m.fixed.map((e) => e.id)).toEqual(['home', 'myprojects', 'mywork', 'myapprovals', 'docs']);
+    expect(m.fixed.map((e) => e.id)).toEqual(['home', 'myprojects', 'mywork', 'myapprovals', 'dashboards', 'docs']); // R-203: My dashboards (internal roles)
     const project = m.sections.find((s) => s.key === 'project')!;
     expect(project.open).toBe(true);
     const groups = project.rows.filter((r) => r.kind === 'group');

@@ -1,5 +1,5 @@
 // Screen registry ↔ App Router (Delivery 5: all 59 screens built; 60 with the Machine catalogue, owner 25 Oct 2026; 61 with
-// the project's Shipments, R-158). Every registry screen has its own route file, so
+// the project's Shipments, R-158; 62 with My dashboards, R-203). Every registry screen has its own route file, so
 // the catch-all "This module is being built" pages are unreachable from the navigation (they only 404 unknown paths).
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -28,7 +28,7 @@ function pageFileOf(slug: string, scope: string): string | null {
 
 describe('screen registry', () => {
   it('has 61 screens, all built', () => {
-    expect(SCREENS).toHaveLength(61);
+    expect(SCREENS).toHaveLength(62);
     expect(SCREENS.filter((s) => !s.built).map((s) => s.id)).toEqual([]);
   });
 
