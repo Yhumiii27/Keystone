@@ -6,7 +6,7 @@
 // assignee, or the portfolio director viewing someone's work, R-9 b) drags a card to another column, or uses its "Move to…"
 // menu (keyboard and touch path, tablet-sized rows); the status changes with the same coupling as the task sheet (done ⇒
 // 100 %), a toast confirms, the focus comes back to the moved card. Read-only boards keep plain link cards.
-import { ArrowFatUp, ArrowsLeftRight, CaretLeft, CaretRight, CheckSquare, Clock } from '@phosphor-icons/react/dist/ssr';
+import { ArrowFatUp, ArrowsClockwise, ArrowsLeftRight, CaretLeft, CaretRight, CheckSquare, Clock } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useOptimistic, useRef, useState, useTransition, type CSSProperties, type DragEvent, type MouseEvent } from 'react';
@@ -167,6 +167,7 @@ function TaskRowItem({ item: x, onToggle }: { item: WorkItemData; onToggle?: (id
             {x.title}
           </Link>
           {x.fresh && <span className={cx('tag', 'tag-accent', s.mini)}>{x.fresh}</span>}
+          <RepeatMark item={x} />
         </span>
         <div className={s.meta}>
           <span className={cx('tag', 'tag-neutral', s.mini)}>{x.project}</span>
@@ -242,7 +243,9 @@ function WorkBoard({ items, onMove }: { items: WorkItemData[]; onMove?: (id: str
               <MovableCard key={x.id} item={x} onMove={onMove} />
             ) : (
               <Link key={x.id} href={x.href} className={cx('card', s.boardCard)}>
-                <span className={cx(s.cardTitle, x.status === 'done' && s.strike)}>{x.title}</span>
+                <span className={cx(s.cardTitle, x.status === 'done' && s.strike)}>
+                  {x.title} <RepeatMark item={x} />
+                </span>
                 <BoardCardBody item={x} />
               </Link>
             ),
@@ -308,6 +311,7 @@ function MovableCard({ item: x, onMove }: { item: WorkItemData; onMove: (id: str
         <Link href={x.href} draggable={false} className={cx(s.cardTitle, s.cardLink, x.status === 'done' && s.strike)}>
           {x.title}
         </Link>
+        <RepeatMark item={x} />
         <Popover
           trigger={<ArrowsLeftRight aria-hidden />}
           triggerLabel={`${t('Move to…')} · ${x.id}`}
@@ -363,7 +367,9 @@ function WorkCalendar({ items, week, hrefs }: { items: WorkItemData[]; week: num
         {bars.map((b) => (
           <div key={b.task.id} className={s.calRow}>
             <Link href={b.task.href} className={s.calLabel}>
-              <span className={s.calLabelTitle}>{b.task.title}</span>
+              <span className={s.calLabelTitle}>
+                {b.task.title} <RepeatMark item={b.task} />
+              </span>
               <span className={s.calLabelSub}>
                 {b.task.project} · {hoursText(b.task.loggedH, b.task.estimateH)}
               </span>
@@ -392,5 +398,17 @@ function WorkCalendar({ items, week, hrefs }: { items: WorkItemData[]; week: num
         </div>
       </div>
     </div>
+  );
+}
+
+/** R-201: the mark of a recurring task (list, board, calendar) — its rule in words on hover and for screen readers. */
+function RepeatMark({ item }: { item: Pick<WorkItemData, 'repeat'> }) {
+  const { t } = useI18n();
+  if (!item.repeat) return null;
+  const label = `${t('Recurring task')} · ${item.repeat}`;
+  return (
+    <span className={s.repeat} role="img" aria-label={label} title={label}>
+      <ArrowsClockwise aria-hidden />
+    </span>
   );
 }

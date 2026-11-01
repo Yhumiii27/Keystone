@@ -1,7 +1,7 @@
 # Livraison 9 — lot « r203-dashboards » (R-203, K-203) : tableaux de bord configurables par l’utilisateur
 
-Cadrage du 1er nov. 2026 (`docs/DECISIONS.md` § « Cadrage des prochains lots », K-203 : « Lancer »). Migration **0070**
-(`0070_dashboards.sql`, numéro à recaler à l’intégration). K-203b (Power BI par les vues `pub_`) est traité à part avec
+Cadrage du 1er nov. 2026 (`docs/DECISIONS.md` § « Cadrage des prochains lots », K-203 : « Lancer »). Migration **0072**
+(`0072_dashboards.sql`, numéro à recaler à l’intégration). K-203b (Power BI par les vues `pub_`) est traité à part avec
 Matrix et la DSI : **hors de ce lot**.
 
 ## 1. Ce qui est construit
@@ -76,7 +76,7 @@ montre déjà (`src/server/dal/dashboard-data.ts`).
 ### Données
 
 - Tables `dashboards` (propriétaire = compte utilisateur, nom, disposition jsonb, défaut — un seul par propriétaire, index
-  unique partiel) et `dashboard_shares` (tableau de bord, utilisateur). Migration **0070**. Cascade à la suppression du compte.
+  unique partiel) et `dashboard_shares` (tableau de bord, utilisateur). Migration **0072**. Cascade à la suppression du compte.
 - Chaque création, renommage, changement de disposition, défaut, partage, copie, suppression écrit une ligne d’audit (R-168,
   avant / après, dispositions complètes) dans la zone « My dashboards ».
 

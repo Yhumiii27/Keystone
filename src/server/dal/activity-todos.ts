@@ -13,6 +13,7 @@ import { taskStatus, type TaskStatus } from '@/server/db/codes';
 import { findPerson, nameOf, nextNumber, requireProject, writeAudit } from '@/server/db/helpers';
 import { activities, persons, tasks, timeEntries } from '@/server/db/schema';
 import { notifyTasksAssigned } from './task-notices';
+import { createNextOccurrence } from './task-recurrence';
 
 export interface ActivityTodo {
   number: string;
@@ -115,6 +116,8 @@ export async function setActivityTodoDone(code: string, number: string, done: bo
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: number, change: `status: ${taskStatus.label(t.status)} → ${taskStatus.label(done ? 'done' : 'doing')}`,
       area: 'Tasks', entityType: 'task', entityId: t.id, projectId: t.projectId,
     });
+    // R-201: closing a recurring task creates its next occurrence.
+    if (done) await createNextOccurrence(tx, t, actorName, await businessToday());
   });
 }
 
