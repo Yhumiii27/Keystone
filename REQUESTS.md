@@ -67,6 +67,16 @@ Format d'une entrée :
 - Détails techniques : `matrix.pub_filiales` (lecteur `keystone_app`, droit déjà posé) : `code` (trois majuscules, `^[A-Z]{3}$`), `nom`, `zone_code`, `pays_iso2`, `devise`, `actif`. Contrôle : un `code3` égal au code d'une filiale active est réservé à cette filiale. Colonne `pub_clients.filiale_code` ajoutée en fin de vue (contrat `pub_`).
 - Validé par Guillaume le : 2026-10-23
 
+## [2026-10-30] Arche → Keystone — Démo alignée : CAPEX et besoin manquants dans la simulation d'Arche (K-14)
+- Statut : OUVERTE
+- Demande : dans la simulation d'Arche de Keystone (`src/server/integrations/capex/simulation.ts`) :
+  1. ajouter les CAPEX de démo d'Arche qui lui manquent : `CPX-APM-2025-01` (Four de vieillissement et ligne de finition, APM, Kénitra, phase 4 démarrage, mise en service le 01/07/2026), `CPX-SAI-2026-02` (Ligne de conditionnement aseptique, SAI, Kaolack, phase 1 cadrage) et `CPX-SAI-2026-03` (Centrale solaire du site de Thiès, SAI, phase 2 avant-projet) ;
+  2. ajouter le besoin `CPX-APM-2025-01/B01` (libellé libre « Ageing oven 2 × 6 m », sans fiche catalogue, quantité 1, statut `ordered`, commandé le 15/09/2025) ;
+  3. relier à ce besoin un projet de démo livré ou en garantie, dont le parc installé donne les machines des lignes de ramp-up d'Arche ;
+  4. planifier la SAT de RCF-019 (le critère K3 de `CPX-SAI-2026-01` dans Arche la lit) ;
+  5. si possible, remplacer RCF-019 (aménagement d'une clinique à Lyon) par un projet plus vraisemblable pour l'unité mobile `MEMU-16` d'une usine de tomates au Sénégal.
+- Justification : la démo du pilote d'Arche montre les deux applications côte à côte. Arche reprend déjà les lignes réelles de la démo de Keystone (catalogue EMP-40T / MEMU-16 / SPUR-2X, réponses RB-001 à RB-005, projet RCF-019 ; `src/server/integrations/keystone/keystone-demo.ts` du dépôt Arche). Sans ces ajouts, trois CAPEX de la démo d'Arche n'apparaissent pas dans la corbeille « Besoins des filiales » de Keystone, le four de CPX-APM-2025-01 n'a ni projet ni parc installé (ses lignes de ramp-up restent sans machines) et le critère K3 de CPX-SAI-2026-01 ne peut pas être montré rempli.
+- Détails techniques : uniquement le jeu de démonstration / la simulation, aucun changement de contrat des vues `pub_`. Les champs des CAPEX et du besoin suivent les colonnes de `arche.pub_capex` et `arche.pub_besoins_machines` déjà simulées (`docs/CONTRATS.md` du dépôt Arche ; valeurs exactes dans `src/server/db/seed/demo.ts` d'Arche, `DEMO_CAPEX`). Le projet relié au besoin publie `besoin_ref = 'CPX-APM-2025-01/B01'` et `capex_code = 'CPX-APM-2025-01'` dans `pub_projets`, et son parc installé dans `pub_parc_machines` (R-193). La SAT de RCF-019 est un jalon daté dans `pub_jalons_projets` (R-189).
 
 ## [2026-10-30] Matrix → Keystone — M-17 : accès entre outils décidés par Matrix (plus de copie de vue, écritures par API ou fonction `pub_`)
 - Statut : OUVERTE

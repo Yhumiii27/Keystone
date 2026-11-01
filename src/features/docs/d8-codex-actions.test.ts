@@ -83,7 +83,8 @@ describe('"Sync now" with Codex connected (R-033): the director only; the toast 
     vi.stubGlobal('fetch', fetch);
     const r = await syncCodexAction('HLT-026');
     if (p.role === 'director') {
-      expect(r).toEqual({ ok: true, toast: expect.stringMatching(/^Codex sync · index up to date · \d+ records · 0 sent · 0 pending · 0 refreshed$/) });
+      // L9-X3: the demo's three shipping-document deposits are delivered by the first sync.
+      expect(r).toEqual({ ok: true, toast: expect.stringMatching(/^Codex sync · index up to date · \d+ records · [03] sent · 0 pending · 0 refreshed$/) });
       expect(fetch).toHaveBeenCalled();
     } else {
       expect(r).toEqual({ error: 'Only the portfolio director synchronises the Codex index' });

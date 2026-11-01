@@ -1,6 +1,6 @@
 # Keystone PM — reste à développer
 
-Inventaire initial du 2026-10-10, mis à jour le 2026-10-29 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
+Inventaire initial du 2026-10-10, mis à jour le 2026-10-31 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
 
 **Méthode.** Onze relectures indépendantes ont croisé les 195 décisions produit (`docs/DECISIONS.md`), les écarts et questions ouvertes de `DELIVERY-1.md` à `DELIVERY-6.md`, `docs/BACKLOG.md`, les marqueurs du code (TODO, simulations, constantes du prototype), la spécification fonctionnelle (`docs/spec/`) et la préparation à la production. Chaque point a ensuite été vérifié dans le code, catégorie par catégorie : ce qui existait déjà a été écarté (153 candidats), les doublons fusionnés, puis un contrôle de complétude a ajouté ce qui manquait. Le détail, avec les preuves relevées dans le code pour chaque point, est dans `docs/reste-a-developper.json` ; ce document et la page sont produits par `npm run remaining:page`.
 
@@ -8,32 +8,32 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-29 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 121 faits, 27 en cours, 61 à faire, sur 209 points.
+**Avancement** : 122 faits, 27 en cours, 61 à faire, sur 210 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
 | Bloquant production | 15 | ≈ 102 |
-| Prochaine étape | 20 | ≈ 168 |
+| Prochaine étape | 21 | ≈ 172 |
 | À décider | 36 | ≈ 329 |
-| Plus tard | 17 | ≈ 62 |
-| **Total** | **88** | **≈ 660** |
+| Plus tard | 16 | ≈ 60 |
+| **Total** | **88** | **≈ 662** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
-| Non commencé | 38 |
-| Partiel | 10 |
+| Non commencé | 39 |
+| Partiel | 9 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
 
 | Domaine | Bloquant production | Prochaine étape | À décider | Plus tard | Restants | Faits |
 |---|---:|---:|---:|---:|---:|---:|
-| Plateforme et mise en production | 6 | 3 | 0 | 2 | 11 | 15 |
+| Plateforme et mise en production | 6 | 4 | 0 | 2 | 12 | 15 |
 | Authentification, utilisateurs et droits | 1 | 0 | 2 | 0 | 3 | 14 |
 | Intégrations avec les autres systèmes | 5 | 6 | 4 | 5 | 20 | 6 |
 | Projets, cycle de vie et modèles par type de machine | 0 | 1 | 2 | 2 | 5 | 5 |
-| Planning | 1 | 0 | 6 | 1 | 8 | 4 |
+| Planning | 1 | 0 | 6 | 0 | 7 | 5 |
 | Coûts, contrat et finance | 0 | 2 | 3 | 0 | 5 | 13 |
 | Ressources et RH | 0 | 2 | 1 | 1 | 4 | 5 |
 | Achats et stock | 2 | 1 | 2 | 0 | 5 | 4 |
@@ -129,7 +129,7 @@ Décisions à prendre et données à fournir avant de pouvoir développer. Les q
 
 ## 2. Liste détaillée par domaine
 
-### 2.1 Plateforme et mise en production (11 restants, 15 faits)
+### 2.1 Plateforme et mise en production (12 restants, 15 faits)
 
 **R-003 · Héberger une instance multi-utilisateur (bêta puis production)** — *Bloquant production · partiel · effort M* · **en cours (Livraison 8)**  
 La PR #1 (ouverte, non fusionnée) apporte un Dockerfile Coolify : un seul conteneur next start sur le port 3000, PGlite et fichiers sur un volume /data. Il reste à la rebaser sur la livraison 6, construire et tester l’image, ajouter NEXT_PUBLIC_CODEX_URL aux arguments de build, configurer TLS et domaine, et protéger l’accès tant que l’authentification manque. Ensuite viennent la préproduction et la production avec PostgreSQL et un worker ; leur cible (Azure, serveur interne ou cloud) reste à décider. Analyse comparative du 25 oct. 2026 : l’hébergement d’une instance multi-utilisateur est un prérequis de production (bloquant), rappelé par l’analyse comparative ; aucun changement de priorité.  
@@ -167,13 +167,17 @@ Il n'existe aucune documentation pour les utilisateurs : le README et docs/ s'ad
 Les Paramètres (catégories de risques et de coûts, compétences, types de livrables, statuts, lieux de stockage), la grille de taux, les services et les clients viennent des constantes du prototype, et « Rétablir les valeurs par défaut » recharge SETTINGS0. Il faut que la direction fournisse les vraies listes et qu'une reprise les charge, en complément du démarrage sans données de démonstration.  
 *Avancement : Livraison 8 : coefficients de production en attente (valeurs provisoires) et fiche de collecte des données de référence ; vraies valeurs attendues de la direction. · Attend : Listes métier validées par la direction (catégories, compétences, taux, services, clients, lieux) · Sources : A-14, A-15, A-10, 10 §1 (Paramètres)*
 
+**R-210 · Application Windows (.exe) à côté de l’accès web** — *Prochaine étape · non commencé · effort M* · **en cours (Livraison 9)**  
+Le responsable produit (31 oct. 2026, questionnaire L9-X2) : l’accès web reste la solution pour accéder à Keystone de n’importe où ; une application Windows (.exe), installable par ceux qui le souhaitent, coexiste avec lui pour laisser le choix à l’utilisateur. Fenêtre native (WebView2) sur le serveur Keystone d’EPC2i, connexion Microsoft habituelle, sans serveur local.  
+*Avancement : 31 oct. 2026 : application construite (C# Windows Forms + WebView2, .NET 10, Keystone.exe autonome win-x64, docs/delivery-9/notes-r210-windows-app.md) ; compilée sous Linux, fabrication à la demande (windows-app.yml). Reste : essai sur un PC Windows avec un serveur hébergé (I-1a), signature de code et mode de diffusion (DSI). · Sources : Questionnaire de la livraison 9, L9-X2 (31 oct. 2026)*
+
 **R-018 · Mémoriser les préférences par utilisateur (langue, menu, projet, zone)** — *Plus tard · partiel · effort S*  
 Une fois l’authentification en place, stocker en base, par utilisateur, la langue (français par défaut, choix FR/EN suivant l’utilisateur sur tous ses postes, X-1), l’état du menu, le dernier projet, la zone et les préférences de notification, qui vivent aujourd’hui dans des cookies du navigateur.  
 *Attend : Authentification réelle et vrais comptes (R-038, R-039) · Sources : X-1, X-6b, 01 OQ1, 00 §7.2, DELIVERY-1.md §7*
 
 **R-019 · Adapter ou retirer l’application macOS Keystone.app** — *Plus tard · attend le responsable produit · effort S*  
 Keystone.app lance un serveur local avec sa propre base PGlite sur le port 3000. Avec un serveur hébergé, il faut soit la faire pointer vers l’URL du serveur (fenêtre WebKit seule), soit l’abandonner.  
-*Attend : Décision du responsable produit une fois l’hébergement choisi (I-1a) · Sources : I-1a*
+*Avancement : 31 oct. 2026 : le responsable produit garde le choix web ou application ; l’application macOS sera adaptée comme l’application Windows (R-210) pour pointer vers le serveur hébergé. · Attend : Décision du responsable produit une fois l’hébergement choisi (I-1a) · Sources : I-1a*
 
 **~~R-002 · Passer de PGlite à un serveur PostgreSQL~~** — *Bloquant production · non commencé · effort M* · **fait (Livraison 7)**  
 Remplacer PGlite (base embarquée, une seule connexion) par PostgreSQL serveur via drizzle-orm/node-postgres et un pool de connexions. Les migrations doivent tourner au déploiement et non au premier getDb() d’un processus, pour que plusieurs instances partagent la base.  
@@ -453,7 +457,7 @@ Les types de machine deviennent des fiches catalogue (variantes, options, capaci
 E-9 veut que la modification d’un type de machine ne touche que les nouveaux projets. Phases, lots et catégories sont copiés à la création, mais les systèmes ITP d’un projet existant sont relus en direct sur le type : il faut les copier dans le plan ITP à la création.  
 *Avancement : Livraison 8 : systèmes ITP figés dans le plan à sa création (assistant, données de démonstration, premier « Ajouter une inspection »), reprise des plans existants (E-9). · Sources : E-9, A-2, L-3a, DELIVERY-5.md §4*
 
-### 2.5 Planning (8 restants, 4 faits)
+### 2.5 Planning (7 restants, 5 faits)
 
 **R-060 · Gérer la date de situation par projet et le gel hebdomadaire du vendredi** — *Bloquant production · attend le responsable produit · effort L*  
 Écrire projects.data_date (date de situation par projet, que le CP fait avancer) et l’utiliser pour l’avancement et les coûts ; tous les lecteurs passent déjà par projectDataDate() et le Plan l’affiche déjà, il ne manque que l’écrivain. Un gel le vendredi doit enregistrer l’instantané de la semaine (Tendances : CPI, SPI, EAC, marge, risques ; période EVM ; avancement) : freezeSnapshot existe mais n’est jamais appelé, et l’historique des Tendances et de l’EVM vient uniquement du seed (contraire à A-15). Volet lié de S-4 : les retards, échéances et horodatages doivent suivre l’horloge réelle, alors que TODAY/STATUS_ISO restent figés au 25 sept. 2026 dans environ 46 fichiers.  
@@ -483,10 +487,6 @@ Modéliser les plannings fournisseurs (lots d’achat) dans le CPM et les consol
 Évaluer la qualité d’un planning avec les 14 contrôles DCMA (liens manquants, contraintes dures, marges négatives, durées longues, retards, liens début-fin…) et fournir une analyse forensique des retards (comparaison référence / actuel par activité, glissement du chemin critique). Fonction différenciante du marché (Deltek Acumen). Absent aujourd’hui. Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
 *Avancement : Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire. · Attend : Validation du responsable produit · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
-**R-064 · Corbeille du Plan : confirmer rétention et droits, purge planifiée** — *Plus tard · partiel · effort S* · **en cours (Livraison 9)**  
-La confirmation et l’annulation demandées en S-5 sont livrées. Reste à faire confirmer les limites (30 jours, 20 entrées par projet) et la règle qui réserve suppression et restauration au CP et au directeur. Côté technique, à faire sans attendre la réponse : purger par tâche planifiée plutôt qu’à la suppression suivante, et renuméroter les positions en double après une restauration.  
-*Avancement : Partie technique faite (purge planifiée toutes les heures par la tâche plan-trash-purge, positions après restauration) ; reste la confirmation S-5 : 30 jours, 20 entrées, suppression et restauration réservées au CP et au directeur. · Attend : Confirmation du responsable produit (DELIVERY-6 §8 S-5) · Sources : S-5, DELIVERY-6.md §6 Minor points, §8 S-5, docs/delivery-6/notes-planning.md §2, §3*
-
 **~~R-061 · Réserver la structure du planning au CP et au directeur~~** — *Prochaine étape · partiel · effort M* · **fait (Livraison 7)**  
 WBS, durées, budgets et liens ne sont modifiables que par le CP du projet et le directeur ; les responsables d’activité saisissent seulement l’avancement de leurs activités. Aujourd’hui ingénierie et qualité modifient le planning de tous les projets, et le membre n’a pas accès au Plan. Replanifier, références et suppression sont déjà limités au CP et au directeur.  
 *Sources : P-9a, 05 OQ7, DELIVERY-6.md §7 Plan removal rights*
@@ -498,6 +498,10 @@ En plus du lot, une CR peut citer, en option, les activités touchées et leur n
 **~~R-198 · Gantt interactif : glisser-déposer, zoom jour/semaine, édition des liens et des durées~~** — *Prochaine étape · non commencé · effort L* · **fait (Livraison 9)**  
 Rendre le Gantt du planning interactif : déplacer et redimensionner les activités par glisser-déposer, zoom jour / semaine / mois, création et édition des liens et des durées directement dans le diagramme, avec recalcul CPM immédiat. Standard du marché (Smartsheet, MS Project, Wrike). Aujourd’hui le Gantt est un rendu serveur en lecture seule à l’échelle mensuelle sur 13 mois (src/components/charts/project-gantt.tsx). Analyse comparative du 25 oct. 2026 : priorité P1, condition du remplacement de MS Project.  
 *Avancement : Gantt des activités interactif (zoom jour/semaine/mois, glisser-déposer, liens, recalcul CPM immédiat, saisie au clavier) ; questions ouvertes dans notes-r198-gantt.md § 5. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+
+**~~R-064 · Corbeille du Plan : confirmer rétention et droits, purge planifiée~~** — *Plus tard · partiel · effort S* · **fait (Livraison 9)**  
+La confirmation et l’annulation demandées en S-5 sont livrées. Reste à faire confirmer les limites (30 jours, 20 entrées par projet) et la règle qui réserve suppression et restauration au CP et au directeur. Côté technique, à faire sans attendre la réponse : purger par tâche planifiée plutôt qu’à la suppression suivante, et renuméroter les positions en double après une restauration.  
+*Avancement : S-5 confirmé le 31 oct. 2026 : 30 jours, 20 entrées par projet, suppression et restauration par les responsables du projet et le directeur ; purge planifiée toutes les heures et positions après restauration en place. · Sources : S-5, DELIVERY-6.md §6 Minor points, §8 S-5, docs/delivery-6/notes-planning.md §2, §3*
 
 **~~R-067 · Créer les tâches de suivi des actions de compte rendu avec l’échéance saisie~~** — *Plus tard · non commencé · effort M* · **fait (Livraison 8)**  
 À l’envoi du compte rendu, une action confiée à un externe (client, fournisseur) doit créer une tâche de suivi pour le responsable interne de la relation : stakeholders.owner_person_id, ou à défaut le CP. Toute tâche doit reprendre l’échéance saisie, déjà stockée dans meeting_lines.due_date, au lieu de J+3. Elle doit aussi reprendre l’activité liée, ce qui demande une colonne activity_id sur meeting_lines (migration) et un sélecteur d’activité dans le formulaire d’action.  
@@ -997,10 +1001,14 @@ Offrir un éditeur de règles si / alors (déclencheur, condition, action : noti
 
 **~~R-158 · Cadrer puis construire le module Expédition & transport~~** — *À décider · non commencé · effort XL* · **fait (9)**  
 Module demandé mais à cadrer avec le responsable produit avant construction : plan d’expédition (lots, colis, conteneurs et remplissage), fret (mode, Incoterm, transitaire, ETD/ETA, jalons), coûts imputés au budget, documents versés dans Codex (facture, packing list, EUR.1, CMR, B/L ou LTA, déclaration d’export), synthèse douane par code HS avec alerte double usage, et contrôle nomenclature ↔ packing list bloquant le livrable « Colisage & documents douaniers ». Les données articles (code HS, restriction et famille de contrôle export) existent déjà et ne sont aujourd’hui qu’affichées ; le livrable d’étape n’est qu’une case à cocher.  
-*Avancement : 25 oct. 2026 : le responsable produit redemande le module (« il manque un module de gestion des expéditions du matériel vers la filiale ») ; cadrage rédigé (docs/delivery-9/cadrage-r158-expeditions.md) : écran projet Expéditions, chargements et colis, contrôle colisage ↔ nomenclature, douane (codes HS), documents (packing list, proforma) versés dans Codex, réception sur site et réserves, jalons expedition / arrivee_site, vue pub_expeditions pour la filiale ; 8 points à valider. Même jour : choix tranchés (cadrage § 5) — vue projet seulement, transport d’après l’Incoterm du contrat, Keystone génère tous les documents sauf les factures, contrôle colisage bloquant, écart à la réception = réserve, suivi filiale dans Arche, nouveau profil Logistique, transitaires externes sans accès, Incoterms 2020 paramétrables, conteneurs et contenus déclarés par EPC2i ; construction lancée. Lot A fait (docs/delivery-9/notes-r158-shipments.md) : profil Logistique (10ᵉ), 11 Incoterms 2020 paramétrables (Paramètres) avec répartition vendeur / acheteur, Incoterm et lieu sur le contrat, écran projet Expéditions (EXP-nn, étapes d’après l’Incoterm, chargements et contenu déclarés, contrôle colisage ↔ nomenclature, synthèse par code SH), case « Colisage & documents douaniers » bloquée tant que le contrôle n’est pas soldé (migration 0061). Lot B : documents, réception sur site et réserves, jalons, pub_expeditions. 26 oct. 2026 : lot B fait — 8 documents générés sans facture (packing list, par conteneur, bon de livraison, marquage, CMR, instructions d’expédition, demande d’origine / EUR.1, déclaration d’export ; gabarits génériques remplaçables), versés dans Codex (type SHP, outbox de dépôt), réception sur site chargement par chargement (écart → réserve : endommagé A, manquant B), jalons expedition / arrivee_site de pub_jalons_projets nourris par les expéditions, vue pub_expeditions sans valeurs pour Arche, alerte retard de fret avec « Ouvrir un risque » (migrations 0063-0064). Reste : formats standard EPC2i, API de dépôt Codex, copie des vues dans Matrix. · Sources : BACKLOG.md §1, DELIVERY-6.md §9, CLAUDE.md, E-1b, A-1a*
+*Avancement : 25 oct. 2026 : le responsable produit redemande le module (« il manque un module de gestion des expéditions du matériel vers la filiale ») ; cadrage rédigé (docs/delivery-9/cadrage-r158-expeditions.md) : écran projet Expéditions, chargements et colis, contrôle colisage ↔ nomenclature, douane (codes HS), documents (packing list, proforma) versés dans Codex, réception sur site et réserves, jalons expedition / arrivee_site, vue pub_expeditions pour la filiale ; 8 points à valider. Même jour : choix tranchés (cadrage § 5) — vue projet seulement, transport d’après l’Incoterm du contrat, Keystone génère tous les documents sauf les factures, contrôle colisage bloquant, écart à la réception = réserve, suivi filiale dans Arche, nouveau profil Logistique, transitaires externes sans accès, Incoterms 2020 paramétrables, conteneurs et contenus déclarés par EPC2i ; construction lancée. Lot A fait (docs/delivery-9/notes-r158-shipments.md) : profil Logistique (10ᵉ), 11 Incoterms 2020 paramétrables (Paramètres) avec répartition vendeur / acheteur, Incoterm et lieu sur le contrat, écran projet Expéditions (EXP-nn, étapes d’après l’Incoterm, chargements et contenu déclarés, contrôle colisage ↔ nomenclature, synthèse par code SH), case « Colisage & documents douaniers » bloquée tant que le contrôle n’est pas soldé (migration 0061). Lot B : documents, réception sur site et réserves, jalons, pub_expeditions. 26 oct. 2026 : lot B fait — 8 documents générés sans facture (packing list, par conteneur, bon de livraison, marquage, CMR, instructions d’expédition, demande d’origine / EUR.1, déclaration d’export ; gabarits génériques remplaçables), versés dans Codex (type SHP, outbox de dépôt), réception sur site chargement par chargement (écart → réserve : endommagé A, manquant B), jalons expedition / arrivee_site de pub_jalons_projets nourris par les expéditions, vue pub_expeditions sans valeurs pour Arche, alerte retard de fret avec « Ouvrir un risque » (migrations 0063-0064). Reste : formats standard EPC2i, API de dépôt Codex. Vues pub_expeditions et pub_jalons_projets recopiées et accordées par Matrix (29 oct. 2026). 31 oct. 2026 (L9-X3) : la démonstration contient trois documents d’EXP-01 versés dans Codex (packing list, CMR, bon de livraison : SHP-HLT-040 à 042, dépôts en attente de synchro). · Sources : BACKLOG.md §1, DELIVERY-6.md §9, CLAUDE.md, E-1b, A-1a*
 
 ## 3. Mises à jour
 
+- 2026-10-31 — R-210 : application Windows construite (en attente d’un essai sur PC Windows et de l’hébergement).
+- 2026-10-31 — L9-X3 fait : documents d’expédition pré-versés dans Codex dans la démonstration.
+- 2026-10-31 — Questionnaire de la livraison 9 : 20 choix par défaut confirmés ; démo avec documents d’expédition versés dans Codex (L9-X3) ; portail des filiales = Arche, accès web gardé et application Windows validée (R-210, nouvel item).
+- 2026-10-31 — R-064 fait (S-5 confirmé : 30 jours, 20 entrées, CP et directeur) ; vérifié que Matrix a recopié et accordé pub_pack_ingenierie, pub_expeditions et la nouvelle pub_jalons_projets (29 oct.).
 - 2026-10-29 — R-157, R-154 et R-183 faits : finitions d’ergonomie, couleurs de statut harmonisées, accessibilité WCAG 2.1 AA avec contrôles axe.
 - 2026-10-29 — R-010 fait : verrouillage optimiste des fiches (« modifiée entre-temps par X »), numérotation et contrôles sûrs en concurrence (migrations 0068-0069).
 - 2026-10-29 — R-051 fait : suppléance des validations sur une période ; R-064 : partie technique vérifiée, attend S-5.

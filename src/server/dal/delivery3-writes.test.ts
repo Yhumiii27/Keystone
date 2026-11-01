@@ -113,7 +113,7 @@ describe('Codex vault writers', () => {
       confidentiality: 'internal', tagsText: 'PO-2026-118 · CR-RAIL-A100', isNew: true, dateText: '25 Sep', // R-013: the business date, not Codex's 29 Sep
     });
     expect(all[0].links.map((l) => [l.kindLabel, l.ref])).toEqual([['Purchase order', 'PO-2026-118'], ['Article', 'CR-RAIL-A100']]);
-    expect((await getCodexSyncState())!.records).toBe(413);
+    expect((await getCodexSyncState())!.records).toBe(416); // L9-X3: 412 + the demo's 3 shipping documents + this one
     expect(await depositInCodex({ typeCode: 'PID', project: 'HLT-026', revisionOf: 'PID-HLT-026' }, 'Pauline Noguès')).toEqual({ number: 'PID-HLT-026', created: false });
     const pid = (await getDocumentRecord('PID-HLT-026'))!;
     expect([pid.status, pid.revision, pid.shared, pid.approvals.map((a) => a.signed)]).toEqual(['draft', 'D', false, [true, false, false]]);
@@ -218,7 +218,7 @@ describe('meetings writers', () => {
 
 describe('stakeholders, interfaces, prioritisation writers', () => {
   it('add a stakeholder: owner normalised to the short name, last contact on the business date (25 Sep), notes "New"', async () => {
-    await addStakeholder('HLT-026', { name: 'Yves Morel', organisation: 'Bureau Veritas', role: 'Inspector', type: 'third_party', contactEmail: 'y.morel@bv.com', owner: 'Amélie Ollivier' }, 'Romain Aubert');
+    await addStakeholder('HLT-026', { name: 'Yves Morel', organisation: 'Bureau Veritas', role: 'Inspector', type: 'third_party', contactEmail: 'y.morel@controle-exemple.com', owner: 'Amélie Ollivier' }, 'Romain Aubert');
     const r = (await getStakeholderRegister('HLT-026')).stakeholders.at(-1)!;
     // R-013: last contact = the business date (25 Sep 2026 on the demo data set), not the prototype's 30 Sep.
     expect(r).toMatchObject({ name: 'Yves Morel', owner: 'A. Ollivier', lastText: '25 Sep', notes: 'New', stale: false, typeLabel: 'Third party', initials: 'YM' });

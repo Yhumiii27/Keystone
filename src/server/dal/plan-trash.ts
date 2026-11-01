@@ -17,7 +17,7 @@ import 'server-only';
 //
 // Purge rule: each new removal on a project first purges that project's trash rows older than PLAN_TRASH_RETENTION_DAYS (real
 // clock, S-4: timestamps follow the real clock) and keeps at most PLAN_TRASH_MAX_ENTRIES; an expired row can no longer be restored.
-// Both values are S-5 defaults still to be confirmed by the owner (src/domain/ch4-defaults.ts).
+// Both values are the S-5 rules confirmed by the owner on 31 Oct 2026 (src/domain/ch4-defaults.ts).
 //
 // Positions (R-064, "ghost slots"): work packages and activities share one position sequence per project. A removed row keeps
 // its slot: a writer that opens a slot below it (insertActivity) shifts the positions stored in the trash with the live rows

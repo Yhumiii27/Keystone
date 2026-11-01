@@ -50,8 +50,8 @@ export function nextBaselineCode(existing: readonly string[]): string {
 }
 
 // ── S-5 plan trash ────────────────────────────────────────────────────────────────────────────────────────────────────
-// Unconfirmed by the owner (DELIVERY-6 §8 S-5, R-064): the retention, the number of entries kept and who may remove and
-// restore. The rights rule stays with the Plan's rights (src/features/plan/rights.ts `canSchedulePlan` = `canEditPlanStructure`
+// Confirmed by the owner on 31 Oct 2026 (DELIVERY-6 §8 S-5, R-064): 30 days, 20 entries per project, removal and restore by
+// the project's PMs and the director. The rights rule stays with the Plan's rights (src/features/plan/rights.ts `canSchedulePlan` = `canEditPlanStructure`
 // of src/domain/rights.ts: the project's PMs and the director); the trash itself is src/server/dal/plan-trash.ts.
 /** Days a removal stays restorable ("Recently deleted"); older entries are purged (next removal, "plan-trash-purge" job). */
 export const PLAN_TRASH_RETENTION_DAYS = 30;

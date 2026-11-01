@@ -1,5 +1,5 @@
 // R-158 lot B against the seeded in-memory demo database, with the real session ("View as" cookie) and project context: the demo
-// (EXP-01 arrived, partial reception, one punch item, two documents filed), the reception rights for the 10 personas, the pointing
+// (EXP-01 arrived, partial reception, one punch item, three documents filed in Codex — L9-X3), the reception rights for the 10 personas, the pointing
 // and its punch items (raised, withdrawn), the reception completed, the manual closure refused without a reason, the automatic
 // closure with the last punch item, the shipping documents (8 templates, values masked for a viewer who may not see them, filing in
 // Codex: index record and new revision, stored file, pending deposit), pub_expeditions and the milestones, the freight-delay risk.
@@ -62,7 +62,7 @@ afterAll(() => {
 });
 
 describe('the demo (R-158 lot B)', () => {
-  it('EXP-01 picked up 21 Sep, arrived 22 Sep, partially pointed; one damaged camera → one punch item on EQ-02; nothing filed yet', async () => {
+  it('EXP-01 picked up 21 Sep, arrived 22 Sep, partially pointed; one damaged camera → one punch item on EQ-02; three documents filed', async () => {
     const s = await shipment('EXP-01');
     expect([s.status, s.atd, s.ata, s.receivedOn]).toEqual(['arrived', '2026-09-21', '2026-09-22', null]);
     expect(Object.values(s.reception.loads).map((l) => l.state)).toEqual(['received', 'received']);
@@ -72,7 +72,29 @@ describe('the demo (R-158 lot B)', () => {
     expect(s.punch).toEqual([{ number: 'P-10', status: 'open', category: 'B', gap: 'damaged', loadId: s.loads[1].id, itemId: cam.id, quantity: 1 }]);
     const punch = (await listPunchItems(HLT)).find((p) => p.number === 'P-10')!;
     expect([punch.origin, punch.source, punch.equipmentRef, punch.category]).toEqual(['site', 'reception', 'EQ-02', 'B']);
-    expect(s.documents).toEqual([]);
+    // L9-X3 (owner, 31 Oct 2026): the packing list (17 Sep), the CMR and the delivery note (21 Sep) filed in Codex by the
+    // logistics coordinator, in French, through the real filing: index record rev A released, PDF kept, deposit pending sync.
+    expect(s.documents.map((d) => [d.kind, d.number, d.revision, d.sync, d.generatedAt.slice(0, 10), d.by]).sort()).toEqual([
+      ['cmr', 'SHP-HLT-041', 'A', 'pending', '2026-09-21', 'Camille Verdier'],
+      ['delivery_note', 'SHP-HLT-042', 'A', 'pending', '2026-09-21', 'Camille Verdier'],
+      ['packing_list', 'SHP-HLT-040', 'A', 'pending', '2026-09-17', 'Camille Verdier'],
+    ]);
+    const db = await getDb();
+    const docs = await db.select().from(documents).where(eq(documents.typeCode, 'SHP'));
+    expect(docs.map((d) => [d.number, d.currentRevision, d.status, d.issuedOn, d.authorName]).sort()).toEqual([
+      ['SHP-HLT-040', 'A', 'released', '2026-09-17', 'C. Verdier'],
+      ['SHP-HLT-041', 'A', 'released', '2026-09-21', 'C. Verdier'],
+      ['SHP-HLT-042', 'A', 'released', '2026-09-21', 'C. Verdier'],
+    ]);
+    const files = await db.select().from(storedFiles).where(eq(storedFiles.ownerType, 'shipment_document'));
+    expect(files.map((f) => [f.mime, f.scanStatus, f.createdAt.toISOString().slice(0, 10)]).sort()).toEqual([
+      ['application/pdf', 'unscanned', '2026-09-17'], ['application/pdf', 'unscanned', '2026-09-21'], ['application/pdf', 'unscanned', '2026-09-21'],
+    ]);
+    for (const f of files) expect(fs.existsSync(path.join(dir, f.storagePath))).toBe(true);
+    const deposits = await db.select().from(codexDocumentOutbox).where(eq(codexDocumentOutbox.kind, 'deposit'));
+    expect(deposits.map((e) => [e.documentNumber, e.syncStatus, e.closedAt, files.some((f) => f.id === e.storedFileId)]).sort()).toEqual([
+      ['SHP-HLT-040', 'pending', null, true], ['SHP-HLT-041', 'pending', null, true], ['SHP-HLT-042', 'pending', null, true],
+    ]);
   });
 });
 
@@ -171,10 +193,11 @@ describe('shipping documents (decision 3)', () => {
     as('logistics');
     expect(err(await fileShippingDocumentAction(HLT, 'EXP-01', 'invoice'))).toBe('Invalid request');
     const db0 = await getDb();
-    expect((await db0.execute(sql`select count(*)::int as n from document_types where code = 'SHP'`)).rows).toEqual([{ n: 0 }]);
-    const first = await fileShippingDocumentAction(HLT, 'EXP-01', 'packing_list');
-    expect(err(first)).toBe('ok');
-    // The first filing adds the SHP type (circuit: the author) to Keystone's register of Codex types.
+    // L9-X3: the demo's filings added the SHP type (circuit: the author) to Keystone's register of Codex types, once.
+    expect((await db0.execute(sql`select count(*)::int as n from document_types where code = 'SHP'`)).rows).toEqual([{ n: 1 }]);
+    // A document not filed yet: a new index record, rev A (the demo filed the packing list, the CMR and the delivery note).
+    const first = await fileShippingDocumentAction(HLT, 'EXP-01', 'marking');
+    expect(first).toMatchObject({ ok: true, toast: 'SHP-HLT-043 · rev A · Filed in Codex' });
     expect((await db0.execute(sql`select count(*)::int as n from document_types where code = 'SHP'`)).rows).toEqual([{ n: 1 }]);
     const before = (await shipment('EXP-01')).documents.find((d) => d.kind === 'packing_list')!;
     expect([before.number, before.revision]).toEqual(['SHP-HLT-040', 'A']);

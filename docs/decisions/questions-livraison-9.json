@@ -1,0 +1,42 @@
+{
+ "title": "Questions de la livraison 9",
+ "updated": "2026-10-31",
+ "sections": [
+  {"id": "gantt", "title": "Gantt interactif", "item": "R-198", "questions": [
+   {"id": "L9-G1", "q": "Le recalcul immédiat du chemin critique doit-il valoir aussi pour le tableau du Plan ?", "context": "Aujourd’hui le Gantt recalcule à chaque modification ; le tableau du Plan attend « Recalculer » (choix S-1 « recalcul manuel »).", "default": "Gantt seulement : le Plan garde le recalcul manuel", "alts": ["Recalcul immédiat partout (Gantt et Plan)"]},
+   {"id": "L9-G2", "q": "Quand on dépose une barre plus tôt que ses prédécesseurs ne le permettent ?", "context": "Le glisser pose une contrainte « Début au plus tôt le » (comme MS Project) : la logique peut repousser l’activité, l’aperçu le montre aussitôt.", "default": "Garder la contrainte « au plus tôt » : la logique l’emporte, sans message", "alts": ["Refuser le déplacement avec un message", "Forcer la date (« Doit commencer le ») et signaler le conflit, comme Primavera P6"]},
+   {"id": "L9-G3", "q": "Sur quelle vue l’écran Planning s’ouvre-t-il ?", "context": "Le Gantt a deux vues : Lots de travaux (13 mois, lecture seule) et Activités (interactif).", "default": "Lots de travaux", "alts": ["Activités"]},
+   {"id": "L9-G4", "q": "Faut-il un filtre par ligne d’équipement sur le Gantt des activités ?", "context": "Utile pour les projets multi-équipements (R-185) : afficher seulement les activités d’une EMP ou d’un MEMU.", "default": "Non pour l’instant", "alts": ["Oui"]},
+   {"id": "L9-G5", "q": "Faut-il pouvoir déplacer un lot de travaux entier d’un seul glisser ?", "context": "Aujourd’hui on déplace les activités une par une.", "default": "Non", "alts": ["Oui, toutes les activités du lot bougent ensemble"]}
+  ]},
+  {"id": "rappels", "title": "Rappels d’échéances et rapports programmés", "item": "R-199", "questions": [
+   {"id": "L9-R1", "q": "Quand rappeler une échéance ?", "context": "Tâches, activités, jalons, livrables, actions de réunion et prérequis clients.", "default": "J-7, J-1, puis un seul rappel une fois en retard", "alts": ["J-7, J-1, puis un rappel par semaine tant que c’est en retard", "J-7, J-1, puis un rappel par jour tant que c’est en retard"]},
+   {"id": "L9-R2", "q": "Qui reçoit les rappels des jalons et des prérequis clients ?", "context": "Ces éléments n’ont pas de responsable nommé.", "default": "Le chef de projet en titre", "alts": ["Le chef de projet, les co-chefs de projet et les adjoints"]},
+   {"id": "L9-R3", "q": "Quel rapport hebdomadaire envoyer aux responsables du projet ?", "context": "Rapport d’avancement existant (R-131), en PDF, chaque lundi.", "default": "Version « pilotage »", "alts": ["Version interne détaillée", "Version pilotage, plus une version client envoyée au client externe"]},
+   {"id": "L9-R4", "q": "Qui reçoit le rapport portefeuille hebdomadaire ?", "context": "Export Excel de la vue d’ensemble.", "default": "Les directeurs", "alts": ["Les directeurs et la Finance"]},
+   {"id": "L9-R5", "q": "Quel jour et à quelle heure partent les rapports ?", "context": null, "default": "Le lundi matin, à l’heure des rappels", "alts": ["Le vendredi après-midi"]},
+   {"id": "L9-R6", "q": "L’e-mail est-il activé par défaut pour tout le monde ?", "context": "Chacun peut ensuite le couper dans « Notifications et rappels ». Rien ne part tant que la DSI n’a pas branché l’envoi.", "default": "Oui, activé par défaut", "alts": ["Non, chacun l’active lui-même"]}
+  ]},
+  {"id": "notifications", "title": "Notifications par e-mail", "item": "R-036", "questions": [
+   {"id": "L9-N1", "q": "Comment envoyer les notifications par défaut ?", "context": "Quatre familles : validations et réponses attendues, tâches confiées, mentions, alertes et suivi. Chacun peut changer son réglage.", "default": "E-mail immédiat pour ce qui attend une action, résumé quotidien pour le reste", "alts": ["Tout en e-mail immédiat", "Tout dans le résumé quotidien"]},
+   {"id": "L9-N2", "q": "À quelle heure part le résumé quotidien ?", "context": null, "default": "7 h", "alts": ["17 h"]},
+   {"id": "L9-N3", "q": "Les alertes d’indicateur (règles R-130) vont-elles aussi à la Finance ?", "context": "Aujourd’hui : responsables du projet et directeurs.", "default": "Non", "alts": ["Oui"]},
+   {"id": "L9-N4", "q": "L’invitation à la SAT part-elle aussi aux témoins qui n’ont pas de compte ?", "context": "Il faudrait saisir leur adresse e-mail dans la planification de la SAT.", "default": "Non, seulement les contacts du client externe qui ont un compte", "alts": ["Oui, avec une adresse saisie pour chaque témoin"]}
+  ]},
+  {"id": "suppleance", "title": "Suppléance des validations", "item": "R-051", "questions": [
+   {"id": "L9-D1", "q": "Le nom du suppléant doit-il figurer sur la pièce elle-même ?", "context": "Demande de modification, commande, décision Codex : aujourd’hui la pièce porte le nom de l’approbateur ; seuls le journal d’audit et l’activité nomment le suppléant « pour le compte de ».", "default": "Non, l’audit suffit", "alts": ["Oui, sur la pièce aussi"]},
+   {"id": "L9-D2", "q": "Faut-il signaler à Codex et à Vigie qu’une décision a été prise par un suppléant ?", "context": null, "default": "Non", "alts": ["Oui (demande à faire à Codex et Vigie)"]}
+  ]},
+  {"id": "fiches", "title": "Fiche modifiée entre-temps", "item": "R-010", "questions": [
+   {"id": "L9-C1", "q": "Faut-il étendre le contrôle « fiche modifiée entre-temps, rechargez » à d’autres écrans ?", "context": "Couverts aujourd’hui : Plan, Gantt, risques, contrat, jalons de paiement, catégories de coût, réclamations.", "default": "Non pour l’instant", "alts": ["Oui : expéditions, réponses aux besoins machine et brouillons du catalogue"]}
+  ]},
+  {"id": "pack", "title": "Pack d’ingénierie", "item": "R-191", "questions": [
+   {"id": "L9-E1", "q": "Qui peut modifier la liste standard du pack d’ingénierie par type de machine ?", "context": "Écran Types de machine.", "default": "Directeur, chef de projet, responsable ingénierie et qualité", "alts": ["Directeur et responsable ingénierie seulement"]}
+  ]},
+  {"id": "expeditions", "title": "Expéditions", "item": "R-158", "questions": [
+   {"id": "L9-X1", "q": "La liste des documents générés par Keystone vous convient-elle ?", "context": "Packing list, liste par conteneur, bon de livraison, marquage des colis, lettre de voiture CMR, instructions au transitaire, demande de certificat d’origine / EUR.1, données de la déclaration d’export. Pas de facture.", "default": "Oui, cette liste", "alts": []},
+   {"id": "L9-X2", "q": "Le portail client reste-t-il réservé aux clients externes ?", "context": "Votre décision du 25 oct. : la filiale suit tout dans Arche.", "default": "Oui, clients externes seulement", "alts": ["Non, la filiale garde aussi un accès"]},
+   {"id": "L9-X3", "q": "La démonstration doit-elle contenir des documents d’expédition déjà déposés dans Codex ?", "context": null, "default": "Non, aucun document pré-déposé", "alts": ["Oui, en pré-déposer quelques-uns"]}
+  ]}
+ ]
+}

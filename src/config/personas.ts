@@ -44,7 +44,7 @@ const P: [RoleKey, string, string, string, string | null][] = [
   // R-158 (owner's decision 7, 25 Oct 2026): the Logistics persona — prepares and follows the shipments (no prototype persona;
   // the person is created with its user, src/server/db/seed/users.ts).
   ['logistics', 'Camille Verdier', 'Logistics coordinator', 'camille.verdier@epc2i.fr', 'Controls & planning'],
-  ['client', 'Nadia Bensaïd', 'Client — Port authority', 'n.bensaid@port-lehavre.fr', null],
+  ['client', 'Nadia Bensaïd', 'Client — Port authority', 'n.bensaid@port-exemple.fr', null],
 ];
 
 export const PERSONAS: Persona[] = P.map(([role, name, title, email, department]) => ({
