@@ -4,11 +4,13 @@
 // input, checks the viewer (outside the workspace → refused; task edits → assignee or director; comments → anyone in
 // the workspace), writes through the tasks DAL and revalidates every screen (tasks show on Home, the sidebar badge,
 // Plan…). Chapter 4 (R-8): removing an attached file (attaching goes through the upload Route Handler
-// src/app/api/tasks/[taskId]/files, which Server Functions' 1 MB body limit would not allow). Error messages are English
+// src/app/api/tasks/[taskId]/files, which Server Functions' 1 MB body limit would not allow). R-201: the task's recurrence. Error messages are English
 // source strings (the client shows them with toast.showEn).
 import { revalidatePath } from 'next/cache';
 import { mentionExcerpt } from '@/domain/mentions';
 import { isTaskStatus, parseHours } from '@/domain/tasks';
+import { parseRecurrence } from '@/domain/task-recurrence';
+import { setTaskRecurrence } from '@/server/dal/task-recurrence';
 import {
   addChecklistItem, addTaskComment, listTasks, logTaskTime, setTaskProgress, setTaskStatus, toggleChecklistItem, toggleTaskDone,
   type PostedComment, type TaskRow,
@@ -198,4 +200,20 @@ export async function removeTaskFileAction(input: { taskId: string; attachmentId
     return fail('This file is no longer attached');
   }
   return write('removeTaskFileAction', () => removeTaskFile(g.task.id, id, g.viewer.name));
+}
+
+/**
+ * R-201 (K-201): sets or stops the task's recurrence (weekly / monthly every n, at each project milestone; optional end date).
+ * The same people as the task's other edits (the assignee or the director, inside the workspace); an open task only — the
+ * series goes on from the occurrence created when the task is closed. `kind` '' stops it.
+ */
+export async function setTaskRecurrenceAction(input: { taskId: string; kind: string; interval?: number | string; until?: string }): Promise<TaskActionResult> {
+  const g = await gate(input?.taskId, 'edit');
+  if (!g.ok) return g;
+  if (typeof input.kind !== 'string' || (input.until != null && typeof input.until !== 'string')) return fail('Invalid request');
+  if (g.task.status === 'done') return fail('Set the recurrence on an open task — the next occurrence carries it on');
+  const parsed = parseRecurrence({ kind: input.kind, interval: input.interval, until: input.until }, { due: g.task.due });
+  if (!parsed.ok) return fail(parsed.error);
+  const rule = parsed.value;
+  return write('setTaskRecurrenceAction', () => setTaskRecurrence(g.task.id, rule, g.viewer.name));
 }

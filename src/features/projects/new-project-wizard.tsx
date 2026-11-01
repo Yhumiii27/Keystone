@@ -11,6 +11,7 @@
 // Delivery 9 (R-185, choices of 23 Oct 2026): the project supplies one or more equipment lines (machine type × quantity, the
 // first one of the main type chosen in step 1), set in step 2; the lots specific to an equipment are generated per line (the
 // copy items count them) and the default cost categories are the lines' reference categories × quantity.
+import { PROJECT_CATEGORIES, PROJECT_CATEGORY_LABEL, type ProjectCategory } from '@/domain/project-category';
 import { CalendarBlank, Clock, FlagBanner, Plus, X } from '@phosphor-icons/react/dist/ssr';
 import { useId } from 'react';
 import { ChoiceCard } from '@/components/app/Check';
@@ -53,6 +54,8 @@ export interface WizardDraft {
   name: string;
   client: string;
   das: string;
+  /** R-196 (K-196): client project or R&D project. */
+  category: ProjectCategory;
   mt: string;
   cur: WizardCurrency;
   template: string;
@@ -83,7 +86,7 @@ export interface WizardLine {
 
 /** Empty draft; the planned start follows the business date `today` (R-013; 11 Jan 2027 on 25 Sep 2026). */
 export const defaultDraft = (today: string): WizardDraft => ({
-  name: '', client: '', das: '2', mt: 'EMP', cur: 'EUR', template: 'EMP', cats: null, cont: 5, cal: null, pm: null,
+  name: '', client: '', das: '2', category: 'client', mt: 'EMP', cur: 'EUR', template: 'EMP', cats: null, cont: 5, cal: null, pm: null,
   start: defaultPlannedStart(today), finish: '', city: '', country: '', lines: null,
 });
 
@@ -255,6 +258,15 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
               value={draft.das}
               onChange={(das) => onDraft({ das })}
               options={DAS_LIST.map((v) => ({ value: v, label: `DAS ${v}` }))}
+            />
+          </Field>
+          <Field label={t('Project category')}>
+            <Segmented
+              fullWidth
+              label={t('Project category')}
+              value={draft.category}
+              onChange={(category) => onDraft({ category })}
+              options={PROJECT_CATEGORIES.map((v) => ({ value: v, label: t(PROJECT_CATEGORY_LABEL[v]) }))}
             />
           </Field>
           <Field label={t('Machine type')}>

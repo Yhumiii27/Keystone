@@ -208,6 +208,18 @@ describe('share views of delivery 9 (0038_share_followup)', () => {
     await db.update(clients).set({ isInternal: false, subsidiaryCode: null }).where(eq(clients.name, 'Health trust'));
   });
 
+  it('pub_projets: the category at the end — client by default, rd for an R&D project; the database refuses another value (R-196)', async () => {
+    const v = await rows<{ code: string; categorie: string | null }>(sql`select code, categorie from pub_projets`);
+    expect(v.length).toBeGreaterThan(0);
+    // No demo project is an R&D project (ERP-202 carries the machine type « R&D » but is an ERP migration).
+    expect(v.every((r) => r.categorie === 'client')).toBe(true);
+    await expect(db.update(projects).set({ category: 'lab' as 'rd' }).where(eq(projects.code, 'NDC-031'))).rejects.toThrow();
+    await db.update(projects).set({ category: 'rd' }).where(eq(projects.code, 'NDC-031'));
+    const [r] = await rows<{ categorie: string }>(sql`select categorie from pub_projets where code = 'NDC-031'`);
+    expect(r).toEqual({ categorie: 'rd' });
+    await db.update(projects).set({ category: 'client' }).where(eq(projects.code, 'NDC-031'));
+  });
+
   it('pub_rex (Matrix D22): the validated and applied lessons at the common REX contract; a proposed lesson is not published', async () => {
     const types = await rows<{ c: string; t: string }>(sql`select column_name as c, data_type as t from information_schema.columns where table_schema = current_schema() and table_name = 'pub_rex' order by ordinal_position`);
     expect(Object.fromEntries(types.map((r) => [r.c, r.t]))).toEqual(REX_VIEW_TYPES);

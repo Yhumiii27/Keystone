@@ -299,3 +299,41 @@ Questionnaire publié en artefact (https://claude.ai/artifact/1exn6XRVeQRgTtz5ZA
 - **L9-X1 · La liste des documents générés par Keystone vous convient-elle ?** : Oui, cette liste ★
 - **L9-X2 · Le portail client reste-t-il réservé aux clients externes ?** : Autre réponse — *Le portail sera accessible à tout le monde (le groupe, nous, les filiales), mais pas aux externes au groupe. Par contre des .exe qui tournent sous Windows seront bienvenus pour les utilisateurs qui le souhaitent.* — **Précisé le 31/10/2026** : le portail des filiales est Arche (décision 6 du 25/10/2026 confirmée) ; pas d’accès pour les externes au groupe. L’accès web reste la solution pour accéder à Keystone de n’importe où ; une application Windows (.exe) validée le même jour coexiste avec lui pour laisser le choix à l’utilisateur (R-210). Le portail client de Keystone est gardé en réserve, sans compte client externe.
 - **L9-X3 · La démonstration doit-elle contenir des documents d’expédition déjà déposés dans Codex ?** : Oui, en pré-déposer quelques-uns
+
+## Cadrage des prochains lots (réponses du 01/11/2026)
+
+Questionnaire publié en artefact (https://claude.ai/artifact/CG1FQk6mMeoLD7MaPM89Uk, collection `answers`), questions dans `docs/decisions/questions-cadrage-lots-l9.json`. ★ = choix recommandé retenu.
+
+### Demandes de Crucible (R-195 · R-196 · R-197)
+
+- **K-195 · Publier pour Crucible les échéances des projets ?** : Oui : Crucible lit pub_jalons_projets telle qu’elle est (droit à accorder par Matrix), sans nouvelle vue ★
+- **K-196 · Comment reconnaître un projet R&D (pour le filtre de Crucible) ?** : Une nature de projet « R&D » choisie à la création du projet ★
+- **K-197 · Afficher dans le planning d’un projet les essais réservés dans Crucible ?** : Plus tard, quand Crucible aura publié sa vue ★
+
+### Planning avancé (R-206 · R-200 · R-204)
+
+- **K-206 · Diagnostic de qualité du planning (14 contrôles DCMA) et analyse des retards ?** : Lancer : une carte « Qualité du planning » sur l’écran Planning, avec le détail par contrôle ★
+- **K-206b · Les seuils des contrôles DCMA sont-ils ceux du standard ?** : Oui, les seuils du standard, modifiables plus tard dans Paramètres ★
+- **K-200 · Nivellement automatique des ressources ?** : Plus tard : la capacité réelle attend les absences de Cursus (R-084) ★
+- **K-204 · Planning multi-niveaux (plannings fournisseurs consolidés, codes d’activité) ?** : Lancer tout
+
+### Risques et prévisions (R-205 · R-208)
+
+- **K-205 · Analyse de risques Monte-Carlo sur le délai et le coût ?** : Lancer, sur le délai et le coût ★
+- **K-205b · Qui saisit les fourchettes de durée ?** : Le chef de projet, avec une fourchette par défaut (−10 % / +25 %) proposée pour chaque activité ★
+- **K-208 · IA prédictive de dérive délai / coût ?** : Lancer une première version fondée sur les règles et la valeur acquise
+
+### Ouverture des données (R-203 · R-202)
+
+- **K-203 · Tableaux de bord configurables par l’utilisateur ?** : Lancer
+- **K-203b · Ouvrir les données à Power BI ?** : Oui, par les vues pub_ (demande à Matrix et à la DSI) ★
+- **K-202 · API REST publique, webhooks et connecteurs Power Automate ?** : Plus tard, après l’hébergement et l’avis de la DSI ★
+
+### Travail quotidien (R-201 · R-207)
+
+- **K-201 · Tâches récurrentes dans « Mon travail » ?** : Lancer ★
+- **K-207 · Automatisations sans code (règles « si / alors » configurables) ?** : Plus tard : d’abord la procédure d’achats (R-094) ★
+
+### Langues (R-209)
+
+- **K-209 · Ajouter d’autres langues que le français et l’anglais ?** : Plus tard

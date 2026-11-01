@@ -1,6 +1,6 @@
 {
  "generated": "2026-10-10",
- "updated": "2026-10-31",
+ "updated": "2026-11-01",
  "branch": "main-2a2fep",
  "history": [
   {
@@ -234,6 +234,18 @@
   {
    "date": "2026-10-31",
    "text": "R-210 : application Windows construite (en attente d’un essai sur PC Windows et de l’hébergement)."
+  },
+  {
+   "date": "2026-11-01",
+   "text": "Cadrage des lots R-195 à R-209 (questionnaire) : lancés R-196, R-201, R-203, R-205, R-206, R-208, puis R-204 ; R-195 et Power BI par Matrix ; plus tard R-197, R-200, R-202, R-207, R-209."
+  },
+  {
+   "date": "2026-11-01",
+   "text": "R-195 fait : la vue pub_jalons existe déjà (0038) et Matrix l’accorde à Crucible."
+  },
+  {
+   "date": "2026-11-01",
+   "text": "R-196 et R-201 faits : catégorie R&D des projets ; tâches récurrentes."
   }
  ],
  "items": [
@@ -5755,9 +5767,9 @@
    "description": "Crucible (K-2) lit les échéances des projets pour anticiper les besoins d’essais : vue pub_jalons (projet_code, jalon_id, nom, mois_reference, mois_prevu, statut, activite_code, date_activite_fin = fin au plus tôt de l’activité liée si datée, maj_le). La lecture de pub_projets par crucible_app (K-1) est un droit à accorder dans Matrix (partage/90-droits.sql), pas un changement de Keystone. Proche de pub_jalons_projets demandée par Arche (R-189) : une seule vue pour les deux lecteurs si les colonnes se rejoignent.",
    "category": "integrations",
    "kind": "integration",
-   "priority": "a_decider",
-   "status": "non_commence",
-   "waiting_on": "Validation du responsable produit ; contrat commun avec R-189",
+   "priority": "prochaine_etape",
+   "status": "partiel",
+   "waiting_on": "",
    "effort": "M",
    "sources": [
     "Crucible (application de planification des moyens d’essais R&D), docs/DEMANDES-KEYSTONE.md, 22 oct. 2026"
@@ -5769,7 +5781,7 @@
    "progress": {
     "state": "fait",
     "delivery": "Livraison 9",
-    "note": "Livraison 9, lot « share-views » (docs/delivery-9/notes-share-views.md) : vue pub_jalons (projet_code, jalon_id, nom, position, mois_reference, mois_prevu, statut, activite_code, date_fin_activite, maj_le) selon la demande validée de Crucible ; milestones.updated_at ajouté (maj_le). Le droit de lecture de crucible_app (et le rôle) reste à poser dans Matrix (partage/90-droits.sql)."
+    "note": "01/11/2026 : rien à construire — la vue pub_jalons (migration 0038, colonnes projet_code, jalon_id, nom, position, mois_reference, mois_prevu, statut, activite_code, date_fin_activite, maj_le) existe déjà et Matrix l’accorde à crucible_app (90-droits.sql) ; pub_jalons_projets reste la vue des 8 jalons CAPEX pour Arche."
    }
   },
   {
@@ -5779,9 +5791,9 @@
    "description": "Crucible (K-3) filtre les projets R&D : si les projets R&D sont des projets internes de Keystone, une nature ou une étiquette « R&D » lisible dans pub_projets (colonne en fin de vue, ex. categorie). Le type de machine « R&D » existe déjà ; à décider : type de machine, nature du projet ou étiquette.",
    "category": "integrations",
    "kind": "integration",
-   "priority": "a_decider",
+   "priority": "prochaine_etape",
    "status": "non_commence",
-   "waiting_on": "Décision : comment reconnaître un projet R&D",
+   "waiting_on": "",
    "effort": "S",
    "sources": [
     "Crucible (application de planification des moyens d’essais R&D), docs/DEMANDES-KEYSTONE.md, 22 oct. 2026"
@@ -5791,8 +5803,9 @@
     "src/server/db/schema/portfolio.ts (projects.kind, machine_type_code)"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": "Consigné le 22 oct. 2026 (demande de Crucible) ; à valider avant de construire."
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "01/11/2026 : catégorie de projet (client / R&D) à la création et sur l’écran Contrat, publiée en fin de pub_projets (colonne categorie, migrations 0070-0071) ; reste la recopie de la vue par Matrix."
    }
   },
   {
@@ -5814,7 +5827,7 @@
    ],
    "progress": {
     "state": "a_faire",
-    "note": "Consigné le 22 oct. 2026 (demande de Crucible) ; à valider avant de construire."
+    "note": "01/11/2026 (K-197) : plus tard, quand Crucible aura publié sa vue des réservations."
    }
   },
   {
@@ -5873,7 +5886,7 @@
    "description": "Niveler automatiquement les activités du planning CPM selon la capacité des ressources (décalage des activités non critiques, respect des liens et des contraintes), appliqué sur une copie du planning et comparé à la référence avant adoption. Fonction avancée du marché (Primavera P6, MS Project). Aujourd’hui le what-if ne porte que sur les allocations hebdomadaires (src/domain/whatif.ts), sans nivellement d’activités. Analyse comparative du 25 oct. 2026 : priorité P2, à valider par le responsable produit (fonction absente du prototype).",
    "category": "planning",
    "kind": "fonction_manquante",
-   "priority": "a_decider",
+   "priority": "plus_tard",
    "status": "non_commence",
    "waiting_on": "Validation du responsable produit",
    "effort": "L",
@@ -5887,7 +5900,7 @@
    ],
    "progress": {
     "state": "a_faire",
-    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+    "note": "01/11/2026 (K-200) : plus tard, la capacité réelle attend les absences de Cursus (R-084)."
    }
   },
   {
@@ -5909,8 +5922,9 @@
     "src/server/db/schema/work.ts"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "01/11/2026 : tâches récurrentes (toutes les n semaines / n mois, ou à chaque jalon), occurrence suivante créée à la clôture, jours ouvrés du projet, marque ↻ dans les vues (migration 0070)."
    }
   },
   {
@@ -5920,7 +5934,7 @@
    "description": "Exposer une API REST générale documentée (OpenAPI) sur les projets, le planning, les tâches, les coûts et les registres, avec jetons d’accès et droits par rôle, des webhooks sur les événements clés (jalon, CR, NC, commande) et des connecteurs Power Automate / Zapier. Standard du marché. Aujourd’hui seuls existent les endpoints Cursus (/api/cursus/v1), l’export et les photos ; pas d’API générale ni de webhooks. Analyse comparative du 25 oct. 2026 : priorité P2, à valider par le responsable produit (périmètre et sécurité).",
    "category": "integrations",
    "kind": "fonction_manquante",
-   "priority": "a_decider",
+   "priority": "plus_tard",
    "status": "non_commence",
    "waiting_on": "Validation du responsable produit et de la DSI (exposition d’une API)",
    "effort": "L",
@@ -5934,7 +5948,7 @@
    ],
    "progress": {
     "state": "a_faire",
-    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+    "note": "01/11/2026 (K-202) : plus tard, après l’hébergement et l’avis de la DSI."
    }
   },
   {
@@ -5944,9 +5958,9 @@
    "description": "Laisser chaque utilisateur composer ses tableaux de bord (widgets, filtres, indicateurs, enregistrement et partage) et ouvrir les données à Power BI / Dataverse (vues pub_ ou flux OData / API) pour les analyses du groupe. Standard du marché (Wrike, Planner Premium). Aujourd’hui les écrans de pilotage sont fixes et seul l’export CSV / XLSX existe. Analyse comparative du 25 oct. 2026 : priorité P2, à valider par le responsable produit ; le connecteur Power BI peut s’appuyer sur les vues pub_ déjà publiées.",
    "category": "portefeuille_pilotage_kpi",
    "kind": "fonction_manquante",
-   "priority": "a_decider",
+   "priority": "prochaine_etape",
    "status": "non_commence",
-   "waiting_on": "Validation du responsable produit",
+   "waiting_on": "",
    "effort": "L",
    "sources": [
     "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
@@ -5956,8 +5970,9 @@
     "drizzle/0035_share.sql"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+    "state": "en_cours",
+    "delivery": "Livraison 9",
+    "note": "01/11/2026 (K-203, K-203b) : tableaux de bord configurables lancés ; Power BI par les vues pub_ (demande à Matrix et à la DSI)."
    }
   },
   {
@@ -5967,9 +5982,9 @@
    "description": "Modéliser les plannings fournisseurs (lots d’achat) dans le CPM et les consolider dans le planning projet (sous-réseaux, liens vers les activités de réception), avec des codes d’activité (lot d’achat, site, équipement) pour filtrer et regrouper. Fonction avancée du marché (Planisware, Primavera P6). Aujourd’hui les plannings fournisseurs ne sont pas modélisés dans le CPM. Analyse comparative du 25 oct. 2026 : priorité P3, à décider.",
    "category": "planning",
    "kind": "fonction_manquante",
-   "priority": "a_decider",
+   "priority": "prochaine_etape",
    "status": "non_commence",
-   "waiting_on": "Validation du responsable produit",
+   "waiting_on": "",
    "effort": "L",
    "sources": [
     "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
@@ -5980,7 +5995,7 @@
    ],
    "progress": {
     "state": "a_faire",
-    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+    "note": "01/11/2026 (K-204) : lancé en entier (plannings fournisseurs consolidés et codes d’activité) ; construit après le diagnostic du planning."
    }
   },
   {
@@ -5990,9 +6005,9 @@
    "description": "Simuler l’incertitude des durées et des coûts (lois triangulaires sur les activités et les risques liés) pour produire des distributions de fin de projet et de coût à terminaison avec niveaux de confiance (P50 / P80). Fonction avancée du marché (Primavera Cloud). Aujourd’hui le registre des risques est en probabilité × impact seulement ; le lien risque ↔ activité existe déjà dans le modèle (risks.activity_id). Analyse comparative du 25 oct. 2026 : priorité P3, à décider.",
    "category": "couts_contrat_finance",
    "kind": "fonction_manquante",
-   "priority": "a_decider",
+   "priority": "prochaine_etape",
    "status": "non_commence",
-   "waiting_on": "Validation du responsable produit",
+   "waiting_on": "",
    "effort": "L",
    "sources": [
     "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
@@ -6003,8 +6018,9 @@
     "src/domain/cpm.ts"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+    "state": "en_cours",
+    "delivery": "Livraison 9",
+    "note": "01/11/2026 (K-205, K-205b) : Monte-Carlo délai et coût, fourchettes saisies par le CP (défaut −10 % / +25 %) ; en construction."
    }
   },
   {
@@ -6014,9 +6030,9 @@
    "description": "Évaluer la qualité d’un planning avec les 14 contrôles DCMA (liens manquants, contraintes dures, marges négatives, durées longues, retards, liens début-fin…) et fournir une analyse forensique des retards (comparaison référence / actuel par activité, glissement du chemin critique). Fonction différenciante du marché (Deltek Acumen). Absent aujourd’hui. Analyse comparative du 25 oct. 2026 : priorité P3, à décider.",
    "category": "planning",
    "kind": "fonction_manquante",
-   "priority": "a_decider",
+   "priority": "prochaine_etape",
    "status": "non_commence",
-   "waiting_on": "Validation du responsable produit",
+   "waiting_on": "",
    "effort": "M",
    "sources": [
     "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
@@ -6026,8 +6042,9 @@
     "src/domain/schedule.ts"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+    "state": "en_cours",
+    "delivery": "Livraison 9",
+    "note": "01/11/2026 (K-206, K-206b) : carte « Qualité du planning », 14 contrôles DCMA aux seuils du standard (modifiables) et analyse des retards ; en construction."
    }
   },
   {
@@ -6037,7 +6054,7 @@
    "description": "Offrir un éditeur de règles si / alors (déclencheur, condition, action : notifier, changer un statut, créer une tâche, approuver automatiquement sous un seuil) configurable par les administrateurs. Standard du marché (monday, Smartsheet). Aujourd’hui les circuits d’approbation sont codés en dur (src/server/approvals/). Analyse comparative du 25 oct. 2026 : priorité P3, à décider.",
    "category": "nouveaux_modules_backlog",
    "kind": "fonction_manquante",
-   "priority": "a_decider",
+   "priority": "plus_tard",
    "status": "non_commence",
    "waiting_on": "Validation du responsable produit",
    "effort": "XL",
@@ -6050,7 +6067,7 @@
    ],
    "progress": {
     "state": "a_faire",
-    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+    "note": "01/11/2026 (K-207) : plus tard, après la procédure d’achats (R-094)."
    }
   },
   {
@@ -6060,9 +6077,9 @@
    "description": "Prédire la dérive de délai et de coût d’un projet à partir de l’historique (référence, avancement, valeur acquise, REX) et proposer des mitigations (réaffectation, resserrement, alerte précoce). Fonction avancée du marché (Planview, Planisware). Aujourd’hui l’IA ne sert qu’à l’analyse des transcriptions de réunion (src/server/ai/transcripts/). Analyse comparative du 25 oct. 2026 : priorité P3, à décider ; suppose un historique réel de projets.",
    "category": "portefeuille_pilotage_kpi",
    "kind": "fonction_manquante",
-   "priority": "a_decider",
+   "priority": "prochaine_etape",
    "status": "non_commence",
-   "waiting_on": "Validation du responsable produit ; historique de projets réels",
+   "waiting_on": "",
    "effort": "XL",
    "sources": [
     "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
@@ -6072,8 +6089,9 @@
     "src/domain/schedule-rollup.ts"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+    "state": "en_cours",
+    "delivery": "Livraison 9",
+    "note": "01/11/2026 (K-208) : première version fondée sur les règles et la valeur acquise ; en construction."
    }
   },
   {
@@ -6083,7 +6101,7 @@
    "description": "Ajouter d’autres langues d’interface (espagnol, portugais… selon les filiales) : dictionnaires supplémentaires dans src/i18n, règles de complétude par langue, libellés des termes métier (R-147) et choix de langue par utilisateur (R-018). Standard du marché. Aujourd’hui FR / EN seulement. Analyse comparative du 25 oct. 2026 : besoin transverse, à décider selon les langues des filiales utilisatrices.",
    "category": "ergonomie_i18n_accessibilite",
    "kind": "fonction_manquante",
-   "priority": "a_decider",
+   "priority": "plus_tard",
    "status": "non_commence",
    "waiting_on": "Liste des langues des filiales, validation du responsable produit",
    "effort": "L",
@@ -6097,7 +6115,7 @@
    ],
    "progress": {
     "state": "a_faire",
-    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+    "note": "01/11/2026 (K-209) : plus tard."
    }
   },
   {

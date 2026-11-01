@@ -1,6 +1,6 @@
 # Keystone PM — reste à développer
 
-Inventaire initial du 2026-10-10, mis à jour le 2026-10-31 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
+Inventaire initial du 2026-10-10, mis à jour le 2026-11-01 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
 
 **Méthode.** Onze relectures indépendantes ont croisé les 195 décisions produit (`docs/DECISIONS.md`), les écarts et questions ouvertes de `DELIVERY-1.md` à `DELIVERY-6.md`, `docs/BACKLOG.md`, les marqueurs du code (TODO, simulations, constantes du prototype), la spécification fonctionnelle (`docs/spec/`) et la préparation à la production. Chaque point a ensuite été vérifié dans le code, catégorie par catégorie : ce qui existait déjà a été écarté (153 candidats), les doublons fusionnés, puis un contrôle de complétude a ajouté ce qui manquait. Le détail, avec les preuves relevées dans le code pour chaque point, est dans `docs/reste-a-developper.json` ; ce document et la page sont produits par `npm run remaining:page`.
 
@@ -8,21 +8,21 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-31 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 122 faits, 27 en cours, 61 à faire, sur 210 points.
+**Avancement** : 124 faits, 31 en cours, 55 à faire, sur 210 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
 | Bloquant production | 15 | ≈ 102 |
-| Prochaine étape | 21 | ≈ 172 |
-| À décider | 36 | ≈ 329 |
-| Plus tard | 16 | ≈ 60 |
-| **Total** | **88** | **≈ 662** |
+| Prochaine étape | 26 | ≈ 242 |
+| À décider | 26 | ≈ 191 |
+| Plus tard | 19 | ≈ 122 |
+| **Total** | **86** | **≈ 657** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
-| Non commencé | 39 |
+| Non commencé | 37 |
 | Partiel | 9 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
@@ -31,21 +31,21 @@ L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il
 |---|---:|---:|---:|---:|---:|---:|
 | Plateforme et mise en production | 6 | 4 | 0 | 2 | 12 | 15 |
 | Authentification, utilisateurs et droits | 1 | 0 | 2 | 0 | 3 | 14 |
-| Intégrations avec les autres systèmes | 5 | 6 | 4 | 5 | 20 | 6 |
-| Projets, cycle de vie et modèles par type de machine | 0 | 1 | 2 | 2 | 5 | 5 |
-| Planning | 1 | 0 | 6 | 0 | 7 | 5 |
-| Coûts, contrat et finance | 0 | 2 | 3 | 0 | 5 | 13 |
+| Intégrations avec les autres systèmes | 5 | 6 | 2 | 6 | 19 | 7 |
+| Projets, cycle de vie et modèles par type de machine | 0 | 1 | 2 | 1 | 4 | 6 |
+| Planning | 1 | 2 | 3 | 1 | 7 | 5 |
+| Coûts, contrat et finance | 0 | 3 | 2 | 0 | 5 | 13 |
 | Ressources et RH | 0 | 2 | 1 | 1 | 4 | 5 |
 | Achats et stock | 2 | 1 | 2 | 0 | 5 | 4 |
 | Ingénierie et PLM | 0 | 1 | 1 | 0 | 2 | 10 |
 | Qualité, chantier et mise en service | 0 | 1 | 2 | 0 | 3 | 10 |
 | Documents | 0 | 1 | 0 | 0 | 1 | 4 |
-| Portefeuille, pilotage et indicateurs | 0 | 0 | 2 | 0 | 2 | 8 |
+| Portefeuille, pilotage et indicateurs | 0 | 2 | 0 | 0 | 2 | 8 |
 | Portail client | 0 | 0 | 1 | 2 | 3 | 3 |
 | SAV et parc installé | 0 | 0 | 0 | 1 | 1 | 3 |
-| Ergonomie, langues et accessibilité | 0 | 1 | 1 | 0 | 2 | 13 |
+| Ergonomie, langues et accessibilité | 0 | 1 | 0 | 1 | 2 | 13 |
 | Dette technique | 0 | 1 | 0 | 3 | 4 | 3 |
-| Nouveaux modules demandés ou proposés (à valider) | 0 | 0 | 9 | 0 | 9 | 1 |
+| Nouveaux modules demandés ou proposés (à valider) | 0 | 0 | 8 | 1 | 9 | 1 |
 
 ### 1.1 Chemin critique vers la production
 
@@ -101,16 +101,6 @@ Décisions à prendre et données à fournir avant de pouvoir développer. Les q
 - **R-182** Décider si les factures client sont émises et encaissées dans Sage X3 — Service finance : processus de facturation client dans Sage X3 (numérotation légale, encaissements, facturation électronique)
 - **R-189** Vues de suivi pour le CAPEX : jalons, avancement côté vente, avenants, réserves — Réponse P-05 (données financières visibles par la filiale)
 - **R-192** Sécurité machine : HazOp / AMDEC, ATEX, condition PSSR avant mise en service — Vigie : porte-t-il HazID / HazOp / AMDEC / PSSR ?
-- **R-196** Catégorie « R&D » des projets lisible dans pub_projets (pour Crucible) — Décision : comment reconnaître un projet R&D
-- **R-200** Nivellement automatique des ressources sur le planning CPM (copie comparée à la référence) — Validation du responsable produit
-- **R-202** API REST métier documentée, webhooks et connecteurs Power Automate / Zapier — Validation du responsable produit et de la DSI (exposition d’une API)
-- **R-203** Tableaux de bord configurables par l’utilisateur et connecteur Power BI / Dataverse — Validation du responsable produit
-- **R-204** Planning multi-niveaux : consolidation des plannings fournisseurs et codes d’activité — Validation du responsable produit
-- **R-205** Analyse de risques Monte-Carlo sur coût et délai — Validation du responsable produit
-- **R-206** Diagnostic de la qualité du planning (métriques DCMA 14 points, analyse forensique des retards) — Validation du responsable produit
-- **R-207** Automatisations sans code (règles si / alors, approbations automatiques) — Validation du responsable produit
-- **R-208** IA prédictive de dérive délai / coût et suggestions de mitigation — Validation du responsable produit ; historique de projets réels
-- **R-209** Multilingue au-delà du français et de l’anglais pour les filiales pays — Liste des langues des filiales, validation du responsable produit
 
 ### 1.3 Ce qui attend les autres applications
 
@@ -309,7 +299,7 @@ L’approbateur déclare un suppléant et des dates ; pendant cette période, se
 Chercher commandes, CR, NCR et risques sur tous les projets, chaque résultat ouvrant son projet, en filtrant les résultats selon les droits du lecteur (un client ne voit que ses projets). Aujourd’hui la recherche ignore l’utilisateur et limite ces objets au projet courant.  
 *Avancement : Livraison 8 : recherche globale sur tout le portefeuille (X-5), projet courant d’abord ; le client voit les demandes de modification de ses propres projets. · Sources : X-5, 01 OQ18, 00 §7.6, DELIVERY-1.md §4*
 
-### 2.3 Intégrations avec les autres systèmes (20 restants, 6 faits)
+### 2.3 Intégrations avec les autres systèmes (19 restants, 7 faits)
 
 **R-022 · Réconcilier les codes projet (#000, XXX000, Cursus, Vigie) dans la fiche projet** — *Bloquant production · attend le responsable produit · effort M*  
 La fiche projet doit porter et réconcilier le numéro ingénierie #000 (liste incrémentée) et le code analytique XXX000 créé dans Sage et donc imposé, au lieu de les générer. Elle doit aussi tenir la correspondance avec les identifiants Cursus (chantier K-26xx) et Vigie (K-2025-042), clé commune de tous les connecteurs.  
@@ -363,14 +353,6 @@ Keystone créera le chantier Cursus (NEW-CURSUS-1), mais rien n'est décidé pou
 Vues pub_jalons_projets (commande, FAT, expédition, arrivée site, SAT, PV, fin de garantie), pub_avancement_projets (avancement physique, SPI, fin prévue, contrat + avenants et facturé côté vente — aucun coût interne ni marge, P-05), pub_avenants, pub_reserves ; contrats documentés avec Matrix.  
 *Avancement : Livraison 9, lot « share-views » (docs/delivery-9/notes-share-views.md, migration 0038_share_followup) : pub_jalons_projets (8 jalons par projet : commande, fin d’études, FAT, expédition, arrivée site, SAT, PV, fin de garantie, rapprochés des étapes, de l’ITP, de la mise en service, des PV et de la garantie), pub_avancement_projets (côté vente seulement : avancement physique et SPI tenus par la tâche horaire share-progress, fin prévue, contrat, avenants signés et facturé en k€ ; aucun coût interne, taux, CPI, EAC ni marge — testé), pub_avenants (brouillons exclus), pub_reserves ; pub_livrables + type, accepte_le, maj_le en fin de vue ; colonnes vérifiées par db-check (aussi sur PostgreSQL). Reste : droits d’arche_app et copie des vues dans Matrix (demande à déposer après validation), dates BL1 des jalons (reference_le vide : code de jalon CAPEX sur les jalons du planning, à valider), pub_pack_ingenierie (R-191). Index maj_le (K-11) faits le 23 oct. 2026 (notes § 8). 25 oct. 2026 : dates BL1 des jalons faites (docs/delivery-9/notes-r189-reference-dates.md) — milestones.capex_milestone_code (8 codes, règle de noms prudente, reprise 0056, correction sur la carte « Jalons » du Planning), reference_le = date du jalon dans la BL1, pub_jalons_projets recréée à colonnes identiques (0055-0057). Reste : pub_pack_ingenierie (R-191, liste type du pack) et réponse P-05. 25 oct. 2026 : pub_pack_ingenierie publiée (R-191). Reste : réponse P-05. · Attend : Réponse P-05 (données financières visibles par la filiale) · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
 
-**R-196 · Catégorie « R&D » des projets lisible dans pub_projets (pour Crucible)** — *À décider · non commencé · effort S*  
-Crucible (K-3) filtre les projets R&D : si les projets R&D sont des projets internes de Keystone, une nature ou une étiquette « R&D » lisible dans pub_projets (colonne en fin de vue, ex. categorie). Le type de machine « R&D » existe déjà ; à décider : type de machine, nature du projet ou étiquette.  
-*Avancement : Consigné le 22 oct. 2026 (demande de Crucible) ; à valider avant de construire. · Attend : Décision : comment reconnaître un projet R&D · Sources : Crucible (application de planification des moyens d’essais R&D), docs/DEMANDES-KEYSTONE.md, 22 oct. 2026*
-
-**R-202 · API REST métier documentée, webhooks et connecteurs Power Automate / Zapier** — *À décider · non commencé · effort L*  
-Exposer une API REST générale documentée (OpenAPI) sur les projets, le planning, les tâches, les coûts et les registres, avec jetons d’accès et droits par rôle, des webhooks sur les événements clés (jalon, CR, NC, commande) et des connecteurs Power Automate / Zapier. Standard du marché. Aujourd’hui seuls existent les endpoints Cursus (/api/cursus/v1), l’export et les photos ; pas d’API générale ni de webhooks. Analyse comparative du 25 oct. 2026 : priorité P2, à valider par le responsable produit (périmètre et sécurité).  
-*Avancement : Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire. · Attend : Validation du responsable produit et de la DSI (exposition d’une API) · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
-
 **R-025 · Pré-remplir les signalements Vigie et filtrer ses listes par projet** — *Plus tard · attend un système externe · effort S* · **en cours (Livraison 8)**  
 Keystone envoie déjà projet, article, activité, titre et lieu au formulaire /signaler, mais Vigie ne lit que le lieu. Il reste à ajouter le filtre projet aux liens vers les listes Vigie, puis à valider de bout en bout quand Vigie aura évolué ; dépend de la correspondance des codes projet (R-022).  
 *Avancement : Livraison 8 : moitié Keystone du filtre par projet des listes Vigie (V-3b) ; le filtre côté Vigie reste à faire. · Attend : Évolution de Vigie (lecture des paramètres et filtre par projet Keystone) · Sources : V-3b, NEW-SYS-1, DELIVERY-5.md §5.1, §8 (V-3)*
@@ -389,7 +371,11 @@ Faire arriver dans Keystone les réunions Outlook ou Teams portant le code proje
 
 **R-197 · Afficher les essais planifiés de Crucible dans le planning d’un projet (facultatif)** — *Plus tard · non commencé · effort M*  
 Crucible (K-4, facultatif) publie crucible.pub_reservations : Keystone pourrait les lire et les afficher dans le planning d’un projet (visibilité côté projet), en miroir lecture seule avec liens profonds vers Crucible.  
-*Avancement : Consigné le 22 oct. 2026 (demande de Crucible) ; à valider avant de construire. · Attend : Crucible : vue pub_reservations publiée ; validation du responsable produit · Sources : Crucible (application de planification des moyens d’essais R&D), docs/DEMANDES-KEYSTONE.md, 22 oct. 2026*
+*Avancement : 01/11/2026 (K-197) : plus tard, quand Crucible aura publié sa vue des réservations. · Attend : Crucible : vue pub_reservations publiée ; validation du responsable produit · Sources : Crucible (application de planification des moyens d’essais R&D), docs/DEMANDES-KEYSTONE.md, 22 oct. 2026*
+
+**R-202 · API REST métier documentée, webhooks et connecteurs Power Automate / Zapier** — *Plus tard · non commencé · effort L*  
+Exposer une API REST générale documentée (OpenAPI) sur les projets, le planning, les tâches, les coûts et les registres, avec jetons d’accès et droits par rôle, des webhooks sur les événements clés (jalon, CR, NC, commande) et des connecteurs Power Automate / Zapier. Standard du marché. Aujourd’hui seuls existent les endpoints Cursus (/api/cursus/v1), l’export et les photos ; pas d’API générale ni de webhooks. Analyse comparative du 25 oct. 2026 : priorité P2, à valider par le responsable produit (périmètre et sécurité).  
+*Avancement : 01/11/2026 (K-202) : plus tard, après l’hébergement et l’avis de la DSI. · Attend : Validation du responsable produit et de la DSI (exposition d’une API) · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **~~R-021 · Afficher l’état réel des connecteurs non branchés~~** — *Bloquant production · non commencé · effort S* · **fait (Livraison 7)**  
 Codex, Lucca, Sage X3, SolidWorks PDM, MS Project, Outlook, Teams et SMTP affichent les statuts et volumes semés du prototype (« OK », « 412 records », « Token expires in 3 days », « 9 sent today ») et « Sync now » simule un passage (pour Codex, un comptage local). En production, ils doivent apparaître « Non connecté » (ou disparaître pour Lucca) tant que le vrai connecteur n’existe pas.  
@@ -407,15 +393,19 @@ Point d’entrée HTTP protégé par clé d’API pour heures.validees, absence.
 Pour que Cursus propose les lignes de feuille de temps « depuis les tâches Keystone » et renvoie les heures par tâche (NEW-CURSUS-5 = c), Keystone doit offrir un point de lecture authentifié : tâches et activités affectées à un matricule pour une semaine, avec leur identifiant et le code projet. Aucune route de ce type n'existe ; c'est le pendant sortant de la réception des heures.  
 *Avancement : Lot « cursus-tasks » (docs/delivery-9/notes-cursus-tasks.md, contrat docs/integrations/cursus-contract.md § 7) : selon le contrat de Cursus, Keystone pousse (pas de route de lecture) — chaque nuit à 02:00 (tâche cursus-tasks) et avec « Synchroniser » : PUT /v1/projets/{code} pour les projets cités, puis PUT /v1/instantane (section taches, depuis = lundi courant moins 4 semaines ; Cursus supprime les tâches absentes). Envoyées pour chaque personne qui a un matricule : affectations nominatives du planning (heures par jour ouvré du calendrier de l’activité) et tâches Keystone (règle de la vue pub_taches_jours), une tâche couverte par une affectation de la même personne sur la même activité n’étant pas envoyée deux fois. Échec réessayable renvoyé par cursus-outbox ; tâche refusée par Cursus (matricule inconnu) retirée et comptée ; connecteur simulé : envoi enregistré, rien n’est envoyé ; ligne Cursus d’Activité & intégrations : dernier envoi, tâches, refus, personnes sans matricule. À confirmer : la priorité affectation / tâche, l’heure de nuit ; les personnes n’ont pas encore de matricule (annuaire R-027). · Attend : Contrat d'API à convenir avec Cursus (Cursus lit aujourd'hui ses propres données fictives) · Sources : BACKLOG.md §1 bis (« Point de lecture des tâches »), NEW-CURSUS-5, R-6a, C-2b*
 
+**~~R-195 · Vue pub_jalons des échéances des projets (pour Crucible)~~** — *Prochaine étape · partiel · effort M* · **fait (Livraison 9)**  
+Crucible (K-2) lit les échéances des projets pour anticiper les besoins d’essais : vue pub_jalons (projet_code, jalon_id, nom, mois_reference, mois_prevu, statut, activite_code, date_activite_fin = fin au plus tôt de l’activité liée si datée, maj_le). La lecture de pub_projets par crucible_app (K-1) est un droit à accorder dans Matrix (partage/90-droits.sql), pas un changement de Keystone. Proche de pub_jalons_projets demandée par Arche (R-189) : une seule vue pour les deux lecteurs si les colonnes se rejoignent.  
+*Avancement : 01/11/2026 : rien à construire — la vue pub_jalons (migration 0038, colonnes projet_code, jalon_id, nom, position, mois_reference, mois_prevu, statut, activite_code, date_fin_activite, maj_le) existe déjà et Matrix l’accorde à crucible_app (90-droits.sql) ; pub_jalons_projets reste la vue des 8 jalons CAPEX pour Arche. · Sources : Crucible (application de planification des moyens d’essais R&D), docs/DEMANDES-KEYSTONE.md, 22 oct. 2026*
+
+**~~R-196 · Catégorie « R&D » des projets lisible dans pub_projets (pour Crucible)~~** — *Prochaine étape · non commencé · effort S* · **fait (Livraison 9)**  
+Crucible (K-3) filtre les projets R&D : si les projets R&D sont des projets internes de Keystone, une nature ou une étiquette « R&D » lisible dans pub_projets (colonne en fin de vue, ex. categorie). Le type de machine « R&D » existe déjà ; à décider : type de machine, nature du projet ou étiquette.  
+*Avancement : 01/11/2026 : catégorie de projet (client / R&D) à la création et sur l’écran Contrat, publiée en fin de pub_projets (colonne categorie, migrations 0070-0071) ; reste la recopie de la vue par Matrix. · Sources : Crucible (application de planification des moyens d’essais R&D), docs/DEMANDES-KEYSTONE.md, 22 oct. 2026*
+
 **~~R-187 · Besoins machines des filiales : connecteur capex, réponse chiffrée, création du projet à la commande~~** — *À décider · non commencé · effort L* · **fait (9)**  
 Connecteur capex (miroir de pub_capex et pub_besoins_machines, liens profonds, simulation) ; corbeille « Besoins des filiales » ; qualification, réponse chiffrée avec classe d’estimation, devis puis offre (Codex) ; création du projet EPC2i au G2 du CAPEX avec la référence du CAPEX et du besoin ; vue pub_reponses_besoins. Rejoint la proposition P6 (offres et chiffrage).  
 *Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-02 — connecteur capex (lire arche.pub_capex et arche.pub_besoins_machines, liens profonds <ARCHE_URL>/capex/<code>), corbeille « Besoins des filiales », pub_reponses_besoins ; K-10 — à la commande, créer le projet EPC2i ou ajouter des équipements à un projet existant, code publié dans pub_reponses_besoins.projet_code. 24 oct. 2026 : fait côté Keystone (docs/delivery-9/notes-r187-capex-needs.md) — connecteur capex (miroir de arche.pub_capex et arche.pub_besoins_machines : lecture directe sur le serveur commun, simulation en démonstration, tâche toutes les 15 min, liens profonds ARCHE_URL), carte « Besoins machines des filiales » sous le registre de Portefeuille › Projets (directeur ; chefs de projet en lecture), réponses chiffrées RB-nnn (qualification, indicatif, devis, offre ferme E10 ; fourchette par la classe), création du projet ou ajout d’une ligne d’équipement à la commande (action du directeur), vue pub_reponses_besoins (migrations 0049-0050). Reste : Arche publie ses deux vues (son lot L4) ; Matrix recopie la vue et vérifie les droits. · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
 
-**~~R-195 · Vue pub_jalons des échéances des projets (pour Crucible)~~** — *À décider · non commencé · effort M* · **fait (Livraison 9)**  
-Crucible (K-2) lit les échéances des projets pour anticiper les besoins d’essais : vue pub_jalons (projet_code, jalon_id, nom, mois_reference, mois_prevu, statut, activite_code, date_activite_fin = fin au plus tôt de l’activité liée si datée, maj_le). La lecture de pub_projets par crucible_app (K-1) est un droit à accorder dans Matrix (partage/90-droits.sql), pas un changement de Keystone. Proche de pub_jalons_projets demandée par Arche (R-189) : une seule vue pour les deux lecteurs si les colonnes se rejoignent.  
-*Avancement : Livraison 9, lot « share-views » (docs/delivery-9/notes-share-views.md) : vue pub_jalons (projet_code, jalon_id, nom, position, mois_reference, mois_prevu, statut, activite_code, date_fin_activite, maj_le) selon la demande validée de Crucible ; milestones.updated_at ajouté (maj_le). Le droit de lecture de crucible_app (et le rôle) reste à poser dans Matrix (partage/90-droits.sql). · Attend : Validation du responsable produit ; contrat commun avec R-189 · Sources : Crucible (application de planification des moyens d’essais R&D), docs/DEMANDES-KEYSTONE.md, 22 oct. 2026*
-
-### 2.4 Projets, cycle de vie et modèles par type de machine (5 restants, 5 faits)
+### 2.4 Projets, cycle de vie et modèles par type de machine (4 restants, 6 faits)
 
 **R-053 · Créer le standard complet par type de machine et l’instancier à la création** — *Prochaine étape · attend le responsable produit · effort L*  
 Chaque type de projet doit avoir un standard tenu et modifiable dans Keystone : WBS avec lots, activités, durées et liens, budgets, livrables par étape, points ITP. L’assistant en fait une copie que le CP personnalise avant le lancement. Aujourd’hui le modèle se limite aux noms des phases (un lot et une activité de 30 jours ouvrés par phase, enchaînés FS), aux catégories de coûts et aux noms des systèmes ITP : aucun point d’inspection n’est créé et les livrables d’étape sont communs à tous les types. Sans fin saisie, la fin prévue vient de ce plan type, pas d’une date fixe.  
@@ -432,10 +422,6 @@ Réponse « À discuter » sans note. Les champs influence, intérêt et attitud
 **R-058 · Intégrer la matrice RACI d’entreprise, par rôle et non modifiable** — *Plus tard · attend le responsable produit · effort M*  
 S-13b : la matrice RACI fournie par le responsable produit sera fixe et organisée par rôle, et Keystone doit permettre d’affecter chaque rôle à une personne de l’équipe projet. Aujourd’hui la RACI est stockée par projet, en lecture seule, avec des colonnes en texte libre. Seul HLT-026 en a une (semée depuis le prototype), et un projet créé par l’assistant n’en a aucune. La RACI-B des livrables qualité est un objet distinct, hors du périmètre de la réponse.  
 *Attend : Matrice RACI par rôle, en cours de définition par le responsable produit · Sources : S-13b, 05 OQ20, DELIVERY-3.md §7, DELIVERY-5.md §6*
-
-**R-201 · Tâches récurrentes et automatisation des tâches répétitives dans « Mon travail »** — *Plus tard · non commencé · effort M*  
-Permettre de créer des tâches récurrentes (hebdomadaire, mensuelle, à chaque jalon) et d’automatiser les tâches répétitives dans « Mon travail » : règle de récurrence sur la tâche, génération de l’occurrence suivante à la clôture, affichage dans les vues liste, tableau et calendrier. Standard du marché (Wrike, Asana). Aujourd’hui les vues existent (src/app/(app)/my/tasks/page.tsx) mais le modèle ne porte aucune récurrence (src/server/db/schema/work.ts). Analyse comparative du 25 oct. 2026 : priorité P2.  
-*Avancement : Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **~~R-054 · Lier le livrable « Planning BL1 posé » à la référence BL1 réelle~~** — *Prochaine étape · partiel · effort S* · **fait (Livraison 8)**  
 L-2 : BL1 est figée en fin d’APD et conditionne le passage en Études. Le livrable d’étape APD « Planning BL1 posé » existe déjà : tant qu’il n’est pas coché, le passage automatique est refusé et il faut forcer. Mais la case se coche à la main, sans lien avec les références. Reste à faire : cocher la case quand on définit BL1, refuser de la cocher sans BL1 (ou la décocher), éventuellement réserver BL1 à l’étape APD, et corriger le texte obsolète de l’assistant « Set BL1 at Planning → Active ».  
@@ -457,11 +443,23 @@ Les types de machine deviennent des fiches catalogue (variantes, options, capaci
 E-9 veut que la modification d’un type de machine ne touche que les nouveaux projets. Phases, lots et catégories sont copiés à la création, mais les systèmes ITP d’un projet existant sont relus en direct sur le type : il faut les copier dans le plan ITP à la création.  
 *Avancement : Livraison 8 : systèmes ITP figés dans le plan à sa création (assistant, données de démonstration, premier « Ajouter une inspection »), reprise des plans existants (E-9). · Sources : E-9, A-2, L-3a, DELIVERY-5.md §4*
 
+**~~R-201 · Tâches récurrentes et automatisation des tâches répétitives dans « Mon travail »~~** — *Plus tard · non commencé · effort M* · **fait (Livraison 9)**  
+Permettre de créer des tâches récurrentes (hebdomadaire, mensuelle, à chaque jalon) et d’automatiser les tâches répétitives dans « Mon travail » : règle de récurrence sur la tâche, génération de l’occurrence suivante à la clôture, affichage dans les vues liste, tableau et calendrier. Standard du marché (Wrike, Asana). Aujourd’hui les vues existent (src/app/(app)/my/tasks/page.tsx) mais le modèle ne porte aucune récurrence (src/server/db/schema/work.ts). Analyse comparative du 25 oct. 2026 : priorité P2.  
+*Avancement : 01/11/2026 : tâches récurrentes (toutes les n semaines / n mois, ou à chaque jalon), occurrence suivante créée à la clôture, jours ouvrés du projet, marque ↻ dans les vues (migration 0070). · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+
 ### 2.5 Planning (7 restants, 5 faits)
 
 **R-060 · Gérer la date de situation par projet et le gel hebdomadaire du vendredi** — *Bloquant production · attend le responsable produit · effort L*  
 Écrire projects.data_date (date de situation par projet, que le CP fait avancer) et l’utiliser pour l’avancement et les coûts ; tous les lecteurs passent déjà par projectDataDate() et le Plan l’affiche déjà, il ne manque que l’écrivain. Un gel le vendredi doit enregistrer l’instantané de la semaine (Tendances : CPI, SPI, EAC, marge, risques ; période EVM ; avancement) : freezeSnapshot existe mais n’est jamais appelé, et l’historique des Tendances et de l’EVM vient uniquement du seed (contraire à A-15). Volet lié de S-4 : les retards, échéances et horodatages doivent suivre l’horloge réelle, alors que TODAY/STATUS_ISO restent figés au 25 sept. 2026 dans environ 46 fichiers.  
 *Attend : Précision du responsable produit : ce qui fait avancer la date (tâche du vendredi, action du CP, Replanifier) et ce que le gel enregistre (DELIVERY-6 §8 S-4) · Sources : S-4, A-15, 04 §2, Q11, 11 §3.3, DELIVERY-6.md §3, §8 S-4, docs/delivery-6/notes-planning.md §3 gap (6)*
+
+**R-204 · Planning multi-niveaux : consolidation des plannings fournisseurs et codes d’activité** — *Prochaine étape · non commencé · effort L*  
+Modéliser les plannings fournisseurs (lots d’achat) dans le CPM et les consolider dans le planning projet (sous-réseaux, liens vers les activités de réception), avec des codes d’activité (lot d’achat, site, équipement) pour filtrer et regrouper. Fonction avancée du marché (Planisware, Primavera P6). Aujourd’hui les plannings fournisseurs ne sont pas modélisés dans le CPM. Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
+*Avancement : 01/11/2026 (K-204) : lancé en entier (plannings fournisseurs consolidés et codes d’activité) ; construit après le diagnostic du planning. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+
+**R-206 · Diagnostic de la qualité du planning (métriques DCMA 14 points, analyse forensique des retards)** — *Prochaine étape · non commencé · effort M* · **en cours (Livraison 9)**  
+Évaluer la qualité d’un planning avec les 14 contrôles DCMA (liens manquants, contraintes dures, marges négatives, durées longues, retards, liens début-fin…) et fournir une analyse forensique des retards (comparaison référence / actuel par activité, glissement du chemin critique). Fonction différenciante du marché (Deltek Acumen). Absent aujourd’hui. Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
+*Avancement : 01/11/2026 (K-206, K-206b) : carte « Qualité du planning », 14 contrôles DCMA aux seuils du standard (modifiables) et analyse des retards ; en construction. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **R-063 · Trancher les règles restantes des références de planning (S-3)** — *À décider · attend le responsable produit · effort S*  
 Trois choix restent : une référence proposée dont la CR est rejetée est-elle supprimée ou marquée rejetée ? Après BL1, « Re-baseline » du Planning devient-il le même lien vers une CR que le Plan ? Quand une ancienne CR est approuvée après une plus récente (CR-009 / BL2 après CR-011 / BL3), la dernière approbation l’emporte-t-elle ou garde-t-on la BLn la plus haute ?  
@@ -475,17 +473,9 @@ Les fermetures communes à l’entreprise passent déjà par Paramètres › Jou
 Le moteur CPM gère les contraintes (SNET, FNLT, MSO…), mais elles ne viennent que du seed ou des imports désactivés : un nouveau projet ne peut pas en avoir. La spécification demande type et date éditables ; absent du prototype, donc à valider avant construction.  
 *Attend : Validation du responsable produit (fonction absente du prototype) · Sources : S-1, 05 §7 (Constraints)*
 
-**R-200 · Nivellement automatique des ressources sur le planning CPM (copie comparée à la référence)** — *À décider · non commencé · effort L*  
+**R-200 · Nivellement automatique des ressources sur le planning CPM (copie comparée à la référence)** — *Plus tard · non commencé · effort L*  
 Niveler automatiquement les activités du planning CPM selon la capacité des ressources (décalage des activités non critiques, respect des liens et des contraintes), appliqué sur une copie du planning et comparé à la référence avant adoption. Fonction avancée du marché (Primavera P6, MS Project). Aujourd’hui le what-if ne porte que sur les allocations hebdomadaires (src/domain/whatif.ts), sans nivellement d’activités. Analyse comparative du 25 oct. 2026 : priorité P2, à valider par le responsable produit (fonction absente du prototype).  
-*Avancement : Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire. · Attend : Validation du responsable produit · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
-
-**R-204 · Planning multi-niveaux : consolidation des plannings fournisseurs et codes d’activité** — *À décider · non commencé · effort L*  
-Modéliser les plannings fournisseurs (lots d’achat) dans le CPM et les consolider dans le planning projet (sous-réseaux, liens vers les activités de réception), avec des codes d’activité (lot d’achat, site, équipement) pour filtrer et regrouper. Fonction avancée du marché (Planisware, Primavera P6). Aujourd’hui les plannings fournisseurs ne sont pas modélisés dans le CPM. Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
-*Avancement : Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire. · Attend : Validation du responsable produit · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
-
-**R-206 · Diagnostic de la qualité du planning (métriques DCMA 14 points, analyse forensique des retards)** — *À décider · non commencé · effort M*  
-Évaluer la qualité d’un planning avec les 14 contrôles DCMA (liens manquants, contraintes dures, marges négatives, durées longues, retards, liens début-fin…) et fournir une analyse forensique des retards (comparaison référence / actuel par activité, glissement du chemin critique). Fonction différenciante du marché (Deltek Acumen). Absent aujourd’hui. Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
-*Avancement : Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire. · Attend : Validation du responsable produit · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+*Avancement : 01/11/2026 (K-200) : plus tard, la capacité réelle attend les absences de Cursus (R-084). · Attend : Validation du responsable produit · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **~~R-061 · Réserver la structure du planning au CP et au directeur~~** — *Prochaine étape · partiel · effort M* · **fait (Livraison 7)**  
 WBS, durées, budgets et liens ne sont modifiables que par le CP du projet et le directeur ; les responsables d’activité saisissent seulement l’avancement de leurs activités. Aujourd’hui ingénierie et qualité modifient le planning de tous les projets, et le membre n’a pas accès au Plan. Replanifier, références et suppression sont déjà limités au CP et au directeur.  
@@ -517,6 +507,10 @@ Coût réel = heures validées Cursus × taux en vigueur, plus achats à la réc
 Le responsable produit fournira une extraction Sage des codes analytiques et de leur découpage en codes NIM. Chaque tâche recevra son code analytique et son code NIM, et les budgets seront rattachés aux codes NIM ; le découpage des budgets projet reste à revoir avec lui.  
 *Attend : Extraction Sage des codes analytiques et NIM, puis discussion sur le découpage des budgets · Sources : S-6, NEW-SYS-1, I-3b, 05 OQ9, 04 §1, DELIVERY-6.md §5*
 
+**R-205 · Analyse de risques Monte-Carlo sur coût et délai** — *Prochaine étape · non commencé · effort L* · **en cours (Livraison 9)**  
+Simuler l’incertitude des durées et des coûts (lois triangulaires sur les activités et les risques liés) pour produire des distributions de fin de projet et de coût à terminaison avec niveaux de confiance (P50 / P80). Fonction avancée du marché (Primavera Cloud). Aujourd’hui le registre des risques est en probabilité × impact seulement ; le lien risque ↔ activité existe déjà dans le modèle (risks.activity_id). Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
+*Avancement : 01/11/2026 (K-205, K-205b) : Monte-Carlo délai et coût, fourchettes saisies par le CP (défaut −10 % / +25 %) ; en construction. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+
 **R-078 · Définir avec la finance la retenue de garantie et les cautions** — *À décider · attend le responsable produit · effort M*  
 Le responsable produit doit vérifier avec la finance les types de retenues et garanties (retenue déduite des factures puis libérée, caution…) avant de choisir le calcul. Aujourd’hui la retenue est indicative, calculée sur les montants payés, sans effet sur les factures ni la trésorerie.  
 *Attend : Retour du service finance (C-8 « À discuter ») · Sources : C-8, 04 Q14, DECISIONS.md « À traiter en priorité », DELIVERY-3.md §7*
@@ -524,10 +518,6 @@ Le responsable produit doit vérifier avec la finance les types de retenues et g
 **R-182 · Décider si les factures client sont émises et encaissées dans Sage X3** — *À décider · attend le responsable produit · effort M*  
 Keystone émet lui-même les factures client avec sa propre numérotation (INV-2026-00n) et les marque payées à la main, alors que la facture légale et les encaissements relèvent normalement de la comptabilité (Sage X3), et que la réforme de la facturation électronique s'applique. Décider avec la finance si Keystone garde l'émission ou passe une demande de facturation à X3 et reçoit en retour le numéro et le paiement, comme pour les factures fournisseurs (SC-2).  
 *Attend : Service finance : processus de facturation client dans Sage X3 (numérotation légale, encaissements, facturation électronique) · Sources : P-4, I-3b, A-5, SC-2 (règle analogue fournisseurs), 04 §4, DELIVERY-3.md §4 (Billing), §7 (P-4, 04 Q7)*
-
-**R-205 · Analyse de risques Monte-Carlo sur coût et délai** — *À décider · non commencé · effort L*  
-Simuler l’incertitude des durées et des coûts (lois triangulaires sur les activités et les risques liés) pour produire des distributions de fin de projet et de coût à terminaison avec niveaux de confiance (P50 / P80). Fonction avancée du marché (Primavera Cloud). Aujourd’hui le registre des risques est en probabilité × impact seulement ; le lien risque ↔ activité existe déjà dans le modèle (risks.activity_id). Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
-*Avancement : Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire. · Attend : Validation du responsable produit · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **~~R-075 · Gérer plusieurs devises avec consolidation en euros~~** — *Bloquant production · non commencé · effort L* · **fait (Livraison 7)**  
 Chaque contrat, commande et facture garde sa devise ; budget, trésorerie et finance du portefeuille sont consolidés en euros au taux budgétaire fixé pour chaque projet. Aujourd’hui seul le symbole change et tous les montants sont en k€.  
@@ -785,13 +775,13 @@ Dans le tiroir d’un document, seules les relations Article et CR sont des lien
 
 ### 2.12 Portefeuille, pilotage et indicateurs (2 restants, 8 faits)
 
-**R-203 · Tableaux de bord configurables par l’utilisateur et connecteur Power BI / Dataverse** — *À décider · non commencé · effort L*  
+**R-203 · Tableaux de bord configurables par l’utilisateur et connecteur Power BI / Dataverse** — *Prochaine étape · non commencé · effort L* · **en cours (Livraison 9)**  
 Laisser chaque utilisateur composer ses tableaux de bord (widgets, filtres, indicateurs, enregistrement et partage) et ouvrir les données à Power BI / Dataverse (vues pub_ ou flux OData / API) pour les analyses du groupe. Standard du marché (Wrike, Planner Premium). Aujourd’hui les écrans de pilotage sont fixes et seul l’export CSV / XLSX existe. Analyse comparative du 25 oct. 2026 : priorité P2, à valider par le responsable produit ; le connecteur Power BI peut s’appuyer sur les vues pub_ déjà publiées.  
-*Avancement : Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire. · Attend : Validation du responsable produit · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+*Avancement : 01/11/2026 (K-203, K-203b) : tableaux de bord configurables lancés ; Power BI par les vues pub_ (demande à Matrix et à la DSI). · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
-**R-208 · IA prédictive de dérive délai / coût et suggestions de mitigation** — *À décider · non commencé · effort XL*  
+**R-208 · IA prédictive de dérive délai / coût et suggestions de mitigation** — *Prochaine étape · non commencé · effort XL* · **en cours (Livraison 9)**  
 Prédire la dérive de délai et de coût d’un projet à partir de l’historique (référence, avancement, valeur acquise, REX) et proposer des mitigations (réaffectation, resserrement, alerte précoce). Fonction avancée du marché (Planview, Planisware). Aujourd’hui l’IA ne sert qu’à l’analyse des transcriptions de réunion (src/server/ai/transcripts/). Analyse comparative du 25 oct. 2026 : priorité P3, à décider ; suppose un historique réel de projets.  
-*Avancement : Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire. · Attend : Validation du responsable produit ; historique de projets réels · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+*Avancement : 01/11/2026 (K-208) : première version fondée sur les règles et la valeur acquise ; en construction. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **~~R-129 · Vue d’ensemble : ne compter que les projets en exécution~~** — *Prochaine étape · non commencé · effort S* · **fait (Livraison 7)**  
 Appliquer A-3 : la Vue d’ensemble, l’accueil directeur (tuiles et demandes de modification) et Mes projets doivent suivre le registre en direct et retenir les projets dont l’étape appartient au groupe « execution » (Études → Mise en service), et non plus ceux qui ont des données de contrôle (hasData). Les libellés « FY2026 », figés dans l’indice de carte et dans le fil d’Ariane, doivent venir de la date de données. Les tests golden doivent être mis à jour avec un commentaire citant A-3. La règle de santé unique (A-13) est déjà appliquée.  
@@ -875,9 +865,9 @@ Donner aux réclamations une fiche détaillée où le SAV fait avancer les statu
 Étapes du cycle de vie, livrables d’étape, jalons, modèles de projet (descriptions de l’assistant) et données chantier doivent avoir un libellé anglais en mode EN ; ils s’affichent aujourd’hui en français dans les deux langues. Proposer le glossaire et le faire valider.  
 *Attend : Validation du glossaire anglais par le responsable produit · Sources : X-12a, 01 §13.4, OQ16-17, 03 OQ18, 02 Q-7, DELIVERY-1.md §7, DELIVERY-6.md §6*
 
-**R-209 · Multilingue au-delà du français et de l’anglais pour les filiales pays** — *À décider · non commencé · effort L*  
+**R-209 · Multilingue au-delà du français et de l’anglais pour les filiales pays** — *Plus tard · non commencé · effort L*  
 Ajouter d’autres langues d’interface (espagnol, portugais… selon les filiales) : dictionnaires supplémentaires dans src/i18n, règles de complétude par langue, libellés des termes métier (R-147) et choix de langue par utilisateur (R-018). Standard du marché. Aujourd’hui FR / EN seulement. Analyse comparative du 25 oct. 2026 : besoin transverse, à décider selon les langues des filiales utilisatrices.  
-*Avancement : Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire. · Attend : Liste des langues des filiales, validation du responsable produit · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+*Avancement : 01/11/2026 (K-209) : plus tard. · Attend : Liste des langues des filiales, validation du responsable produit · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **~~R-146 · Rendre Keystone utilisable sur tablette~~** — *Prochaine étape · non commencé · effort L* · **fait (Livraison 7)**  
 Menu latéral repliable et mises en page tablette, en commençant par Chantier, Réserves et Livraisons, en ligne. Le shell est figé à 232 px sans point de rupture ; c’est un préalable à toute application chantier hors ligne (P8).  
@@ -995,9 +985,9 @@ Proposition : parc d’outillage, affectation aux chantiers, échéances d’ét
 Proposition : version tablette des écrans Chantier, Réserves et Livraisons avec saisie hors ligne et synchronisation (rapports journaliers, photos, réceptions). Suppose d’abord la tablette en ligne (X-4, R-146) et le stockage des photos (X-15, R-126) ; la réponse X-4 a retenu la tablette en ligne, pas l’appli hors ligne. Analyse comparative du 25 oct. 2026 : une application mobile / chantier hors ligne (rapports journaliers, photos, réserves) est un standard du marché (Procore, Smartsheet) ; aujourd’hui les photos passent par /api/photos sur navigateur et la proposition P8 n’est pas validée. Priorité suggérée P2, à valider par le responsable produit.  
 *Attend : Validation de la proposition ; X-4 et X-15 réalisés d’abord · Sources : BACKLOG.md §2 P8, X-4, X-15, Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
-**R-207 · Automatisations sans code (règles si / alors, approbations automatiques)** — *À décider · non commencé · effort XL*  
+**R-207 · Automatisations sans code (règles si / alors, approbations automatiques)** — *Plus tard · non commencé · effort XL*  
 Offrir un éditeur de règles si / alors (déclencheur, condition, action : notifier, changer un statut, créer une tâche, approuver automatiquement sous un seuil) configurable par les administrateurs. Standard du marché (monday, Smartsheet). Aujourd’hui les circuits d’approbation sont codés en dur (src/server/approvals/). Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
-*Avancement : Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire. · Attend : Validation du responsable produit · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+*Avancement : 01/11/2026 (K-207) : plus tard, après la procédure d’achats (R-094). · Attend : Validation du responsable produit · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **~~R-158 · Cadrer puis construire le module Expédition & transport~~** — *À décider · non commencé · effort XL* · **fait (9)**  
 Module demandé mais à cadrer avec le responsable produit avant construction : plan d’expédition (lots, colis, conteneurs et remplissage), fret (mode, Incoterm, transitaire, ETD/ETA, jalons), coûts imputés au budget, documents versés dans Codex (facture, packing list, EUR.1, CMR, B/L ou LTA, déclaration d’export), synthèse douane par code HS avec alerte double usage, et contrôle nomenclature ↔ packing list bloquant le livrable « Colisage & documents douaniers ». Les données articles (code HS, restriction et famille de contrôle export) existent déjà et ne sont aujourd’hui qu’affichées ; le livrable d’étape n’est qu’une case à cocher.  
@@ -1005,6 +995,9 @@ Module demandé mais à cadrer avec le responsable produit avant construction : 
 
 ## 3. Mises à jour
 
+- 2026-11-01 — R-196 et R-201 faits : catégorie R&D des projets ; tâches récurrentes.
+- 2026-11-01 — R-195 fait : la vue pub_jalons existe déjà (0038) et Matrix l’accorde à Crucible.
+- 2026-11-01 — Cadrage des lots R-195 à R-209 (questionnaire) : lancés R-196, R-201, R-203, R-205, R-206, R-208, puis R-204 ; R-195 et Power BI par Matrix ; plus tard R-197, R-200, R-202, R-207, R-209.
 - 2026-10-31 — R-210 : application Windows construite (en attente d’un essai sur PC Windows et de l’hébergement).
 - 2026-10-31 — L9-X3 fait : documents d’expédition pré-versés dans Codex dans la démonstration.
 - 2026-10-31 — Questionnaire de la livraison 9 : 20 choix par défaut confirmés ; démo avec documents d’expédition versés dans Codex (L9-X3) ; portail des filiales = Arche, accès web gardé et application Windows validée (R-210, nouvel item).
