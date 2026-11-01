@@ -210,7 +210,7 @@ function block(doc: Doc, b: PdfBlock, lang: Lang): void {
 function table(doc: Doc, columns: ExportColumn[], rows: Record<string, CellValue>[], lang: Lang, totals?: Record<string, CellValue>): void {
   const x = doc.page.margins.left;
   const w = contentWidth(doc);
-  const rel = columns.map((c) => c.width ?? (isNumericType(c.type) || c.type === 'date' ? 10 : 18));
+  const rel = columns.map((c) => c.width ?? (isNumericType(c.type) || c.type === 'date' || c.type === 'month' ? 10 : 18));
   const sum = rel.reduce((a, b) => a + b, 0) || 1;
   const widths = rel.map((r) => (r / sum) * w);
   const pad = 3;

@@ -39,7 +39,14 @@ const READ_ONLY = 'The site is read-only for you';
 const INVALID = 'Invalid request';
 const FAILED = 'The change could not be saved';
 const NO_SHEET = 'This project has no site sheet';
-const STALE = 'This step is not available any more';
+// R-157: precise reasons for a refusal on a fresh read (the generic "This step is not available any more" before).
+const LINE_CHANGED = 'This line was changed by someone else meanwhile: check it again';
+const PREREQ_CONFIRMED = 'The client has already confirmed this prerequisite';
+const PREREQ_SIGNED = 'This prerequisite is already signed on site';
+const PREREQ_NOT_CONFIRMED = 'The client must confirm this prerequisite before it is signed on site';
+const EQUIPMENT_CONFIRMED = 'This equipment is already confirmed';
+const ALREADY_GO = 'This person is already GO in Cursus';
+const ALREADY_REMINDED = 'A reminder for this person already waits for Cursus';
 const NO_CURSUS_SITE = 'No Cursus site is linked to this project';
 
 /** The sidebar badge and the screen: every page shows the Site "NO GO" badge. */
@@ -83,14 +90,22 @@ export async function advancePrerequisiteAction(code: string, position: number, 
   if (!p) return fail('Unknown prerequisite');
   if (p.stamp !== stamp || p.status !== (to === 'confirmed' ? 'pending' : 'confirmed')) {
     refresh();
-    return fail(STALE);
+    return fail(
+      p.stamp !== stamp
+        ? LINE_CHANGED
+        : p.status === 'signed'
+          ? PREREQ_SIGNED
+          : to === 'confirmed'
+            ? PREREQ_CONFIRMED
+            : PREREQ_NOT_CONFIRMED,
+    );
   }
   try {
     await advancePrerequisite(ok.code, position, to, stamp, ok.actor);
   } catch (e) {
     if (e instanceof Error && e.message === SITE_LINE_CHANGED) {
       refresh();
-      return fail(STALE);
+      return fail(LINE_CHANGED);
     }
     logError('advancePrerequisiteAction', e);
     return fail(FAILED);
@@ -108,14 +123,14 @@ export async function confirmEquipmentAction(code: string, position: number, sta
   if (!e) return fail('Unknown equipment');
   if (e.stamp !== stamp || e.status !== 'pending') {
     refresh();
-    return fail(STALE);
+    return fail(e.stamp !== stamp ? LINE_CHANGED : EQUIPMENT_CONFIRMED);
   }
   try {
     await confirmEquipment(ok.code, position, stamp, ok.actor);
   } catch (err) {
     if (err instanceof Error && err.message === SITE_LINE_CHANGED) {
       refresh();
-      return fail(STALE);
+      return fail(LINE_CHANGED);
     }
     logError('confirmEquipmentAction', err);
     return fail(FAILED);
@@ -135,7 +150,7 @@ export async function remindInCursusAction(code: string, person: string): Promis
   if (!p) return fail('This person is not mobilised on the site in Cursus');
   if (p.verdict === 'go' || p.reminded) {
     refresh();
-    return fail(STALE);
+    return fail(p.verdict === 'go' ? ALREADY_GO : ALREADY_REMINDED);
   }
   try {
     await remindInCursus(ok.code, p.personName, ok.actor);

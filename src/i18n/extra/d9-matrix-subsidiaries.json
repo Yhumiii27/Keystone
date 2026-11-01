@@ -1,0 +1,12 @@
+{
+  "Choose a subsidiary published by Matrix": "Choisissez une filiale publiée par Matrix",
+  "This subsidiary’s code is already the code of another client": "Le code de cette filiale est déjà celui d’un autre client",
+  "Matrix’s subsidiaries could not be read": "Les filiales de Matrix n’ont pas pu être lues",
+  "Matrix subsidiaries connector off": "Connecteur des filiales de Matrix désactivé",
+  "Matrix subsidiaries simulation refused on a non-demo database": "Simulation des filiales de Matrix refusée hors base de démonstration",
+  "Subsidiaries published by Matrix": "Filiales publiées par Matrix",
+  "Subsidiaries of the CAPEX application (Matrix publishes none yet)": "Filiales de l’application CAPEX (Matrix n’en publie pas encore)",
+  "Refresh the list": "Actualiser la liste",
+  "Subsidiaries list refreshed": "Liste des filiales actualisée",
+  "This client code is reserved for a group subsidiary: choose the subsidiary’s client or another client name": "Ce code client est réservé à une filiale du groupe : choisissez le client de la filiale ou un autre nom de client"
+}

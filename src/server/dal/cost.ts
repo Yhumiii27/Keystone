@@ -22,6 +22,7 @@ import {
   activities, changeRequestSteps, changeRequestWbs, changeRequests, costCategories, costStreamPeriods, costStreams, evmPeriods,
   offerQuotes, projectControls, projects, wbsNodes, wpBudgets,
 } from '@/server/db/schema';
+import { tokenOf } from './record-version';
 import { getContingencyTotals } from './contingency';
 import { getOpenCommitment, getProjectEvm } from './evm';
 import { healthThresholds } from './health-thresholds';
@@ -64,6 +65,8 @@ export interface CostCategoryRow {
   actual: number;
   committed: number;
   forecast: number;
+  /** R-010: the category's version token, sent back by its "Edit category" form. */
+  version: string;
 }
 
 export interface WpBudgetRow {
@@ -139,6 +142,7 @@ export function costNote(stored: string, cpi: number | null, th: HealthThreshold
 /** Cost-control data of a project (projectData() cost side); null for projects without data. */
 export async function getCostControl(code: string): Promise<CostControl | null> {
   const db = await getDb();
+  const readAt = new Date();
   const [head] = await db
     .select({ c: projectControls, projectId: projects.id, bac: projects.budgetKeur, progress: projects.progress })
     .from(projectControls)
@@ -203,6 +207,7 @@ export async function getCostControl(code: string): Promise<CostControl | null> 
         actual: reserve ? drawn : k.actualKeur,
         committed: k.id === firstMaterial ? ordersPlaced : k.committedKeur,
         forecast: reserve ? tile.forecast : k.forecastKeur,
+        version: tokenOf(k.version, readAt),
       };
     }),
     workPackages: wps.map((w) => {
@@ -255,25 +260,54 @@ export interface ChangeRequestRow {
 
 /** Change requests of a project, register order (HLT_CRS_X, then CR-005 from the Budget dataset). */
 export async function listChangeRequests(code: string): Promise<ChangeRequestRow[]> {
+  return (await listChangeRequestsOf([code])).get(code) ?? [];
+}
+
+/**
+ * `listChangeRequests` of several projects in three reads (R-017: the director's Home read them project by project for the
+ * whole portfolio in execution). Project code → its requests in register order (a project without request is absent).
+ */
+export async function listChangeRequestsOf(codes: readonly string[]): Promise<Map<string, ChangeRequestRow[]>> {
+  const out = new Map<string, ChangeRequestRow[]>();
+  if (!codes.length) return out;
   const db = await getDb();
+  const ofProjects = inArray(projects.code, [...new Set(codes)]);
   const crs = await db
-    .select({ cr: changeRequests })
+    .select({ cr: changeRequests, code: projects.code })
     .from(changeRequests)
     .innerJoin(projects, eq(projects.id, changeRequests.projectId))
-    .where(eq(projects.code, code))
+    .where(ofProjects)
     .orderBy(asc(changeRequests.position));
-  if (!crs.length) return [];
-  const ids = crs.map(({ cr }) => cr.id);
+  if (!crs.length) return out;
+  const scoped = db.select({ id: changeRequests.id }).from(changeRequests).innerJoin(projects, eq(projects.id, changeRequests.projectId)).where(ofProjects);
   const [steps, wbs] = await Promise.all([
-    db.select().from(changeRequestSteps).where(inArray(changeRequestSteps.changeRequestId, ids)).orderBy(asc(changeRequestSteps.position)),
-    db.select().from(changeRequestWbs).where(inArray(changeRequestWbs.changeRequestId, ids)).orderBy(asc(changeRequestWbs.position)),
+    db.select().from(changeRequestSteps).where(inArray(changeRequestSteps.changeRequestId, scoped)).orderBy(asc(changeRequestSteps.position)),
+    db.select().from(changeRequestWbs).where(inArray(changeRequestWbs.changeRequestId, scoped)).orderBy(asc(changeRequestWbs.position)),
   ]);
-  return crs.map(({ cr }) => ({
-    id: cr.number, title: cr.title, types: cr.types, amount: cr.amountKeur, days: cr.scheduleDays, status: cr.status,
-    statusLabel: changeStatus.label(cr.status), by: cr.requestedBy, date: cr.requestedOnText,
-    chain: Object.fromEntries(steps.filter((s) => s.changeRequestId === cr.id).map((s) => [s.step, s.decision])),
-    wbs: wbs.filter((w) => w.changeRequestId === cr.id).map((w) => w.wbsCode),
-    wbsAlloc: wbs.filter((w) => w.changeRequestId === cr.id).map((w) => ({ code: w.wbsCode, amount: w.amountKeur })),
-    bl: cr.baselineCode,
-  }));
+  const group = <T extends { changeRequestId: string }>(xs: T[]) => {
+    const m = new Map<string, T[]>();
+    for (const x of xs) {
+      const list = m.get(x.changeRequestId);
+      if (list) list.push(x);
+      else m.set(x.changeRequestId, [x]);
+    }
+    return m;
+  };
+  const stepsOf = group(steps);
+  const wbsOf = group(wbs);
+  for (const { cr, code } of crs) {
+    const own = wbsOf.get(cr.id) ?? [];
+    const row: ChangeRequestRow = {
+      id: cr.number, title: cr.title, types: cr.types, amount: cr.amountKeur, days: cr.scheduleDays, status: cr.status,
+      statusLabel: changeStatus.label(cr.status), by: cr.requestedBy, date: cr.requestedOnText,
+      chain: Object.fromEntries((stepsOf.get(cr.id) ?? []).map((st) => [st.step, st.decision])),
+      wbs: own.map((w) => w.wbsCode),
+      wbsAlloc: own.map((w) => ({ code: w.wbsCode, amount: w.amountKeur })),
+      bl: cr.baselineCode,
+    };
+    const list = out.get(code);
+    if (list) list.push(row);
+    else out.set(code, [row]);
+  }
+  return out;
 }

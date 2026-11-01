@@ -36,12 +36,12 @@ const GLOBAL = [
   '/', '/my/projects', '/my/tasks', '/my/tasks/T-2314', '/my/approvals', '/portfolio/overview', '/portfolio/projects', '/portfolio/schedule', '/portfolio/map',
   '/portfolio/prioritisation', '/portfolio/cash', '/reference/parts', '/reference/eco', '/reference/drawings', '/purchasing/sourcing', '/purchasing/stock',
   '/after-sales/fleet', '/after-sales/claims', '/resources', '/resources/requests', '/resources/approvals', '/resources/what-if?project=HLT-026',
-  '/resources/skills', '/resources/leave', '/resources/rates', '/admin/settings', '/admin/machine-types', '/admin/document-types', '/admin/integrations',
+  '/resources/skills', '/resources/leave', '/resources/rates', '/admin/settings', '/admin/machine-types', '/admin/document-types', '/admin/integrations', '/catalogue/machines',
 ];
 const PROJECT = [
   'client', 'documents', 'contract', 'billing', 'plan', 'schedule', 'budget', 'hours', 'contingency', 'resources', 'meetings', 'stakeholders', 'interfaces',
   'engineering', 'engineering/process', 'engineering/mechanical', 'engineering/electrical', 'engineering/automation', 'pid', 'bom', 'risks', 'changes',
-  'quality', 'itp', 'site', 'commissioning', 'trends', 'closure', 'orders', 'deliveries',
+  'quality', 'itp', 'site', 'shipments', 'commissioning', 'trends', 'closure', 'orders', 'deliveries',
 ];
 
 test('every screen renders under the CSP without a violation or a browser error', async ({ page, context }) => {

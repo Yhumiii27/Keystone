@@ -5,6 +5,7 @@ import type { Icon } from '@phosphor-icons/react';
 import type { CSSProperties, ReactNode } from 'react';
 import { cx } from '@/components/ds/cx';
 import { Sparkline } from '@/components/charts/primitives/Sparkline';
+import { AlertMark } from './AlertMark';
 import { LO } from './tones';
 import s from './Kpi.module.css';
 
@@ -38,16 +39,25 @@ export interface KpiTileProps {
   icon?: Icon;
   /** `lg` = 24px value + 12px sub (Home, Overview); `md` = 22px + 11.5px. */
   size?: 'md' | 'lg';
+  /**
+   * R-154 (WCAG 1.4.1): text read by screen readers when the value is in LO ("Needs attention", translated). The LO value
+   * always carries a warning icon, so the alert is never shown by its colour alone.
+   */
+  alertLabel?: string;
   className?: string;
 }
 
 /** `.card.elev-sm` gap 3px · padding 12px 14px: label / value / sub. */
-export function KpiTile({ label, value, sub, tone = 'default', color, icon: I, size = 'md', className }: KpiTileProps) {
+export function KpiTile({ label, value, sub, tone = 'default', color, icon: I, size = 'md', alertLabel, className }: KpiTileProps) {
   const c = color ?? (tone === 'alert' ? LO : undefined);
+  const alert = c === LO;
   return (
     <div className={cx('card', 'elev-sm', s.tile, size === 'lg' && s.lg, className)} style={c ? ({ '--kpi-color': c } as CSSProperties) : undefined}>
       <div className={s.label}>{label}</div>
-      <div className={s.value}>{value}</div>
+      <div className={s.value}>
+        {value}
+        {alert && <AlertMark label={alertLabel} />}
+      </div>
       {(sub != null || I) && (
         <div className={cx(s.sub, I && s.subIcon)}>
           {I && <I aria-hidden />}

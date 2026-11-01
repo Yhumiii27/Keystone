@@ -5,7 +5,7 @@ sœurs, limites de la bêta, glossaire).
 
 ## Ce que voit le directeur
 
-Le directeur voit **les 59 écrans** et a les droits de chef de projet sur **tous** les projets :
+Le directeur voit **les 60 écrans** et a les droits de chef de projet sur **tous** les projets :
 
 - **En haut** : Accueil, Mes projets, Mes tâches, Mes approbations, Documents · Codex.
 - **Portefeuille** : Vue d’ensemble, Projets, Planning, Mappemonde des projets, Priorisation, Trésorerie.
@@ -13,7 +13,7 @@ Le directeur voit **les 59 écrans** et a les droits de chef de projet sur **tou
   Ressources du projet ; Réunions & CR, Parties prenantes & RACI, Interfaces ; Ingénierie (synthèse et disciplines),
   Validation P&ID, Nomenclature projet ; Registre des risques, Contrôle des modifications, Qualité et livrables,
   Inspections & réserves ; Chantier, Mise en service & transfert ; Tendances et état, REX & clôture.
-- **Référentiel technique**, **Achats & stock**, **Garantie & après-vente**, **Ressources** (dont Grilles de taux),
+- **Référentiel technique**, **Catalogue machines** (fiches proposées aux filiales : il les crée, les publie et les retire, comme le responsable ingénierie), **Achats & stock**, **Garantie & après-vente**, **Ressources** (dont Grilles de taux),
   **Administration** (Paramètres, Types de machines, Registre des types de documents, Activité et intégrations).
 
 ## Parcours principaux

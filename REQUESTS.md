@@ -15,7 +15,7 @@ Format d'une entrée :
 - Validé par Guillaume le : 2026-10-22
 
 ## [2026-10-22] Arche → Keystone — Catalogue machines et réponses aux besoins des filiales (R-186, R-187, R-188, R-185)
-- Statut : ACCEPTÉE — fait : K-01 (pub_catalogue_machines, R-186) ; K-03 côté Keystone (classe d’estimation, R-188 ; publiée avec pub_reponses_besoins en R-187) ; reste : K-02, K-10 (R-187)
+- Statut : FAITE — K-01 (pub_catalogue_machines, R-186), K-03 (classe d’estimation, R-188), K-02 et K-10 (connecteur capex, corbeille, pub_reponses_besoins, projet à la commande, R-187) ; côté Arche : publier arche.pub_capex et arche.pub_besoins_machines
 - Demande : (K-01) publier `keystone.pub_catalogue_machines` ; (K-02) lire `arche.pub_capex` et `arche.pub_besoins_machines` (corbeille « Besoins des filiales » côté EPC2i, liens profonds vers `<ARCHE_URL>/capex/<code>` et `…/machines`) et publier `keystone.pub_reponses_besoins` ; (K-03) classe d'estimation `E50` / `E30` / `E10` et fourchette sur les réponses, une offre ferme est `E10` ; (K-10) à la commande d'un besoin (`statut = ordered` dans `arche.pub_besoins_machines`), créer le projet EPC2i — ou ajouter l'équipement à un projet existant (multi-équipements, R-185) — et publier son code dans `pub_reponses_besoins.projet_code`.
 - Justification : Arche (pilotage des CAPEX des filiales, dépôt Yhumiii27/Arche, livraison 4 fusionnée le 22 oct. 2026) fait choisir les machines dans le catalogue EPC2i et calcule le critère du G2 « offre ferme EPC2i pour chaque besoin soumis » à partir des réponses. Sans ces vues, Arche ne fonctionne qu'en simulation sur son jeu de démonstration ; en production le catalogue est vide et le critère G2 doit être forcé avec motif à chaque passage.
 - Détails techniques : vues dans le schéma `keystone`, `WITH (security_barrier)`, `COMMENT ON VIEW` nommant les lecteurs, colonnes ajoutées en fin seulement ; lecteur `arche_app` (droit accordé par Matrix). Arche lit chaque vue en entier (`select to_jsonb(v) from keystone.<vue> v`) toutes les 15 min ; clés communes : code CAPEX `CPX-APM-2026-01`, référence de besoin `CPX-APM-2026-01/B01`, code catalogue + version.
@@ -26,14 +26,14 @@ Format d'une entrée :
 - Validé par Guillaume le : 2026-10-22
 
 ## [2026-10-22] Arche → Keystone — Rattacher les projets EPC2i au CAPEX dans pub_projets (R-190)
-- Statut : ACCEPTÉE — fait : capex_code et besoin_ref en fin de pub_projets (écran Contrat) ; reste : drapeau « client interne » sur les clients (avec R-179)
+- Statut : FAITE — capex_code et besoin_ref (R-190, 23/10), client interne et code de filiale : client_interne et filiale_code en fin de pub_projets (R-190, 24/10)
 - Demande : (K-05) ajouter en fin de vue `pub_projets` les colonnes `capex_code` et `besoin_ref` ; admettre qu'une filiale du groupe soit le client d'un projet (client interne).
 - Justification : Arche affiche, sur chaque CAPEX, les projets EPC2i qui livrent ses machines. Sans ces colonnes, Arche ne retrouve un projet que par le `projet_code` d'une réponse acceptée (`pub_reponses_besoins`) : un projet ouvert hors de ce circuit reste invisible dans Arche.
 - Détails techniques : `capex_code` text (`CPX-SAI-2026-01`, null pour un projet sans CAPEX), `besoin_ref` text (premier besoin à l'origine du projet, `CPX-SAI-2026-01/B01`), ajoutées après `maj_le` (contrat D02 v1 inchangé pour les lecteurs actuels). Arche lit `code`, `nom`, `phase_code`, `phase`, `chef_projet_nom`, `capex_code`, `besoin_ref`, `maj_le`.
 - Validé par Guillaume le : 2026-10-22
 
 ## [2026-10-22] Arche → Keystone — Vues de suivi des projets pour les jalons CAPEX (R-189, R-191)
-- Statut : ACCEPTÉE — fait : pub_jalons_projets, pub_avancement_projets, pub_avenants, pub_reserves, pub_livrables + 3 colonnes ; reste : pub_pack_ingenierie (attend R-191) et les dates BL1 des jalons (reference_le vide)
+- Statut : FAITE — pub_jalons_projets, pub_avancement_projets, pub_avenants, pub_reserves, pub_livrables + 3 colonnes ; dates BL1 des jalons (reference_le, 25/10), pub_pack_ingenierie (R-191, liste type provisoire, 25/10)
 - Demande : (K-04) publier `pub_jalons_projets`, `pub_avancement_projets` (côté vente seulement : aucun coût interne, taux ni marge), `pub_avenants`, `pub_reserves` ; (K-06) ajouter en fin de `pub_livrables` les colonnes `type`, `accepte_le`, `maj_le` ; (K-08) publier `pub_pack_ingenierie`.
 - Justification : trois critères des jalons d'Arche en dépendent — K3 « SAT EPC2i planifiés », G3 « réserves A/B levées et PV de réception acceptés », G2 « pack d'ingénierie au-dessus du seuil » — ainsi que le suivi des projets EPC2i sur la page du CAPEX (livraisons 5 et 6 d'Arche). Sans ces vues, ces critères sont forcés avec motif et la page n'affiche aucun suivi en production.
 - Détails techniques : schéma `keystone`, `WITH (security_barrier)`, lecteur `arche_app` ; Arche filtre par `projet_code`.
@@ -54,15 +54,27 @@ Format d'une entrée :
 - Validé par Guillaume le : 2026-10-22
 
 ## [2026-10-23] Matrix → Keystone — Publier les leçons apprises des projets (vue pub_rex, D22)
-- Statut : OUVERTE
+- Statut : FAITE — vue pub_rex publiée (leçons validées ou appliquées, migrations 0053-0054, 25/10/2026) ; côté Matrix : recopier la vue et rejouer 96-matrix-rex-unifie.sql
 - Demande : publier une vue `keystone.pub_rex` des leçons apprises des projets (`lessons_learned`), au contrat commun du REX fixé par Matrix (le même pour `arche.pub_rex`).
 - Justification : décision D22 de Matrix (22/10/2026, option A « Deux registres, une vue commune ») : Keystone garde le REX des projets, Arche celui des CAPEX, et Matrix les réunit (`UNION ALL`, comme le journal unifié). Le REX d'un CAPEX porte souvent sur la machine livrée par EPC2i. Sans cette vue, la vue commune de Matrix ne contient que le REX d'Arche ; rien n'est bloqué ailleurs.
 - Détails techniques : colonnes, dans cet ordre et de type `text` sauf indication : `ref_source` (identifiant de la ligne dans l'outil), `outil` (`keystone` ou `arche`), `projet_code`, `capex_code`, `numero`, `categorie`, `titre`, `constat`, `impact`, `recommandation`, `portee`, `statut`, `auteur`, `cree_le` (timestamptz), `maj_le` (timestamptz). Colonnes propres à un outil : en fin de vue seulement. Vue `WITH (security_barrier)`, lecteur `matrix_app` (droit déjà prévu dans `infra/postgres/partage/90-droits.sql` de Matrix) ; une vue `pub_` est un contrat : aucune colonne retirée ni renommée. Correspondance proposée : `ref_source` = `'lessons_learned:' || id`, `outil` = `'keystone'`, `projet_code` = `projects.code`, `capex_code` = null (ou le CAPEX du projet quand Keystone le connaîtra, R-190), `numero` = `number`, `categorie` = `theme`, `titre` = au choix de Keystone (la table n'a pas de titre ; par exemple `number || ' · ' || theme`), `constat` = `what_happened`, `impact` = `impact`, `recommandation` = `recommendation`, `portee` = `applies_to`, `statut` = `status`, `auteur` = `raised_by_name`, `cree_le` = `created_at`, `maj_le` = `updated_at`. Données personnelles : le nom de l'auteur seulement, comme `pub_journal`.
 - Validé par Guillaume le : 2026-10-23
 
 ## [2026-10-23] Matrix → Keystone — Relier les clients filiales au code de la filiale de Matrix (D21)
-- Statut : OUVERTE
+- Statut : FAITE — miroir de matrix.pub_filiales (liste des filiales de la carte « Client »), code3 d’un client interne = code de la filiale, code réservé aux filiales, filiale_code en fin de pub_clients (0053-0054, 25/10/2026)
 - Demande : quand un client est une filiale du groupe, `clients.code3` prend le code de la filiale publié par Matrix (`matrix.pub_filiales`, choisi dans une liste, en lecture seule) ; les clients extérieurs au groupe gardent un `code3` libre. Ajouter en fin de `keystone.pub_clients` une colonne `filiale_code` (text, null pour un client extérieur).
 - Justification : décision D21 de Matrix (22/10/2026, option A) : Matrix fait foi pour les zones et les filiales du groupe. La filiale est à la fois le client des projets EPC2i (Keystone) et l'entité d'un CAPEX (Arche, contrôle R-190) ; sans code commun, la même filiale existe deux fois sous deux codes possibles. Sans ce lien, le rapprochement Keystone ↔ Arche reste manuel. Pas urgent : la liste réelle des filiales n'est pas encore saisie dans Matrix.
 - Détails techniques : `matrix.pub_filiales` (lecteur `keystone_app`, droit déjà posé) : `code` (trois majuscules, `^[A-Z]{3}$`), `nom`, `zone_code`, `pays_iso2`, `devise`, `actif`. Contrôle : un `code3` égal au code d'une filiale active est réservé à cette filiale. Colonne `pub_clients.filiale_code` ajoutée en fin de vue (contrat `pub_`).
 - Validé par Guillaume le : 2026-10-23
+
+## [2026-10-30] Arche → Keystone — Démo alignée : CAPEX et besoin manquants dans la simulation d'Arche (K-14)
+- Statut : OUVERTE
+- Demande : dans la simulation d'Arche de Keystone (`src/server/integrations/capex/simulation.ts`) :
+  1. ajouter les CAPEX de démo d'Arche qui lui manquent : `CPX-APM-2025-01` (Four de vieillissement et ligne de finition, APM, Kénitra, phase 4 démarrage, mise en service le 01/07/2026), `CPX-SAI-2026-02` (Ligne de conditionnement aseptique, SAI, Kaolack, phase 1 cadrage) et `CPX-SAI-2026-03` (Centrale solaire du site de Thiès, SAI, phase 2 avant-projet) ;
+  2. ajouter le besoin `CPX-APM-2025-01/B01` (libellé libre « Ageing oven 2 × 6 m », sans fiche catalogue, quantité 1, statut `ordered`, commandé le 15/09/2025) ;
+  3. relier à ce besoin un projet de démo livré ou en garantie, dont le parc installé donne les machines des lignes de ramp-up d'Arche ;
+  4. planifier la SAT de RCF-019 (le critère K3 de `CPX-SAI-2026-01` dans Arche la lit) ;
+  5. si possible, remplacer RCF-019 (aménagement d'une clinique à Lyon) par un projet plus vraisemblable pour l'unité mobile `MEMU-16` d'une usine de tomates au Sénégal.
+- Justification : la démo du pilote d'Arche montre les deux applications côte à côte. Arche reprend déjà les lignes réelles de la démo de Keystone (catalogue EMP-40T / MEMU-16 / SPUR-2X, réponses RB-001 à RB-005, projet RCF-019 ; `src/server/integrations/keystone/keystone-demo.ts` du dépôt Arche). Sans ces ajouts, trois CAPEX de la démo d'Arche n'apparaissent pas dans la corbeille « Besoins des filiales » de Keystone, le four de CPX-APM-2025-01 n'a ni projet ni parc installé (ses lignes de ramp-up restent sans machines) et le critère K3 de CPX-SAI-2026-01 ne peut pas être montré rempli.
+- Détails techniques : uniquement le jeu de démonstration / la simulation, aucun changement de contrat des vues `pub_`. Les champs des CAPEX et du besoin suivent les colonnes de `arche.pub_capex` et `arche.pub_besoins_machines` déjà simulées (`docs/CONTRATS.md` du dépôt Arche ; valeurs exactes dans `src/server/db/seed/demo.ts` d'Arche, `DEMO_CAPEX`). Le projet relié au besoin publie `besoin_ref = 'CPX-APM-2025-01/B01'` et `capex_code = 'CPX-APM-2025-01'` dans `pub_projets`, et son parc installé dans `pub_parc_machines` (R-193). La SAT de RCF-019 est un jalon daté dans `pub_jalons_projets` (R-189).
+- Validé par Guillaume le : 2026-10-30

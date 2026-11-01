@@ -35,7 +35,7 @@
 // contractual hours are known: part time is not represented). `personWeekCapacities`, `loadPctOfHours`.
 // Pure; golden values in planning-load.test.ts.
 import { addCalendarDays, type IsoDate, type WorkCalendar } from './calendar';
-import { HOURS_PER_PERSON_WEEK, assignmentHoursInWeek, leaveWeekDays, type LeaveSpan } from './load-week';
+import { HOURS_PER_PERSON_WEEK, activityWorkDays, hoursOfWorkDays, leaveWeekDays, type ActivityWorkDays, type LeaveSpan } from './load-week';
 import { workingDaysOf } from './load-window';
 import { OTHER_DEPARTMENT } from './resources';
 
@@ -168,8 +168,14 @@ export function planningLoad(
     if (!row) trades.set(key, (row = { trade, kind, hours: zero(), unnamedH: zero(), ownersH: zero(), byProject: {} }));
     return row;
   };
-  const spread = (a: PlanActivity, units: number | null, hoursPerDay: number | null, plannedHours: number | null) =>
-    weeks.map((w) => assignmentHoursInWeek({ start: a.start, finish: a.finish, units, hoursPerDay, plannedHours, calendar: a.calendar }, w));
+  // R-017: an activity's working days per week are counted once for all its assignments (same hours as assignmentHoursInWeek).
+  const daysOf = new Map<PlanActivity, ActivityWorkDays>();
+  const spread = (a: PlanActivity, units: number | null, hoursPerDay: number | null, plannedHours: number | null) => {
+    let days = daysOf.get(a);
+    if (!days) daysOf.set(a, (days = activityWorkDays(a, weeks)));
+    const d = days;
+    return weeks.map((_, i) => hoursOfWorkDays({ units, hoursPerDay, plannedHours }, d, i));
+  };
   const add = (into: number[], hours: number[]) => hours.forEach((h, i) => (into[i] = round1(into[i] + h)));
 
   for (const s of assignments) {

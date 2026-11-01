@@ -2,6 +2,7 @@
 // 1573–1597), Standard machine types (09 §9, template 1529–1572) and Activity, integrations & audit (10 §2, template
 // 2237–2267). Built from the DAL rows with the pure rules of src/domain/admin.ts; English is the prototype's source text,
 // French goes through t() as the prototype's `deepTr` did (data texts included), with the fixes of ./i18n.ts.
+import { pagerView, type PagerView } from '@/domain/pagination';
 import { screenHref } from '@/config/screens';
 import {
   ACTIVITY_ICON, MT_CALENDAR_OPTIONS, MT_COST_TYPES, PLUMB_VIEWS, SETTINGS_CARDS, activityChips, costCategoriesTotal, healthRuleText,
@@ -12,6 +13,7 @@ import { IMPORTS_ENABLED } from '@/domain/ch4-defaults';
 import { DEFAULT_CCB_THRESHOLD_KEUR } from '@/domain/change-control';
 import { HOURS_VARIANCE_RULE, ratesMaskedActivity, ratesMaskedAudit } from '@/domain/hr';
 import { connectorStateTone } from '@/domain/connectors';
+import { PACK_FAMILY_LABELS, type PackFamily } from '@/domain/engineering-pack';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import { calendar, costType, locationType, stampText, type ActivityKind, type CalendarCode, type CostType, type LocationType } from '@/server/db/codes';
@@ -133,6 +135,8 @@ export interface MtDetailView {
   costTotal: string;
   refs: { analyticCode: string; name: string }[];
   projects: { code: string; name: string; sub: string; openHref: string | null }[];
+  /** R-191: the standard list of the engineering pack (the five families; label translated). */
+  pack: { family: PackFamily; label: string; weight: number; minExpected: number }[];
 }
 
 export interface MachineTypesView {
@@ -183,6 +187,7 @@ export function machineTypesView(input: { types: MachineTypeRow[]; projects: Pro
           openHref: row?.hasData ? screenHref('plan', { code: p.code }) : null,
         };
       }),
+      pack: (sel.pack ?? []).map((r) => ({ family: r.family, label: t(PACK_FAMILY_LABELS[r.family]), weight: r.weight, minExpected: r.minExpected })),
     },
   };
 }
@@ -242,6 +247,8 @@ export interface PlumbingView {
   connectors: ConnectorRowView[];
   imports: ImportCardView[];
   audit: AuditRowView[];
+  /** R-017: pager of the audit trail (100 entries a page, newest first); null on a single page. */
+  auditPager: PagerView | null;
 }
 
 export interface PlumbingInput {
@@ -257,6 +264,8 @@ export interface PlumbingInput {
   personaTitle: string;
   /** R-046: the viewer sees rate values (`canSeeRates`); else the "Rate card" changes are masked in the feed and the trail. */
   ratesVisible: boolean;
+  /** R-017: page shown of the audit trail and its number of pages (one page when omitted). */
+  auditPage?: { page: number; pages: number };
 }
 
 /**
@@ -276,6 +285,12 @@ const importIcon = (cls: string): ImportIcon => {
 /** "26 Sep 07:00" in the viewer's language (`stampText` of the instant), "—" before the first sync. */
 const stampOf = (iso: string | null, t: T) => (iso ? t(stampText(new Date(iso))) : '—');
 
+/** Who acted (typed name), R-051: "Antoine Girard (on behalf of Romain Aubert)" for a substitute's decision. */
+export function actorWhoT(a: { who: string; onBehalfOf?: string | null }, t: T, lang: Lang): string {
+  const who = dataText(a.who, lang);
+  return a.onBehalfOf ? `${who} (${t('on behalf of')} ${dataText(a.onBehalfOf, lang)})` : who;
+}
+
 export function plumbingView(i: PlumbingInput, t: T, lang: Lang): PlumbingView {
   const kinds = i.activity.map((a) => a.kind);
   const chips = activityChips(kinds);
@@ -290,14 +305,14 @@ export function plumbingView(i: PlumbingInput, t: T, lang: Lang): PlumbingView {
     chips: chips.map((c) => ({ value: c.value ?? '', label: activityChipT(c.label, t, lang), count: String(c.count), href: integrationsHref({ source: c.value }) })),
     chipValue: i.source ?? '',
     // R-184 (NEW-D1-2): the text from its message key in the viewer's language, else as written (typed values as typed).
-    activity: rows.map((a, n) => ({ key: `${a.occurredAt}-${n}`, icon: ACTIVITY_ICON[a.kind] ?? 'arrows-clockwise', who: dataText(a.who, lang), what: activityWhatT(a, t, lang), when: t(a.when) })),
+    activity: rows.map((a, n) => ({ key: `${a.occurredAt}-${n}`, icon: ACTIVITY_ICON[a.kind] ?? 'arrows-clockwise', who: actorWhoT(a, t, lang), what: activityWhatT(a, t, lang), when: t(a.when) })),
     connectors: i.connectors.map((c) => {
       const outbox = outboxT(c.pending, c.failed, lang);
       const volume = volumeT(c.lastVolume, t, lang);
       return {
         rawName: c.name,
         name: dataText(c.name, lang),
-        mode: connectorLinkT(c.link, t),
+        mode: connectorLinkT(c.link, t, c.mode),
         canSync: c.canSync,
         // R-148: the data scope and frequency are IT's typed settings (connectors file), shown as typed.
         data: c.dataScope ? dataText(c.dataScope, lang) : addedConnectorDataT(c.direction ? directionLabel(c.direction) : null, c.owner, t),
@@ -313,9 +328,10 @@ export function plumbingView(i: PlumbingInput, t: T, lang: Lang): PlumbingView {
     imports: i.imports.map((f) => ({ name: t(f.name), description: t(f.description), icon: importIcon(f.icon), direction: f.direction })),
     // R-184: the trail is not passed through the segment translator — its generic shapes are rendered, typed values kept.
     audit: ratesMaskedAudit(i.audit, i.ratesVisible).map((a, n) => ({
-      key: `${a.occurredAt}-${n}`, when: t(a.when), who: dataText(a.who, lang), object: auditObjectT(a.object, t, lang), change: auditChangeT(a, t, lang),
+      key: `${a.occurredAt}-${n}`, when: t(a.when), who: actorWhoT(a, t, lang), object: auditObjectT(a.object, t, lang), change: auditChangeT(a, t, lang),
       area: auditAreaT(a.area, t, lang),
     })),
+    auditPager: i.auditPage ? pagerView(i.auditPage.page, i.auditPage.pages, (n) => integrationsHref({ view: 'audit', page: n }), t) : null,
   };
 }
 

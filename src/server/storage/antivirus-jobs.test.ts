@@ -30,9 +30,10 @@ let fake: FakeClamd;
 let dir: string;
 
 beforeAll(async () => {
-  setDb(await openDatabase());
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'keystone-r175-jobs-'));
+  // L9-X3: set before the seed, which stores the PDFs of the shipping documents it files in Codex.
   setFilesRoot(path.join(dir, 'files'));
+  setDb(await openDatabase());
   setQuarantineRoot(path.join(dir, 'quarantine'));
   fake = await startFakeClamd();
 }, 60_000);

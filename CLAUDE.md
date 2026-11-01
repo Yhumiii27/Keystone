@@ -47,13 +47,13 @@ Keystone PM is EPC2i's project and portfolio management tool. It is a Next.js 16
 ## Conventions
 
 - **Must read first:** `docs/ARCHITECTURE.md`, then the spec in `docs/spec/`: 00 overview and open questions §10, 01–10 by module, 11 data model, 12 coverage.
-- **Routing:** `src/config/screens.ts` holds the 59 screens. Use `screenHref`, `canSee` and `ROLE_SCREENS`. The registry imports no component (icons are in `src/config/screen-icons.ts`) so server code and `tsx` scripts can load it; server rules take `canSee` from `src/config/role-screens.ts`.
+- **Routing:** `src/config/screens.ts` holds the 61 screens (Shipments, R-158, is the 61st). Use `screenHref`, `canSee` and `ROLE_SCREENS`. The registry imports no component (icons are in `src/config/screen-icons.ts`) so server code and `tsx` scripts can load it; server rules take `canSee` from `src/config/role-screens.ts`.
 - **Viewer:** `getViewer()` (`src/server/session.ts`). `KEYSTONE_AUTH=demo` (default, tests and development): the "View as" cookie (`ks-role`) picks a persona. `KEYSTONE_AUTH=entra`: Microsoft Entra ID sign-in (R-038), the user's roles and person from the database; `ks-role` is ignored.
 - **Project rights (R-041):** `getProjectContext` / `projectAccessResolver` (`src/server/project-context.ts`) over `projectAccess` (`src/domain/rights.ts`): `isLead` for PM rights (PM of record, co-PM, deputy, director), `isMine` for team members; a client is sent home outside their workspace (`refuseClient`).
 - **Typed text (R-148):** what people typed (names, titles, notes) is shown with `dataText` / `projectLabelText` / `fieldsText` (`src/i18n/data-text.ts`), never through `t()`, which is for Keystone's own vocabulary.
 - **French completeness (R-184):** every new `t()` literal needs a French entry that differs from the English, a FR rule, or a reviewed place on `src/i18n/same-in-french.json` (`src/i18n/completeness.test.ts`); one French translation per key across the dictionaries (`src/i18n/extra/dictionaries.test.ts` lists the deliberate overrides).
 - **Audit trail (R-168):** `audit_entries` is append-only (database trigger) — never update or delete audit rows, in code or tests; date a test row with `writeAudit({ occurredAt })`.
-- **Personas:** nine, Finance included (R-044); persona tests loop over `PERSONAS` (`src/config/personas.ts`).
+- **Personas:** ten, Finance (R-044) and Logistics (R-158: edits the Shipments of every project, reads the BOM, Site, Schedule and Deliveries) included; persona tests loop over `PERSONAS` (`src/config/personas.ts`).
 - **Data access:**
   - DAL in `src/server/dal/`, Drizzle schema in `src/server/db/schema/`.
   - Migrations in `drizzle/`: generate a new one with `npm run db:generate` and never edit an existing one.

@@ -14,6 +14,7 @@ import 'server-only';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { BUILTIN_CALENDARS, WorkCalendar, holidaysOf, type CalendarDef } from '@/domain/calendar';
 import { DEFAULT_PROJECT_CALENDAR, nextBaselineCode } from '@/domain/ch4-defaults';
+import { autoCapexMilestoneCodes } from '@/domain/capex-milestones';
 import { businessToday } from '@/server/clock';
 import { yearOfIso } from '@/domain/clock';
 import { detectCycle } from '@/domain/cpm';
@@ -30,6 +31,7 @@ import { markBl1Deliverable } from '@/server/dal/lifecycle';
 import type { ImportPreviewRow } from '@/server/dal/import-jobs';
 import { INTERCHANGE_DEFAULTS } from './defaults';
 import { fmt } from './messages';
+import { assertClientCodeFree } from '@/server/dal/internal-client';
 import { longDateText, monthIndex, monthText, planDateText, round1, round2, type ImportedActivity, type ImportedCalendar, type ImportedSchedule, type IsoDate } from './model';
 
 type Q = DB | Tx;
@@ -619,6 +621,8 @@ async function createImportedProject(tx: Tx, s: ImportedSchedule, plan: Schedule
     client ? tx.select({ id: clients.id, code3: clients.code3 }).from(clients).where(eq(clients.name, client)) : Promise.resolve([]),
     tx.select({ min: sql<number>`coalesce(min(${projects.sortOrder}), 1)::int` }).from(projects),
   ]);
+  // Matrix D21: a code proposed from the client's name may not be the code of a group subsidiary the client is not.
+  if (!registered?.code3) await assertClientCodeFree(tx, clientCode3(client, null), client);
   const ident = allocateProjectIdentity({
     code3: clientCode3(client, registered?.code3), numbers: existing.map((p) => p.number), codes: existing.map((p) => p.code), analytics: existing.map((p) => p.analytic),
   });
@@ -807,11 +811,16 @@ async function writeProjectHeader(tx: Tx, s: ImportedSchedule, projectId: string
     note: `Imported from ${s.format === 'mspdi' ? 'MS Project' : 'Primavera P6'}`,
   });
   if (miles.length) {
+    // R-189: the CAPEX milestone codes the name rule gives without ambiguity (src/domain/capex-milestones.ts).
+    const capex = autoCapexMilestoneCodes(miles.map((a) => ({ id: a.id, name: a.name, capexCode: null })));
     await tx.insert(milestones).values(
       miles.map((a, position) => {
         const status: MilestoneStatus =
           a.percentComplete >= 100 ? 'done' : a.finishDate && a.baselineFinishDate && a.finishDate > a.baselineFinishDate ? 'late' : a.critical ? 'at_risk' : 'on_track';
-        return { projectId, position, name: a.name, baselineMonth: rel(a.baselineFinishDate ?? a.finishDate), forecastMonth: rel(a.finishDate), status, activityId: a.id };
+        return {
+          projectId, position, name: a.name, baselineMonth: rel(a.baselineFinishDate ?? a.finishDate), forecastMonth: rel(a.finishDate), status, activityId: a.id,
+          capexMilestoneCode: capex.get(a.id) ?? null,
+        };
       }),
     );
   }

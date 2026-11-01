@@ -7,12 +7,15 @@
 // The prototype synthesises part of the history (one revision every 21 days, approval dates counted back from the
 // document date, two fixed download entries per released document). The seed materialises that history as rows so
 // the screens read data, never formulas; a real Codex sync replaces them (OPEN QUESTION D-1, 10 OQ13).
-import { boolean, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { boolean, check, date, index, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import type { PackFamily } from '@/domain/engineering-pack';
 import type {
   ApproverRole, CodexDecision, CodexOutboxKind, CodexSyncStatus, Confidentiality, DepositStatus, DocFamily, DocLinkKind, DocRecipient,
   DocService, DocumentStatus,
 } from '../codes';
 import { id, timestamps } from './_common';
+import { storedFiles } from './files';
 import { persons } from './organisation';
 import { projects } from './portfolio';
 
@@ -30,7 +33,14 @@ export const documentTypes = pgTable('document_types', {
   /** Released documents of the type are shared with the client and need an acknowledgement. */
   isClientDeliverable: boolean('is_client_deliverable').notNull(),
   position: integer('position').notNull(),
-});
+  /**
+   * R-191: Keystone's classification of the type in the engineering pack (src/domain/engineering-pack.ts, PACK_DOCUMENT_TYPES:
+   * PID → pid, BOM → bom, GA → layout, SCH → electrique, FDS → analyse_fonctionnelle); null = not in the pack. Not a Codex field.
+   */
+  packFamily: text('pack_family').$type<PackFamily>(),
+}, (t) => [
+  check('document_types_pack_family_check', sql`${t.packFamily} is null or ${t.packFamily} in ('pid', 'bom', 'layout', 'electrique', 'analyse_fonctionnelle')`),
+]);
 
 /** Approval circuit of a type ("Author → Engineering lead → Project manager"): step 0 is the originator. */
 export const documentTypeCircuitSteps = pgTable(
@@ -90,7 +100,7 @@ export const documents = pgTable('documents', {
   /** Vault order: DOCS order; Keystone-created records are prepended with a lower value. */
   sortOrder: integer('sort_order').notNull(),
   ...timestamps,
-});
+}, (t) => [index('documents_project_id_idx').on(t.projectId), index('documents_status_idx').on(t.status)]);
 
 /** Revisions A … current (synthetic history in the seed: one revision every 21 days). */
 export const documentRevisions = pgTable(
@@ -139,7 +149,7 @@ export const documentLinks = pgTable('document_links', {
   /** "D-016", "EL-VFD-200", "PO-2026-118", "P-01", "CR-004". */
   targetRef: text('target_ref').notNull(),
   position: integer('position').notNull(),
-});
+}, (t) => [index('document_links_document_id_idx').on(t.documentId)]);
 
 /** Client acknowledgement of a released client-deliverable revision (`engOv.ack[id|rev]`). Absent row = pending. */
 export const documentAcknowledgements = pgTable(
@@ -250,4 +260,9 @@ export const codexDocumentOutbox = pgTable('codex_document_outbox', {
   codexRef: text('codex_ref'),
   /** Codex reflected the entry (step signed, status moved on) or a new revision superseded it. */
   closedAt: timestamp('closed_at', { withTimezone: true }),
-});
+  /**
+   * R-158 lot B, kind `deposit`: the file Keystone generated and files in Codex (a shipping document), kept in Keystone's file
+   * store until Codex holds it.
+   */
+  storedFileId: uuid('stored_file_id').references(() => storedFiles.id, { onDelete: 'set null' }),
+}, (t) => [index('codex_document_outbox_document_id_idx').on(t.documentId), index('codex_document_outbox_stored_file_id_idx').on(t.storedFileId)]);

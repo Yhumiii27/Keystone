@@ -26,10 +26,12 @@ async function rowCounts(db: DB): Promise<Record<string, number>> {
 const REFERENCE_TABLES = [
   'app_settings', 'calendars', 'capacity_demand_rates', 'cities', 'connectors', 'countries', 'departments', 'document_type_circuit_steps', 'document_types',
   'eng_column_mappings', 'eng_consistency_rules', 'eng_disciplines', 'eng_import_tools', 'import_formats', 'leave_types', 'lifecycle_stages', 'lifecycle_transitions',
-  'machine_type_cost_categories', 'machine_type_itp_systems', 'machine_type_phases', 'machine_types', 'project_template_cost_categories', 'project_template_phases',
+  'machine_type_cost_categories', 'machine_type_itp_systems', 'machine_type_pack_families', 'machine_type_phases', 'machine_types', 'project_template_cost_categories', 'project_template_phases',
   'project_templates', 'public_holidays', 'reference_values', 'score_axes', 'skills', 'stage_deliverable_defs', 'whatif_auto_levers', 'whatif_levers', 'zones',
   // R-178 (A-10): the premium multipliers and their first versions — placeholders to confirm; rate roles stay EPC2i's (0 rows).
   'rate_multipliers', 'rate_multiplier_rates',
+  // R-158 (decision 9): the 11 Incoterms 2020.
+  'incoterms',
 ].sort();
 
 describe('production seed (KEYSTONE_SEED=production)', () => {

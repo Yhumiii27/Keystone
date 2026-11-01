@@ -5,6 +5,7 @@
 // `fr()` accepts exactly that. Deliberate deviations asserted inline: singular forms ("1 ITP system"); the site calendar
 // selected for SPUR; Vigie as the 10th connector; Codex, Vigie and Cursus with their connector-layer mode and state
 // (Codex last sync = the Codex index sync, 29 Sep 08:02); the "Request" chip as a noun in French.
+import { withoutL9X3Plumbing } from '@/test/l9-x3';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { PERSONA_BY_ROLE } from '@/config/personas';
 import { parseActivitySource } from '@/domain/admin';
@@ -63,7 +64,9 @@ async function mtypes(lang: Lang, selected: string | null = null) {
   return machineTypesView({ types, projects, selected }, makeT(lang), lang);
 }
 async function plumbing(lang: Lang, q: { view?: string; source?: string; role?: 'director' | 'pm' } = {}) {
-  const [activity, connectors, imports, audit, counts] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), getPlumbingCounts()]);
+  const [activity0, connectors, imports, audit0, counts0] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), getPlumbingCounts()]);
+  // L9-X3: as the prototype had it, without the rows of the shipping documents the demo files in Codex (src/test/l9-x3.ts).
+  const { activity, audit, counts } = withoutL9X3Plumbing(activity0, audit0, counts0);
   const persona = PERSONA_BY_ROLE[q.role ?? 'director'];
   const unread = await countUnreadNotifications(persona.role);
   return plumbingView(
@@ -217,7 +220,8 @@ describe('Activity, integrations & audit view model', () => {
     // that do not exist; no e-mail or Teams connector, so in-app is the only channel (the prototype: "3 · In-app · e-mail · Teams").
     const k = kpis(g((x) => x.plumbing.kpis));
     expect([k[1].sub, k[4].value, k[4].sub]).toEqual([lang === 'en' ? '7 healthy · 1 warning' : '7 sains · 1 en alerte', '3', 'In-app · e-mail · Teams']);
-    k[1] = { ...k[1], value: '9', sub: lang === 'en' ? '1 connected · 3 mock · 5 not connected' : '1 connecté · 3 simulés · 5 non connectés', color: 'var(--color-text)' };
+    // R-187: Arche (the CAPEX application, simulated source without DATABASE_URL) is a tenth connector, a fourth mock.
+    k[1] = { ...k[1], value: '10', sub: lang === 'en' ? '1 connected · 4 mock · 5 not connected' : '1 connecté · 4 simulés · 5 non connectés', color: 'var(--color-text)' };
     // X-6b / S-11 (R-037): Teams is no notification channel any more (was "In-app · e-mail and Teams not connected").
     k[4] = { ...k[4], value: '1', sub: lang === 'en' ? 'In-app · e-mail not connected' : 'In-app · e-mail non connecté' };
     // A-12 (chapter 4, 10 OQ4): "Events today" = events of the data date (Paris day) — 5 on 25 Sep (the prototype's 6
@@ -265,7 +269,8 @@ describe('Activity, integrations & audit view model', () => {
             : 'Go / no go individuel (visa, vaccinations, habilitations & badges) · congés et absences approuvés · annuaire du personnel : nom, e-mail, matricule, équipe (R-027, R-031)',
           st: mock, last: '—', tagClass: 'tag tag-outline',
         };
-      if (r.name === 'Codex') return { ...r, st: mock, last: '—', vol: lang === 'en' ? r.vol : '412 fiches · 38 liées à HLT-026', tagClass: 'tag tag-outline' };
+      // L9-X3: + the three shipping documents the demo files in Codex (412 → 415 records), their deposits pending sync.
+      if (r.name === 'Codex') return { ...r, st: mock, last: '—', vol: lang === 'en' ? `${r.vol.replace('412', '415')} · 3 pending sync` : '415 fiches · 38 liées à HLT-026 · 3 en attente de synchro', tagClass: 'tag tag-outline' };
       if (r.name === 'MS Project') return r;
       // S-11 a, X-6b, I-3c (R-037): the Microsoft 365 rows requalified — Outlook / Teams meetings into Keystone, no channel posts.
       if (r.name === 'Outlook / Exchange')
@@ -287,6 +292,8 @@ describe('Activity, integrations & audit view model', () => {
       ['Cursus', mirror, true], ['Codex', mirror, true], ['Sage X3', null, false], ['SolidWorks PDM', null, false],
       ['MS Project', lang === 'en' ? 'File exchange · no live connection' : 'Échange de fichiers · pas de connexion directe', false],
       ['Outlook / Exchange', null, false], ['Microsoft Teams', null, false], ['E-mail (SMTP)', null, false], ['Vigie', mirror, true],
+      // R-187: Arche, the capex connector over the demo source.
+      ['Arche', mirror, true],
     ]);
     expect(rows[8]).toEqual({
       name: 'Vigie',
@@ -307,7 +314,7 @@ describe('Activity, integrations & audit view model', () => {
       expect([vigie.link, vigie.state, vigie.mode, vigie.canSync, vigie.lastSyncAt]).toEqual(['live', 'ok', 'http', true, '2026-09-25T05:30:00.000Z']);
       const v = await plumbing('en', { view: 'connectors' });
       expect(v.connectors.find((c) => c.rawName === 'Vigie')).toMatchObject({ mode: 'Live connector · HTTP API', status: 'OK', tone: 'neutral', last: '25 Sep 07:30' });
-      expect(v.kpis[1].sub).toBe('2 connected · 2 mock · 5 not connected');
+      expect(v.kpis[1].sub).toBe('2 connected · 3 mock · 5 not connected'); // R-187: + Arche (mock)
     } finally {
       process.env.VIGIE_API_URL = prev ?? '';
     }
@@ -335,7 +342,9 @@ describe('Activity, integrations & audit view model', () => {
     const db = await getDb();
     await db.update(connectorsTable).set({ enabled: false }).where(eq(connectorsTable.name, 'Vigie'));
     try {
-      const [activity, connectors, imports, audit, counts] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), getPlumbingCounts()]);
+      const [activity0, connectors, imports, audit0, counts0] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), getPlumbingCounts()]);
+      // L9-X3: as the prototype had it, without the rows of the shipping documents the demo files in Codex (src/test/l9-x3.ts).
+      const { activity, audit, counts } = withoutL9X3Plumbing(activity0, audit0, counts0);
       const v = plumbingView({ view: 'connectors', source: null, activity, connectors, imports, audit, counts, unread: 0, personaTitle: 'Portfolio director', ratesVisible: true }, makeT(lang), lang);
       expect(v.connectors.find((c) => c.rawName === 'Vigie')).toMatchObject({ status: lang === 'en' ? 'Disabled' : 'Désactivé', tone: 'neutral', canSync: false, last: '—' });
     } finally {

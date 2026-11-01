@@ -177,4 +177,22 @@ describe('Plan Server Functions', () => {
     expect(linked((await getPlanData('HLT-026'))!)).toEqual(linked(before));
     expect(await restoreRow('HLT-026', r.trashId)).toEqual({ error: 'This removal can no longer be undone' });
   });
+
+  it('R-010: a cell edited on a Plan read before someone else changed the activity is refused; the edits are audited with the viewer', async () => {
+    const read = (await act('A1260'))!.version;
+    Object.assign(viewer, { name: 'Romain Aubert', short: 'R. Aubert' });
+    expect(await editActivity('HLT-026', 'A1260', 'name', 'Roofing — east bays', read)).toEqual({ ok: true, value: 'Roofing — east bays' });
+    Object.assign(viewer, { name: 'Marie Lefebvre', short: 'M. Lefebvre' });
+    const r = await editActivity('HLT-026', 'A1260', 'budget', '157', read);
+    expect(r).toEqual({ error: expect.stringMatching(/^Record modified meanwhile by Romain Aubert on /), conflict: true });
+    expect((await act('A1260'))!.name).toBe('Roofing — east bays');
+    // With the reloaded token, saved; without a token (an older page), not checked.
+    expect(await editActivity('HLT-026', 'A1260', 'budget', '157', (await act('A1260'))!.version)).toMatchObject({ ok: true });
+    expect(await editActivity('HLT-026', 'A1260', 'dur', '9')).toMatchObject({ ok: true });
+    const { listAudit } = await import('@/server/dal/notifications');
+    const rows = (await listAudit({ projectCode: 'HLT-026', limit: 20 })).filter((x) => x.object === 'A1260' && x.change.startsWith('Plan edit:'));
+    expect(rows.map((x) => x.change)).toEqual(expect.arrayContaining([
+      expect.stringMatching(/^Plan edit: name .+ → Roofing — east bays$/), expect.stringMatching(/^Plan edit: budget \d+ → 157/), expect.stringMatching(/^Plan edit: duration \d+ → 9 d$/),
+    ]));
+  });
 });

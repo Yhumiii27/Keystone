@@ -15,6 +15,7 @@ import { and, asc, eq, inArray, isNotNull } from 'drizzle-orm';
 import { lineOfRef, mainLineOf } from '@/domain/equipment-scope';
 import { equipmentLotLabel } from '@/domain/project-equipment';
 import { NCR_REF, canRecordItpResult } from '@/domain/itpcom';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { demoFloor } from '@/server/db/helpers';
 import {
@@ -26,7 +27,9 @@ import { documents, itpInspections, itpPlanSystems, itpPlans, machineTypeItpSyst
 import type { DB, Tx } from '@/server/db/types';
 import { vigieNcrUrl } from '@/server/integrations/vigie/links';
 import { isClientContactOf, isIsoDate, optionalDate, optionalText, projectOf, requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
+import { afterPunchItemChange } from './shipment-reception';
 import { onProjectTeam } from './team-guard';
+import { notifyInspectionFailed } from './event-notices';
 
 export type { Actor };
 type Q = DB | Tx;
@@ -365,7 +368,7 @@ export async function recordItpResult(projectCode: string, number: string, input
   const comment = optionalText(input.comment, 'Comment', 1000);
   if (input.result !== 'passed' && !comment) throw new Error('A comment is required for a failure or reservations');
   const db = await getDb();
-  return db.transaction(async (tx) => {
+  const done = await db.transaction(async (tx) => {
     const p = await projectOf(tx, projectCode);
     const plans = await plansOf(tx, p.id);
     if (!plans.length) throw new Error(`No inspection plan on ${projectCode}`);
@@ -386,8 +389,11 @@ export async function recordItpResult(projectCode: string, number: string, input
       entityType: 'itp_inspection', entityId: i.id, projectId: p.id,
       activity: { text: `Recorded result ${label} for inspection ${number} ${i.name}`, kind: 'quality' },
     });
-    return number;
+    return { name: i.name, actorPersonId: who.personId };
   });
+  // R-015: a failure is told to the project's leads and its quality / engineering referents (after the commit, best effort).
+  if (input.result === 'failed') await notifyInspectionFailed(projectCode, { number, name: done.name, comment }, done.actorPersonId);
+  return number;
 }
 
 /** One inspection of a project's plans ("I-03", any equipment line); null when unknown. */
@@ -494,7 +500,8 @@ export async function addPunchItem(projectCode: string, input: NewPunchInput, ac
   requireWorkspace('itp', actor, 'Inspections & punch list');
   const description = requiredText(input.description, 'Item', 300);
   if (!punchCategory.isCode(input.category)) throw new Error('Invalid category');
-  if (!punchSource.isCode(input.source)) throw new Error('Invalid source');
+  // R-158 lot B: a reception punch item is raised by the shipment's reception only.
+  if (!punchSource.isCode(input.source) || input.source === 'reception') throw new Error('Invalid source');
   const origin = input.origin ?? 'itp';
   if (!punchOrigin.isCode(origin)) throw new Error('Invalid origin');
   const ownerParty = input.ownerParty ?? 'keystone';
@@ -566,6 +573,8 @@ export async function advancePunchItem(projectCode: string, number: string, acto
       objectRef: number, change: `status: ${punchStatus.label(it.status)} → ${punchStatus.label(next)}`, area: 'Punch list', entityType: 'punch_item', entityId: it.id, projectId: p.id,
       before: { status: it.status }, after: { status: next },
     });
+    // R-158 lot B: a punch item raised by a shipment's reception moves the shipment (its last one closed closes it).
+    await afterPunchItemChange(tx, it.id, actor, on ?? (await businessToday(tx)));
     return next;
   });
 }

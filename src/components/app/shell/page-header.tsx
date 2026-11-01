@@ -12,11 +12,12 @@ import { SCREEN_BY_ID, screenHref, type ScreenId } from '@/config/screens';
 import { HEALTH_LABEL, HEALTH_TAG } from '@/domain/health';
 import { exportFormatsOf } from '@/features/exports/catalog';
 import { businessToday } from '@/server/clock';
+import { getConfig } from '@/server/config';
 import { displayOfIso } from '@/server/db/codes';
 import { dataText, fieldsText, projectLabelText } from '@/i18n/data-text';
 import { getProject, type ProjectRow } from '@/server/dal/projects';
 import { crumbExtraOf, defaultTitleOf, notificationsFor, zoneBarOf } from '@/server/dal/shell';
-import { canEditContract, canPreviewClientView, clientRefusedScreen, financeReadOnly } from '@/domain/rights';
+import { canEditContract, canEditShipments, canPreviewClientView, clientRefusedScreen, roleReadOnly } from '@/domain/rights';
 import { getProjectScope, refuseClient } from '@/server/project-context';
 import { getI18n, getLastProject, getViewer, getZone } from '@/server/session';
 import { ExportButton, GlobalSearch, LangToggle, Notifications, ProjectSwitcher, ZoneSeg } from './header-islands';
@@ -65,13 +66,17 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
   const access = project ? scope.access(project) : null;
   // Same rule as getProjectContext().canEdit (src/server/project-context.ts): the Contract follows `canEditContract` (P-4 —
   // Finance edits it on every project), Finance reads Budget, Hours and Billing (R-044); elsewhere the team rule (R-041).
+  // R-158: the Shipments follow `canEditShipments` (Logistics and the director on every project, the project's leads); Logistics
+  // reads the BOM, Site, Schedule and Deliveries (`roleReadOnly`).
   const editable = !outside && (
     screen === 'contract' && access
       ? canEditContract(viewer.role, access)
-      : !financeReadOnly(viewer.role, screen) && !(!!access?.readOnly && PROJECT_EDITABLE.includes(screen))
+      : screen === 'shipments' && access
+        ? canEditShipments(viewer.role, access)
+        : !roleReadOnly(viewer.role, screen) && !(!!access?.readOnly && PROJECT_EDITABLE.includes(screen))
   );
-  // "Read-only" tag: the project's team rule, except where the screen's own rule decides (Contract, Finance's read-only screens).
-  const ownRule = !outside && (screen === 'contract' || financeReadOnly(viewer.role, screen));
+  // "Read-only" tag: the project's team rule, except where the screen's own rule decides (Contract, Shipments, read-only screens).
+  const ownRule = !outside && (screen === 'contract' || screen === 'shipments' || roleReadOnly(viewer.role, screen));
   const readOnly = !!project && (ownRule ? !editable : scope.readOnly(project));
   const showPrimary = !!primary && editable;
   // R-139 (P-11 a): the director and the project's leads preview the client portal from every project screen but the portal.
@@ -148,7 +153,7 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
           </div>
         </div>
         <GlobalSearch />
-        <Notifications items={notifs} role={viewer.role} />
+        <Notifications items={notifs} role={viewer.role} emailOn={getConfig().mail.transport !== 'none'} />
         <div className={styles.statusDate}>
           <CalendarBlank />
           {/* R-013: the business date ("25 Sep 2026" on the demo data set), translated as the former STATUS_DATE ("25 sept. 2026"). */}

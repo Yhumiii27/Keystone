@@ -43,8 +43,9 @@ export function editCategoryFormDef(opts?: { frozen?: boolean }): FormDef {
 }
 
 /** Values the edit form opens with (no budget once frozen: the field is not in the form, R-081). */
-export const editCategoryValues = (c: { name: string; costType: CostType; budget: number }, opts?: { frozen?: boolean }): FormValues => ({
-  name: c.name, type: c.costType, ...(opts?.frozen ? {} : { budget: String(c.budget) }),
+/** `version` (R-010): the category's token as the page read it — a hidden value of the form, sent back on save. */
+export const editCategoryValues = (c: { name: string; costType: CostType; budget: number; version?: string }, opts?: { frozen?: boolean }): FormValues => ({
+  name: c.name, type: c.costType, ...(opts?.frozen ? {} : { budget: String(c.budget) }), ...(c.version ? { version: c.version } : {}),
 });
 
 /** Budget typed in k€ ("120", "120,5"); null when not a number. */

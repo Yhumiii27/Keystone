@@ -37,6 +37,9 @@
 .cellIcon { flex: none; }
 .cellText { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
 .cellSub { font-size: 10.5px; opacity: 0.8; }
+/* R-157: a blocking interface (IF-02) opens its row of the interface register. */
+.cellLink { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.cellLink:hover { color: var(--color-accent-100); opacity: 1; }
 .punchA { display: flex; align-items: center; justify-content: flex-end; font-variant-numeric: tabular-nums; font-size: 13px; color: var(--color-neutral-300); }
 
 /* dossier: document type 12px neutral-400 tabular */

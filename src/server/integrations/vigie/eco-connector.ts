@@ -13,6 +13,7 @@ import { ecosToAnnounce } from '@/domain/vigie-events';
 import { getDb } from '@/server/db/client';
 import { vigieEcos } from '@/server/db/schema';
 import { VIGIE_CONNECTOR_NAME, connectorEnabled } from '@/server/integrations/connector-enabled';
+import { giveBackRefresh, mayRefresh } from '@/server/integrations/refresh-claims';
 import { logError, logWarning } from '@/server/log';
 import { vigieApiUrl, vigieAuthHeaders, vigieConnectorMode } from './connection';
 import { claimProgressDelivery, markDelivery, progressSyncStatus, readMirror, undeliveredProgress, upsertMirror } from './mirror';
@@ -53,8 +54,9 @@ export const mockEcoConnector: VigieEcoConnector = {
 const HTTP_TIMEOUT_MS = 5000;
 /** Reads refresh the mirror at most once a minute (a failed refresh is retried at the next read). */
 const REFRESH_EVERY_MS = 60_000;
-// Per server process (R-010): with several instances each refreshes at most once a minute, which is the intent (bounded
-// load on Vigie); concurrent reads of one process share the refresh in flight instead of starting their own.
+// R-010: concurrent reads of one process share the refresh in flight; with several instances on the PostgreSQL server, one of
+// them refreshes the shared mirror per minute (the slot "vigie-ecos", src/server/integrations/refresh-claims.ts), the others
+// read it. The time kept here only spares the slot's query on every read.
 const g = globalThis as unknown as { __ksVigieRefreshedAt?: number; __ksVigieRefreshing?: Promise<void> };
 
 /** Forgets the last refresh time (tests). */
@@ -97,13 +99,24 @@ async function refreshFromVigie(): Promise<number> {
   return n;
 }
 
-/** Refresh unless one succeeded less than a minute ago (one refresh at a time per process). */
+const REFRESH_SLOT = 'vigie-ecos';
+
+/** Refresh unless one succeeded less than a minute ago (one refresh at a time per process, one per minute across instances). */
 async function refreshIfStale(): Promise<void> {
   if (g.__ksVigieRefreshedAt && Date.now() - g.__ksVigieRefreshedAt < REFRESH_EVERY_MS) return;
-  const running = (g.__ksVigieRefreshing ??= refreshFromVigie().then(
-    () => undefined,
-    (e) => logWarning('Vigie ECO refresh (the local mirror is used)', e, { component: 'vigie' }),
-  ).finally(() => { g.__ksVigieRefreshing = undefined; }));
+  const running = (g.__ksVigieRefreshing ??= (async () => {
+    if (!(await mayRefresh(REFRESH_SLOT, REFRESH_EVERY_MS))) {
+      g.__ksVigieRefreshedAt = Date.now(); // another instance refreshed the shared mirror within the minute
+      return;
+    }
+    await refreshFromVigie().then(
+      () => undefined,
+      async (e) => {
+        await giveBackRefresh(REFRESH_SLOT); // a failed refresh is retried at the next read, on any instance
+        logWarning('Vigie ECO refresh (the local mirror is used)', e, { component: 'vigie' });
+      },
+    );
+  })().finally(() => { g.__ksVigieRefreshing = undefined; }));
   await running;
 }
 

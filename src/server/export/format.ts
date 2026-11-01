@@ -11,6 +11,14 @@ export const isNumericType = (t: ColumnType | undefined) => t === 'number' || t 
 /** "25 Sep 2026" / "25 sept. 2026" for an ISO date (or timestamp); the value itself when it is not a date. */
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+/** "Dec 2026" / "déc. 2026" for an ISO month 'YYYY-MM' (R-157); the value itself when it is not one. */
+export function formatMonth(v: string, lang: Lang): string {
+  const m = /^(\d{4})-(\d{2})$/.exec(v);
+  if (!m || +m[2] < 1 || +m[2] > 12) return v;
+  if (lang === 'en') return `${MON[+m[2] - 1]} ${m[1]}`;
+  return new Intl.DateTimeFormat(locale(lang), { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${v}-01T00:00:00Z`));
+}
+
 export function formatDate(v: string, lang: Lang, withTime = false): string {
   if (!/^\d{4}-\d{2}-\d{2}/.test(v)) return v;
   const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(v) ? `${v}T00:00:00Z` : v);
@@ -42,6 +50,7 @@ export function displayCell(v: CellValue, col: Pick<ExportColumn, 'type' | 'deci
     }
   }
   if (type === 'date' || type === 'datetime') return formatDate(String(v), lang, type === 'datetime');
+  if (type === 'month') return formatMonth(String(v), lang);
   return String(v);
 }
 

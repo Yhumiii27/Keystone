@@ -6,7 +6,7 @@
 // fields), selects on change, list rows by sending the whole list. `mtCanEdit` (director, PM, engineering lead, quality
 // = the screen's workspace): other viewers get read-only fields and no add / remove / toggle buttons (the prototype
 // left the inputs and × buttons active, P-14).
-import { ArrowRight, CheckCircle, Plus, X } from '@phosphor-icons/react/dist/ssr';
+import { ArrowRight, CheckCircle, Package, Plus, X } from '@phosphor-icons/react/dist/ssr';
 import { useState, useTransition, type KeyboardEvent } from 'react';
 import { Button, ButtonLink, IconButton } from '@/components/ds/Button';
 import { cx } from '@/components/ds/cx';
@@ -16,12 +16,9 @@ import { useI18n } from '@/i18n/client';
 import { money } from '@/lib/format';
 import type { CalendarCode, CostType } from '@/server/db/codes';
 import {
-  removeRexReferenceAction, setMachineTypeCostCategoriesAction, setMachineTypeItpSystemsAction, setMachineTypePhasesAction, updateMachineTypeAction,
-  type AdminActionResult,
+  removeRexReferenceAction, setMachineTypeCostCategoriesAction, setMachineTypeItpSystemsAction, setMachineTypePackAction, setMachineTypePhaseScopeAction,
+  setMachineTypePhasesAction, updateMachineTypeAction, type AdminActionResult,
 } from './actions';
-import { setMachineTypePhaseScopeAction } from './catalogue-actions';
-import type { CatalogueView } from './catalogue-model';
-import { CatalogueSection } from './catalogue-section';
 import type { EditableText, MtDetailView } from './model';
 import s from './admin.module.css';
 
@@ -56,7 +53,13 @@ const enterBlurs = (e: KeyboardEvent<HTMLInputElement>) => {
   if (e.key === 'Enter') e.currentTarget.blur();
 };
 
-export function MachineTypeEditor({ mt, canEdit, catalogue }: { mt: MtDetailView; canEdit: boolean; catalogue?: CatalogueView }) {
+/** The link to the Machine catalogue screen (owner, 25 Oct 2026): filtered on the type, with its number of catalogue entries. */
+export interface CatalogueLink {
+  href: string;
+  entries: number;
+}
+
+export function MachineTypeEditor({ mt, canEdit, catalogueLink }: { mt: MtDetailView; canEdit: boolean; catalogueLink?: CatalogueLink }) {
   const { t } = useI18n();
   const [pending, start] = useTransition();
   const save = (p: () => Promise<AdminActionResult>, onFail?: () => void) =>
@@ -93,7 +96,8 @@ export function MachineTypeEditor({ mt, canEdit, catalogue }: { mt: MtDetailView
         />
       </div>
       <CostCategories key={`cats-${mt.code}`} mt={mt} canEdit={canEdit} save={save} />
-      {catalogue && <CatalogueSection key={`catalogue-${mt.code}`} typeCode={mt.code} typeLabel={mt.displayCode} view={catalogue} />}
+      <EngineeringPack key={`pack-${mt.code}`} mt={mt} canEdit={canEdit} save={save} pending={pending} />
+      {catalogueLink && <CatalogueLinkCard link={catalogueLink} typeLabel={mt.displayCode} />}
       <div className={s.twoGrid}>
         <div className={cx('card', 'elev-sm', s.sectionCard)}>
           <span className={s.sectionLabel}>{t('Financial REX · reference projects')}</span>
@@ -436,6 +440,101 @@ function CostCategories({ mt, canEdit, save }: { mt: MtDetailView; canEdit: bool
         <span className={cx(s.right, s.tabular)}>{money(total, lang)}</span>
         <span className={s.spacer24} />
       </div>
+    </div>
+  );
+}
+
+/**
+ * R-191: the standard list of the engineering pack — weight (whole %) and minimum documents expected per family, live total; saved
+ * as a whole with "Save" once the weights total 100 % (the server refuses any other total).
+ */
+function EngineeringPack({ mt, canEdit, save, pending }: { mt: MtDetailView; canEdit: boolean; save: Save; pending: boolean }) {
+  const { t } = useI18n();
+  const init = () => mt.pack.map((r) => ({ weight: String(r.weight), minExpected: String(r.minExpected) }));
+  const [rows, setRows] = useServerState(init(), JSON.stringify(mt.pack));
+  const total = rows.reduce((sum, r) => sum + parsePercentInput(r.weight), 0);
+  const changed = rows.some((r, i) => r.weight.trim() !== String(mt.pack[i]?.weight) || r.minExpected.trim() !== String(mt.pack[i]?.minExpected));
+  const set = (i: number, patch: Partial<(typeof rows)[number]>) => setRows(rows.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  const id = (f: string, i: number) => `mt-${mt.code}-pack-${f}-${i}`;
+  return (
+    <div className={cx('card', 'elev-sm', s.costCard)}>
+      <div className={s.sectionHead}>
+        <span className={s.sectionLabel}>{t('Engineering pack (standard list)')}</span>
+      </div>
+      <div className={cx(s.packGrid, s.catHead)} aria-hidden>
+        <span>{t('Family')}</span>
+        <span className={s.right}>{t('Weight %')}</span>
+        <span className={s.right}>{t('Min. expected')}</span>
+      </div>
+      {mt.pack.map((r, i) => (
+        <div key={r.family} className={cx(s.packGrid, s.catRow)}>
+          <label htmlFor={id('w', i)} className={s.pretty}>
+            {r.label}
+          </label>
+          <input
+            id={id('w', i)}
+            type="number"
+            min={0}
+            max={100}
+            step={1}
+            className={cx('input', s.mtInput, s.right)}
+            value={rows[i]?.weight ?? ''}
+            readOnly={!canEdit}
+            onChange={(e) => set(i, { weight: e.target.value })}
+          />
+          <input
+            type="number"
+            min={0}
+            max={99}
+            step={1}
+            aria-label={`${t('Minimum documents expected')} · ${r.label}`}
+            className={cx('input', s.mtInput, s.right)}
+            value={rows[i]?.minExpected ?? ''}
+            readOnly={!canEdit}
+            onChange={(e) => set(i, { minExpected: e.target.value })}
+          />
+        </div>
+      ))}
+      <div className={s.packFoot}>
+        <span>
+          {t('Total')} {`${total} %`}
+        </span>
+        {total === 100 ? <CheckCircle className={s.termsOk} aria-hidden /> : <span className={s.termsBad}>{t('The weights of the engineering pack must total 100 %')}</span>}
+        {canEdit && (
+          <Button
+            variant="secondary"
+            size="xs"
+            className={s.pushRight}
+            disabled={pending || !changed || total !== 100}
+            onClick={() =>
+              save(() => setMachineTypePackAction(mt.code, mt.pack.map((r, i) => ({ family: r.family, weight: rows[i].weight, minExpected: rows[i].minExpected }))), () => setRows(init()))
+            }
+          >
+            {t('Save')}
+          </Button>
+        )}
+      </div>
+      <span className={s.emptyNote}>
+        {t('Provisional list · a document counts in its family through its type and is validated once released (BPE) · the CAPEX G2 target is above 80 %')}
+      </span>
+    </div>
+  );
+}
+
+/** The machine catalogue moved to its own screen: a short card linking to it, filtered on this type. */
+function CatalogueLinkCard({ link, typeLabel }: { link: CatalogueLink; typeLabel: string }) {
+  const { t } = useI18n();
+  return (
+    <div className={cx('card', 'elev-sm', s.sectionCard, s.catalogueLinkCard)}>
+      <span className={s.sectionLabel}>{t('Machine catalogue')}</span>
+      <span className={s.catalogueLinkRow}>
+        <span className={s.catalogueLinkText}>
+          {`${t('The catalogue entries offered to the subsidiaries are managed on the Machine catalogue screen')} · ${typeLabel} · ${t('Catalogue entries')} · ${link.entries}`}
+        </span>
+        <ButtonLink href={link.href} variant="secondary" size="sm" icon={Package} className={s.pushRight}>
+          {t('Open the machine catalogue')}
+        </ButtonLink>
+      </span>
     </div>
   );
 }

@@ -292,7 +292,8 @@ function codeOf<C extends string>(v: string, codec: { isCode: (x: unknown) => x 
 export const ITP_POINT_TYPES: readonly ItpPointType[] = itpPointType.codes;
 export const ITP_STAGES: readonly ItpStage[] = itpStage.codes;
 export const PUNCH_CATEGORIES: readonly PunchCategory[] = punchCategory.codes;
-export const PUNCH_SOURCES: readonly PunchSource[] = punchSource.codes;
+/** Sources offered by "Add punch item" — `reception` is raised by a shipment's site reception only (R-158 lot B). */
+export const PUNCH_SOURCES: readonly PunchSource[] = punchSource.codes.filter((c) => c !== 'reception');
 /** R-117: origins (Inspection first, the form's default) and responsible parties (Keystone first). */
 export const PUNCH_ORIGINS: readonly PunchOrigin[] = punchOrigin.codes;
 export const PUNCH_OWNER_PARTIES: readonly PunchOwnerParty[] = ['keystone', 'client'];
@@ -364,7 +365,7 @@ export function parseNewPunch(values: Record<string, string | undefined>, team: 
   const category = codeOf(text(values.cat) || PUNCH_CATEGORIES[0], punchCategory);
   if (!category) return { ok: false, error: 'Unknown category' };
   const source = codeOf(text(values.src) || PUNCH_SOURCES[0], punchSource);
-  if (!source) return { ok: false, error: 'Unknown source' };
+  if (!source || !PUNCH_SOURCES.includes(source)) return { ok: false, error: 'Unknown source' };
   const origin = codeOf(text(values.origin) || PUNCH_ORIGINS[0], punchOrigin);
   if (!origin) return { ok: false, error: 'Unknown origin' };
   const ownerParty = codeOf(text(values.party) || PUNCH_OWNER_PARTIES[0], punchOwnerParty);

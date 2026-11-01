@@ -24,7 +24,7 @@ import { codexDecisionToast, parseRejectComment, type CodexDecision } from '@/do
 import { canApproveDocument, parseDeposit } from '@/domain/documents';
 import { DEPOSIT_TYPES } from '@/server/db/codes';
 import {
-  CodexDecisionError, DepositInCodexOnlyError, acknowledgeDocument, depositInCodex, getDocumentRecord, listVaultDocuments, recordDocumentDecision, syncCodexIndex,
+  CodexDecisionError, DepositInCodexOnlyError, acknowledgeDocument, depositInCodex, getDocumentRecord, getVaultDocument, recordDocumentDecision, syncCodexIndex,
 } from '@/server/dal/documents';
 import { getProject } from '@/server/dal/projects';
 import { canDepositInCodex, canSyncCodex } from '@/domain/rights';
@@ -66,7 +66,8 @@ async function vault(project: unknown): Promise<{ ctx: ProjectContext } | { erro
 /** A record of the index (the vault lists every project's records under "All projects"; access is per screen, P-1). */
 async function findRecord(number: unknown) {
   if (typeof number !== 'string' || !number) return null;
-  return (await listVaultDocuments()).find((x) => x.number === number) ?? null;
+  // R-017: the record by its number (the whole vault was read to find one).
+  return getVaultDocument(number);
 }
 
 /** "Continue in Codex": records the hand-off; toast "Codex · CER-HLT-042 recorded · synced to Keystone". */

@@ -82,7 +82,7 @@ describe('R-118 · who prepares and fills the site sheet (9 personas)', () => {
     expect(out).toEqual({
       director: 'ok', pm: 'ok', depthead: 'The site is read-only for you', member: 'Only the project’s leads prepare and fill the site sheet',
       englead: 'The site is read-only for you', quality: 'The site is read-only for you', procurement: 'The site is read-only for you',
-      finance: 'The site is read-only for you', client: 'sent home',
+      finance: 'The site is read-only for you', logistics: 'The site is read-only for you', client: 'sent home',
     });
     const s = await site();
     expect(s.equipment.slice(8).map((e) => [e.position, e.name, e.source, e.status, e.note])).toEqual([
@@ -100,7 +100,7 @@ describe('R-118 · who prepares and fills the site sheet (9 personas)', () => {
       const v = await pageView(HLT);
       offered[role] = !!v.entry && v.ready!.equip.every((e) => !!e.entry) && v.team!.rotation.every((r) => !!r.entry);
     }
-    expect(offered).toEqual({ director: true, pm: true, depthead: false, member: false, englead: false, quality: false, procurement: false, finance: false });
+    expect(offered).toEqual({ director: true, pm: true, depthead: false, member: false, englead: false, quality: false, procurement: false, finance: false, logistics: false });
     as('pm');
     const v = await pageView(HLT);
     expect(v.entry!.sheet.values).toMatchObject({ site: 'Terminal Harbor Line — Quai 4, Le Havre (FR)', currency: 'EUR', start: '19 Oct 2026', end: '18 Dec 2026' });

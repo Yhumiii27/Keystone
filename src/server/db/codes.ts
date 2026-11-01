@@ -489,9 +489,11 @@ export type Confidentiality = 'internal' | 'client' | 'supplier';
 export const confidentiality = codec<Confidentiality, string>([['internal', 'Internal'], ['client', 'Client'], ['supplier', 'Supplier']]);
 export const CONFIDENTIALITY_TAG: Record<Confidentiality, 'tag-accent' | 'tag-outline' | 'tag-neutral'> = { client: 'tag-accent', supplier: 'tag-outline', internal: 'tag-neutral' };
 /** Relation kinds of a document (`DOCS.links`). Only `article` opens a screen (PLM part drawer). */
-export type DocLinkKind = 'deliverable' | 'article' | 'purchase_order' | 'punch_item' | 'change_request';
+/** R-158 lot B: `shipment` = a shipping document generated for a shipment ("EXP-01"). */
+export type DocLinkKind = 'deliverable' | 'article' | 'purchase_order' | 'punch_item' | 'change_request' | 'shipment';
 export const docLinkKind = codec<DocLinkKind, string>([
   ['deliverable', 'Deliverable'], ['article', 'Article'], ['purchase_order', 'Purchase order'], ['punch_item', 'Punch item'], ['change_request', 'Change request'],
+  ['shipment', 'Shipment'],
 ]);
 /** Distribution recipients (`DOCS.to`, ENG_RCP 3737). */
 export type DocRecipient = 'process' | 'meca' | 'elec' | 'auto' | 'client' | 'achats' | 'site';
@@ -521,9 +523,10 @@ export const approverRole = codec<ApproverRole, string>([
 export type DepositStatus = 'handed_off' | 'recorded';
 /**
  * What a Codex outbox entry asks Codex (Delivery 7, P-7b / P-7c): a circuit step decision of the named approver, or
- * the start of the approval circuit of an engineering deliverable ("Validate release (PM)").
+ * the start of the approval circuit of an engineering deliverable ("Validate release (PM)"); R-158 lot B: the deposit of a
+ * document Keystone generated (a shipping document, its PDF in `stored_file_id`).
  */
-export type CodexOutboxKind = 'approval' | 'circuit_start';
+export type CodexOutboxKind = 'approval' | 'circuit_start' | 'deposit';
 /** Decision on a circuit step recorded in Keystone. */
 export type CodexDecision = 'approved' | 'rejected';
 export const codexDecision = codec<CodexDecision, string>([['approved', 'Approved'], ['rejected', 'Rejected']]);
@@ -947,8 +950,11 @@ export const ITP_RECORDED_RESULTS: readonly ItpRecordedResult[] = ['passed', 're
 /** Punch items (PUNCH 3718, SITE_PUNCH 3581, AF.punch). Category letter = code. */
 export type PunchCategory = 'A' | 'B' | 'C';
 export const punchCategory = codec<PunchCategory, string>([['A', 'A — blocking'], ['B', 'B — before SAT'], ['C', 'C — cosmetic']]);
-export type PunchSource = 'site_walk' | 'client_inspection' | 'itp' | 'sat';
-export const punchSource = codec<PunchSource, string>([['site_walk', 'Site walk'], ['client_inspection', 'Client inspection'], ['itp', 'ITP'], ['sat', 'SAT']]);
+/** R-158 lot B: `reception` = raised by a gap of a shipment's site reception (never chosen in the "Add punch item" form). */
+export type PunchSource = 'site_walk' | 'client_inspection' | 'itp' | 'sat' | 'reception';
+export const punchSource = codec<PunchSource, string>([
+  ['site_walk', 'Site walk'], ['client_inspection', 'Client inspection'], ['itp', 'ITP'], ['sat', 'SAT'], ['reception', 'Shipment reception'],
+]);
 export type PunchStatus = 'open' | 'in_progress' | 'closed';
 export const punchStatus = codec<PunchStatus, string>([['open', 'Open'], ['in_progress', 'In progress'], ['closed', 'Closed']]);
 /**
@@ -1105,12 +1111,13 @@ export const D5_SCREEN_ROLES = {
   rex: ['director', 'pm', 'englead', 'quality'],
   fleet: ['director', 'pm', 'quality', 'procurement'],
   sav: ['director', 'pm', 'quality', 'procurement'],
-  site: ['director', 'pm', 'depthead', 'member'],
+  site: ['director', 'pm', 'depthead', 'member', 'logistics'],
   pid: ['director', 'englead', 'quality'],
   eng: ['director', 'pm', 'englead', 'quality'],
   client: ['director', 'client'],
-  settings: ['director', 'pm', 'depthead', 'englead', 'quality', 'procurement'],
+  settings: ['director', 'pm', 'depthead', 'englead', 'quality', 'procurement', 'logistics'],
   mtypes: ['director', 'pm', 'englead', 'quality'],
+  catalogue: ['director', 'pm', 'englead', 'quality'],
   plumbing: ['director', 'pm'],
 } as const satisfies Record<string, readonly string[]>;
 export type D5Screen = keyof typeof D5_SCREEN_ROLES;

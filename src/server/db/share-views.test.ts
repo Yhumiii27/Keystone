@@ -12,8 +12,8 @@ import { completeIntervention, planIntervention } from '@/server/dal/claims';
 import { refreshShareProgress } from '@/server/dal/share-progress';
 import { setDb } from './client';
 import { openDatabase } from './open';
-import { contractAmendments, contracts, machines, milestones, projects, punchItems } from './schema';
-import { INTERNAL_MONEY_COLUMN, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COLUMNS, SHARE_VIEW_COUNT } from './share-contracts';
+import { clients, contractAmendments, contracts, lessonsLearned, machines, milestones, projects, punchItems } from './schema';
+import { EXPEDITIONS_FORBIDDEN_COLUMN, EXPEDITIONS_VIEW_TYPES, INTERNAL_MONEY_COLUMN, REX_VIEW_TYPES, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COLUMNS, SHARE_VIEW_COUNT } from './share-contracts';
 import type { DB } from './types';
 
 let db: DB;
@@ -25,13 +25,30 @@ beforeAll(async () => {
 }, 60_000);
 
 describe('share views of delivery 9 (0038_share_followup)', () => {
-  it('18 pub_ views (R-186: pub_catalogue_machines); each contract has its columns in order', async () => {
+  it('22 pub_ views (R-186: pub_catalogue_machines; R-187: pub_reponses_besoins; Matrix D22: pub_rex; R-191: pub_pack_ingenierie; R-158: pub_expeditions); each contract has its columns in order', async () => {
     const views = await rows<{ v: string }>(sql`select table_name as v from information_schema.views where table_schema = current_schema() and table_name like 'pub\_%' order by 1`);
     expect(views.map((r) => r.v)).toHaveLength(SHARE_VIEW_COUNT);
     for (const [view, cols] of Object.entries(SHARE_VIEW_COLUMNS)) {
       const got = await rows<{ c: string }>(sql`select column_name as c from information_schema.columns where table_schema = current_schema() and table_name = ${view} order by ordinal_position`);
       expect(got.map((r) => r.c), view).toEqual(cols);
     }
+  });
+
+  it('pub_expeditions (R-158 lot B): one row per shipment, no value, price or forwarder; the demo EXP-01 arrived with one open punch item', async () => {
+    const cols = await rows<{ c: string; t: string }>(sql`select column_name as c, data_type as t from information_schema.columns where table_schema = current_schema() and table_name = 'pub_expeditions' order by ordinal_position`);
+    expect(Object.fromEntries(cols.map((r) => [r.c, r.t]))).toEqual(EXPEDITIONS_VIEW_TYPES);
+    expect(cols.map((r) => r.c).filter((c) => EXPEDITIONS_FORBIDDEN_COLUMN.test(c))).toEqual([]);
+    const v = await rows<Record<string, unknown>>(sql`select projet_code, expedition_ref, equipements, statut, mode, incoterm, incoterm_lieu, origine, destination, etd::text, eta::text,
+      depart_reel_le::text, arrivee_reelle_le::text, receptionnee_le::text, nb_chargements, nb_reserves_ouvertes from pub_expeditions`);
+    expect(v).toEqual([{
+      projet_code: 'HLT-026', expedition_ref: 'EXP-01', equipements: 'EQ-02 · 3 × MEMU', statut: 'arrived', mode: 'road', incoterm: 'DAP', incoterm_lieu: 'Le Havre — terminal site',
+      origine: 'Atelier EPC2i — Lyon', destination: 'Le Havre — terminal site', etd: '2026-09-21', eta: '2026-09-22', depart_reel_le: '2026-09-21', arrivee_reelle_le: '2026-09-22',
+      receptionnee_le: null, nb_chargements: 2, nb_reserves_ouvertes: 1,
+    }]);
+    // The shipments feed the CAPEX milestones expedition (first pick-up) and arrivee_site (last arrival once all sent arrived).
+    const j = await rows<{ jalon_code: string; prevu_le: string | null; reel_le: string | null }>(sql`select jalon_code, prevu_le::text, reel_le::text from pub_jalons_projets
+      where projet_code = 'HLT-026' and jalon_code in ('expedition', 'arrivee_site') order by jalon_code`);
+    expect(j.map((r) => [r.jalon_code, r.reel_le])).toEqual([['arrivee_site', '2026-09-22'], ['expedition', '2026-09-21']]);
   });
 
   it('pub_avancement_projets is sales side only: no internal cost, rate, actual cost, CPI, EAC or margin (P-05 / AC-2)', async () => {
@@ -69,8 +86,12 @@ describe('share views of delivery 9 (0038_share_followup)', () => {
       sql`select projet_code, jalon_code, prevu_le::text, reference_le::text, reel_le::text from pub_jalons_projets`,
     );
     expect(v).toHaveLength(8 * n);
-    expect([...new Set(v.map((r) => r.jalon_code))]).toEqual(['commande', 'fin_etudes', 'fat', 'expedition', 'arrivee_site', 'sat', 'pv_reception', 'fin_garantie']);
-    expect(v.every((r) => r.reference_le === null)).toBe(true);
+    // R-158 lot B: the view has no order; the eight codes (the row order changed with the shipments' lateral join).
+    expect([...new Set(v.map((r) => r.jalon_code))].sort()).toEqual(['commande', 'fin_etudes', 'fat', 'expedition', 'arrivee_site', 'sat', 'pv_reception', 'fin_garantie'].sort());
+    // R-189: reference_le is the BL1 date of the schedule milestone tagged with the code (was null for every row before R-189).
+    expect(v.filter((r) => r.reference_le).map((r) => [r.projet_code, r.jalon_code, r.reference_le]).sort()).toEqual([
+      ['HLT-026', 'pv_reception', '2026-12-18'], ['MSR-012', 'pv_reception', '2026-11-01'], ['NDC-031', 'sat', '2027-04-01'], ['WSA-044', 'sat', '2027-07-01'],
+    ]);
     const hlt = Object.fromEntries(v.filter((r) => r.projet_code === 'HLT-026').map((r) => [r.jalon_code, r]));
     // The contract signed on 14 Jan 2026 is the order.
     expect(hlt.commande).toMatchObject({ prevu_le: '2026-01-14', reel_le: '2026-01-14' });
@@ -79,6 +100,44 @@ describe('share views of delivery 9 (0038_share_followup)', () => {
     expect(hlt.sat.reel_le).toBeNull();
     // A reached milestone's planned date defaults to its actual date.
     for (const r of v) if (r.reel_le && !r.prevu_le) throw new Error(`${r.projet_code} ${r.jalon_code}: reached without a planned date`);
+  });
+
+  it('pub_jalons_projets: reference_le and the schedule fallback of the tagged milestone (R-189)', async () => {
+    const one = async (code: string, jalon: string) =>
+      (await rows<{ prevu_le: string | null; reference_le: string | null; reel_le: string | null; maj_le: string }>(
+        sql`select prevu_le::text, reference_le::text, reel_le::text, maj_le::text from pub_jalons_projets where projet_code = ${code} and jalon_code = ${jalon}`,
+      ))[0];
+    const tags = await rows<{ code: string; name: string; capex: string }>(
+      sql`select p.code, m.name, m.capex_milestone_code as capex from milestones m join projects p on p.id = m.project_id where m.capex_milestone_code is not null order by 1`,
+    );
+    // The seed tags the unambiguous demo milestones by their names (RCF-019's « Commissioning & handover complete » is SAT and PV: untagged).
+    expect(tags.map((r) => [r.code, r.name, r.capex])).toEqual([
+      ['HLT-026', 'Handover', 'pv_reception'], ['MSR-012', 'Acceptance & handover complete', 'pv_reception'], ['NDC-031', 'Commissioning & IST complete', 'sat'],
+      ['WSA-044', 'Commissioning complete', 'sat'],
+    ]);
+    // Not anchored yet: the milestone's positions read as the Schedule shows them (HLT-026 « Handover »: baseline 18 Dec, forecast 13 Jan).
+    // A module's planned date wins (the PV deliverables of HLT-026); NDC-031 has no SAT planned elsewhere: the schedule's forecast.
+    expect(await one('HLT-026', 'pv_reception')).toMatchObject({ prevu_le: '2027-01-14', reference_le: '2026-12-18', reel_le: null });
+    expect(await one('NDC-031', 'sat')).toMatchObject({ prevu_le: '2027-04-04', reference_le: '2027-04-01', reel_le: null });
+    // Anchored on an activity: its current finish, its BL1 finish (baseline_activities), its actual finish once complete.
+    const [act] = await rows<{ id: string; finish: string; bl1: string }>(sql`
+      select a.id, a.finish_date::text as finish, ba.finish_date::text as bl1 from activities a
+      join projects p on p.id = a.project_id
+      join baselines b on b.project_id = p.id and b.code = 'BL1'
+      join baseline_activities ba on ba.baseline_id = b.id and ba.activity_code = a.code
+      where p.code = 'NDC-031' and a.finish_actual and ba.finish_date is not null order by a.position limit 1`);
+    const before = await one('NDC-031', 'sat');
+    await db.execute(sql`update milestones set activity_id = ${act.id} where capex_milestone_code = 'sat' and project_id = (select id from projects where code = 'NDC-031')`);
+    expect(await one('NDC-031', 'sat')).toMatchObject({ prevu_le: act.finish, reference_le: act.bl1, reel_le: act.finish });
+    // A project whose BL1 is still proposed (or has none) publishes no reference.
+    await db.execute(sql`update baselines set state = 'proposed' where code = 'BL1' and project_id = (select id from projects where code = 'NDC-031')`);
+    expect((await one('NDC-031', 'sat')).reference_le).toBeNull();
+    await db.execute(sql`update baselines set state = 'current' where code = 'BL1' and project_id = (select id from projects where code = 'NDC-031')`);
+    await db.execute(sql`update milestones set activity_id = null where capex_milestone_code = 'sat' and project_id = (select id from projects where code = 'NDC-031')`);
+    expect(await one('NDC-031', 'sat')).toMatchObject({ prevu_le: before.prevu_le, reference_le: before.reference_le });
+    // The database keeps one milestone per code and project, and only the eight codes.
+    await expect(db.execute(sql`update milestones set capex_milestone_code = 'pv_reception' where name = 'Systems energised'`)).rejects.toThrow();
+    await expect(db.execute(sql`update milestones set capex_milestone_code = 'handover' where name = 'Systems energised'`)).rejects.toThrow();
   });
 
   it('pub_avancement_projets: progress and SPI from the share-progress job (null before its first run), sales amounts in k€', async () => {
@@ -133,6 +192,50 @@ describe('share views of delivery 9 (0038_share_followup)', () => {
     await expect(db.update(projects).set({ capexCode: 'CAPEX-1' }).where(eq(projects.code, 'NDC-031'))).rejects.toThrow();
     await expect(db.update(projects).set({ capexCode: 'CPX-SAI-2026-01', besoinRef: 'CPX-APM-2026-01/B01' }).where(eq(projects.code, 'NDC-031'))).rejects.toThrow();
     await expect(setCapexLink('HLT-026', { capexCode: '', needRef: 'CPX-SAI-2026-01/B01' }, { name: 'Hélène Marchetti', role: 'director' })).rejects.toThrow('Enter the CAPEX code first');
+  });
+
+  it('pub_projets: the internal client at the end — false for an external client, never null (R-190)', async () => {
+    const v = await rows<{ code: string; client_interne: boolean | null; filiale_code: string | null }>(sql`select code, client_interne, filiale_code from pub_projets`);
+    expect(v.length).toBeGreaterThan(0);
+    // The demo's subsidiary (Sahel Agro Industries, SAI) has no project yet: every demo project has an external client.
+    expect(v.every((r) => r.client_interne === false && r.filiale_code === null)).toBe(true);
+    // The database refuses a subsidiary code on an external client and a malformed code.
+    await expect(db.update(clients).set({ subsidiaryCode: 'HTR' }).where(eq(clients.name, 'Health trust'))).rejects.toThrow();
+    await expect(db.update(clients).set({ isInternal: true, subsidiaryCode: 'H1' }).where(eq(clients.name, 'Health trust'))).rejects.toThrow();
+    await db.update(clients).set({ isInternal: true, subsidiaryCode: 'HTR' }).where(eq(clients.name, 'Health trust'));
+    const [r] = await rows<{ client_interne: boolean; filiale_code: string }>(sql`select client_interne, filiale_code from pub_projets where code = 'RCF-019'`);
+    expect(r).toEqual({ client_interne: true, filiale_code: 'HTR' });
+    await db.update(clients).set({ isInternal: false, subsidiaryCode: null }).where(eq(clients.name, 'Health trust'));
+  });
+
+  it('pub_rex (Matrix D22): the validated and applied lessons at the common REX contract; a proposed lesson is not published', async () => {
+    const types = await rows<{ c: string; t: string }>(sql`select column_name as c, data_type as t from information_schema.columns where table_schema = current_schema() and table_name = 'pub_rex' order by ordinal_position`);
+    expect(Object.fromEntries(types.map((r) => [r.c, r.t]))).toEqual(REX_VIEW_TYPES);
+    const v = await rows<Record<string, string | null>>(sql`select ref_source, outil, projet_code, capex_code, numero, categorie, titre, statut, portee, auteur from pub_rex order by numero`);
+    // HLT-026's demo lessons: LL-01 validated, LL-02 applied, LL-03 validated, LL-04 proposed (not published).
+    expect(v.map((r) => [r.projet_code, r.numero, r.categorie, r.statut])).toEqual([
+      ['HLT-026', 'LL-01', 'procurement', 'validated'], ['HLT-026', 'LL-02', 'engineering', 'applied'], ['HLT-026', 'LL-03', 'site', 'validated'],
+    ]);
+    const [ll01] = await db.select({ id: lessonsLearned.id }).from(lessonsLearned).where(eq(lessonsLearned.number, 'LL-01'));
+    expect(v[0]).toMatchObject({
+      // The project's CAPEX link (set on HLT-026 by the pub_projets test above).
+      ref_source: `lessons_learned:${ll01.id}`, outil: 'keystone', capex_code: 'CPX-SAI-2026-01', auteur: null, portee: 'Purchasing procedure PRO-QMS-021',
+      titre: 'LL-01 · Steel mill capacity slipped 3 weeks with no early warning',
+    });
+    // A long finding is cut at 80 characters in the title (the full text stays in constat).
+    expect(v[1].titre).toBe('LL-02 · P&ID rev D released while electrical and automation still consumed rev C');
+    // Validating the proposed lesson publishes it.
+    await db.update(lessonsLearned).set({ status: 'validated', updatedAt: new Date() }).where(eq(lessonsLearned.number, 'LL-04'));
+    const [ll04] = await rows<{ capex_code: string; titre: string }>(sql`select capex_code, titre from pub_rex where numero = 'LL-04'`);
+    expect(ll04).toEqual({ capex_code: 'CPX-SAI-2026-01', titre: 'LL-04 · Client decides on hold points only in steering committee' });
+    await db.update(lessonsLearned).set({ status: 'proposed' }).where(eq(lessonsLearned.number, 'LL-04'));
+  });
+
+  it('pub_clients (Matrix D21): filiale_code at the end — the internal client’s subsidiary code, null for an external client', async () => {
+    const v = await rows<{ name: string; code3: string | null; filiale_code: string | null }>(sql`select name, code3, filiale_code from pub_clients order by name`);
+    const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(clients);
+    expect(v).toHaveLength(n);
+    expect(v.filter((r) => r.filiale_code)).toEqual([{ name: 'Sahel Agro Industries', code3: 'SAI', filiale_code: 'SAI' }]);
   });
 
   it('pub_parc_machines: machine type, delivery date and last change at the end, one row per machine for Arche (K-07)', async () => {

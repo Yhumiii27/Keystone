@@ -53,7 +53,8 @@ const frSingular = (s: string) => s.replace(/^1 échouées/, '1 échouée');
  * and the open C item of its EQ-02 demo line (P-09): 6 → 7, C 2 → 3.
  */
 const unifiedPunch = (code: string) => (k: { label: string; value: string; sub: string; color: string }, i: number) =>
-  code === 'HLT-026' && i === 2 ? { ...k, value: '7', sub: 'A 0 · B 4 · C 3' } : k;
+  // R-158 lot B: + the open B item raised by the demo reception of EXP-01 (P-10).
+  code === 'HLT-026' && i === 2 ? { ...k, value: '8', sub: 'A 0 · B 5 · C 3' } : k;
 
 describe('ITP · plan view', () => {
   it.each(PROJECTS)('%s EN / FR: KPI tiles, groups and rows equal the prototype', async (code) => {
@@ -111,7 +112,8 @@ describe('ITP · punch view', () => {
       );
       // "Inspection" and "Site" read the same in French.
       // R-185 part 2: + Harbor Line's EQ-02 demo item (P-09), raised by inspection.
-      expect(view.punch!.rows.map((r) => r.origin)).toEqual([...Array(5).fill('Inspection'), ...Array(3).fill('Site'), 'Inspection']);
+      // R-158 lot B: + P-10, raised on site by the demo reception of EXP-01.
+      expect(view.punch!.rows.map((r) => r.origin)).toEqual([...Array(5).fill('Inspection'), ...Array(3).fill('Site'), 'Inspection', 'Site']);
       expect(view.punch!.rows.slice(5, 8).map((r) => [r.number, r.category, r.ncr, r.owner, r.status, r.step?.label ?? null])).toEqual([
         ['P-06', 'B', 'NCR-029', 'Client', lang === 'en' ? 'Open' : 'Ouverte', lang === 'en' ? 'Start' : 'Démarrer'],
         ['P-07', 'B', '—', 'Keystone', lang === 'en' ? 'Open' : 'Ouverte', lang === 'en' ? 'Start' : 'Démarrer'],
@@ -128,7 +130,8 @@ describe('ITP · punch view', () => {
       expect(edit).toContain(s);
     // A-6 'a' (R-117): Start / Close on every open item, the 2 open items raised on site included (4 → 6).
     // R-185 part 2: + the open item of Harbor Line's EQ-02 demo line (P-09): 7.
-    expect(edit.match(/data-punch-step/g)?.length).toBe(7);
+    // R-158 lot B: + the open item raised by the demo reception of EXP-01 (P-10): 8.
+    expect(edit.match(/data-punch-step/g)?.length).toBe(8);
     const ro = html(ItpBody({ code: 'HLT-026', view, canEdit: false, t }), 'fr');
     expect(ro).not.toContain('data-punch-step');
     expect(ro).toContain('Clôturée');

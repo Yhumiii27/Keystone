@@ -131,7 +131,7 @@ export function PrioritisationBoard({ data, canEdit, initialSel, zone = null }: 
             </tbody>
           </Table>
         </SectionCard>
-        <SectionCard title={t('Weights')} subtitle={t('Editable · the ranking recomputes live')} flex="1 1 250px">
+        <SectionCard title={t('Weights')} subtitle={t(canEdit ? 'Editable · the ranking recomputes live' : 'Read-only · outside your workspace')} flex="1 1 250px">
           {view.weightRows.map((w, i) => (
             <div key={w.code} className={s.weight}>
               <span className={s.weightLabel}>{w.label}</span>

@@ -7,6 +7,8 @@ import { getDb } from '@/server/db/client';
 import { NOTIFICATION_ICON, stampText, type ActivityKind, type NotificationKind } from '@/server/db/codes';
 import { nextNumber, recordActivity, writeAudit, type ActivityInput, type AuditInput } from '@/server/db/helpers';
 import { activityEvents, auditEntries, notificationRecipients, notifications, projects, users } from '@/server/db/schema';
+import { logError } from '@/server/log';
+import { mailStatesFor } from './notification-routing';
 import { userIdOf, userIdsOfPersons, userIdsWithRoles, type UserRef } from './users';
 
 export interface NotificationRow {
@@ -97,12 +99,22 @@ export interface NewNotificationInput {
    */
   toPersonIds?: string[];
   occurredAt?: Date;
+  /**
+   * R-036: false = the bell only (the deadline reminders and weekly reports, which send their own e-mail, R-199). Otherwise each
+   * recipient's e-mail follows their preference for the notice's family: sent at once (after the commit), kept for the daily
+   * digest, or none.
+   */
+  email?: boolean;
 }
 
-/** Creates a notification on top of the bell list for its recipients (persons, else the audience roles). Returns its code. */
+/**
+ * Creates a notification on top of the bell list for its recipients (persons, else the audience roles). Returns its code. R-036:
+ * the e-mails due at once are sent right after the commit (best effort: a failure is logged, the job "notification-mails" sends
+ * what a crash left waiting).
+ */
 export async function createNotification(input: NewNotificationInput): Promise<string> {
   const db = await getDb();
-  return db.transaction(async (tx) => {
+  const made = await db.transaction(async (tx) => {
     const [{ minOrder }] = await tx.select({ minOrder: sql<number>`coalesce(min(${notifications.sortOrder}), 1)::int` }).from(notifications);
     const code = await nextNumber(tx, notifications, notifications.code, 'n', 1);
     let projectId: string | null = null;
@@ -115,9 +127,18 @@ export async function createNotification(input: NewNotificationInput): Promise<s
       })
       .returning({ id: notifications.id });
     const to = input.toPersonIds ? await userIdsOfPersons(tx, input.toPersonIds) : await userIdsWithRoles(tx, input.audience);
-    if (to.length) await tx.insert(notificationRecipients).values(to.map((u) => ({ notificationId: n.id, userId: u.id })));
-    return code;
+    const states = input.email === false ? new Map<string, never>() : await mailStatesFor(tx, input.kind, to);
+    if (to.length) await tx.insert(notificationRecipients).values(to.map((u) => ({ notificationId: n.id, userId: u.id, mailState: states.get(u.id) ?? null })));
+    return { code, id: n.id, immediate: [...states.values()].includes('immediate') };
   });
+  if (made.immediate) {
+    try {
+      await (await import('./notification-mail')).sendImmediateMails({ notificationId: made.id });
+    } catch (e) {
+      logError('createNotification: immediate e-mail', e, { code: made.code });
+    }
+  }
+  return made.code;
 }
 
 // ── Activity feed ──────────────────────────────────────────────────────────────────────────────────────
@@ -135,6 +156,8 @@ export interface ActivityRow {
   messageParams: Record<string, unknown> | null;
   kind: ActivityKind;
   projectCode: string | null;
+  /** R-051 (P-7d): the approver a substitute acted for (`who` is the substitute); null otherwise. */
+  onBehalfOf?: string | null;
 }
 
 /** Activity feed, newest first (optionally one kind — the source chips). */
@@ -149,7 +172,7 @@ export async function listActivity(opts: { kind?: ActivityKind; limit?: number }
     .limit(opts.limit ?? 500);
   return rows.map(({ a, code }) => ({
     occurredAt: a.occurredAt.toISOString(), when: stampText(a.occurredAt), who: a.actorName, what: a.text, messageKey: a.messageKey, messageParams: a.messageParams,
-    kind: a.kind, projectCode: code,
+    kind: a.kind, projectCode: code, onBehalfOf: a.onBehalfOfName,
   }));
 }
 
@@ -181,10 +204,19 @@ export interface AuditRow {
   /** R-184: the system message the change text was built from (null for plain-text rows). */
   messageKey: string | null;
   messageParams: Record<string, unknown> | null;
+  /** R-051 (P-7d): the approver a substitute decided for (`who` is the substitute); null otherwise. */
+  onBehalfOf?: string | null;
 }
 
-/** Audit trail, newest first. */
-export async function listAudit(opts: { limit?: number; projectCode?: string } = {}): Promise<AuditRow[]> {
+/** Number of audit entries (R-017: the pager of the audit trail). */
+export async function countAudit(): Promise<number> {
+  const db = await getDb();
+  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(auditEntries);
+  return n;
+}
+
+/** Audit trail, newest first; R-017: `offset` for its pages (the export reads every entry). */
+export async function listAudit(opts: { limit?: number; offset?: number; projectCode?: string } = {}): Promise<AuditRow[]> {
   const db = await getDb();
   const rows = await db
     .select({ a: auditEntries, code: projects.code, email: users.email })
@@ -192,11 +224,13 @@ export async function listAudit(opts: { limit?: number; projectCode?: string } =
     .leftJoin(projects, eq(projects.id, auditEntries.projectId))
     .leftJoin(users, eq(users.id, auditEntries.actorUserId))
     .where(opts.projectCode ? eq(projects.code, opts.projectCode) : undefined)
-    .orderBy(desc(auditEntries.occurredAt))
-    .limit(opts.limit ?? 500);
+    // The id breaks the ties of one instant, so the pages never repeat or skip an entry.
+    .orderBy(desc(auditEntries.occurredAt), desc(auditEntries.id))
+    .limit(opts.limit ?? 500)
+    .offset(opts.offset ?? 0);
   return rows.map(({ a, code, email }) => ({
     occurredAt: a.occurredAt.toISOString(), when: stampText(a.occurredAt), who: a.actorName, object: a.objectRef, change: a.change, area: a.area, projectCode: code,
-    userEmail: email, reason: a.reason, before: a.before, after: a.after, messageKey: a.messageKey, messageParams: a.messageParams,
+    userEmail: email, reason: a.reason, before: a.before, after: a.after, messageKey: a.messageKey, messageParams: a.messageParams, onBehalfOf: a.onBehalfOfName,
   }));
 }
 

@@ -30,7 +30,9 @@ export const connectorModeT = (mode: 'mock' | 'http', t: T) => t(mode === 'http'
  * Line under the system name from the real link (R-021): the connector layer's mode (live, mock), "File exchange · no live
  * connection" for MS Project; nothing for a connector that does not exist (its status says "Not connected").
  */
-export function connectorLinkT(link: 'live' | 'mock' | 'file' | 'none', t: T): string | null {
+export function connectorLinkT(link: 'live' | 'mock' | 'file' | 'none', t: T, mode?: 'mock' | 'http' | 'sql' | null): string | null {
+  // R-187: Arche is read through its pub_ views on the shared PostgreSQL server, not an HTTP API.
+  if (link === 'live' && mode === 'sql') return t('Live connector · shared database views');
   if (link === 'live') return connectorModeT('http', t);
   if (link === 'mock') return connectorModeT('mock', t);
   return link === 'file' ? t('File exchange · no live connection') : null;
@@ -70,6 +72,11 @@ export function volumeT(text: string, t: T, lang: Lang): string {
     const tasks = cursus[2] == null ? '' : ` · ${plural(+cursus[2], 'tâche', 'tâches')} ${cursus[3] === 'sent' ? (+cursus[2] === 1 ? 'envoyée' : 'envoyées') : 'en attente'}`;
     return `${plural(+cursus[1], 'approbation reçue', 'approbations reçues')}${tasks}`;
   }
+  // R-187: the Arche row ("2 CAPEX · 5 needs · 5 answers") and its "Sync now" ("2 CAPEX · 5 needs (simulated)").
+  const arche = /^(\d+) CAPEX · (\d+) needs(?: · (\d+) answers)?( · (\d+) rows skipped)?( \(simulated\))?$/.exec(text);
+  if (arche)
+    return `${arche[1]} CAPEX · ${plural(+arche[2], 'besoin', 'besoins')}${arche[3] != null ? ` · ${plural(+arche[3], 'réponse', 'réponses')}` : ''}`
+      + `${arche[4] ? ` · ${plural(+arche[5], 'ligne ignorée', 'lignes ignorées')}` : ''}${arche[6] ? ' (simulé)' : ''}`;
   if (text === 'First sync scheduled') return 'Première synchro planifiée';
   return t(text);
 }
@@ -126,7 +133,36 @@ export function activityWhatT(a: Keyed & { what: string }, t: T, lang: Lang): st
   }
   const added = /^Connector (.+) added by IT · not connected yet$/.exec(a.what);
   if (added) return `Connecteur ${dataText(added[1], lang)} ajouté par l’IT · pas encore connecté`;
+  // R-157: the other connector and import texts Keystone writes (Cursus requests and staff directory, Sage X3 push, imports).
+  const connector = connectorActivityFr(a.what, t, lang);
+  if (connector != null) return connector;
   return fieldsText(a.what, t, lang);
+}
+
+/** French of the connector / import activity texts (R-157); null when `what` is not one of them. Names and numbers as typed. */
+function connectorActivityFr(what: string, t: T, lang: Lang): string | null {
+  const d = (s: string) => dataText(s, lang);
+  const travel = /^Travel request sent to Cursus · (.+)$/.exec(what);
+  if (travel) return `Demande de déplacement envoyée à Cursus · ${d(travel[1])}`;
+  const directory = /^Staff directory imported from Cursus · (\d+) matched · (\d+) created(?: · (\d+) to check)?$/.exec(what);
+  if (directory)
+    return `Annuaire du personnel importé de Cursus · ${plural(+directory[1], 'rapprochée', 'rapprochées')} · ${plural(+directory[2], 'créée', 'créées')}`
+      + (directory[3] ? ` · ${directory[3]} à vérifier` : '');
+  const push = /^Simulated push of (\S+) to Sage X3 \(not connected\) · (.+)$/.exec(what);
+  if (push) return `Envoi simulé de ${push[1]} vers Sage X3 (non connecté) · ${d(push[2])}`;
+  const pid = /^Imported P&ID tags · (\S+) rev (\S+)$/.exec(what);
+  if (pid) return `Repères P&ID importés · ${pid[1]} rév. ${d(pid[2])}`;
+  const doc = /^Imported (\S+) rev (\S+) · (.+)$/.exec(what);
+  if (doc) return `${doc[1]} rév. ${d(doc[2])} importé · ${t(doc[3])}`;
+  const job = /^(.+?) · (.+) imported(?: into (\S+))?(?: · (\d+) activities| · (\d+) created · (\d+) updated)$/.exec(what);
+  if (job) {
+    const into = job[3] ? ` dans ${job[3]}` : '';
+    const count = job[4] != null ? plural(+job[4], 'activité', 'activités') : `${plural(+job[5], 'créé', 'créés')} · ${plural(+job[6], 'mis à jour', 'mis à jour')}`;
+    return `${t(job[1])} · ${d(job[2])} importé${into} · ${count}`;
+  }
+  const file = /^Imported (\S+)$/.exec(what);
+  if (file) return `Import de ${d(file[1])}`;
+  return null;
 }
 
 /** Lone words of a change ("added", "enabled"…) in French. */
@@ -225,6 +261,8 @@ export function adminErrorT(message: string, t: T, lang: Lang): string | null {
 }
 
 const KNOWN = new Set([
+  // R-185 / R-186: the "Per equipment" flag of a standard phase.
+  'Unknown phase',
   'Settings are read-only for you', 'Machine types are read-only for you', 'Activity & integrations is read-only for you', 'Invalid request',
   'Entry is required', 'Location is required', 'Unknown list', 'Unknown entry', 'Invalid location type', 'A holiday reads "14 Jul · Fête nationale"',
   'Enter a threshold between 0 and 2', '"Off track below" must be lower than "At risk below"', 'Code already used', 'Code is required', 'Code is too long',

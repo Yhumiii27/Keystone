@@ -61,17 +61,42 @@ const ISO_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 /** True for a valid 'YYYY-MM-DD' calendar date. */
 export function isIsoDate(v: unknown): v is IsoDate {
   if (typeof v !== 'string') return false;
+  if (validIsos.has(v)) return true;
   const m = ISO_RE.exec(v);
   if (!m) return false;
   const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
-  return d.getUTCFullYear() === +m[1] && d.getUTCMonth() === +m[2] - 1 && d.getUTCDate() === +m[3];
+  const ok = d.getUTCFullYear() === +m[1] && d.getUTCMonth() === +m[2] - 1 && d.getUTCDate() === +m[3];
+  if (ok) {
+    if (validIsos.size >= 50_000) validIsos.clear();
+    validIsos.add(v);
+  }
+  return ok;
 }
+/** Dates already found valid (R-017: the schedule engine validates the same dates on every run). */
+const validIsos = new Set<string>();
+// R-017: the schedule, load and what-if rules convert the same few thousand dates millions of times on a large portfolio; the
+// two conversions are memoised (bounded maps, emptied when full — the results are the same).
+const MEMO_MAX = 50_000;
+const msMemo = new Map<string, number>();
+const isoMemo = new Map<number, IsoDate>();
 function msOf(iso: IsoDate): number {
+  const known = msMemo.get(iso);
+  if (known !== undefined) return known;
   const m = ISO_RE.exec(iso);
   if (!m) throw new RangeError(`Invalid date "${iso}"`);
-  return Date.UTC(+m[1], +m[2] - 1, +m[3]);
+  const ms = Date.UTC(+m[1], +m[2] - 1, +m[3]);
+  if (msMemo.size >= MEMO_MAX) msMemo.clear();
+  msMemo.set(iso, ms);
+  return ms;
 }
-const isoOfMs = (ms: number): IsoDate => new Date(ms).toISOString().slice(0, 10);
+const isoOfMs = (ms: number): IsoDate => {
+  const known = isoMemo.get(ms);
+  if (known !== undefined) return known;
+  const iso = new Date(ms).toISOString().slice(0, 10);
+  if (isoMemo.size >= MEMO_MAX) isoMemo.clear();
+  isoMemo.set(ms, iso);
+  return iso;
+};
 /** Adds calendar days. */
 export const addCalendarDays = (iso: IsoDate, days: number): IsoDate => isoOfMs(msOf(iso) + days * DAY_MS);
 /** Calendar days from `a` to `b`. */
@@ -157,6 +182,8 @@ export class WorkCalendar {
   /** Working dates from the epoch, ascending, and the first date not yet covered. */
   private days: IsoDate[] = [];
   private coveredUntilMs = EPOCH_MS;
+  /** Ordinals already computed (R-017). */
+  private readonly ordinals = new Map<IsoDate, number>();
 
   constructor(def: CalendarDef, opts: WorkCalendarOptions = {}) {
     if (!def.workDays.some((d) => d >= 1 && d <= 7)) throw new RangeError(`Calendar ${def.code} has no working day`);
@@ -212,6 +239,9 @@ export class WorkCalendar {
 
   /** Number of working days strictly before `iso` (since the epoch): the boundary at 00:00 of `iso`. */
   ordinal(iso: IsoDate): number {
+    // R-017: an ordinal never changes once its year is covered (days are only appended): kept per calendar.
+    const known = this.ordinals.get(iso);
+    if (known !== undefined) return known;
     const ms = msOf(iso);
     if (ms < EPOCH_MS) throw new RangeError(`Date ${iso} is before ${CALENDAR_EPOCH}`);
     this.coverUntil(ms);
@@ -222,6 +252,8 @@ export class WorkCalendar {
       if (this.days[mid] < iso) lo = mid + 1;
       else hi = mid;
     }
+    if (this.ordinals.size >= MEMO_MAX) this.ordinals.clear();
+    this.ordinals.set(iso, lo);
     return lo;
   }
 

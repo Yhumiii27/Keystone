@@ -18,9 +18,11 @@ import { isoOfDisplayDate, locationType, type CalendarCode, type CostType } from
 import { listAdminConnectors, syncAdminConnector } from '@/server/dal/admin-connectors';
 import { ConnectorDisabledError } from '@/server/dal/integrations';
 import {
-  createMachineType, getMachineType, removeRexReference, setMachineTypeCostCategories, setMachineTypeItpSystems, setMachineTypePhases, updateMachineType,
+  createMachineType, getMachineType, removeRexReference, setMachineTypeCostCategories, setMachineTypeItpSystems, setMachineTypePack, setMachineTypePhaseScope,
+  setMachineTypePhases, updateMachineType,
   type MachineTypePatch,
 } from '@/server/dal/mtypes';
+import { PACK_FAMILIES, PACK_INVALID_ERROR, isPackFamily, packStandardError, type PackStandardRow } from '@/domain/engineering-pack';
 import type { Actor } from '@/server/dal/ops-common';
 import {
   CCB_THRESHOLD_ERROR, HOURS_VARIANCE_RANGE, addLocation, addReferenceValue, getHealthThresholds, removeLocation, removeReferenceValue, resetSettings, setCcbThreshold, setHealthThresholds, setHoursVariance,
@@ -31,6 +33,8 @@ import { translateMessage } from '@/server/interchange/messages';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { canEditSettings, SETTINGS_DIRECTOR_ONLY } from '@/domain/settings-rules';
+import { INCOTERM_CODE_RE, normaliseIncotermCode, parseIncoterm } from '@/domain/incoterms';
+import { reactivateIncoterm, removeIncoterm, saveIncoterm } from '@/server/dal/incoterms';
 import { adminErrorT, machineTypeCreatedT, syncToastT } from './i18n';
 import { removedEntryToastT, settingsErrorT } from './settings-i18n';
 
@@ -273,6 +277,16 @@ export async function setMachineTypePhasesAction(code: unknown, phases: unknown)
   return run('mtypes', (actor) => setMachineTypePhases(mt, list, actor));
 }
 
+/**
+ * R-185 / R-186: a standard phase specific to an equipment (generated once per equipment line) or common to the project — same
+ * rights as the rest of the type editor (moved here from the catalogue Server Functions when the catalogue got its own screen).
+ */
+export async function setMachineTypePhaseScopeAction(code: unknown, position: unknown, perEquipment: unknown): Promise<AdminActionResult> {
+  const mt = await knownType(code);
+  if (!mt || typeof position !== 'number' || !Number.isInteger(position) || position < 0 || position > 200 || typeof perEquipment !== 'boolean') return invalid('mtypes');
+  return run('mtypes', (actor) => setMachineTypePhaseScope(mt, position, perEquipment, actor));
+}
+
 /** ITP systems ("Add system" appends "New system"; rename; remove): the whole list in order. */
 export async function setMachineTypeItpSystemsAction(code: unknown, systems: unknown): Promise<AdminActionResult> {
   const mt = await knownType(code);
@@ -302,6 +316,41 @@ export async function setMachineTypeCostCategoriesAction(code: unknown, cats: un
   }
   refresh();
   return { ok: true };
+}
+
+/** A whole number typed in a field ("20", 20) — null for anything else ("", "12.5", "abc"). */
+const wholeNumber = (v: unknown): number | null => {
+  if (typeof v === 'number') return Number.isInteger(v) ? v : null;
+  if (typeof v !== 'string' || !/^\s*\d{1,3}\s*$/.test(v)) return null;
+  return Number(v.trim());
+};
+
+/**
+ * R-191: the standard list of the engineering pack — `{ family, weight, minExpected }[]` (the five families, weights and minimums
+ * as typed). Same rights as the rest of the type editor; refused unless the weights total 100 %.
+ */
+export async function setMachineTypePackAction(code: unknown, rows: unknown): Promise<AdminActionResult> {
+  const ok = await editor('mtypes');
+  if ('error' in ok) return ok;
+  const mt = await knownType(code);
+  if (!mt || !Array.isArray(rows) || rows.length > PACK_FAMILIES.length) return fail('Invalid request');
+  const parsed: PackStandardRow[] = [];
+  for (const r of rows) {
+    if (!r || typeof r !== 'object' || !isPackFamily(r.family)) return fail('Invalid request');
+    const weight = wholeNumber(r.weight);
+    const minExpected = wholeNumber(r.minExpected);
+    if (weight === null || minExpected === null) return fail(PACK_INVALID_ERROR);
+    parsed.push({ family: r.family, weight, minExpected });
+  }
+  const error = packStandardError(parsed);
+  if (error) return fail(error);
+  try {
+    await setMachineTypePack(mt, parsed, ok.actor);
+  } catch (e) {
+    return failure(e);
+  }
+  refresh();
+  return { ok: true, toast: await tr('Engineering pack saved') };
 }
 
 /** Removes a reference project from the financial REX. */
@@ -355,4 +404,60 @@ export async function syncConnectorAction(name: unknown): Promise<AdminActionRes
     if (e instanceof ConnectorDisabledError) return { error: translateMessage(e.message, (await getI18n()).t) };
     return failure(e);
   }
+}
+
+// ── R-158 lot A (owner's decision 9): Settings › Incoterms ─────────────────────────────────────────────────────────────
+
+const INCOTERM_ERRORS = ['This Incoterm already exists', 'Unknown Incoterm', 'An Incoterm code is three letters', 'Enter the Incoterm’s name', 'Text too long'];
+
+async function incotermFailure(e: unknown): Promise<{ error: string }> {
+  const msg = e instanceof Error ? e.message : '';
+  return INCOTERM_ERRORS.includes(msg) ? fail(msg) : failure(e);
+}
+
+/** "Add Incoterm" (`mode` create) or "Edit" (update: the code is the row's) — the Settings editors (the portfolio director). */
+export async function saveIncotermAction(mode: unknown, values: unknown): Promise<AdminActionResult> {
+  const ok = await settingsEditor();
+  if ('error' in ok) return ok;
+  if ((mode !== 'create' && mode !== 'update') || !values || typeof values !== 'object') return fail('Invalid request');
+  const parsed = parseIncoterm(values as Record<string, unknown>);
+  if (!parsed.ok) return fail(parsed.error);
+  try {
+    await saveIncoterm(parsed.value, mode, ok.actor);
+  } catch (e) {
+    return incotermFailure(e);
+  }
+  refresh();
+  return { ok: true, toast: await tr(mode === 'create' ? 'Incoterm added' : 'Incoterm saved') };
+}
+
+/** "Remove": deleted when unused and added in Keystone, else deactivated (a standard or used Incoterm is kept). */
+export async function removeIncotermAction(code: unknown): Promise<AdminActionResult> {
+  const ok = await settingsEditor();
+  if ('error' in ok) return ok;
+  const c = normaliseIncotermCode(code);
+  if (!INCOTERM_CODE_RE.test(c)) return fail('Invalid request');
+  let mode: 'deleted' | 'deactivated';
+  try {
+    mode = await removeIncoterm(c, ok.actor);
+  } catch (e) {
+    return incotermFailure(e);
+  }
+  refresh();
+  return { ok: true, toast: await tr(mode === 'deleted' ? 'Incoterm deleted' : 'Incoterm deactivated') };
+}
+
+/** "Reactivate" a deactivated Incoterm. */
+export async function reactivateIncotermAction(code: unknown): Promise<AdminActionResult> {
+  const ok = await settingsEditor();
+  if ('error' in ok) return ok;
+  const c = normaliseIncotermCode(code);
+  if (!INCOTERM_CODE_RE.test(c)) return fail('Invalid request');
+  try {
+    await reactivateIncoterm(c, ok.actor);
+  } catch (e) {
+    return incotermFailure(e);
+  }
+  refresh();
+  return { ok: true, toast: await tr('Incoterm reactivated') };
 }

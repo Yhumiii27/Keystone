@@ -10,6 +10,7 @@ import type { ApprovalItem } from '@/domain/approvals';
 import { yearOfIso } from '@/domain/clock';
 import { QC_INBOX_ROLES, qcInboxItems } from '@/domain/deliveries';
 import { qcDecidedCount, qcQueue } from '@/server/dal/deliveries';
+import { projectsWithReceiptsInQc } from '@/server/dal/approval-candidates';
 import type { ApprovalContext, ApprovalProvider } from './types';
 
 const inScope = ({ viewer, project }: ApprovalContext) => !!project && QC_INBOX_ROLES.includes(viewer.role);
@@ -33,4 +34,6 @@ export const deliveryQcProvider: ApprovalProvider = {
   async decided(ctx) {
     return inScope(ctx) ? qcDecidedCount(ctx.project!.code, ctx.viewer.name) : 0;
   },
+  // The quality manager and procurement only, on the projects with a receipt waiting for its check.
+  candidates: async (ctx) => (QC_INBOX_ROLES.includes(ctx.viewer.role) ? projectsWithReceiptsInQc() : new Set()),
 };

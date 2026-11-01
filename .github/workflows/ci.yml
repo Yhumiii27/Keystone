@@ -5,7 +5,8 @@
 # image (Dockerfile, R-003) and starts it; a third one migrates and checks Keystone on a PostgreSQL 16 shaped like the shared
 # EPC2I server; the dependency audit runs in its own light workflow (audit.yml, R-174).
 # Actions minutes (owner, 22 Oct 2026: the free plan's monthly quota ran out): a change to documentation only (docs/,
-# design/, .artifacts/, Markdown files) runs nothing — except docs/EXPLOITATION.md, which a unit test reads (jobs runbook).
+# design/, .artifacts/, Markdown files) runs nothing, nor one to the Windows app only (desktop/windows/, built on demand by
+# windows-app.yml) — except docs/EXPLOITATION.md, which a unit test reads (jobs runbook).
 # A push to main (the merge of a pull request that passed everything) runs the fast checks only: install, route types,
 # typecheck, lint, unit tests — they catch two merged pull requests that break each other. "Run workflow" (manual) runs all.
 name: CI
@@ -18,6 +19,8 @@ on:
       - '!design/**'
       - '!.artifacts/**'
       - '!**/*.md'
+      - '!desktop/windows/**'
+      - '!.github/workflows/windows-app.yml'
       - 'docs/EXPLOITATION.md'
   push:
     branches: [main]
@@ -27,6 +30,8 @@ on:
       - '!design/**'
       - '!.artifacts/**'
       - '!**/*.md'
+      - '!desktop/windows/**'
+      - '!.github/workflows/windows-app.yml'
       - 'docs/EXPLOITATION.md'
   workflow_dispatch:
 
@@ -175,6 +180,15 @@ jobs:
 
       - name: Install
         run: npm ci
+
+      # pg_dump / pg_restore of the server's major version, as in the worker image (postgresql-client-16): the runner's newer
+      # client writes `SET transaction_timeout`, which a PostgreSQL 16 server refuses at restore.
+      - name: PostgreSQL 16 client tools
+        run: |
+          sudo apt-get install -y -q postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -q postgresql-client-16
+          echo /usr/lib/postgresql/16/bin >> "$GITHUB_PATH"
 
       - name: Base layer (roles, schemas, rights)
         run: |

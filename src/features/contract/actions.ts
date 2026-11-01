@@ -21,15 +21,21 @@ import {
 } from '@/server/dal/contract';
 import { canSetBudgetRate, canSetCapexLink, canSetProjectEquipment } from '@/domain/rights';
 import { parseCapexLink } from '@/domain/capex-link';
+import { canSetInternalClient, parseInternalClient } from '@/domain/internal-client';
 import { setCapexLink } from '@/server/dal/capex-link';
+import { INCOTERM_CODE_RE, INCOTERM_PLACE_MAX, normaliseIncotermCode } from '@/domain/incoterms';
+import { setContractIncoterm } from '@/server/dal/incoterms';
+import { setProjectClientInternal } from '@/server/dal/internal-client';
+import { refreshSubsidiaryMirror, subsidiaryRefreshSummary } from '@/server/integrations/matrix/subsidiaries';
 import { addProjectEquipment, removeProjectEquipment, updateProjectEquipment } from '@/server/dal/project-equipment';
 import { setProjectBudgetRate } from '@/server/dal/currency';
 import { getProject } from '@/server/dal/projects';
+import { staleRecordResult } from '@/server/dal/record-version';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { RESULT } from './model';
 
-export type ContractEditResult = { ok: true } | { error: string };
+export type ContractEditResult = { ok: true } | { error: string; conflict?: true };
 
 const refresh = () => revalidatePath('/', 'layout');
 
@@ -60,8 +66,11 @@ async function editable(
   return { code: project.code, actor: ctx.viewer.name, viewer: { name: ctx.viewer.name, role: ctx.viewer.role }, contract, year: yearOfIso(await businessToday()) };
 }
 
-/** Contract sheet: one field saved on blur / Enter / select change (`setCtr`). */
-export async function updateContractFieldAction(code: string, key: string, value: string): Promise<ContractEditResult> {
+/**
+ * Contract sheet: one field saved on blur / Enter / select change (`setCtr`). `version` (R-010): the contract's token as the
+ * sheet read it — refused when someone else changed the contract meanwhile.
+ */
+export async function updateContractFieldAction(code: string, key: string, value: string, version?: string): Promise<ContractEditResult> {
   const ok = await editable(code, 'contract');
   if ('error' in ok) return ok;
   const parsed = parseSheetField(key, value, ok.year);
@@ -71,8 +80,13 @@ export async function updateContractFieldAction(code: string, key: string, value
     if (ok.contract.hasInvoices) return { error: await tr('The currency cannot change once an invoice is issued') };
   }
   try {
-    await updateContractSheet(ok.code, parsed.value, ok.actor);
+    await updateContractSheet(ok.code, parsed.value, ok.actor, { version: typeof version === 'string' ? version : null });
   } catch (e) {
+    const stale = staleRecordResult(e, (await getI18n()).lang);
+    if (stale) {
+      refresh();
+      return stale;
+    }
     return { error: await tr(knownError(e) ?? 'The change could not be saved') };
   }
   refresh();
@@ -198,11 +212,19 @@ export async function updatePaymentMilestoneAction(code: string, number: string,
   if ('error' in m) return m;
   const v = strings(values);
   delete v.basis; // the basis of a milestone does not change
+  // R-010: the milestone's token as the form was opened with it (hidden value).
+  const version = v.version ?? null;
+  delete v.version;
   const parsed = parseMilestoneForm(v, ok.year);
   if (!parsed.ok) return { error: await tr(parsed.error) };
   try {
-    await updatePaymentMilestone(ok.code, m.number, { label: parsed.value.label, sharePct: parsed.value.sharePct, contractualDue: parsed.value.contractualDue, condition: parsed.value.condition }, ok.viewer);
+    await updatePaymentMilestone(
+      ok.code, m.number, { label: parsed.value.label, sharePct: parsed.value.sharePct, contractualDue: parsed.value.contractualDue, condition: parsed.value.condition }, ok.viewer,
+      { version },
+    );
   } catch (e) {
+    const stale = staleRecordResult(e, (await getI18n()).lang);
+    if (stale) return stale;
     return milestoneError(e);
   }
   refresh();
@@ -347,6 +369,50 @@ export async function setCapexLinkAction(code: string, capexCode: string, needRe
   return { ok: true };
 }
 
+/**
+ * R-190 (Arche K-05): the project's client is external or a group subsidiary (internal client, with its subsidiary code) — the
+ * Contract screen's "Client" card. The portfolio director only (`canSetInternalClient`), on a project whose Contract they may
+ * edit; the flag is on the client (every project of that client), published at the end of pub_projets.
+ */
+export async function setInternalClientAction(code: string, isInternal: boolean, subsidiaryCode: string): Promise<ContractEditResult> {
+  if (typeof code !== 'string' || !code || typeof isInternal !== 'boolean' || typeof subsidiaryCode !== 'string') return { error: await tr('Invalid request') };
+  const project = await getProject(code);
+  if (!project) return { error: await tr('Unknown project') };
+  const ctx = await getProjectContext(project.code, 'contract');
+  if (!canSetInternalClient(ctx.viewer.role) || !ctx.canEdit('contract')) return { error: await tr('Only the director sets whether the client is a group subsidiary') };
+  const parsed = parseInternalClient({ isInternal, subsidiaryCode });
+  if (!parsed.ok) return { error: await tr(parsed.error) };
+  try {
+    await setProjectClientInternal(project.code, parsed.value, { name: ctx.viewer.name, role: ctx.viewer.role });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : '';
+    if (message === 'This project has no registered client' || message === 'Choose a subsidiary published by Matrix') return { error: await tr(message) };
+    if (message.startsWith('Subsidiary ')) return { error: await tr('This subsidiary is already another client') };
+    // D21: the client takes its subsidiary's code as code3 — refused when another client already has that code.
+    if (message.startsWith('Code ')) return { error: await tr('This subsidiary’s code is already the code of another client') };
+    return { error: await tr('The change could not be saved') };
+  }
+  refresh();
+  return { ok: true };
+}
+
+/**
+ * Matrix D21: "Refresh the list" of the "Client" card — reads Matrix's subsidiaries (matrix.pub_filiales) again into the mirror.
+ * The director only, on a project whose Contract they may edit (the card's editor). Nothing is written but the read-only mirror.
+ */
+export async function refreshSubsidiariesAction(code: string): Promise<ContractEditResult> {
+  if (typeof code !== 'string' || !code) return { error: await tr('Invalid request') };
+  const project = await getProject(code);
+  if (!project) return { error: await tr('Unknown project') };
+  const ctx = await getProjectContext(project.code, 'contract');
+  if (!canSetInternalClient(ctx.viewer.role) || !ctx.canEdit('contract')) return { error: await tr('Only the director sets whether the client is a group subsidiary') };
+  const r = await refreshSubsidiaryMirror();
+  refresh();
+  if (r.state === 'done') return { ok: true };
+  if (r.state === 'failed') return { error: `${await tr('Matrix’s subsidiaries could not be read')} — ${r.error}` };
+  return { error: await tr(subsidiaryRefreshSummary(r)) };
+}
+
 /** Fields of an equipment line as the "Equipment" card sends them (strings; the DAL parses them again). */
 export interface EquipmentLineDraft {
   machineTypeCode: string;
@@ -434,4 +500,26 @@ export async function removeEquipmentAction(code: string, ref: string): Promise<
   }
   refresh();
   return { ok: true };
+}
+
+/**
+ * R-158 (owner's decision 2): the contract's Incoterm and named place (Contract screen, "Incoterm" card) — the contract editors
+ * (P-4: the director, Finance, the project's leads; re-checked by the DAL). `incoterm` empty clears it.
+ */
+export async function setContractIncotermAction(code: string, values: Record<string, string>): Promise<FormDialogResult> {
+  const ok = await editable(code, 'contract');
+  if ('error' in ok) return ok;
+  const v = strings(values);
+  const incoterm = normaliseIncotermCode(v.incoterm ?? '');
+  if (incoterm && !INCOTERM_CODE_RE.test(incoterm)) return { error: await tr('Invalid request') };
+  const place = (v.place ?? '').trim();
+  if (place.length > INCOTERM_PLACE_MAX) return { error: await tr('Text too long') };
+  try {
+    await setContractIncoterm(ok.code, incoterm || null, place || null, ok.viewer);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : '';
+    return { error: await tr(['Unknown Incoterm', 'The contract is read-only for you', 'No contract registered for this project', 'Text too long'].includes(msg) ? msg : 'The change could not be saved') };
+  }
+  refresh();
+  return { toast: await tr('Contract Incoterm saved') };
 }

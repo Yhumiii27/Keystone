@@ -67,7 +67,9 @@ describe('/admin/settings', () => {
     ] as const) {
       session.role = role;
       const p = parts(await SettingsPage());
-      expect(Object.keys(p)).toEqual(['PageHeader', 'SettingsBody']);
+      // R-158: the Incoterms card under the lists; R-199: the company default of the reminders and reports, same editors.
+      expect(Object.keys(p)).toEqual(['PageHeader', 'SettingsBody', 'IncotermsCard', 'ReminderDefaultsCard']);
+      expect(p.ReminderDefaultsCard.props, role).toMatchObject({ canEdit, transport: 'none', values: { offsets: '7,1', emailReminders: 'on', emailReports: 'on', overdue: 'on' } });
       expect(p.PageHeader.props.screen).toBe('settings');
       if (canEdit) expect(primaryName(p)).toBe('ResetSettingsButton');
       else expect(p.PageHeader.props.primary, role).toBeUndefined();
@@ -122,7 +124,7 @@ describe('/admin/integrations', () => {
     expect((await v({ view: 'nope' })).view).toBe('activity');
     const stock = await v({ source: 'stock' });
     expect([stock.chipValue, stock.activity.length]).toEqual(['stock', 2]);
-    expect((await v({ source: 'nope' })).activity).toHaveLength(12);
+    expect((await v({ source: 'nope' })).activity).toHaveLength(15); // L9-X3: the prototype's 12 + the demo's 3 filed shipping documents
   });
 
   it('director and PM edit (Sync now, export); the others read; the unread KPI is the viewer’s', async () => {

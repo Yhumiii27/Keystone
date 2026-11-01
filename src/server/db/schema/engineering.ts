@@ -1,7 +1,7 @@
 // Project engineering register and P&ID validation (docs/spec/11 §3.9 Engineering register, PidSheet / PidTag /
 // PidValidationStep; screens 09 §6–8). Keystone owns them. The engineering deliverables are Codex index records
 // (`documents` with service = discipline and their recipients): their statuses are shared with the Documents screen.
-import { boolean, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { boolean, date, index, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type {
   BomScope, CheckSeverity, CheckStatus, Discipline, DocRecipient, DrawingState, ImportDeltaKind, OutputState, PidRole, PidTagKind, PlcType, StepState,
 } from '../codes';
@@ -115,7 +115,7 @@ export const engChanges = pgTable('eng_changes', {
   /** Newest first (seed order); entries added in Keystone get a lower value. */
   sortOrder: integer('sort_order').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [index('eng_changes_project_id_idx').on(t.projectId)]);
 
 /** Source tools of the import wizard (ENG_TOOLS 3744): "TIA Portal — PLC tag table" · Automation. */
 export const engImportTools = pgTable('eng_import_tools', {

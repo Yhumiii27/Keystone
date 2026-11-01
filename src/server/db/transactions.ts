@@ -16,6 +16,13 @@ import { sql } from 'drizzle-orm';
 import type { PgTransactionConfig } from 'drizzle-orm/pg-core';
 import { log } from '@/server/log';
 import type { DB } from './types';
+import { bumpWriteGeneration } from './write-generation';
+
+/** R-017: a transaction that committed moves the write generation (its writes are visible now: src/server/cache/read-cache.ts). */
+const committed = <T,>(p: Promise<T>): Promise<T> => p.then((v) => {
+  bumpWriteGeneration();
+  return v;
+});
 
 export const TX_RETRY = {
   /** Runs of one transaction (first try included). */
@@ -28,6 +35,22 @@ export const TX_RETRY = {
 /** serialization_failure, deadlock_detected. */
 const RETRYABLE_SQLSTATES = new Set(['40001', '40P01']);
 
+/**
+ * R-010: the unique constraints of Keystone's business numbers ("max + 1" read in the writer's transaction: R-21, CR-011,
+ * T-2341, MTG-130, MIN-HLT-027, BL2…). Behind the write lock (server) or one at a time (PGlite) two writers never draw the same
+ * number; should one ever collide (a writer outside the lock, a future targeted lock), the insert fails on its constraint and
+ * the transaction is run again on fresh data — it then reads the number taken and draws the next one. A unique violation on any
+ * other constraint (a code typed twice) stays final.
+ */
+export const NUMBERING_CONSTRAINTS: ReadonlySet<string> = new Set([
+  'risks_project_id_number_unique', 'change_requests_project_id_number_unique', 'baselines_project_id_code_unique', 'tasks_number_unique',
+  'resource_requests_number_unique', 'meetings_number_unique', 'documents_number_unique', 'notifications_code_unique', 'customer_invoices_number_unique',
+  'payment_milestones_project_id_number_unique', 'itp_inspections_plan_id_number_unique', 'lessons_learned_project_id_number_unique',
+  'project_interfaces_project_id_number_unique', 'punch_items_project_id_number_unique', 'purchase_orders_number_unique', 'rfqs_number_unique',
+  'deliverables_project_id_number_unique', 'interventions_number_unique', 'machines_number_unique', 'warranty_claims_number_unique',
+  'daily_reports_project_id_number_unique', 'client_communications_project_id_number_unique', 'client_issues_project_id_number_unique',
+]);
+
 /** SQLSTATE of a database error, looking through Drizzle's DrizzleQueryError and `cause` chains; null when none. */
 export function sqlStateOf(e: unknown): string | null {
   let cur: unknown = e;
@@ -39,8 +62,23 @@ export function sqlStateOf(e: unknown): string | null {
   return null;
 }
 
-/** True for the errors after which a transaction is run again (serialization failure, deadlock). */
-export const isRetryableTransactionError = (e: unknown) => RETRYABLE_SQLSTATES.has(sqlStateOf(e) ?? '');
+/** Name of the constraint a database error names (unique violation…), looking through the cause chain; null when none. */
+export function constraintOf(e: unknown): string | null {
+  let cur: unknown = e;
+  for (let depth = 0; cur && typeof cur === 'object' && depth < 6; depth++) {
+    const c = (cur as { constraint?: unknown }).constraint;
+    if (typeof c === 'string' && c) return c;
+    cur = (cur as { cause?: unknown }).cause;
+  }
+  return null;
+}
+
+/** True for the errors after which a transaction is run again: serialization failure, deadlock, a business number taken meanwhile. */
+export function isRetryableTransactionError(e: unknown): boolean {
+  const state = sqlStateOf(e) ?? '';
+  if (RETRYABLE_SQLSTATES.has(state)) return true;
+  return state === '23505' && NUMBERING_CONSTRAINTS.has(constraintOf(e) ?? '');
+}
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -73,7 +111,7 @@ export function withSerializableTransactions<D extends DB>(db: D): D {
   const holder = db as D & { [WRAPPED]?: true };
   if (holder[WRAPPED]) return db;
   const original: DB['transaction'] = db.transaction.bind(db);
-  const transaction: DB['transaction'] = (cb, config?: PgTransactionConfig) => runWithRetry(() => original(cb, { isolationLevel: 'serializable', ...config }));
+  const transaction: DB['transaction'] = (cb, config?: PgTransactionConfig) => committed(runWithRetry(() => original(cb, { isolationLevel: 'serializable', ...config })));
   Object.defineProperty(db, 'transaction', { value: transaction, configurable: true, writable: true });
   Object.defineProperty(db, WRAPPED, { value: true });
   return db;
@@ -99,13 +137,13 @@ export function withWriteLockedTransactions<D extends DB>(db: D, lockName: strin
   const original: DB['transaction'] = db.transaction.bind(db);
   const lock = sql`select pg_advisory_xact_lock(hashtext(${lockName}))`;
   const transaction: DB['transaction'] = (cb, config?: PgTransactionConfig) => {
-    if (inWriteLock.getStore()) return runWithRetry(() => original(cb, { isolationLevel: 'read committed', ...config }));
-    return runWithRetry(() =>
+    if (inWriteLock.getStore()) return committed(runWithRetry(() => original(cb, { isolationLevel: 'read committed', ...config })));
+    return committed(runWithRetry(() =>
       original(async (tx) => {
         await tx.execute(lock);
         return inWriteLock.run(true, () => cb(tx));
       }, { isolationLevel: 'read committed', ...config }),
-    );
+    ));
   };
   Object.defineProperty(db, 'transaction', { value: transaction, configurable: true, writable: true });
   Object.defineProperty(db, WRAPPED, { value: true });

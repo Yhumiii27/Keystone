@@ -388,6 +388,11 @@
   color: var(--color-neutral-500);
   padding: 8px;
   text-wrap: pretty;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 /* Status date, actions */

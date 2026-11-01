@@ -141,7 +141,13 @@ describe('reminder jobs: once per morning', () => {
     expect(jobDailyAt(jobDefinition('site-prerequisite-alerts'))).toBe('06:30');
     const entries = scheduledEntries(JOB_DEFINITIONS, 'W');
     // R-084: the alerts of activities without a declared resource are a reminder job too.
-    expect(entries.filter((e) => e.dailyAt).map((e) => [e.name, e.dailyAt])).toEqual([['site-prerequisite-alerts', '06:30'], ['undeclared-resource-alerts', '06:30'], ['cursus-tasks', '02:00']]);
+    expect(entries.filter((e) => e.dailyAt).map((e) => [e.name, e.dailyAt])).toEqual([
+      ['site-prerequisite-alerts', '06:30'], ['undeclared-resource-alerts', '06:30'], ['cursus-tasks', '02:00'],
+      // R-199: deadline reminders and weekly reports in the morning too.
+      ['deadline-reminders', '06:30'], ['scheduled-reports', '06:30'],
+      // R-015, R-036: the indicator alerts and the notification digest.
+      ['indicator-alerts', '06:30'], ['notification-digest', '06:30'],
+    ]);
     expect(entries.find((e) => e.name === 'vigie-outbox')).toMatchObject({ everyMs: 300_000, dailyAt: null });
   });
 });

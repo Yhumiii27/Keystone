@@ -188,16 +188,38 @@ export async function mapPidTag(projectCode: string, tag: string, partRef: strin
   });
 }
 
-/** Keystone-scope tags not Linked while the coverage is below 100 % (P&ID nav badge), per project. */
+/**
+ * Keystone-scope tags not Linked while the coverage is below 100 % (P&ID nav badge), per project. R-017: three reads for the
+ * whole portfolio (the tags of the projects with a P&ID sheet, their parts, the BOM references) instead of the full P&ID
+ * validation of each project; the tag status and the coverage are the same rules (`pidTagStatusOf`, `pidCoverage`).
+ */
 export async function pidBadgeByProject(): Promise<Record<string, number>> {
   const db = await getDb();
-  const rows = await db.select({ code: projects.code }).from(pidSheets).innerJoin(projects, eq(projects.id, pidSheets.projectId));
+  const [tags, bom] = await Promise.all([
+    db.select({ code: projects.code, scope: pidTags.scope, partRef: pidTags.partRef }).from(pidTags)
+      .innerJoin(projects, eq(projects.id, pidTags.projectId))
+      .innerJoin(pidSheets, eq(pidSheets.projectId, pidTags.projectId)),
+    db.select({ code: projects.code, ref: parts.ref, qty: projectBomLines.quantity }).from(projectBomLines)
+      .innerJoin(parts, eq(parts.id, projectBomLines.partId)).innerJoin(projects, eq(projects.id, projectBomLines.projectId))
+      .innerJoin(pidSheets, eq(pidSheets.projectId, projectBomLines.projectId)),
+  ]);
+  const refs = [...new Set(tags.map((t) => t.partRef).filter((r): r is string => !!r))];
+  const partRows = refs.length ? await db.select({ ref: parts.ref, status: parts.status }).from(parts).where(inArray(parts.ref, refs)) : [];
+  const partOf = new Map(partRows.map((x) => [x.ref, x]));
+  const inBom = new Set(bom.filter((b) => b.qty > 0).map((b) => `${b.code}|${b.ref}`));
+  const byProject = new Map<string, { scope: (typeof tags)[number]['scope']; status: ReturnType<typeof pidTagStatusOf> }[]>();
+  for (const t of tags) {
+    const part = t.partRef ? partOf.get(t.partRef) : undefined;
+    const status = pidTagStatusOf(t.scope, t.partRef, part, !!t.partRef && inBom.has(`${t.code}|${t.partRef}`));
+    const list = byProject.get(t.code) ?? [];
+    if (!list.length) byProject.set(t.code, list);
+    list.push({ scope: t.scope, status });
+  }
   const out: Record<string, number> = {};
-  for (const r of rows) {
-    const v = await getPidValidation(r.code);
+  for (const [code, rows] of byProject) {
     // No badge "0" when nothing is in our scope (coverage 0 % with nothing to link — src/domain/pid.ts `pidNavBadge`).
-    const badge = v ? pidNavBadge(v.coverage) : null;
-    if (badge) out[r.code] = badge;
+    const badge = pidNavBadge(pidCoverage(rows));
+    if (badge) out[code] = badge;
   }
   return out;
 }

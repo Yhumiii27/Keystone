@@ -4,7 +4,7 @@
 //
 // Dates: the prototype keeps working-day offsets from Mon 21 Sep 2026 (`start`, `due`, `propStart`…); they are
 // stored as ISO dates and converted back with codes.ts dayOffsetOfIso (the DAL returns both).
-import { boolean, date, integer, pgTable, primaryKey, text, timestamp, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { boolean, date, index, integer, pgTable, primaryKey, text, timestamp, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { AttachmentKind, Priority, RequestEventAction, RequestStatus, TaskOrigin, TaskStatus, TimeEntrySource } from '../codes';
 import { id, num, timestamps } from './_common';
 import { storedFiles } from './files';
@@ -50,7 +50,7 @@ export const tasks = pgTable('tasks', {
   /** Chapter 4: where the task comes from ('activity_todo' = Plan drawer composer); null for the seed and older tasks. */
   origin: text('origin').$type<TaskOrigin>(),
   ...timestamps,
-});
+}, (t) => [index('tasks_project_id_idx').on(t.projectId), index('tasks_assignee_person_id_idx').on(t.assigneePersonId), index('tasks_activity_id_idx').on(t.activityId)]);
 
 /** Checklist items (CHECKS 3257). */
 export const taskChecklistItems = pgTable('task_checklist_items', {
@@ -60,7 +60,7 @@ export const taskChecklistItems = pgTable('task_checklist_items', {
   text: text('text').notNull(),
   done: boolean('done').notNull(),
   doneAt: timestamp('done_at', { withTimezone: true }),
-});
+}, (t) => [index('task_checklist_items_task_id_idx').on(t.taskId)]);
 
 /** Comments (COMMENTS 3258). Author = the viewer who posts (not the prototype's hard-coded Marie Lefebvre). */
 export const taskComments = pgTable('task_comments', {
@@ -71,7 +71,7 @@ export const taskComments = pgTable('task_comments', {
   postedAt: timestamp('posted_at', { withTimezone: true }).notNull(),
   text: text('text').notNull(),
   position: integer('position').notNull(),
-});
+}, (t) => [index('task_comments_task_id_idx').on(t.taskId)]);
 
 /** Attachments (FILES 3259: name, "48 KB · H. Sauvage · today", icon). Upload storage is not modelled (storageRef). */
 export const taskAttachments = pgTable('task_attachments', {
@@ -89,7 +89,7 @@ export const taskAttachments = pgTable('task_attachments', {
   fileId: uuid('file_id').references(() => storedFiles.id, { onDelete: 'set null' }),
   mime: text('mime'),
   sizeBytes: integer('size_bytes'),
-});
+}, (t) => [index('task_attachments_task_id_idx').on(t.taskId)]);
 
 /** Time entries (ENTRIES 3260; "Log" on the Task screen). */
 export const timeEntries = pgTable('time_entries', {
@@ -102,7 +102,7 @@ export const timeEntries = pgTable('time_entries', {
   source: text('source').$type<TimeEntrySource>().notNull().default('keystone'),
   position: integer('position').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [index('time_entries_task_id_idx').on(t.taskId), index('time_entries_person_id_work_date_idx').on(t.personId, t.workDate)]);
 
 /** Resource requests (REQUESTS 3270): a PM asks a department for a person or a contract role on an activity. */
 export const resourceRequests = pgTable('resource_requests', {
@@ -139,7 +139,7 @@ export const resourceRequests = pgTable('resource_requests', {
   /** REQUESTS order (new requests are prepended with a lower value). */
   sortOrder: integer('sort_order').notNull(),
   ...timestamps,
-});
+}, (t) => [index('resource_requests_project_id_idx').on(t.projectId)]);
 
 /** Decision trail of a request (seeded from `sent` and the `response` text). */
 export const resourceRequestEvents = pgTable('resource_request_events', {
@@ -152,7 +152,7 @@ export const resourceRequestEvents = pgTable('resource_request_events', {
   note: text('note'),
   position: integer('position').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [index('resource_request_events_request_id_idx').on(t.requestId)]);
 
 /**
  * Activities offered by the "New resource request" dialog of a project (NR_ACTS 3283 for HLT-026: A1250, A1260,

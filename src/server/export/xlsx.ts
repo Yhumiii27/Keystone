@@ -8,8 +8,8 @@ import type { Lang } from '@/i18n/translate';
 import type { CellValue, ColumnType, ExportColumn, ExportWorkbook } from './types';
 
 const NUM_FMT: Record<Lang, Partial<Record<ColumnType, string>>> = {
-  en: { integer: '#,##0', number: '#,##0.##', money_keur: '#,##0" k€"', money_eur: '#,##0.00" €"', percent: '0%', date: 'yyyy-mm-dd', datetime: 'yyyy-mm-dd hh:mm' },
-  fr: { integer: '#,##0', number: '#,##0.##', money_keur: '#,##0" k€"', money_eur: '#,##0.00" €"', percent: '0%', date: 'dd/mm/yyyy', datetime: 'dd/mm/yyyy hh:mm' },
+  en: { integer: '#,##0', number: '#,##0.##', money_keur: '#,##0" k€"', money_eur: '#,##0.00" €"', percent: '0%', date: 'yyyy-mm-dd', month: 'mmm yyyy', datetime: 'yyyy-mm-dd hh:mm' },
+  fr: { integer: '#,##0', number: '#,##0.##', money_keur: '#,##0" k€"', money_eur: '#,##0.00" €"', percent: '0%', date: 'dd/mm/yyyy', month: 'mm/yyyy', datetime: 'dd/mm/yyyy hh:mm' },
 };
 
 /** Excel sheet name: ≤ 31 characters, none of []:*?/\ , unique in the workbook. */
@@ -26,6 +26,7 @@ function cellValue(v: CellValue, col: ExportColumn): ExcelJS.CellValue {
   if (v == null || v === '') return null;
   // Only ISO dates / timestamps become Excel dates; any other text (a "—", "finish not planned") stays text — never the
   // engine's lenient guess ("Mar 2027", "Raised 12 Sep").
+  if (col.type === 'month' && typeof v === 'string') return /^\d{4}-\d{2}$/.test(v) ? new Date(`${v}-01T00:00:00Z`) : v;
   if ((col.type === 'date' || col.type === 'datetime') && typeof v === 'string') {
     if (!/^\d{4}-\d{2}-\d{2}/.test(v)) return v;
     const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(v) ? `${v}T00:00:00Z` : v);
@@ -35,7 +36,7 @@ function cellValue(v: CellValue, col: ExportColumn): ExcelJS.CellValue {
   return v;
 }
 
-const defaultWidth = (c: ExportColumn) => c.width ?? Math.min(60, Math.max(10, c.header.length + 2, c.type === 'date' ? 12 : c.type === 'text' || !c.type ? 18 : 12));
+const defaultWidth = (c: ExportColumn) => c.width ?? Math.min(60, Math.max(10, c.header.length + 2, c.type === 'date' || c.type === 'month' ? 12 : c.type === 'text' || !c.type ? 18 : 12));
 
 export interface XlsxMeta {
   lang: Lang;

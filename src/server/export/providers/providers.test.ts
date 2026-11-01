@@ -34,10 +34,10 @@ beforeAll(async () => {
 }, 60_000);
 
 describe('every screen has an export provider', () => {
-  it('registry covers the 59 screens, each with tables', () => {
+  it('registry covers the 61 screens, each with tables', () => {
     const missing = SCREENS.filter((s) => !getExportProvider(s.id)?.table).map((s) => s.id);
     expect(missing).toEqual([]);
-    expect(SCREENS.length).toBe(59);
+    expect(SCREENS.length).toBe(61);
   });
 
   it.each(SCREENS.map((s) => s.id))('%s: Excel opens and the CSV has the main table (director, HLT-026)', async (screen) => {
@@ -200,7 +200,7 @@ describe('rights', () => {
   });
 
   it('a client exports only its organisation’s projects, and nothing outside their workspace (P-1)', async () => {
-    for (const screen of ['worldmap', 'overview', 'requests', 'task', 'mtypes', 'eco', 'plan', 'budget'] as const)
+    for (const screen of ['worldmap', 'overview', 'requests', 'task', 'mtypes', 'catalogue', 'eco', 'plan', 'budget'] as const)
       await expect(ctxOf(screen, 'client', screen === 'task' ? 'task=T-2331' : 'code=HLT-026'), screen).rejects.toMatchObject({ status: 403 });
     await expect(ctxOf('orders', 'client', 'code=NDC-031')).rejects.toMatchObject({ status: 403 });
     await expect(ctxOf('trends', 'client', 'code=NDC-031')).rejects.toMatchObject({ status: 403 });

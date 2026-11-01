@@ -14,9 +14,11 @@ import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { addDaysIso, parisInstant, stampText, type ConnectorDirection, type ConnectorKind, type ConnectorStatus } from '@/server/db/codes';
 import {
-  auditEntries, connectorSyncRuns, connectors, cursusClearances, cursusRequests, cursusSyncRuns, documentIndexSyncs, importFormats, siteSheets, projects, vigieEcoProgress,
+  auditEntries, capexMirror, capexNeeds, connectorSyncRuns, connectors, cursusClearances, needAnswers, cursusRequests, cursusSyncRuns, documentIndexSyncs, importFormats, siteSheets, projects, vigieEcoProgress,
   vigieEcos, vigieHseItems, vigieNcrProgress, vigieNcrs,
 } from '@/server/db/schema';
+import { ARCHE_CONNECTOR_NAME, archeConnectorMode } from '@/server/integrations/capex/config';
+import { lastCapexRuns } from '@/server/integrations/capex/mirror';
 import { codexConnectorMode } from '@/server/integrations/codex/config';
 import { undeliveredCodexEntries } from '@/server/integrations/codex/outbox';
 import { CODEX_CONNECTOR_NAME } from '@/server/integrations/connector-enabled';
@@ -48,7 +50,7 @@ export interface ConnectorRow {
   name: string;
   kind: ConnectorKind;
   /** Connector-layer mode of Vigie / Cursus ("mock" = simulated over the local mirror); null for the others. */
-  mode: 'mock' | 'http' | null;
+  mode: 'mock' | 'http' | 'sql' | null;
   /** How Keystone is really linked to the system (R-021). */
   link: ConnectorLink;
   /** What the status column shows (R-021): the live status, Mock, Not connected, Ready (file exchange) or Disabled. */
@@ -152,8 +154,28 @@ async function codexState(lastVolume: string) {
 }
 
 /** Connector-layer mode of a row: Vigie, Cursus and (R-033) Codex — mock, or http once their API URL is set; null otherwise. */
-const modeOf = (c: { name: string; kind: ConnectorKind }): 'mock' | 'http' | null =>
-  c.kind === 'vigie' ? vigieConnectorMode() : c.kind === 'cursus' ? cursusConnectorMode() : c.name === CODEX_CONNECTOR_NAME ? codexConnectorMode() : null;
+const modeOf = (c: { name: string; kind: ConnectorKind }): 'mock' | 'http' | 'sql' | null =>
+  c.kind === 'vigie' ? vigieConnectorMode() : c.kind === 'cursus' ? cursusConnectorMode() : c.name === CODEX_CONNECTOR_NAME ? codexConnectorMode()
+    : c.name === ARCHE_CONNECTOR_NAME ? archeConnectorMode() : null;
+
+/**
+ * R-187: state of the Arche connector (capex mirror): what the mirror holds and the answers published, the last successful read
+ * of Arche's views on the shared server (a simulated read is no sync), and whether the latest read failed (mirror kept).
+ */
+async function archeState() {
+  const db = await getDb();
+  const [[capex], [needs], [answers], runs] = await Promise.all([
+    db.select({ n: sql<number>`count(*)::int` }).from(capexMirror),
+    db.select({ n: sql<number>`count(*)::int` }).from(capexNeeds),
+    db.select({ n: sql<number>`count(*)::int` }).from(needAnswers),
+    lastCapexRuns(db),
+  ]);
+  return {
+    volume: `${capex.n} CAPEX · ${needs.n} needs · ${answers.n} answers`, pending: 0, failed: 0,
+    lastSyncAt: runs.lastOk?.source === 'server' ? runs.lastOk.syncedAt : null,
+    lastRunFailed: !!runs.last && !runs.last.ok,
+  };
+}
 
 /**
  * Connectors (CONNECTORS order, Vigie and connectors added in Keystone after) with the live Vigie / Cursus / Codex state and
@@ -166,8 +188,10 @@ export async function listConnectors(): Promise<ConnectorRow[]> {
   const listed = rows.filter((c) => !isRetiredConnector(c.name));
   const codexRow = listed.find((c) => c.name === CODEX_CONNECTOR_NAME && c.kind === 'static');
   const codex = codexRow ? await codexState(codexRow.lastVolume) : null;
+  const archeRow = listed.find((c) => c.name === ARCHE_CONNECTOR_NAME && c.kind === 'static');
+  const arche = archeRow ? await archeState() : null;
   return listed.map((c) => {
-    const live = c.kind === 'vigie' ? vigie : c.kind === 'cursus' ? cursus : c === codexRow ? codex : null;
+    const live = c.kind === 'vigie' ? vigie : c.kind === 'cursus' ? cursus : c === codexRow ? codex : c === archeRow ? arche : null;
     // Live connectors need attention when deliveries failed, when the latest Cursus refresh of a site failed, or (Vigie,
     // Codex) when the last "Sync now" failed (`syncConnector` records it on the row).
     const lastRunFailed = (c.kind === 'vigie' || c === codexRow) && (c.status === 'warning' || c.status === 'error');

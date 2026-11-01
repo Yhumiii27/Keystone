@@ -54,7 +54,7 @@ describe('R-119 · arbitrate a site-team conflict, 9 personas', () => {
     }
     expect(out).toEqual({
       director: 'ok', pm: ARBITRATION_REFUSED, depthead: 'This conflict is already arbitrated', member: ARBITRATION_REFUSED, englead: ARBITRATION_REFUSED,
-      quality: ARBITRATION_REFUSED, procurement: ARBITRATION_REFUSED, finance: ARBITRATION_REFUSED, client: 'sent home',
+      quality: ARBITRATION_REFUSED, procurement: ARBITRATION_REFUSED, finance: ARBITRATION_REFUSED, logistics: ARBITRATION_REFUSED, client: 'sent home',
     });
     const c = (await getSite(HLT))!.collisions.find((x) => x.key === key)!;
     expect([c.resolved, c.arbitration?.comment, c.arbitration?.by]).toEqual([true, 'Checked by director', 'Marie Lefebvre']);

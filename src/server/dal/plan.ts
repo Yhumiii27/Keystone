@@ -3,22 +3,26 @@ import 'server-only';
 // resource requests of one project (tasks and requests DALs); writes the Plan edits (the prototype's wbsOv / wbsRm / wbsOrd / added maps
 // become persisted changes). Permission checks and revalidation stay in the Server Functions
 // (src/features/plan/actions.ts).
-import { and, asc, eq, gte, inArray, max, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, max, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { projectCalendarCode, projectDataDate } from '@/domain/ch4-defaults';
 import { businessToday } from '@/server/clock';
 import { detectCycle } from '@/domain/cpm';
+import { yearOfIso } from '@/domain/clock';
+import { activityDateText } from '@/domain/schedule-rollup';
+import type { SystemMessage } from '@/domain/system-messages';
 import type { PlanActivity, PlanPackage, PlanRoot, PredLink, TodoStatus } from '@/domain/schedule';
 import { workingDayOf } from '@/domain/tasks';
 import { monthLabels } from '@/lib/format';
 import { getDb } from '@/server/db/client';
-import { constraintText, type LinkType } from '@/server/db/codes';
-import { findPerson, nameOf, writeAudit } from '@/server/db/helpers';
+import { constraintText, type KnownConstraintType, type LinkType } from '@/server/db/codes';
+import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
 import {
   activities, activityLinks, persons, projects, wbsNodes,
 } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
 import { listProjectBaselines, type BaselineInfo } from './baselines';
+import { assertRecordFresh, bumpVersion, tokenOf, type VersionedTable } from './record-version';
 import { lockProjectRow, maxTrashedPosition, shiftTrashedPositions, trashPlanRow } from './plan-trash';
 import { listCalendars } from './calendars';
 import { getProjectEvm } from './evm';
@@ -40,6 +44,8 @@ export interface PlanActivityRow extends PlanActivity {
   description: string | null;
   critical: boolean | null;
   position: number;
+  /** R-010: the activity's version token, sent back by the Plan's inline edits (src/domain/record-version.ts). */
+  version: string;
 }
 
 export interface PlanPackageRow extends PlanPackage {
@@ -95,6 +101,7 @@ export async function getPlanData(code: string): Promise<PlanData | null> {
   if (!control) return null;
   const owner = alias(persons, 'owner');
   const pred = alias(activities, 'pred');
+  const readAt = new Date();
   const [nodes, acts, links, owners] = await Promise.all([
     db
       .select({ n: wbsNodes, ownerName: persons.fullName })
@@ -152,7 +159,7 @@ export async function getPlanData(code: string): Promise<PlanData | null> {
       totalFloat: a.totalFloatDays, pct: a.percentComplete, owner: ownerCode ?? ownerInitials ?? null, ownerName: ownerName ?? ownerShort ?? null, ownerIsCode: !!ownerCode,
       budget: a.budgetKeur, actual: a.actualKeur, eac: a.eacKeur, preds: preds.get(a.id) ?? [],
       isAdded: a.isAdded, edited: !a.isAdded && a.updatedAt.getTime() > a.createdAt.getTime(),
-      description: a.description, critical: a.critical, position: a.position,
+      description: a.description, critical: a.critical, position: a.position, version: tokenOf(a.version, readAt),
       finishDate: a.finishDate, baselineFinishDate: a.baselineFinishDate, calendarCode: a.calendarCode, remainingDays: a.remainingDays,
       freeFloat: a.scheduledAt ? a.freeFloatDays : null, scheduled: !!a.scheduledAt, drivingPreds: a.scheduledAt ? (driving.get(a.id) ?? []) : null,
     })),
@@ -216,7 +223,26 @@ export interface ActivityPatch {
   eac?: number;
   preds?: PredLink[];
   pct?: number;
+  /**
+   * R-198 (Gantt): date constraint — a type with its ISO date, or null for none ("As soon as possible"). The display text
+   * ("SNET 12 Oct") is written with it.
+   */
+  constraint?: { type: KnownConstraintType; date: string } | null;
 }
+
+/** R-198: the Gantt's edits are audited (and put on the activity feed) by `updateActivity` itself, in its transaction. */
+export interface ActivityEditAudit {
+  actorName: string;
+  /** Activity-feed event ("Moved A1250 on the Gantt · start no earlier than 2026-10-12"). */
+  feed?: SystemMessage;
+  /** Where the edit was made: the Gantt (default) or the Plan's cells (R-010: audited too, so the editor is known). */
+  source?: 'gantt' | 'plan';
+  /** R-010: the activity's version token as the page read it; an activity changed meanwhile by someone else is refused. */
+  version?: string | null;
+}
+
+/** R-010: activities under optimistic locking (audit entity "activity"). */
+const ACTIVITY_VERSION: VersionedTable = { table: activities, id: activities.id, version: activities.version, entityType: 'activity' };
 
 async function findActivity(tx: Tx, code: string, actId: string) {
   const [row] = await tx
@@ -240,12 +266,22 @@ async function findNode(tx: Tx, code: string, w: string) {
  * Applies an inline edit. Structure edits (name, owner, duration, budget, logic) stamp `updatedAt` — the
  * "edited" dot of the Structure view; progress alone does not (as `applyOv`). Returns false when not found.
  */
-export async function updateActivity(code: string, actId: string, patch: ActivityPatch): Promise<boolean> {
+export async function updateActivity(code: string, actId: string, patch: ActivityPatch, audit?: ActivityEditAudit): Promise<boolean> {
   const db = await getDb();
   return db.transaction(async (tx) => {
-    const a = await findActivity(tx, code, actId);
-    if (!a) return false;
-    const set: Partial<typeof activities.$inferInsert> = {};
+    const found = await findActivity(tx, code, actId);
+    if (!found) return false;
+    const actor = audit ? await findPerson(tx, audit.actorName) : null;
+    if (audit) await assertRecordFresh(tx, ACTIVITY_VERSION, found.id, audit.version, { name: audit.actorName, personId: actor?.id ?? null });
+    // Read again behind the row lock taken by the check (the values the edit compares with are the current ones).
+    const a = audit ? ((await findActivity(tx, code, actId)) ?? found) : found;
+    const set: Omit<Partial<typeof activities.$inferInsert>, 'version'> & { version?: SQL } = {};
+    if (patch.constraint !== undefined) {
+      const c = patch.constraint;
+      set.constraintType = c ? c.type : null;
+      set.constraintDate = c ? c.date : null;
+      set.constraintDateText = c ? activityDateText(c.date, yearOfIso(await businessToday(tx))) : null;
+    }
     if (patch.name !== undefined) set.name = patch.name;
     if (patch.durationDays !== undefined) set.durationDays = patch.durationDays;
     if (patch.budget !== undefined) set.budgetKeur = patch.budget;
@@ -256,6 +292,8 @@ export async function updateActivity(code: string, actId: string, patch: Activit
       if (!p) return false;
       set.ownerPersonId = p.id;
     }
+    // The relationships are kept in activity_links: the successor's version counts them (R-010).
+    if (patch.preds !== undefined) set.version = bumpVersion(activities.version);
     const structural = Object.keys(set).some((k) => k !== 'percentComplete') || patch.preds !== undefined;
     if (structural) set.updatedAt = new Date();
     // A remaining duration stored by an import (MSPDI / XER) wins over % complete in the CPM: a new % or duration replaces it.
@@ -274,6 +312,47 @@ export async function updateActivity(code: string, actId: string, patch: Activit
           .map(([pred, type, lag], position) => ({ projectId: a.projectId, predecessorId: byCode.get(pred)!, successorId: a.id, type, lagDays: lag, position }));
         if (rows.length) await tx.insert(activityLinks).values(rows);
       }
+    }
+    if (audit) {
+      const before: Record<string, unknown> = {};
+      const after: Record<string, unknown> = {};
+      if (patch.durationDays !== undefined && patch.durationDays !== a.durationDays) {
+        before.durationDays = a.durationDays;
+        after.durationDays = patch.durationDays;
+      }
+      if (patch.constraint !== undefined) {
+        before.constraint = a.constraintType && a.constraintType !== 'ASAP' ? { type: a.constraintType, date: a.constraintDate } : null;
+        after.constraint = patch.constraint;
+      }
+      // R-010: the Plan's cells (name, owner, budget, % complete, predecessors) are audited too.
+      const plain: [keyof ActivityPatch, keyof typeof a, string][] = [['name', 'name', 'name'], ['budget', 'budgetKeur', 'budget'], ['eac', 'eacKeur', 'EAC'], ['pct', 'percentComplete', '% complete']];
+      const extra: string[] = [];
+      for (const [k, col, label] of plain)
+        if (patch[k] !== undefined && patch[k] !== a[col]) {
+          before[k] = a[col];
+          after[k] = patch[k];
+          extra.push(`${label} ${String(a[col])} → ${String(patch[k])}`);
+        }
+      if (set.ownerPersonId !== undefined && set.ownerPersonId !== a.ownerPersonId) {
+        before.ownerCode = null;
+        after.ownerCode = patch.ownerCode;
+        extra.push(`owner → ${patch.ownerCode}`);
+      }
+      if (patch.preds !== undefined) {
+        after.preds = patch.preds;
+        extra.push(`predecessors → ${patch.preds.map(([p, type, lag]) => `${p} ${type}${lag ? (lag > 0 ? '+' : '') + lag : ''}`).join(', ') || '—'}`);
+      }
+      const parts = [
+        'durationDays' in after ? `duration ${a.durationDays} → ${patch.durationDays} d` : null,
+        'constraint' in after ? `constraint ${constraintText(a.constraintType, a.constraintDate) || 'ASAP'} → ${patch.constraint ? `${patch.constraint.type} ${patch.constraint.date}` : 'ASAP'}` : null,
+        ...extra,
+      ].filter(Boolean);
+      const who = actor ? nameOf(actor) : audit.actorName;
+      await writeAudit(tx, {
+        actorName: who, actorPersonId: actor?.id, objectRef: actId, change: `${audit.source === 'plan' ? 'Plan edit' : 'Gantt edit'}: ${parts.join(' · ') || 'no change'}`, area: 'Planning',
+        entityType: 'activity', entityId: a.id, projectId: a.projectId, before, after,
+      });
+      if (audit.feed) await recordActivity(tx, { actorName: who, actorPersonId: actor?.id, message: audit.feed, kind: 'change', projectId: a.projectId });
     }
     return true;
   });
@@ -508,12 +587,41 @@ export async function addActivityLink(code: string, link: { pred: string; succ: 
     if (cycle) return { error: 'cycle' as const, cycle };
     const position = Math.max(-1, ...existing.filter((l) => l.succId === ends.succId).map((l) => l.position)) + 1;
     await tx.insert(activityLinks).values({ projectId: ends.projectId, predecessorId: ends.predId, successorId: ends.succId, type: link.type, lagDays: link.lag, position });
-    await tx.update(activities).set({ updatedAt: new Date() }).where(eq(activities.id, ends.succId));
+    await tx.update(activities).set({ updatedAt: new Date(), version: bumpVersion(activities.version) }).where(eq(activities.id, ends.succId));
     const actor = await findPerson(tx, actorName);
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: link.succ,
       change: `relationship added: ${link.pred} ${link.type}${link.lag ? (link.lag > 0 ? '+' : '') + link.lag : ''} → ${link.succ}`,
       area: 'Planning', entityType: 'activity', entityId: ends.succId, projectId: ends.projectId,
+    });
+    return { ok: true as const };
+  });
+}
+
+/**
+ * R-198 (Gantt): changes the type and the lag of an existing relationship `pred` → `succ` (its place in the successor's
+ * predecessor list is kept). The ends do not change, so no loop can appear. Audited with the values before and after.
+ */
+export async function updateActivityLink(code: string, link: { pred: string; succ: string; type: LinkType; lag: number }, actorName: string): Promise<LinkWriteResult> {
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const ends = await linkEnds(tx, code, link.pred, link.succ);
+    if (!ends || !ends.predId || !ends.succId) return { error: 'unknown' as const };
+    const [cur] = await tx
+      .select({ id: activityLinks.id, type: activityLinks.type, lag: activityLinks.lagDays })
+      .from(activityLinks)
+      .where(and(eq(activityLinks.predecessorId, ends.predId), eq(activityLinks.successorId, ends.succId)));
+    if (!cur) return { error: 'missing' as const };
+    if (cur.type === link.type && cur.lag === link.lag) return { ok: true as const };
+    await tx.update(activityLinks).set({ type: link.type, lagDays: link.lag }).where(eq(activityLinks.id, cur.id));
+    await tx.update(activities).set({ updatedAt: new Date(), version: bumpVersion(activities.version) }).where(eq(activities.id, ends.succId));
+    const label = (type: string, lag: number) => `${type}${lag ? (lag > 0 ? '+' : '') + lag : ''}`;
+    const actor = await findPerson(tx, actorName);
+    await writeAudit(tx, {
+      actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: link.succ,
+      change: `relationship changed: ${link.pred} ${label(cur.type, cur.lag)} → ${label(link.type, link.lag)} → ${link.succ}`,
+      area: 'Planning', entityType: 'activity', entityId: ends.succId, projectId: ends.projectId,
+      before: { type: cur.type, lag: cur.lag }, after: { type: link.type, lag: link.lag },
     });
     return { ok: true as const };
   });
@@ -530,7 +638,7 @@ export async function removeActivityLink(code: string, pred: string, succ: strin
       .where(and(eq(activityLinks.predecessorId, ends.predId), eq(activityLinks.successorId, ends.succId)))
       .returning({ type: activityLinks.type });
     if (!del.length) return { error: 'missing' as const };
-    await tx.update(activities).set({ updatedAt: new Date() }).where(eq(activities.id, ends.succId));
+    await tx.update(activities).set({ updatedAt: new Date(), version: bumpVersion(activities.version) }).where(eq(activities.id, ends.succId));
     const actor = await findPerson(tx, actorName);
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: succ, change: `relationship removed: ${pred} ${del[0].type} → ${succ}`,

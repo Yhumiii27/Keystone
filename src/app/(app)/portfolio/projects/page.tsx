@@ -2,8 +2,10 @@
 // Master register of every project (pipeline, execution, warranty, closed, cancelled) in the selected zone: three
 // views (?view=health|progress|budget), stage slider (?status=<stage code>), search (?q=), "Move to" menus,
 // stage-deliverable checklists with auto-advance, the Force stage change dialog and the New project wizard.
+// R-187 (Arche K-02, K-10): under the register, the "Subsidiaries' machine needs" card (director and project managers).
 import { PageHeader } from '@/components/app/shell/page-header';
 import { isRegisterView } from '@/domain/lifecycle';
+import { NeedsCard } from '@/features/capex-needs/needs-card';
 import { NewProjectButton } from '@/features/projects/new-project-button';
 import { ProjectsRegister } from '@/features/projects/register';
 import { buildRegisterModel } from '@/features/projects/register-model';
@@ -35,6 +37,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
         initialStatus={status && stage.isCode(status) ? status : null}
         initialQuery={(one(sp.q) ?? '').slice(0, 100)}
       />
+      <NeedsCard />
     </>
   );
 }

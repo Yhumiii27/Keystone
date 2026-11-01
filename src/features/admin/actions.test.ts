@@ -257,18 +257,19 @@ describe('Activity & integrations Server Functions and the audit export', () => 
     expect(await syncConnectorAction('E-mail (SMTP)')).toEqual({ error: 'E-mail (SMTP) n’est pas connecté — rien à synchroniser' });
     expect((await listAudit()).length).toBe(audits);
     const before = (await getCodexSyncState())!;
-    expect(await syncConnectorAction('Codex')).toEqual({ ok: true, toast: 'Codex · synchro simulée (connecteur simulé) · 412 fiches' });
+    expect(await syncConnectorAction('Codex')).toEqual({ ok: true, toast: 'Codex · synchro simulée (connecteur simulé) · 415 fiches' }); // L9-X3: + the demo's 3 shipping documents
     expect((await getCodexSyncState())!.syncedAt > before.syncedAt).toBe(true);
     expect((await listAudit())[0]).toMatchObject({ who: 'Romain Aubert', object: 'Connector Codex', change: 'sync (simulated) · 412 records · 38 linked to HLT-026' });
     const codex = (await listAdminConnectors()).find((c) => c.name === 'Codex')!;
-    expect([codex.mode, codex.state, codex.lastSyncAt, codex.lastVolume]).toEqual(['mock', 'mock', null, '412 records · 38 linked to HLT-026']);
+    expect([codex.mode, codex.state, codex.lastSyncAt, codex.lastVolume]).toEqual(['mock', 'mock', null, '415 records · 38 linked to HLT-026']); // L9-X3: + the demo's 3 shipping documents
     as('director');
     expect(await syncConnectorAction('Vigie')).toEqual({ ok: true, toast: 'Vigie · simulated sync (mock connector) · 0 sent · 0 pending · 0 refreshed' });
     const cursus = await syncConnectorAction('Cursus');
     expect(cursus).toMatchObject({ ok: true });
     expect((cursus as { toast: string }).toast).toMatch(/^Cursus · simulated sync \(mock connector\) · \d+ approvals received$/);
     // A simulated run dates no sync.
-    expect((await listAdminConnectors()).filter((c) => c.link === 'mock').map((c) => c.lastSyncAt)).toEqual([null, null, null]);
+    // R-187: Arche (simulated source) is a fourth mock.
+    expect((await listAdminConnectors()).filter((c) => c.link === 'mock').map((c) => c.lastSyncAt)).toEqual([null, null, null, null]);
     expect(revalidatePath).toHaveBeenCalledWith('/', 'layout');
   });
 
@@ -288,12 +289,13 @@ describe('Activity & integrations Server Functions and the audit export', () => 
     expect(res.headers.get('Content-Disposition')).toMatch(/^attachment; filename="keystone-audit-trail-\d{4}-\d{2}-\d{2}\.csv"$/);
     const body = await res.text();
     const lines = body.replace(/^﻿/, '').split('\r\n');
-    // R-168: the user account (e-mail), the reason and the values before / after follow the prototype's columns.
-    expect(lines[0]).toBe('Quand (UTC),Qui,Objet,Modification,Domaine,Projet,Utilisateur,Motif,Avant,Après');
+    // R-168: the user account (e-mail), the reason and the values before / after follow the prototype's columns; R-051: then
+    // the approver a substitute decided for.
+    expect(lines[0]).toBe('Quand (UTC),Qui,Objet,Modification,Domaine,Projet,Utilisateur,Motif,Avant,Après,Pour le compte de');
     const all = await listAudit({ limit: 1_000_000 });
     expect(lines.length).toBe(all.length + 2);
     const pm = all.find((a) => a.object === 'CR-008' && a.who === 'Romain Aubert')!;
     expect(pm.userEmail).toMatch(/@/);
-    expect(lines).toContain(`2026-09-25T07:12:00.000Z,Romain Aubert,CR-008,status: Draft → In review,Change control,,${pm.userEmail},,,`);
+    expect(lines).toContain(`2026-09-25T07:12:00.000Z,Romain Aubert,CR-008,status: Draft → In review,Change control,,${pm.userEmail},,,,`);
   });
 });

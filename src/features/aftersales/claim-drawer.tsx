@@ -92,7 +92,7 @@ export function ClaimDrawer({ view: d, t }: { view: ClaimDrawerView; t: T }) {
             )}
             {d.actions.close && <CloseClaimButton number={d.number} from={d.actions.from} label={d.actions.close.label} />}
             <FollowupFormButton kind="plan" target={d.number} label={d.actions.plan.label} context={context} form={d.actions.plan.form} />
-            <FollowupFormButton kind="edit" target={d.number} label={d.actions.edit.label} context={context} form={d.actions.edit.form} variant="ghost" />
+            <FollowupFormButton kind="edit" target={d.number} version={d.actions.edit.version} label={d.actions.edit.label} context={context} form={d.actions.edit.form} variant="ghost" />
           </div>
         </>
       )}

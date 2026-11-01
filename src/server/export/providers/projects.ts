@@ -11,6 +11,7 @@ import { getRegisterData } from '@/server/dal/projects-register';
 import { registerExportProvider } from '../registry';
 import type { ExportColumn, ExportContext, ExportWorkbook } from '../types';
 import { dataText } from '@/i18n/data-text';
+import { monthOfText } from './common';
 
 export async function projectsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   const { t, lang } = ctx;
@@ -33,8 +34,8 @@ export async function projectsWorkbook(ctx: ExportContext): Promise<ExportWorkbo
     { key: 'client', header: t('Client'), width: 22 },
     { key: 'analytic', header: t('Analytic code'), width: 12 },
     { key: 'machineType', header: t('Machine type'), width: 10 },
-    { key: 'start', header: t('Start date'), width: 10 },
-    { key: 'finish', header: t('Finish'), width: 10 },
+    { key: 'start', header: t('Start date'), type: 'month', width: 10 },
+    { key: 'finish', header: t('Finish'), type: 'month', width: 10 },
   ];
   const perView: Record<typeof view, ExportColumn[]> = {
     health: [
@@ -64,7 +65,7 @@ export async function projectsWorkbook(ctx: ExportContext): Promise<ExportWorkbo
     const spi = r.spiText && r.spiText !== '—' ? parseFloat(r.spiText) : null;
     return {
       code: p.code, name: dataText(p.name, ctx.lang), stage: t(p.status), pm: p.pm, client: dataText(p.client, ctx.lang), analytic: p.analytic ?? '', machineType: p.equipment ?? p.machineType ?? '',
-      start: t(p.start), finish: t(p.finish),
+      start: monthOfText(p.start), finish: monthOfText(p.finish),
       health: p.health ? t(HEALTH_LABEL[p.health]) : '—', spi: Number.isFinite(spi) ? spi : null, cpi: Number.isFinite(cpi) ? cpi : null,
       milestone: [r.msName, r.msLine].filter((x) => x && x !== '—').join(' · '), attention: r.attention === '—' ? '' : r.attention,
       progress: p.progress, finishPlanned: r.finishPlanned, finishForecast: r.finishForecast, float: r.floatText,

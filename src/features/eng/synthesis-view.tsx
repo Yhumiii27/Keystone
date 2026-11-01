@@ -10,6 +10,7 @@ import { KpiGrid, KpiTile } from '@/components/app/Kpi';
 import { cx } from '@/components/ds/cx';
 import type { T } from '@/i18n/translate';
 import type { KpiView, SynthesisScreenView } from './model';
+import { EngineeringPackCard, type PackCardView } from './pack-card';
 import s from './eng.module.css';
 
 /** Discipline icons (ENG_DISC classes "ph ph-flow-arrow"…). */
@@ -31,9 +32,10 @@ export function EngKpis({ kpis }: { kpis: KpiView[] }) {
 }
 
 /** "No engineering register for this project yet — import the first list to start." */
-export function EngEmpty({ t }: { t: T }) {
+export function EngEmpty({ t, pack }: { t: T; pack?: PackCardView | null }) {
   return (
     <div className={s.page}>
+      {pack && <EngineeringPackCard view={pack} t={t} />}
       <EmptyState variant="boxed">{t('No engineering register for this project yet — import the first list to start.')}</EmptyState>
     </div>
   );
@@ -58,10 +60,12 @@ function Legend({ t }: { t: T }) {
   );
 }
 
-export function SynthesisBody({ view, t }: { view: SynthesisScreenView; t: T }) {
+export function SynthesisBody({ view, t, pack }: { view: SynthesisScreenView; t: T; pack?: PackCardView | null }) {
   return (
     <div className={s.page}>
       <EngKpis kpis={view.kpis} />
+      {/* R-191: EPC2i's share of the engineering pack and its % completeness (G2 target above 80 %). */}
+      {pack && <EngineeringPackCard view={pack} t={t} />}
 
       <div className={cx('card', 'elev-sm', s.cardMatrix)}>
         <div className={s.headTop}>
@@ -90,9 +94,10 @@ export function SynthesisBody({ view, t }: { view: SynthesisScreenView; t: T }) 
               {row.cells.map((c) => (
                 <div key={c.key} role="cell" className={s.cell} style={{ background: c.bg }}>
                   {c.items.map((it) => (
-                    <span key={it.key} className={s.pill} style={{ borderColor: it.border, color: it.color }}>
-                      <span className={s.pillDot} style={{ background: it.dot, borderColor: it.dotBorder }} />
+                    <span key={it.key} className={s.pill} style={{ borderColor: it.border, color: it.color }} title={it.state}>
+                      <span className={s.pillDot} style={{ background: it.dot, borderColor: it.dotBorder }} aria-hidden />
                       {it.label} · {it.sub}
+                      {it.state && <span className="sr-only">{` · ${it.state}`}</span>}
                     </span>
                   ))}
                 </div>
@@ -138,7 +143,7 @@ export function SynthesisBody({ view, t }: { view: SynthesisScreenView; t: T }) 
           </div>
           {view.gate.items.map((c) => (
             <Link key={c.number} href={c.href} className={s.gateBtn}>
-              <span className={s.sevDot} style={{ background: c.sevDot }} />
+              <span className={s.sevDot} style={{ background: c.sevDot }} aria-hidden />
               <span className={s.gateMid}>
                 <span className={s.gateTitle}>{c.title}</span>
                 <span className={s.gateMeta}>

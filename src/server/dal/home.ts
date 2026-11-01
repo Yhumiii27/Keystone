@@ -5,11 +5,14 @@ import 'server-only';
 // and "Needs attention" items are the Portfolio overview's (src/server/dal/portfolio.ts). Since Delivery 4, the parts
 // catalogue, the purchase orders (and so the BOM shortfall), the drawings (PDM vault mirror) and the ECOs (Vigie
 // mirror, src/server/integrations/vigie) come from the database too; since Delivery 5, the client's deliverables
-// (the deliverables register, src/server/dal/quality.ts) and open invoice (the billing plan, as on the client portal).
+// (the deliverables register, src/server/dal/quality.ts) and open invoice (the billing plan, as on the client portal). R-158:
+// the Logistics Home reads the current project's shipments (src/server/dal/shipments.ts).
+import { SHIPMENT_STATUS_LABEL, shipmentSteps } from '@/domain/shipments';
+import { getProjectShipments } from './shipments';
 import type { RoleKey } from '@/config/screens';
 import { isNotNull } from 'drizzle-orm';
 import {
-  clientHome, clientHomeDeliverables, clientOpenInvoice, deptHeadHome, directorHome, engLeadHome, homeHref, memberHome, pmHome, procurementHome,
+  clientHome, clientHomeDeliverables, clientOpenInvoice, deptHeadHome, directorHome, engLeadHome, homeHref, logisticsHome, memberHome, pmHome, procurementHome,
   qualityHome, type ChangeRequest, type CurrentProject, type Drawing, type Eco, type EvmSeries, type HomeView, type Lookups, type Part,
   type Persona, type PersonLoad, type PortfolioAlert, type PurchaseOrder, type ResourceRequest, type ScheduleHeader, type Todo,
 } from '@/domain/home';
@@ -23,7 +26,7 @@ import { getDb } from '@/server/db/client';
 import { REQUEST_STATUS_TAG, addDaysIso, ecoType, fmtDOfIso, requestStatus, taskStatus } from '@/server/db/codes';
 import { projects as projectsTable } from '@/server/db/schema';
 import type { ZoneKey } from '@/server/session';
-import { getCostControl, listChangeRequests } from './cost';
+import { getCostControl, listChangeRequestsOf } from './cost';
 import { listDrawings } from './drawings';
 import { listEcos } from './eco';
 import { loggedThisWeek } from './kpis';
@@ -200,16 +203,14 @@ async function evmAndSchedule(code: string): Promise<{ evm: EvmSeries | null; sc
 }
 
 async function changeRequestsOf(projects: ProjectRow[]): Promise<ChangeRequest[]> {
-  const names = (await lookups()).projectNames;
-  const lists = await Promise.all(
-    projects.map(async (p) =>
-      (await listChangeRequests(p.code)).map((c) => ({
-        code: p.code, projectName: names[p.shortCode] ?? p.name, id: c.id, title: c.title, amount: c.amount, days: c.days, date: c.date,
-        status: c.status, chain: c.chain,
-      })),
-    ),
+  // R-017: the requests of every project in three reads (they were read project by project).
+  const [names, byProject] = await Promise.all([lookups().then((l) => l.projectNames), listChangeRequestsOf(projects.map((p) => p.code))]);
+  return projects.flatMap((p) =>
+    (byProject.get(p.code) ?? []).map((c) => ({
+      code: p.code, projectName: names[p.shortCode] ?? p.name, id: c.id, title: c.title, amount: c.amount, days: c.days, date: c.date,
+      status: c.status, chain: c.chain,
+    })),
   );
-  return lists.flat();
 }
 
 /** Department led by the viewer; the prototype default is Engineering. */
@@ -264,6 +265,18 @@ export async function getHomeView(q: HomeQuery): Promise<HomeView> {
     case 'quality': {
       const [es, ps, reqs] = await Promise.all([ecos(), parts(), requests()]);
       return qualityHome({ persona, today, project: current, ecos: es, parts: ps, requests: reqs });
+    }
+    case 'logistics': {
+      // R-158: the current project's shipments (no prototype Home for Logistics).
+      const data = await getProjectShipments(project.code);
+      return logisticsHome({
+        persona, today, project: current,
+        shipments: (data?.shipments ?? []).map((s) => ({
+          ref: s.ref, status: s.status, statusLabel: SHIPMENT_STATUS_LABEL[s.status], equipment: s.equipment.map((e) => e.ref), eta: s.eta,
+          openGaps: s.control.openGaps, missingHs: s.control.missingHs.length,
+          lateSteps: shipmentSteps(data!.incoterm?.split ?? null, s.steps, today).filter((x) => x.state === 'late').length,
+        })),
+      });
     }
     case 'procurement': {
       const [acts, pos, ps, es] = await Promise.all([getActivities(project.code), purchaseOrders(project.code), parts(), ecos()]);

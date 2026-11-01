@@ -8,7 +8,7 @@ import type { RoleKey } from '@/config/screens';
  * Keystone roles from the broadest workspace to the narrowest. A user holding several roles starts in the first one
  * they hold (the "highest") and may switch to another in the account menu.
  */
-export const ROLE_PRIORITY: readonly RoleKey[] = ['director', 'pm', 'depthead', 'englead', 'quality', 'procurement', 'finance', 'member', 'client'];
+export const ROLE_PRIORITY: readonly RoleKey[] = ['director', 'pm', 'depthead', 'englead', 'quality', 'procurement', 'finance', 'logistics', 'member', 'client'];
 
 /** Role names shown in the account menu (EN source strings, translated through t()). */
 export const ROLE_LABEL: Record<RoleKey, string> = {
@@ -21,6 +21,8 @@ export const ROLE_LABEL: Record<RoleKey, string> = {
   procurement: 'Procurement & stock',
   // R-044: Entra app role 'finance' / 'Keystone.Finance' (or an ENTRA_GROUP_ROLES mapping to "finance").
   finance: 'Finance',
+  // R-158: Entra app role 'logistics' / 'Keystone.Logistics' (or an ENTRA_GROUP_ROLES mapping to "logistics").
+  logistics: 'Logistics',
   client: 'Client',
 };
 

@@ -1,11 +1,11 @@
 // Project control (docs/spec/11 §3.3 StatusSnapshot, §3.5 ContingencyRegister / ContingencyDraw, §3.7 Risk;
 // screens 07 §2.1 risks, 04 §2 trends, 04 §5 contingency): risks, weekly status snapshots, generated status
 // reports, contingency registers and draw-downs.
-import { date, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { date, index, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type {
   ContingencyDrawStatus, ContingencyLinkType, ReportAudience, ReportPeriod, ReportSections, RiskCategory, RiskResponse, RiskStatus, RiskTrend,
 } from '../codes';
-import { id, keur, num, timestamps } from './_common';
+import { id, keur, num, rowVersion, timestamps } from './_common';
 import { persons } from './organisation';
 import { activities } from './planning';
 import { projects } from './portfolio';
@@ -46,9 +46,11 @@ export const risks = pgTable(
     trend: text('trend').$type<RiskTrend>().notNull(),
     /** Register source order (added risks are prepended with a lower value). */
     sortOrder: integer('sort_order').notNull(),
+    /** R-010: optimistic locking (see rowVersion). */
+    version: rowVersion(),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.number)],
+  (t) => [unique().on(t.projectId, t.number), index('risks_activity_id_idx').on(t.activityId)],
 );
 
 /**
@@ -89,7 +91,7 @@ export const statusReports = pgTable('status_reports', {
   statusDate: date('status_date', { mode: 'string' }).notNull(),
   generatedByPersonId: uuid('generated_by_person_id').references(() => persons.id),
   generatedAt: timestamp('generated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [index('status_reports_project_id_idx').on(t.projectId)]);
 
 /**
  * Contingency provision of a project (CONTINGENCY 3720: HLT-026 initial 150 k€). Projects without a row use
@@ -132,4 +134,4 @@ export const contingencyDraws = pgTable('contingency_draws', {
   decidedByPersonId: uuid('decided_by_person_id').references(() => persons.id),
   decidedAt: timestamp('decided_at', { withTimezone: true }),
   decisionComment: text('decision_comment'),
-});
+}, (t) => [index('contingency_draws_register_id_idx').on(t.registerId)]);

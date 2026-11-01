@@ -42,6 +42,8 @@ export interface RegisterRow {
   idLine: string;
   /** "R. Aubert · Port authority · Jan 2026 → Dec 2026" (translated). */
   metaLine: string;
+  /** R-190: the client is a group subsidiary — the "Internal" badge after the meta line (absent for an external client). */
+  clientInternal?: true;
   health: { label: string; tone: Tone };
   spiText: string;
   spiColor: string;
@@ -149,6 +151,7 @@ export function buildRegisterModel(data: RegisterInput, zone: ZoneKey | null, t:
       isNew: p.isNew,
       idLine: `${p.analytic ?? '—'} · ${p.das ? 'DAS ' + p.das : '—'} · ${p.equipment ?? p.machineType ?? '—'}`,
       metaLine: `${p.pm} · ${dataText(p.client, lang)} · ${t(`${p.start} → ${p.finish}`)}`,
+      ...(p.clientInternal ? { clientInternal: true as const } : {}),
       health: live && p.health ? { label: t(HEALTH_LABEL[p.health]), tone: healthTone(p.health) } : { label: '—', tone: 'muted' },
       spiText: ind.spiText,
       spiColor: TINT[ind.spiTint],

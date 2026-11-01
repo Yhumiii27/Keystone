@@ -46,6 +46,23 @@ export type JobName =
   // ── Delivery 9 · R-189 (Arche K-04): the progress and SPI of each project, computed in TypeScript, kept for the SQL view
   // pub_avancement_projets (share_project_progress); hourly, a row changes only when a value does.
   | 'share-progress'
+  // ── Delivery 9 · R-187 (Arche K-02): Arche's views pub_capex and pub_besoins_machines read into the capex mirror, every 15
+  // minutes (Arche reads Keystone's views at the same pace).
+  | 'capex-needs'
+  // ── Delivery 9 · Matrix D21: Matrix's view pub_filiales (the group's subsidiaries) read into the subsidiaries mirror, hourly.
+  | 'matrix-subsidiaries'
+  // ── Delivery 9 · R-199: deadline reminders (tasks, activities, milestones, deliverables, meeting actions, client prerequisites)
+  // at J-n and once overdue, one per person and run, in the bell and by e-mail; and the weekly reports (project status report to
+  // the leads, portfolio to the directors), sent by the first run of each ISO week (Monday morning). Both reminder jobs.
+  | 'deadline-reminders'
+  | 'scheduled-reports'
+  // ── Delivery 9 · R-036: the e-mails of the bell notifications — those due at once that a crash or a restart left waiting
+  // (every 5 minutes; createNotification sends them right after its commit), and the daily digest of the others (a reminder job).
+  | 'notification-mails'
+  | 'notification-digest'
+  // ── Delivery 9 · R-015 (X-6a): the portfolio alert rules (R-130) as notices — each new alert to the project's leads and the
+  // directors, once while it lasts (a reminder job).
+  | 'indicator-alerts'
   ;
 
 export interface JobSchedule {
@@ -103,6 +120,22 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
   // ── Delivery 9 · R-189: progress and SPI published to Arche (pub_avancement_projets), every hour — the view's readers poll
   // every 15 minutes and the figures move with the activities' progress, which the PM records during the week.
   { name: 'share-progress', everyMs: HOUR, leaseMs: 15 * MIN, firstDelayMs: 65_000 },
+  // ── Delivery 9 · R-187: the subsidiaries' machine needs read from Arche every 15 minutes (nothing with ARCHE_SOURCE=off, the
+  // connector disabled by IT, or the simulation on a non-demo database).
+  { name: 'capex-needs', everyMs: 15 * MIN, leaseMs: 10 * MIN, firstDelayMs: 70_000 },
+  // ── Delivery 9 · Matrix D21: the group's subsidiaries read from Matrix every hour (the list changes rarely; nothing with
+  // MATRIX_SOURCE=off, or the simulation on a non-demo database).
+  { name: 'matrix-subsidiaries', everyMs: HOUR, leaseMs: 10 * MIN, firstDelayMs: 75_000 },
+  // ── Delivery 9 · R-199: every morning at the reminders hour (07:00 Paris by default); the send log keeps each reminder and each
+  // weekly report to one send whatever the runs. Reports: a daily run that sends only once per ISO week (the Monday run), so a
+  // worker stopped on Monday catches the week's reports up the next morning. Longer leases: reports render PDFs.
+  { name: 'deadline-reminders', everyMs: 24 * HOUR, leaseMs: 30 * MIN, firstDelayMs: 80_000, daily: 'reminders' },
+  { name: 'scheduled-reports', everyMs: 24 * HOUR, leaseMs: HOUR, firstDelayMs: 85_000, daily: 'reminders' },
+  // ── Delivery 9 · R-036: immediate e-mails left waiting, every 5 minutes; the daily digest at the reminders hour, after the alerts.
+  { name: 'notification-mails', everyMs: 5 * MIN, leaseMs: 15 * MIN, firstDelayMs: 90_000 },
+  // ── Delivery 9 · R-015: the indicator alerts, every morning (before the digest, which carries them).
+  { name: 'indicator-alerts', everyMs: 24 * HOUR, leaseMs: 30 * MIN, firstDelayMs: 95_000, daily: 'reminders' },
+  { name: 'notification-digest', everyMs: 24 * HOUR, leaseMs: 30 * MIN, firstDelayMs: 100_000, daily: 'reminders' },
 ];
 
 export const JOB_NAMES: readonly JobName[] = JOB_SCHEDULES.map((j) => j.name);

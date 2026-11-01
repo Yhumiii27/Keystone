@@ -49,7 +49,8 @@ const as = (role: RoleKey, lang: 'en' | 'fr' = 'en') => {
 };
 const HLT = 'HLT-026';
 const PM = { name: 'Romain Aubert', role: 'pm' as const };
-const STALE = 'This step is not available any more';
+// R-157: a line changed meanwhile is refused with a precise message (was "This step is not available any more").
+const STALE = 'This line was changed by someone else meanwhile: check it again';
 const rows = async (q: string) => (await (await getDb()).execute(sql.raw(q))).rows as Record<string, unknown>[];
 const site = async (code = HLT) => (await getSite(code))!;
 const errorOf = (r: unknown) => (r && typeof r === 'object' && 'error' in r ? (r as { error: string }).error : 'ok');
@@ -155,7 +156,8 @@ describe('R-118 · "Confirm" and "Client confirms" act on the line the page show
     }
     expect(out).toEqual({
       director: STALE, pm: STALE, member: STALE, depthead: 'The site is read-only for you', englead: 'The site is read-only for you',
-      quality: 'The site is read-only for you', procurement: 'The site is read-only for you', finance: 'The site is read-only for you', client: 'sent home',
+      quality: 'The site is read-only for you', procurement: 'The site is read-only for you', finance: 'The site is read-only for you',
+      logistics: 'The site is read-only for you', client: 'sent home',
     });
     expect((await site()).equipment.find((e) => e.position === old.position)).toMatchObject({ name: 'New generator', status: 'pending' });
     // The writer re-checks the stamp in its transaction.

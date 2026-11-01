@@ -41,6 +41,9 @@ const P: [RoleKey, string, string, string, string | null][] = [
   ['procurement', 'Fabien Bertrand', 'Procurement & stock', 'fabien.bertrand@epc2i.fr', 'Controls & planning'],
   // R-044 (P-4, P-12 c): the Finance persona — the cost controller of the resource pool (no prototype persona).
   ['finance', 'Léa Marchand', 'Cost controller', 'lea.marchand@epc2i.fr', 'Controls & planning'],
+  // R-158 (owner's decision 7, 25 Oct 2026): the Logistics persona — prepares and follows the shipments (no prototype persona;
+  // the person is created with its user, src/server/db/seed/users.ts).
+  ['logistics', 'Camille Verdier', 'Logistics coordinator', 'camille.verdier@epc2i.fr', 'Controls & planning'],
   ['client', 'Nadia Bensaïd', 'Client — Port authority', 'n.bensaid@port-exemple.fr', null],
 ];
 

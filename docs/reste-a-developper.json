@@ -1,6 +1,6 @@
 {
  "generated": "2026-10-10",
- "updated": "2026-10-24",
+ "updated": "2026-10-31",
  "branch": "main-2a2fep",
  "history": [
   {
@@ -146,6 +146,94 @@
   {
    "date": "2026-10-24",
    "text": "R-188 fait : classe d’estimation des versions de budget (E50 / E30 / E10), fourchette au Budget et écart d’incertitude au portefeuille."
+  },
+  {
+   "date": "2026-10-24",
+   "text": "R-187 fait : besoins machines des filiales (connecteur Arche, réponses chiffrées, projet créé à la commande, vue pub_reponses_besoins)."
+  },
+  {
+   "date": "2026-10-24",
+   "text": "R-190 fait : client interne (filiale du groupe), portail fermé aux filiales, publié dans pub_projets."
+  },
+  {
+   "date": "2026-10-25",
+   "text": "Demandes de Matrix D21 et D22 faites : vue pub_rex des leçons apprises ; clients filiales reliés au code de filiale de Matrix (miroir de matrix.pub_filiales, filiale_code dans pub_clients)."
+  },
+  {
+   "date": "2026-10-25",
+   "text": "Catalogue machines : nouvelle catégorie du menu et écran dédié (/catalogue/machines) à la demande du responsable produit ; la section catalogue quitte l’écran Types de machine (60 écrans)."
+  },
+  {
+   "date": "2026-10-25",
+   "text": "R-189 : dates de référence BL1 des jalons CAPEX publiées dans pub_jalons_projets (code de jalon CAPEX sur les jalons du planning)."
+  },
+  {
+   "date": "2026-10-25",
+   "text": "R-191 fait : pack ingénierie (liste provisoire 5 familles × 20 %), % de complétude à la Synthèse ingénierie, vue pub_pack_ingenierie pour Arche."
+  },
+  {
+   "date": "2026-10-25",
+   "text": "R-158 (expéditions vers la filiale) : cadrage proposé, 8 points à valider par le responsable produit."
+  },
+  {
+   "date": "2026-10-25",
+   "text": "R-158 : cadrage des expéditions validé (vue projet, Incoterm du contrat, documents générés sauf factures, profil Logistique, Incoterms paramétrables) ; la filiale suit tout depuis Arche."
+  },
+  {
+   "date": "2026-10-25",
+   "text": "R-158 lot A : profil Logistique, Incoterms paramétrables, écran projet Expéditions avec contrôle du colisage."
+  },
+  {
+   "date": "2026-10-26",
+   "text": "R-017 fait : tenue de la charge avec de vrais volumes (index, points chauds, cache des badges, pagination)."
+  },
+  {
+   "date": "2026-10-26",
+   "text": "R-158 fait : lot B des expéditions (documents générés et versés dans Codex, réception sur site et réserves, jalons, pub_expeditions)."
+  },
+  {
+   "date": "2026-10-26",
+   "text": "Analyse comparative avec les solutions du commerce (25 oct. 2026) : 12 items ajoutés (R-198 à R-209), 18 items existants annotés."
+  },
+  {
+   "date": "2026-10-29",
+   "text": "R-198 et R-199 validés et lancés (Gantt interactif ; rappels d’échéances et rapports programmés)."
+  },
+  {
+   "date": "2026-10-29",
+   "text": "R-198 et R-199 faits : Gantt interactif ; rappels d’échéances et rapports programmés (migration 0065)."
+  },
+  {
+   "date": "2026-10-29",
+   "text": "R-015 fait et R-036 avancé : notifications par e-mail (immédiat / résumé quotidien, préférences), avis aux personnes concernées, alertes d’indicateur (migration 0066)."
+  },
+  {
+   "date": "2026-10-29",
+   "text": "R-051 fait : suppléance des validations sur une période ; R-064 : partie technique vérifiée, attend S-5."
+  },
+  {
+   "date": "2026-10-29",
+   "text": "R-010 fait : verrouillage optimiste des fiches (« modifiée entre-temps par X »), numérotation et contrôles sûrs en concurrence (migrations 0068-0069)."
+  },
+  {
+   "date": "2026-10-29",
+   "text": "R-157, R-154 et R-183 faits : finitions d’ergonomie, couleurs de statut harmonisées, accessibilité WCAG 2.1 AA avec contrôles axe."
+  },
+  {
+   "date": "2026-10-31",
+   "text": "R-064 fait (S-5 confirmé : 30 jours, 20 entrées, CP et directeur) ; vérifié que Matrix a recopié et accordé pub_pack_ingenierie, pub_expeditions et la nouvelle pub_jalons_projets (29 oct.)."
+  },
+  {
+   "date": "2026-10-31",
+   "text": "Questionnaire de la livraison 9 : 20 choix par défaut confirmés ; démo avec documents d’expédition versés dans Codex (L9-X3) ; portail des filiales = Arche, accès web gardé et application Windows validée (R-210, nouvel item)."
+  },
+  {
+   "date": "2026-10-31",
+   "text": "L9-X3 fait : documents d’expédition pré-versés dans Codex dans la démonstration."
+  },
+  {
+   "date": "2026-10-31",
+   "text": "R-210 : application Windows construite (en attente d’un essai sur PC Windows et de l’hébergement)."
   }
  ],
  "items": [
@@ -210,7 +298,7 @@
    "id": "R-003",
    "verdict": "corrige",
    "title": "Héberger une instance multi-utilisateur (bêta puis production)",
-   "description": "La PR #1 (ouverte, non fusionnée) apporte un Dockerfile Coolify : un seul conteneur next start sur le port 3000, PGlite et fichiers sur un volume /data. Il reste à la rebaser sur la livraison 6, construire et tester l’image, ajouter NEXT_PUBLIC_CODEX_URL aux arguments de build, configurer TLS et domaine, et protéger l’accès tant que l’authentification manque. Ensuite viennent la préproduction et la production avec PostgreSQL et un worker ; leur cible (Azure, serveur interne ou cloud) reste à décider.",
+   "description": "La PR #1 (ouverte, non fusionnée) apporte un Dockerfile Coolify : un seul conteneur next start sur le port 3000, PGlite et fichiers sur un volume /data. Il reste à la rebaser sur la livraison 6, construire et tester l’image, ajouter NEXT_PUBLIC_CODEX_URL aux arguments de build, configurer TLS et domaine, et protéger l’accès tant que l’authentification manque. Ensuite viennent la préproduction et la production avec PostgreSQL et un worker ; leur cible (Azure, serveur interne ou cloud) reste à décider. Analyse comparative du 25 oct. 2026 : l’hébergement d’une instance multi-utilisateur est un prérequis de production (bloquant), rappelé par l’analyse comparative ; aucun changement de priorité.",
    "category": "plateforme_production",
    "kind": "mise_en_production",
    "priority": "bloquant_production",
@@ -221,7 +309,8 @@
     "I-1a",
     "00 §8.15",
     "DECISIONS.md « À traiter en priorité »",
-    "PR #1 claude/deploiement-coolify"
+    "PR #1 claude/deploiement-coolify",
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
    ],
    "evidence": [
     "gh api pulls/1 : « Dockerfile pour la mise en ligne (Coolify) », 3 fichiers (Dockerfile, .dockerignore, README.md), base 95412b5 (avant la livraison 6) ; image non construite dans la session",
@@ -407,7 +496,7 @@
    "id": "R-010",
    "verdict": "confirme",
    "title": "Sécuriser les écritures concurrentes en multi-utilisateur",
-   "description": "Rendre sûres sous accès concurrent la numérotation métier (max+1 sur toute la table), les contrôles « vérifier puis écrire » et les états gardés dans globalThis : contraintes uniques avec nouvel essai, verrous ou transactions SERIALIZABLE, détection des modifications simultanées d’une fiche. Cas connu : « Définir la référence » revérifie la règle BL1 hors de la transaction, donc deux envois simultanés à BL0 peuvent créer BL2 sans demande de modification.",
+   "description": "Rendre sûres sous accès concurrent la numérotation métier (max+1 sur toute la table), les contrôles « vérifier puis écrire » et les états gardés dans globalThis : contraintes uniques avec nouvel essai, verrous ou transactions SERIALIZABLE, détection des modifications simultanées d’une fiche. Cas connu : « Définir la référence » revérifie la règle BL1 hors de la transaction, donc deux envois simultanés à BL0 peuvent créer BL2 sans demande de modification. Analyse comparative du 25 oct. 2026 : le verrouillage optimiste par enregistrement (détection d’une fiche modifiée entre-temps) est un standard du marché ; le verrou d’écriture global hashtext('keystone.ecritures') (src/server/db/transactions.ts) sérialise toutes les écritures et limitera la montée en charge multi-utilisateur. Priorité suggérée P1 : remplacer le verrou global par un verrou optimiste (version par enregistrement) ou des verrous ciblés.",
    "category": "plateforme_production",
    "kind": "dette_technique",
    "priority": "bloquant_production",
@@ -417,7 +506,8 @@
    "sources": [
     "Q-7",
     "S-3",
-    "DELIVERY-6.md §6 Minor points"
+    "DELIVERY-6.md §6 Minor points",
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
    ],
    "evidence": [
     "src/server/db/helpers.ts:54-57 nextNumber lit toute la colonne puis max+1 ; 28 appels à nextNumber / nextBusinessNumber dans 19 fichiers",
@@ -427,9 +517,9 @@
     "temporisations de rafraîchissement dans globalThis : cursus/connector.ts:97, vigie/eco-connector.ts:51, quality-connector.ts:57"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 7",
-    "note": "Livraison 7 : transactions SERIALIZABLE avec reprise et réservation des envois faites ; reste la détection d’une fiche modifiée entre-temps par quelqu’un d’autre (choix d’ergonomie à faire)."
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Fiche modifiée entre-temps : refus avec « modifiée entre-temps par X — rechargez » (colonne version + déclencheur, migrations 0068-0069) sur le Plan, le Gantt, les risques, le contrat, les jalons de paiement, les catégories de coût et les réclamations ; numérotation relancée sur conflit ; vérifications déplacées dans les transactions ; rafraîchissements des connecteurs partagés entre instances."
    }
   },
   {
@@ -467,7 +557,7 @@
    "id": "R-012",
    "verdict": "confirme",
    "title": "Faire la reprise initiale des plannings et données existants",
-   "description": "S-9b demande d’importer une seule fois les plannings des projets en cours (MS Project / P6), et éventuellement des tables Excel/CSV, puis de tout planifier dans Keystone. Les importeurs MSPDI, XER et tables sont construits et testés mais désactivés par D-7b (« ne rien traiter pour le moment »). Il faut le feu vert et le périmètre, activer IMPORTS_ENABLED, ajouter le choix du projet dans un XER multi-projets, déplacer la replanification dans la transaction d’écriture et écrire la procédure de migration par projet.",
+   "description": "S-9b demande d’importer une seule fois les plannings des projets en cours (MS Project / P6), et éventuellement des tables Excel/CSV, puis de tout planifier dans Keystone. Les importeurs MSPDI, XER et tables sont construits et testés mais désactivés par D-7b (« ne rien traiter pour le moment »). Il faut le feu vert et le périmètre, activer IMPORTS_ENABLED, ajouter le choix du projet dans un XER multi-projets, déplacer la replanification dans la transaction d’écriture et écrire la procédure de migration par projet. Analyse comparative du 25 oct. 2026 : l’import MS Project (MSPDI) et Primavera (XER) avec reprise des plannings existants est un standard du marché (MS Project, P6, Smartsheet) ; les parseurs existent mais IMPORTS_ENABLED=false (src/domain/ch4-defaults.ts, D-7b). Priorité suggérée P1 : condition du remplacement de MS Project.",
    "category": "plateforme_production",
    "kind": "mise_en_production",
    "priority": "bloquant_production",
@@ -478,7 +568,8 @@
     "S-9b",
     "D-7b",
     "DELIVERY-6.md §4 Interchange, §8 D-7b / S-9b",
-    "docs/delivery-6/notes-admin-settings.md §2.1, §4.5"
+    "docs/delivery-6/notes-admin-settings.md §2.1, §4.5",
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
    ],
    "evidence": [
     "src/domain/ch4-defaults.ts:92 IMPORTS_ENABLED = false ; src/app/api/import/route.ts:30 répond 403",
@@ -558,7 +649,7 @@
    "id": "R-015",
    "verdict": "corrige",
    "title": "Notifier les événements clés aux personnes concernées (X-6a)",
-   "description": "Créer les notifications choisies : CR soumise, NCR, livraison refusée, ECO à approuver, mention @, tâche assignée, facture bloquée, alerte d’indicateur. Elles doivent aller à l’approbateur, au demandeur, au responsable ou à la personne citée, et non à tout un rôle. Le ciblage par personne n’a de sens qu’avec de vrais comptes, car la table users n’a qu’un utilisateur par rôle.",
+   "description": "Créer les notifications choisies : CR soumise, NCR, livraison refusée, ECO à approuver, mention @, tâche assignée, facture bloquée, alerte d’indicateur. Elles doivent aller à l’approbateur, au demandeur, au responsable ou à la personne citée, et non à tout un rôle. Le ciblage par personne n’a de sens qu’avec de vrais comptes, car la table users n’a qu’un utilisateur par rôle. Analyse comparative du 25 oct. 2026 : les notifications hors application (e-mail, Teams, Outlook) et les rappels d’échéances sont un standard du marché ; Keystone reste in-app seulement, sans dépendance SMTP. Priorité suggérée P1, avec R-036 et R-037.",
    "category": "plateforme_production",
    "kind": "decision_a_appliquer",
    "priority": "prochaine_etape",
@@ -569,7 +660,8 @@
     "X-6a",
     "01 §5.5, OQ19",
     "00 §7.7",
-    "DELIVERY-2.md §5, §7"
+    "DELIVERY-2.md §5, §7",
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
    ],
    "evidence": [
     "createNotification n’est appelé que via notifyRequestEvent (src/server/dal/requests-screens.ts:129-133 ; features/requests/actions.ts:49 ; features/myapprovals/actions.ts:118)",
@@ -578,9 +670,9 @@
     "src/server/db/codes.ts:290 types mention, task, eco, invoice, delivery, quality définis mais jamais produits"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8",
-    "note": "Livraison 8 : avis des demandes de modification, des réceptions refusées, des tâches affectées et des réunions faits ; d’autres avis restent à faire."
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Avis adressés aux personnes : SAT planifiée et livrable soumis (client externe), décision client sur un livrable, inspection non conforme, alertes d’indicateur (R-130) ; ECO et NCR partiront avec l’API Vigie (R-023)."
    }
   },
   {
@@ -630,7 +722,9 @@
     "src/server/dal/shell.ts:80-95 globalBadges calcule 9 requêtes globales par page, plus les badges projet"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "9",
+    "note": "26 oct. 2026 (docs/delivery-9/notes-r017-volumes.md) : jeu agrandi (npm run load:seed : 150 projets, 30 000 activités, 20 000 documents, 8 000 commandes, 50 000 lignes d’audit, 500 personnes), mesures (npm run load:measure, load:check), 72 index (migration 0062), points chauds corrigés (calendriers, listes IN, valeur acquise, coffre documentaire, approbations, badges sans appel Cursus / Vigie), cache de lecture (versionedRead exact, badges ttlRead 30 s ; KEYSTONE_READ_CACHE=off), pagination ?page= (coffre, piste d’audit). Tous les écrans mesurés < 300 ms à chaud en PGlite, < 150 ms sur PostgreSQL. Reste : coût après écriture de l’accueil directeur (1–2 s), suggestions de rééquilibrage à calculer dans le worker."
    }
   },
   {
@@ -681,7 +775,8 @@
     "desktop/KeystoneApp.swift:10 : Codex pointe vers Keystone via NEXT_PUBLIC_KEYSTONE_URL (port 3000), à mettre à jour avec l’URL hébergée"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "a_faire",
+    "note": "31 oct. 2026 : le responsable produit garde le choix web ou application ; l’application macOS sera adaptée comme l’application Windows (R-210) pour pointer vers le serveur hébergé."
    }
   },
   {
@@ -770,7 +865,7 @@
    "id": "R-023",
    "verdict": "corrige",
    "title": "Brancher l’API Vigie réelle (NC, HSE, ECO) et passer au numéro Vigie",
-   "description": "Le miroir en lecture et les outbox sont prêts en mode mock et http sur des endpoints proposés. Il reste à les aligner sur l’API publiée par Vigie avec authentification, à faire correspondre projets Vigie et codes Keystone, à afficher le seul numéro Vigie et ouvrir la fiche par son identifiant (V-3a), et à ne plus perdre l’avancement non envoyé quand un rafraîchissement complet supprime une ECO ou une NC du miroir (suppression en cascade des outbox).",
+   "description": "Le miroir en lecture et les outbox sont prêts en mode mock et http sur des endpoints proposés. Il reste à les aligner sur l’API publiée par Vigie avec authentification, à faire correspondre projets Vigie et codes Keystone, à afficher le seul numéro Vigie et ouvrir la fiche par son identifiant (V-3a), et à ne plus perdre l’avancement non envoyé quand un rafraîchissement complet supprime une ECO ou une NC du miroir (suppression en cascade des outbox). Analyse comparative du 25 oct. 2026 : la lecture réelle des données de Vigie (vues pub_ ou API) à la place des mocks est un standard du marché pour les intégrations entre outils ; priorité transverse, à traiter dès que Vigie publie son contrat.",
    "category": "integrations",
    "kind": "integration",
    "priority": "prochaine_etape",
@@ -783,7 +878,8 @@
     "I-3a",
     "DELIVERY-4.md §5, §8",
     "DELIVERY-5.md §5.1, §8 (V-3)",
-    "DELIVERY-6.md §6"
+    "DELIVERY-6.md §6",
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
    ],
    "evidence": [
     "src/server/integrations/vigie/eco-connector.ts:46,72,89 et quality-connector.ts:53,78,96 : endpoints « TODO(vigie) … proposal »",
@@ -801,7 +897,7 @@
    "id": "R-024",
    "verdict": "confirme",
    "title": "Faire construire le module ECO de Vigie avec les adresses proposées",
-   "description": "Le démarrage sur les vraies ECO attend le module ECO de Vigie, qui doit reprendre les routes proposées par Keystone (registre, fiche, formulaire « Nouvelle ECO » pré-rempli avec part, project, title, source=keystone). Côté Keystone : transmettre la spécification, adopter l’API réelle, vérifier de bout en bout, retirer les 6 ECO de démonstration du miroir et les mentions OPEN QUESTION V-1. D’ici là, « Ouvrir dans Vigie » et « Créer l’ECO » mènent à une page vide.",
+   "description": "Le démarrage sur les vraies ECO attend le module ECO de Vigie, qui doit reprendre les routes proposées par Keystone (registre, fiche, formulaire « Nouvelle ECO » pré-rempli avec part, project, title, source=keystone). Côté Keystone : transmettre la spécification, adopter l’API réelle, vérifier de bout en bout, retirer les 6 ECO de démonstration du miroir et les mentions OPEN QUESTION V-1. D’ici là, « Ouvrir dans Vigie » et « Créer l’ECO » mènent à une page vide. Analyse comparative du 25 oct. 2026 : la lecture réelle des ECO de Vigie à la place des 6 ECO de démonstration est attendue (standard du marché) ; priorité transverse, dépend de Vigie.",
    "category": "integrations",
    "kind": "integration",
    "priority": "bloquant_production",
@@ -813,7 +909,8 @@
     "NEW-D4-1",
     "V-1",
     "P-7a",
-    "DELIVERY-4.md §5, §8"
+    "DELIVERY-4.md §5, §8",
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
    ],
    "evidence": [
     "src/server/integrations/vigie/links.ts:1-38 VIGIE_ECO_PATH '/modifications-techniques', VIGIE_NEW_ECO_PATH '/nouvelle', vigieNewEcoUrl encore marqués OPEN QUESTION V-1 (6 mentions dans src)",
@@ -883,7 +980,7 @@
    "id": "R-027",
    "verdict": "confirme",
    "title": "Importer l’annuaire du personnel de Cursus (matricule ↔ personne)",
-   "description": "Reprendre de Cursus le matricule, le nom, l’e-mail professionnel et l’équipe, et rattacher chaque matricule à une personne Keystone, y compris les intérimaires sans compte Microsoft. Sans cette correspondance, verdicts, heures et absences reçus de Cursus restent sans nom.",
+   "description": "Reprendre de Cursus le matricule, le nom, l’e-mail professionnel et l’équipe, et rattacher chaque matricule à une personne Keystone, y compris les intérimaires sans compte Microsoft. Sans cette correspondance, verdicts, heures et absences reçus de Cursus restent sans nom. Analyse comparative du 25 oct. 2026 : la lecture réelle de l’annuaire Cursus (vues pub_ ou API) à la place du mode veille est un standard du marché ; priorité transverse, dépend de Cursus.",
    "category": "integrations",
    "kind": "integration",
    "priority": "bloquant_production",
@@ -895,7 +992,8 @@
     "C-3",
     "BACKLOG.md §1 bis",
     "11 §3.1",
-    "DELIVERY-5.md §5.2, §8"
+    "DELIVERY-5.md §5.2, §8",
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
    ],
    "evidence": [
     "src/server/db/schema/cursus.ts:20-21 « OPEN QUESTION C-3: matricule ↔ Keystone person »",
@@ -1059,7 +1157,7 @@
    "id": "R-033",
    "verdict": "corrige",
    "title": "Construire le connecteur Codex (index, approbations, dépôts, liens profonds)",
-   "description": "Créer src/server/integrations/codex/ sur le modèle Vigie/Cursus : miroir en lecture de l’index (révisions, statuts, téléchargements réels à la place de l’historique fabriqué), outbox des approbations signées dans Keystone vers Codex (P-7b, D-1b) et dépôt par le formulaire Codex pré-rempli (D-1a) au lieu de la création locale simulée, modes mock et http, synchro réelle, liens profonds par document et par sélection (zip), « Ouvrir / Modifier dans Codex » réels. Aujourd’hui seule l’URL de base existe.",
+   "description": "Créer src/server/integrations/codex/ sur le modèle Vigie/Cursus : miroir en lecture de l’index (révisions, statuts, téléchargements réels à la place de l’historique fabriqué), outbox des approbations signées dans Keystone vers Codex (P-7b, D-1b) et dépôt par le formulaire Codex pré-rempli (D-1a) au lieu de la création locale simulée, modes mock et http, synchro réelle, liens profonds par document et par sélection (zip), « Ouvrir / Modifier dans Codex » réels. Aujourd’hui seule l’URL de base existe. Analyse comparative du 25 oct. 2026 : la lecture réelle de l’index Codex (vues pub_ ou API) à la place des mocks est un standard du marché ; priorité transverse, dépend de Codex. Même attente pour Arche (connecteur capex, R-187) : lire les vues pub_ réelles des autres outils plutôt que les simulations.",
    "category": "integrations",
    "kind": "integration",
    "priority": "bloquant_production",
@@ -1077,7 +1175,8 @@
     "A-15",
     "A-9",
     "DELIVERY-3.md §5, §7",
-    "DELIVERY-6.md §6, §8 D-1"
+    "DELIVERY-6.md §6, §8 D-1",
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
    ],
    "evidence": [
     "src/server/integrations/codex/ : seulement config.ts (URL de base ; pas de miroir, d’outbox ni de mock)",
@@ -1096,7 +1195,7 @@
    "id": "R-034",
    "verdict": "corrige",
    "title": "Construire le connecteur Sage X3 (extractions quotidiennes et envois)",
-   "description": "Importer chaque jour les extractions Sage proposées par le responsable produit : fichier fournisseurs (SC-7b), stock, commandes et références X3, réceptions, factures fournisseurs et statut « Payée » (SC-2), coûts par code analytique et codes NIM. Définir ensuite ce qui repart vers X3 (commandes approuvées, annulations, mouvements de stock, factures). Aujourd’hui tout est un mock sur l’instantané du prototype et aucun planificateur ne lance d’import périodique.",
+   "description": "Importer chaque jour les extractions Sage proposées par le responsable produit : fichier fournisseurs (SC-7b), stock, commandes et références X3, réceptions, factures fournisseurs et statut « Payée » (SC-2), coûts par code analytique et codes NIM. Définir ensuite ce qui repart vers X3 (commandes approuvées, annulations, mouvements de stock, factures). Aujourd’hui tout est un mock sur l’instantané du prototype et aucun planificateur ne lance d’import périodique. Analyse comparative du 25 oct. 2026 : un connecteur ERP réel (fournisseurs, commandes, factures, réalisé) est une fonction avancée des outils du marché (Deltek, Planview) ; Keystone n’a qu’un mock (src/server/integrations/x3/mock-mode.ts). Priorité suggérée P1.",
    "category": "integrations",
    "kind": "integration",
    "priority": "bloquant_production",
@@ -1116,7 +1215,8 @@
     "00 §7.12",
     "08 §0",
     "DELIVERY-4.md §6, §8",
-    "DELIVERY-6.md §6"
+    "DELIVERY-6.md §6",
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
    ],
    "evidence": [
     "src/server/dal/stock.ts:304-320 « no X3 connector yet — the mock returns the prototype's snapshot » (PROTO.STOCK0)",
@@ -1165,7 +1265,7 @@
    "id": "R-036",
    "verdict": "corrige",
    "title": "Envoyer les notifications par e-mail, avec préférences par utilisateur",
-   "description": "Ajouter le canal e-mail (Microsoft Graph via l’application Entra, ou SMTP) : envoi immédiat pour ce qui attend une action et pour les clients, résumé quotidien pour le reste, préférences réglées par chacun. Les invitations SAT et les notifications client, affichées comme envoyées, ne partent pas aujourd’hui, et le pied du panneau de notifications annonce à tort un résumé e-mail, un canal Teams (non retenu par X-6b) et des préférences inexistantes.",
+   "description": "Ajouter le canal e-mail (Microsoft Graph via l’application Entra, ou SMTP) : envoi immédiat pour ce qui attend une action et pour les clients, résumé quotidien pour le reste, préférences réglées par chacun. Les invitations SAT et les notifications client, affichées comme envoyées, ne partent pas aujourd’hui, et le pied du panneau de notifications annonce à tort un résumé e-mail, un canal Teams (non retenu par X-6b) et des préférences inexistantes. Analyse comparative du 25 oct. 2026 : le canal e-mail avec rappels d’échéances et rapports programmés est un standard du marché (Smartsheet, Wrike, MS Project) ; aucune dépendance SMTP ni Graph n’est encore en place. Priorité suggérée P1 (voir aussi R-199 pour les rappels et rapports programmés).",
    "category": "integrations",
    "kind": "integration",
    "priority": "prochaine_etape",
@@ -1176,7 +1276,8 @@
     "X-6b",
     "I-3c",
     "DELIVERY-5.md §6, §8 X-6",
-    "DELIVERY-6.md §6 (Mail)"
+    "DELIVERY-6.md §6 (Mail)",
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
    ],
    "evidence": [
     "grep smtp / nodemailer / sendMail / graph.microsoft dans src et package.json : aucune bibliothèque ni envoi",
@@ -1185,14 +1286,16 @@
     "DECISIONS.md X-6b choix « mail » (Keystone + e-mail), pas « mail_teams » ; aucun planificateur pour le résumé quotidien"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 9",
+    "note": "Livraison 9 : e-mail immédiat ou résumé quotidien par famille et par personne, invitations SAT envoyées, pied du panneau corrigé (sans Teams) ; reste le transport réel (relais SMTP ou Microsoft 365 Mail.Send), l’expéditeur et l’URL publique, fournis par la DSI."
    }
   },
   {
    "id": "R-037",
    "verdict": "corrige",
    "title": "Synchroniser les réunions Outlook / Teams vers Keystone (S-11)",
-   "description": "Faire arriver dans Keystone les réunions Outlook ou Teams portant le code projet ; Keystone y ajoute ordre du jour, compte rendu et actions, et met à jour les accusés de lecture des comptes rendus. « Synchronisé depuis Outlook » n’est aujourd’hui qu’un libellé. Les messages dans les canaux Teams ne sont pas retenus pour les notifications (X-6b : Keystone + e-mail) : la ligne de connecteur « Microsoft Teams » est à retirer ou à requalifier.",
+   "description": "Faire arriver dans Keystone les réunions Outlook ou Teams portant le code projet ; Keystone y ajoute ordre du jour, compte rendu et actions, et met à jour les accusés de lecture des comptes rendus. « Synchronisé depuis Outlook » n’est aujourd’hui qu’un libellé. Les messages dans les canaux Teams ne sont pas retenus pour les notifications (X-6b : Keystone + e-mail) : la ligne de connecteur « Microsoft Teams » est à retirer ou à requalifier. Analyse comparative du 25 oct. 2026 : l’intégration Teams / Outlook (réunions, notifications) est un standard du marché ; seul le libellé existe aujourd’hui. Priorité suggérée P1 pour les notifications, l’accès Graph restant le prérequis.",
    "category": "integrations",
    "kind": "integration",
    "priority": "plus_tard",
@@ -1205,7 +1308,8 @@
     "X-6b",
     "I-3a",
     "05 OQ18",
-    "DELIVERY-3.md §3, §5"
+    "DELIVERY-3.md §3, §5",
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
    ],
    "evidence": [
     "src/server/dal/meetings.ts:437-438 recordMinutesRead « Outlook sync, OPEN QUESTION S-11 », sans appelant (grep)",
@@ -1622,7 +1726,9 @@
     "docs/DECISIONS.md:93 P-7d (Plus tard) : suppléant déclaré par l’approbateur pour une période"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Suppléance déclarée par l’approbateur sur une période (un an au plus) ; « Mes validations » du suppléant, décision tracée « pour le compte de », sans chaînage, annulation par l’approbateur ou le directeur (migration 0067)."
    }
   },
   {
@@ -1976,7 +2082,7 @@
    "kind": "question_ouverte",
    "priority": "plus_tard",
    "status": "partiel",
-   "waiting_on": "Confirmation du responsable produit pour les limites et les droits (DELIVERY-6 §8 S-5) ; la partie technique n’attend rien",
+   "waiting_on": "",
    "effort": "S",
    "sources": [
     "S-5",
@@ -1991,9 +2097,9 @@
     "src/features/plan/actions.ts:177-184 suppression et restauration réservées à canSchedulePlan (CP et directeur)"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8",
-    "note": "Livraison 8 : positions après restauration (emplacements fantômes) ; 30 jours, 20 entrées et droits PM + directeur restent à confirmer (S-5)."
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "S-5 confirmé le 31 oct. 2026 : 30 jours, 20 entrées par projet, suppression et restauration par les responsables du projet et le directeur ; purge planifiée toutes les heures et positions après restauration en place."
    }
   },
   {
@@ -2258,7 +2364,7 @@
    "id": "R-074",
    "verdict": "confirme",
    "title": "Alimenter le coût réel depuis Cursus et Sage X3",
-   "description": "Coût réel = heures validées Cursus × taux en vigueur, plus achats à la réception, sous-traitance et locations sur facture validée dans Sage X3. Aujourd’hui seules les étiquettes de source existent et les colonnes actual / committed ne sont écrites que par le seed.",
+   "description": "Coût réel = heures validées Cursus × taux en vigueur, plus achats à la réception, sous-traitance et locations sur facture validée dans Sage X3. Aujourd’hui seules les étiquettes de source existent et les colonnes actual / committed ne sont écrites que par le seed. Analyse comparative du 25 oct. 2026 : l’alimentation du réalisé depuis l’ERP (factures, réceptions) est attendue d’un connecteur ERP réel (Deltek, Planview) ; mock uniquement aujourd’hui. Priorité suggérée P1 avec R-034.",
    "category": "couts_contrat_finance",
    "kind": "integration",
    "priority": "prochaine_etape",
@@ -2272,7 +2378,8 @@
     "NEW-CURSUS-5",
     "BACKLOG.md §1 bis",
     "04 Q3",
-    "DELIVERY-1.md §7"
+    "DELIVERY-1.md §7",
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
    ],
    "evidence": [
     "src/server/db/codes.ts:126-133 ACTUALS_SOURCE « derived, not stored » ; src/server/dal/cost.ts:140 sert seulement au libellé",
@@ -2786,7 +2893,7 @@
    "id": "R-093",
    "verdict": "confirme",
    "title": "Reprendre la liste des fournisseurs de Sage X3 et supprimer la saisie libre",
-   "description": "Les fournisseurs doivent venir du fichier X3 (avec le code X3) et être choisis dans une liste pour les articles, les consultations, les commandes et les factures. Les nouveaux fournisseurs se créent dans X3. Aujourd’hui ils sont saisis librement, et un fabricant inconnu crée un fournisseur, ce qui produit des doublons et empêche le rapprochement avec X3.",
+   "description": "Les fournisseurs doivent venir du fichier X3 (avec le code X3) et être choisis dans une liste pour les articles, les consultations, les commandes et les factures. Les nouveaux fournisseurs se créent dans X3. Aujourd’hui ils sont saisis librement, et un fabricant inconnu crée un fournisseur, ce qui produit des doublons et empêche le rapprochement avec X3. Analyse comparative du 25 oct. 2026 : la reprise du référentiel fournisseurs depuis l’ERP fait partie du connecteur Sage X3 réel attendu (niveau avancé du marché, Deltek / Planview) ; mock uniquement aujourd’hui. Priorité suggérée P1 avec R-034.",
    "category": "achats_stock",
    "kind": "decision_a_appliquer",
    "priority": "bloquant_production",
@@ -2799,7 +2906,8 @@
     "A-1a",
     "I-3b",
     "SC-4",
-    "DELIVERY-4.md §6"
+    "DELIVERY-4.md §6",
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
    ],
    "evidence": [
     "src/server/dal/parts.ts:202,229-236 « free text; a company unknown to Keystone is registered » → insert(suppliers)",
@@ -4545,7 +4653,9 @@
     "vérifié : tones.ts:111 activityDetail « inverted vs. the row (Q-6) » et :115 budgetChange « differs from change control (Q-5) » toujours présents ; seuls GO/NO GO et la santé (A-13) ont été harmonisés"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Mêmes couleurs pour un même statut (X-13b « Harmoniser ») et aucune information portée par la seule couleur (icône d’alerte, textes)."
    }
   },
   {
@@ -4633,9 +4743,9 @@
     "vérifié : src/features/itpcom/commissioning-view.tsx:62-66 cellules bloquées en texte simple ; src/features/meetings/meetings-view.tsx Décisions/Actions sans EmptyState ; src/features/contract/mark-paid-button.tsx sans gestion du focus ; local.ts FR_SELF/FR_NAMED sans « tu vas » / « vous allez »"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8",
-    "note": "Livraison 8 : textes des connecteurs en français dans Activité & intégrations (point 2) ; les autres finitions restent à faire."
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Messages de refus précis (Chantier, Qualité), textes des connecteurs en français, recherche de la nomenclature en français sans accents, vraies dates dans les exports, IF-xx cliquables, boutons « outline », lecture seule des pondérations, focus conservé, vues vides des réunions, actions à la 2e personne."
    }
   },
   {
@@ -4647,7 +4757,7 @@
    "kind": "fonction_manquante",
    "priority": "a_decider",
    "status": "non_commence",
-   "waiting_on": "Atelier de cadrage du périmètre avec le responsable produit (BACKLOG §1) ; partage des rôles logistique avec Sage X3 (A-1a) ; code HS exigé avant validation d’article (E-1b)",
+   "waiting_on": "",
    "effort": "XL",
    "sources": [
     "BACKLOG.md §1",
@@ -4665,7 +4775,9 @@
     "docs/DELIVERY-6.md §9 « Not built, by decision »"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "9",
+    "note": "25 oct. 2026 : le responsable produit redemande le module (« il manque un module de gestion des expéditions du matériel vers la filiale ») ; cadrage rédigé (docs/delivery-9/cadrage-r158-expeditions.md) : écran projet Expéditions, chargements et colis, contrôle colisage ↔ nomenclature, douane (codes HS), documents (packing list, proforma) versés dans Codex, réception sur site et réserves, jalons expedition / arrivee_site, vue pub_expeditions pour la filiale ; 8 points à valider. Même jour : choix tranchés (cadrage § 5) — vue projet seulement, transport d’après l’Incoterm du contrat, Keystone génère tous les documents sauf les factures, contrôle colisage bloquant, écart à la réception = réserve, suivi filiale dans Arche, nouveau profil Logistique, transitaires externes sans accès, Incoterms 2020 paramétrables, conteneurs et contenus déclarés par EPC2i ; construction lancée. Lot A fait (docs/delivery-9/notes-r158-shipments.md) : profil Logistique (10ᵉ), 11 Incoterms 2020 paramétrables (Paramètres) avec répartition vendeur / acheteur, Incoterm et lieu sur le contrat, écran projet Expéditions (EXP-nn, étapes d’après l’Incoterm, chargements et contenu déclarés, contrôle colisage ↔ nomenclature, synthèse par code SH), case « Colisage & documents douaniers » bloquée tant que le contrôle n’est pas soldé (migration 0061). Lot B : documents, réception sur site et réserves, jalons, pub_expeditions. 26 oct. 2026 : lot B fait — 8 documents générés sans facture (packing list, par conteneur, bon de livraison, marquage, CMR, instructions d’expédition, demande d’origine / EUR.1, déclaration d’export ; gabarits génériques remplaçables), versés dans Codex (type SHP, outbox de dépôt), réception sur site chargement par chargement (écart → réserve : endommagé A, manquant B), jalons expedition / arrivee_site de pub_jalons_projets nourris par les expéditions, vue pub_expeditions sans valeurs pour Arche, alerte retard de fret avec « Ouvrir un risque » (migrations 0063-0064). Reste : formats standard EPC2i, API de dépôt Codex. Vues pub_expeditions et pub_jalons_projets recopiées et accordées par Matrix (29 oct. 2026). 31 oct. 2026 (L9-X3) : la démonstration contient trois documents d’EXP-01 versés dans Codex (packing list, CMR, bon de livraison : SHP-HLT-040 à 042, dépôts en attente de synchro)."
    }
   },
   {
@@ -4722,7 +4834,7 @@
    "id": "R-161",
    "verdict": "confirme",
    "title": "P3 · Réclamations contractuelles et pénalités (à valider)",
-   "description": "Proposition : registre des réclamations client et fournisseur chiffrées, et pénalités de retard calculées depuis le planning, liées aux CR et au contrat. Aujourd’hui le contrat ne porte qu’un texte « Pénalités de retard ».",
+   "description": "Proposition : registre des réclamations client et fournisseur chiffrées, et pénalités de retard calculées depuis le planning, liées aux CR et au contrat. Aujourd’hui le contrat ne porte qu’un texte « Pénalités de retard ». Analyse comparative du 25 oct. 2026 : les pénalités de retard contractuelles (LD) et les scénarios de récupération sont une fonction différenciante du marché (Deltek) ; la proposition P3 n’est pas validée. Priorité suggérée P3, à décider.",
    "category": "nouveaux_modules_backlog",
    "kind": "fonction_manquante",
    "priority": "a_decider",
@@ -4731,7 +4843,8 @@
    "effort": "L",
    "sources": [
     "BACKLOG.md §2 P3",
-    "DELIVERY-6.md §9"
+    "DELIVERY-6.md §9",
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
    ],
    "evidence": [
     "src/server/db/schema/contract.ts:34-35 liquidatedDamages texte libre « 0.5 % per week · cap 10 % »",
@@ -4848,7 +4961,7 @@
    "id": "R-166",
    "verdict": "confirme",
    "title": "P8 · Application chantier hors ligne (à valider)",
-   "description": "Proposition : version tablette des écrans Chantier, Réserves et Livraisons avec saisie hors ligne et synchronisation (rapports journaliers, photos, réceptions). Suppose d’abord la tablette en ligne (X-4, R-146) et le stockage des photos (X-15, R-126) ; la réponse X-4 a retenu la tablette en ligne, pas l’appli hors ligne.",
+   "description": "Proposition : version tablette des écrans Chantier, Réserves et Livraisons avec saisie hors ligne et synchronisation (rapports journaliers, photos, réceptions). Suppose d’abord la tablette en ligne (X-4, R-146) et le stockage des photos (X-15, R-126) ; la réponse X-4 a retenu la tablette en ligne, pas l’appli hors ligne. Analyse comparative du 25 oct. 2026 : une application mobile / chantier hors ligne (rapports journaliers, photos, réserves) est un standard du marché (Procore, Smartsheet) ; aujourd’hui les photos passent par /api/photos sur navigateur et la proposition P8 n’est pas validée. Priorité suggérée P2, à valider par le responsable produit.",
    "category": "nouveaux_modules_backlog",
    "kind": "fonction_manquante",
    "priority": "a_decider",
@@ -4858,7 +4971,8 @@
    "sources": [
     "BACKLOG.md §2 P8",
     "X-4",
-    "X-15"
+    "X-15",
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
    ],
    "evidence": [
     "grep -i serviceWorker|manifest|navigator.onLine|indexedDB|offline dans src : aucun résultat ; public/ ne contient que les SVG par défaut",
@@ -5050,7 +5164,7 @@
   },
   {
    "title": "Mettre Keystone en conformité RGPD (données personnelles, conservation, sous-traitants)",
-   "description": "Keystone stocke des données personnelles (absences dont « maladie » visibles par tous les rôles qui ouvrent Congés, taux horaires, compétences, e-mails des parties prenantes, transcriptions de réunion, journaux nominatifs) et peut envoyer les transcriptions à Anthropic. Il faut tenir le registre des traitements avec le DPO, minimiser (masquer le motif d'absence, cloisonner le calendrier des congés), fixer et appliquer des durées de conservation (audit, export_log, notifications, fichiers), encadrer les droits d'accès et d'effacement, et signer les contrats de sous-traitance (hébergeur, Anthropic). Tant que ce n'est pas validé, l'analyse par Claude reste désactivée en production.",
+   "description": "Keystone stocke des données personnelles (absences dont « maladie » visibles par tous les rôles qui ouvrent Congés, taux horaires, compétences, e-mails des parties prenantes, transcriptions de réunion, journaux nominatifs) et peut envoyer les transcriptions à Anthropic. Il faut tenir le registre des traitements avec le DPO, minimiser (masquer le motif d'absence, cloisonner le calendrier des congés), fixer et appliquer des durées de conservation (audit, export_log, notifications, fichiers), encadrer les droits d'accès et d'effacement, et signer les contrats de sous-traitance (hébergeur, Anthropic). Tant que ce n'est pas validé, l'analyse par Claude reste désactivée en production. Analyse comparative du 25 oct. 2026 : la conformité RGPD est un prérequis de production (bloquant), rappelé par l’analyse comparative ; aucun changement de priorité.",
    "category": "plateforme_production",
    "kind": "mise_en_production",
    "priority": "bloquant_production",
@@ -5063,7 +5177,8 @@
     "NEW-CURSUS-4",
     "00 §7.12 (Cursus : aucune donnée personnelle importée)",
     "docs/spec/10-site-docs-mywork-settings.md l.334 (notice de confidentialité)",
-    "DELIVERY-6.md §2 (Analyse par Claude)"
+    "DELIVERY-6.md §2 (Analyse par Claude)",
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
    ],
    "evidence": [
     "src/domain/hr.ts:167 LeaveLabel 'Sick' (motif maladie affiché dans la grille des congés)",
@@ -5083,7 +5198,7 @@
   },
   {
    "title": "Faire auditer la sécurité avant production (test d'intrusion, veille des dépendances)",
-   "description": "Les seules revues de sécurité sont les revues internes des livraisons. Avant d'exposer une instance multi-utilisateur avec des données financières et client, il faut un test d'intrusion externe (droits par rôle et par projet, routes d'envoi de fichiers et d'import, Server Functions) et une veille automatique des vulnérabilités des dépendances (Next.js, pdfkit, exceljs, PGlite), avec une politique de mise à jour.",
+   "description": "Les seules revues de sécurité sont les revues internes des livraisons. Avant d'exposer une instance multi-utilisateur avec des données financières et client, il faut un test d'intrusion externe (droits par rôle et par projet, routes d'envoi de fichiers et d'import, Server Functions) et une veille automatique des vulnérabilités des dépendances (Next.js, pdfkit, exceljs, PGlite), avec une politique de mise à jour. Analyse comparative du 25 oct. 2026 : le test d’intrusion avant mise en production est un prérequis de production (bloquant), rappelé par l’analyse comparative ; aucun changement de priorité.",
    "category": "plateforme_production",
    "kind": "mise_en_production",
    "priority": "bloquant_production",
@@ -5094,7 +5209,8 @@
     "00 §8.12",
     "00 §8.15",
     "I-1a",
-    "DELIVERY-6.md §1 (revues adverses internes), §1.1"
+    "DELIVERY-6.md §1 (revues adverses internes), §1.1",
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
    ],
    "evidence": [
     "Pas de dossier .github (ni Dependabot ni Renovate) à la racine",
@@ -5239,7 +5355,8 @@
    "id": "R-179",
    "verdict": "ajout_critique",
    "progress": {
-    "state": "a_faire"
+    "state": "a_faire",
+    "note": " 25 oct. 2026 (responsable produit) : tout ce à quoi la filiale (client interne) accédait dans Keystone remonte désormais dans Arche par les vues pub_, plus dans Keystone ; le portail Keystone ne concerne plus que les clients externes."
    }
   },
   {
@@ -5346,7 +5463,9 @@
    "id": "R-183",
    "verdict": "ajout_critique",
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Contrôles axe (WCAG 2.1 AA) dans les tests de bout en bout existants (tous les écrans du directeur, écrans principaux des autres profils), lien d’évitement, contrastes corrigés."
    }
   },
   {
@@ -5382,7 +5501,7 @@
    "id": "R-185",
    "verdict": "ajout_critique",
    "title": "Projets multi-équipements (ex. une EMP et plusieurs MEMU) : adapter l’approche projet",
-   "description": "Un projet peut fournir plusieurs équipements, de types différents et en plusieurs exemplaires (par exemple une EMP et plusieurs MEMU). Aujourd’hui un projet porte un seul type de machine : le modèle de création (phases, catégories de coûts, systèmes ITP), le plan ITP unique du projet, le budget de référence (références REX) et l’affichage du projet en dépendent ; la mise en service et la nomenclature ne savent pas à quel équipement se rattache un système ou une ligne. Le parc installé, lui, enregistre déjà une machine par équipement livré, avec son propre type. L’approche projet doit pouvoir s’adapter : équipements du projet (type, quantité), lots / systèmes, ITP, mise en service, nomenclature et coûts par équipement, livraison et parc installé par exemplaire. À cadrer avec le responsable produit avant de construire ; toute nouvelle fonction ne doit plus supposer « un seul type de machine par projet ».",
+   "description": "Un projet peut fournir plusieurs équipements, de types différents et en plusieurs exemplaires (par exemple une EMP et plusieurs MEMU). Aujourd’hui un projet porte un seul type de machine : le modèle de création (phases, catégories de coûts, systèmes ITP), le plan ITP unique du projet, le budget de référence (références REX) et l’affichage du projet en dépendent ; la mise en service et la nomenclature ne savent pas à quel équipement se rattache un système ou une ligne. Le parc installé, lui, enregistre déjà une machine par équipement livré, avec son propre type. L’approche projet doit pouvoir s’adapter : équipements du projet (type, quantité), lots / systèmes, ITP, mise en service, nomenclature et coûts par équipement, livraison et parc installé par exemplaire. À cadrer avec le responsable produit avant de construire ; toute nouvelle fonction ne doit plus supposer « un seul type de machine par projet ». Analyse comparative du 25 oct. 2026 : le multi-équipements par projet est un besoin spécifique au métier d’EPC2i (sans équivalent direct dans les outils du commerce) ; parties 1 et 2 faites, reste la ventilation complète et la généralisation aux nouvelles fonctions. Priorité suggérée P2 pour ce qui reste.",
    "category": "projets_cycle_de_vie_modeles",
    "kind": "fonction_manquante",
    "priority": "a_decider",
@@ -5390,7 +5509,8 @@
    "waiting_on": "",
    "effort": "XL",
    "sources": [
-    "Responsable produit, 15 oct. 2026 (note pour les futurs développements)"
+    "Responsable produit, 15 oct. 2026 (note pour les futurs développements)",
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
    ],
    "evidence": [
     "src/server/db/schema/portfolio.ts:159-175 projects.machine_type_code : un seul type de machine par projet",
@@ -5440,7 +5560,7 @@
    "kind": "integration",
    "priority": "a_decider",
    "status": "non_commence",
-   "waiting_on": "R-185, R-186, R-188 et l’application CAPEX",
+   "waiting_on": "",
    "effort": "L",
    "sources": [
     "Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0)",
@@ -5451,8 +5571,9 @@
     "src/domain/project-template.ts (assistant de création)"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-02 — connecteur capex (lire arche.pub_capex et arche.pub_besoins_machines, liens profonds <ARCHE_URL>/capex/<code>), corbeille « Besoins des filiales », pub_reponses_besoins ; K-10 — à la commande, créer le projet EPC2i ou ajouter des équipements à un projet existant, code publié dans pub_reponses_besoins.projet_code."
+    "state": "fait",
+    "delivery": "9",
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-02 — connecteur capex (lire arche.pub_capex et arche.pub_besoins_machines, liens profonds <ARCHE_URL>/capex/<code>), corbeille « Besoins des filiales », pub_reponses_besoins ; K-10 — à la commande, créer le projet EPC2i ou ajouter des équipements à un projet existant, code publié dans pub_reponses_besoins.projet_code. 24 oct. 2026 : fait côté Keystone (docs/delivery-9/notes-r187-capex-needs.md) — connecteur capex (miroir de arche.pub_capex et arche.pub_besoins_machines : lecture directe sur le serveur commun, simulation en démonstration, tâche toutes les 15 min, liens profonds ARCHE_URL), carte « Besoins machines des filiales » sous le registre de Portefeuille › Projets (directeur ; chefs de projet en lecture), réponses chiffrées RB-nnn (qualification, indicatif, devis, offre ferme E10 ; fourchette par la classe), création du projet ou ajout d’une ligne d’équipement à la commande (action du directeur), vue pub_reponses_besoins (migrations 0049-0050). Reste : Arche publie ses deux vues (son lot L4) ; Matrix recopie la vue et vérifie les droits."
    }
   },
   {
@@ -5501,7 +5622,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "Livraison 9",
-    "note": "Livraison 9, lot « share-views » (docs/delivery-9/notes-share-views.md, migration 0038_share_followup) : pub_jalons_projets (8 jalons par projet : commande, fin d’études, FAT, expédition, arrivée site, SAT, PV, fin de garantie, rapprochés des étapes, de l’ITP, de la mise en service, des PV et de la garantie), pub_avancement_projets (côté vente seulement : avancement physique et SPI tenus par la tâche horaire share-progress, fin prévue, contrat, avenants signés et facturé en k€ ; aucun coût interne, taux, CPI, EAC ni marge — testé), pub_avenants (brouillons exclus), pub_reserves ; pub_livrables + type, accepte_le, maj_le en fin de vue ; colonnes vérifiées par db-check (aussi sur PostgreSQL). Reste : droits d’arche_app et copie des vues dans Matrix (demande à déposer après validation), dates BL1 des jalons (reference_le vide : code de jalon CAPEX sur les jalons du planning, à valider), pub_pack_ingenierie (R-191). Index maj_le (K-11) faits le 23 oct. 2026 (notes § 8)."
+    "note": "Livraison 9, lot « share-views » (docs/delivery-9/notes-share-views.md, migration 0038_share_followup) : pub_jalons_projets (8 jalons par projet : commande, fin d’études, FAT, expédition, arrivée site, SAT, PV, fin de garantie, rapprochés des étapes, de l’ITP, de la mise en service, des PV et de la garantie), pub_avancement_projets (côté vente seulement : avancement physique et SPI tenus par la tâche horaire share-progress, fin prévue, contrat, avenants signés et facturé en k€ ; aucun coût interne, taux, CPI, EAC ni marge — testé), pub_avenants (brouillons exclus), pub_reserves ; pub_livrables + type, accepte_le, maj_le en fin de vue ; colonnes vérifiées par db-check (aussi sur PostgreSQL). Reste : droits d’arche_app et copie des vues dans Matrix (demande à déposer après validation), dates BL1 des jalons (reference_le vide : code de jalon CAPEX sur les jalons du planning, à valider), pub_pack_ingenierie (R-191). Index maj_le (K-11) faits le 23 oct. 2026 (notes § 8). 25 oct. 2026 : dates BL1 des jalons faites (docs/delivery-9/notes-r189-reference-dates.md) — milestones.capex_milestone_code (8 codes, règle de noms prudente, reprise 0056, correction sur la carte « Jalons » du Planning), reference_le = date du jalon dans la BL1, pub_jalons_projets recréée à colonnes identiques (0055-0057). Reste : pub_pack_ingenierie (R-191, liste type du pack) et réponse P-05. 25 oct. 2026 : pub_pack_ingenierie publiée (R-191). Reste : réponse P-05."
    }
   },
   {
@@ -5513,7 +5634,7 @@
    "kind": "fonction_manquante",
    "priority": "a_decider",
    "status": "non_commence",
-   "waiting_on": "R-187",
+   "waiting_on": "",
    "effort": "S",
    "sources": [
     "Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0)",
@@ -5523,9 +5644,9 @@
     "src/server/db/schema/portfolio.ts (clients, projects)"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 9",
-    "note": "Livraison 9, lot « share-views » : projects.capex_code et besoin_ref (formats d’Arche CPX-SAI-2026-01, CPX-SAI-2026-01/B01, contrôlés en base), carte « Rattachement CAPEX » de l’écran Contrat pour le directeur et les responsables du projet (audit et fil d’activité), publiés en fin de pub_projets. Un client peut déjà être une filiale (saisie libre) ; drapeau « client interne » non ajouté (aucun écran d’administration des clients) — à reprendre avec R-179 (portail réservé aux clients externes) et la création du projet à la commande (R-187)."
+    "state": "fait",
+    "delivery": "9",
+    "note": "Livraison 9, lot « share-views » : projects.capex_code et besoin_ref (formats d’Arche CPX-SAI-2026-01, CPX-SAI-2026-01/B01, contrôlés en base), carte « Rattachement CAPEX » de l’écran Contrat pour le directeur et les responsables du projet (audit et fil d’activité), publiés en fin de pub_projets. Un client peut déjà être une filiale (saisie libre) ; drapeau « client interne » non ajouté (aucun écran d’administration des clients) — à reprendre avec R-179 (portail réservé aux clients externes) et la création du projet à la commande (R-187). 24 oct. 2026 : fait (docs/delivery-9/notes-r190-internal-client.md) — clients.is_internal et subsidiary_code (migration 0051, un client par filiale), carte « Client » de l’écran Contrat (directeur), badge « Interne », portail client fermé aux projets d’un client interne, client interne posé à la création d’un projet depuis un besoin d’Arche, client_interne et filiale_code en fin de pub_projets (0052). Reste : R-179 (connexion des clients au portail) ; Matrix recopie pub_projets."
    }
   },
   {
@@ -5537,7 +5658,7 @@
    "kind": "fonction_manquante",
    "priority": "a_decider",
    "status": "non_commence",
-   "waiting_on": "Liste type du pack ingénierie (CDC, point C-9)",
+   "waiting_on": "",
    "effort": "M",
    "sources": [
     "Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0)",
@@ -5548,8 +5669,9 @@
     "src/domain/documents.ts"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire."
+    "state": "fait",
+    "delivery": "9",
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. 25 oct. 2026 : fait avec la liste provisoire validée par le responsable produit (docs/delivery-9/notes-r191-engineering-pack.md) — 5 familles × 20 % par type de machine (P&ID, nomenclature, implantation, électrique, analyse fonctionnelle), modifiables sur l’écran Types de machine ; pièces = documents de l’index Codex par type de document, validées = diffusées ; carte « Pack ingénierie · part EPC2i » sur la Synthèse ingénierie (cible > 80 %) ; vue pub_pack_ingenierie (migrations 0058-0060). Reste : la vraie liste type (C-9)."
    }
   },
   {
@@ -5693,6 +5815,312 @@
    "progress": {
     "state": "a_faire",
     "note": "Consigné le 22 oct. 2026 (demande de Crucible) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-198",
+   "verdict": "ajout_critique",
+   "title": "Gantt interactif : glisser-déposer, zoom jour/semaine, édition des liens et des durées",
+   "description": "Rendre le Gantt du planning interactif : déplacer et redimensionner les activités par glisser-déposer, zoom jour / semaine / mois, création et édition des liens et des durées directement dans le diagramme, avec recalcul CPM immédiat. Standard du marché (Smartsheet, MS Project, Wrike). Aujourd’hui le Gantt est un rendu serveur en lecture seule à l’échelle mensuelle sur 13 mois (src/components/charts/project-gantt.tsx). Analyse comparative du 25 oct. 2026 : priorité P1, condition du remplacement de MS Project.",
+   "category": "planning",
+   "kind": "fonction_manquante",
+   "priority": "prochaine_etape",
+   "status": "non_commence",
+   "waiting_on": "",
+   "effort": "L",
+   "sources": [
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
+   ],
+   "evidence": [
+    "src/components/charts/project-gantt.tsx",
+    "src/domain/schedule-gantt.ts",
+    "src/domain/cpm.ts"
+   ],
+   "progress": {
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Gantt des activités interactif (zoom jour/semaine/mois, glisser-déposer, liens, recalcul CPM immédiat, saisie au clavier) ; questions ouvertes dans notes-r198-gantt.md § 5."
+   }
+  },
+  {
+   "id": "R-199",
+   "verdict": "ajout_critique",
+   "title": "Rappels d’échéances et rapports programmés (envoi automatique)",
+   "description": "Envoyer automatiquement des rappels avant les échéances (tâches, jalons, livrables, actions de réunion, prérequis client) et des rapports programmés (avancement hebdomadaire, portefeuille) aux personnes concernées, par e-mail puis Teams. Standard du marché (Smartsheet, Wrike, MS Project). Aujourd’hui les avis sont in-app seulement, sans dépendance SMTP ; le canal e-mail (R-036), les comptes réels (R-038, R-039) et le job worker (R-006, fait) sont les prérequis. Analyse comparative du 25 oct. 2026 : priorité P1 avec R-036 et R-037.",
+   "category": "plateforme_production",
+   "kind": "fonction_manquante",
+   "priority": "prochaine_etape",
+   "status": "non_commence",
+   "waiting_on": "Canal e-mail (R-036) et comptes réels",
+   "effort": "M",
+   "sources": [
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
+   ],
+   "evidence": [
+    "src/server/jobs/scheduler.ts",
+    "src/server/dal/shell.ts"
+   ],
+   "progress": {
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Rappels J-7 / J-1 / retard et rapports hebdomadaires (tâches planifiées, journal des envois, préférences) ; l’envoi réel des e-mails attend le relais SMTP ou Microsoft 365 de la DSI (R-036)."
+   }
+  },
+  {
+   "id": "R-200",
+   "verdict": "ajout_critique",
+   "title": "Nivellement automatique des ressources sur le planning CPM (copie comparée à la référence)",
+   "description": "Niveler automatiquement les activités du planning CPM selon la capacité des ressources (décalage des activités non critiques, respect des liens et des contraintes), appliqué sur une copie du planning et comparé à la référence avant adoption. Fonction avancée du marché (Primavera P6, MS Project). Aujourd’hui le what-if ne porte que sur les allocations hebdomadaires (src/domain/whatif.ts), sans nivellement d’activités. Analyse comparative du 25 oct. 2026 : priorité P2, à valider par le responsable produit (fonction absente du prototype).",
+   "category": "planning",
+   "kind": "fonction_manquante",
+   "priority": "a_decider",
+   "status": "non_commence",
+   "waiting_on": "Validation du responsable produit",
+   "effort": "L",
+   "sources": [
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
+   ],
+   "evidence": [
+    "src/domain/whatif.ts",
+    "src/domain/cpm.ts",
+    "src/domain/schedule.ts"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-201",
+   "verdict": "ajout_critique",
+   "title": "Tâches récurrentes et automatisation des tâches répétitives dans « Mon travail »",
+   "description": "Permettre de créer des tâches récurrentes (hebdomadaire, mensuelle, à chaque jalon) et d’automatiser les tâches répétitives dans « Mon travail » : règle de récurrence sur la tâche, génération de l’occurrence suivante à la clôture, affichage dans les vues liste, tableau et calendrier. Standard du marché (Wrike, Asana). Aujourd’hui les vues existent (src/app/(app)/my/tasks/page.tsx) mais le modèle ne porte aucune récurrence (src/server/db/schema/work.ts). Analyse comparative du 25 oct. 2026 : priorité P2.",
+   "category": "projets_cycle_de_vie_modeles",
+   "kind": "fonction_manquante",
+   "priority": "plus_tard",
+   "status": "non_commence",
+   "waiting_on": "",
+   "effort": "M",
+   "sources": [
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
+   ],
+   "evidence": [
+    "src/app/(app)/my/tasks/page.tsx",
+    "src/server/db/schema/work.ts"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-202",
+   "verdict": "ajout_critique",
+   "title": "API REST métier documentée, webhooks et connecteurs Power Automate / Zapier",
+   "description": "Exposer une API REST générale documentée (OpenAPI) sur les projets, le planning, les tâches, les coûts et les registres, avec jetons d’accès et droits par rôle, des webhooks sur les événements clés (jalon, CR, NC, commande) et des connecteurs Power Automate / Zapier. Standard du marché. Aujourd’hui seuls existent les endpoints Cursus (/api/cursus/v1), l’export et les photos ; pas d’API générale ni de webhooks. Analyse comparative du 25 oct. 2026 : priorité P2, à valider par le responsable produit (périmètre et sécurité).",
+   "category": "integrations",
+   "kind": "fonction_manquante",
+   "priority": "a_decider",
+   "status": "non_commence",
+   "waiting_on": "Validation du responsable produit et de la DSI (exposition d’une API)",
+   "effort": "L",
+   "sources": [
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
+   ],
+   "evidence": [
+    "src/app/api/cursus/v1/",
+    "src/app/api/export/[screen]/",
+    "src/app/api/photos/route.ts"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-203",
+   "verdict": "ajout_critique",
+   "title": "Tableaux de bord configurables par l’utilisateur et connecteur Power BI / Dataverse",
+   "description": "Laisser chaque utilisateur composer ses tableaux de bord (widgets, filtres, indicateurs, enregistrement et partage) et ouvrir les données à Power BI / Dataverse (vues pub_ ou flux OData / API) pour les analyses du groupe. Standard du marché (Wrike, Planner Premium). Aujourd’hui les écrans de pilotage sont fixes et seul l’export CSV / XLSX existe. Analyse comparative du 25 oct. 2026 : priorité P2, à valider par le responsable produit ; le connecteur Power BI peut s’appuyer sur les vues pub_ déjà publiées.",
+   "category": "portefeuille_pilotage_kpi",
+   "kind": "fonction_manquante",
+   "priority": "a_decider",
+   "status": "non_commence",
+   "waiting_on": "Validation du responsable produit",
+   "effort": "L",
+   "sources": [
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
+   ],
+   "evidence": [
+    "src/app/api/export/[screen]/",
+    "drizzle/0035_share.sql"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-204",
+   "verdict": "ajout_critique",
+   "title": "Planning multi-niveaux : consolidation des plannings fournisseurs et codes d’activité",
+   "description": "Modéliser les plannings fournisseurs (lots d’achat) dans le CPM et les consolider dans le planning projet (sous-réseaux, liens vers les activités de réception), avec des codes d’activité (lot d’achat, site, équipement) pour filtrer et regrouper. Fonction avancée du marché (Planisware, Primavera P6). Aujourd’hui les plannings fournisseurs ne sont pas modélisés dans le CPM. Analyse comparative du 25 oct. 2026 : priorité P3, à décider.",
+   "category": "planning",
+   "kind": "fonction_manquante",
+   "priority": "a_decider",
+   "status": "non_commence",
+   "waiting_on": "Validation du responsable produit",
+   "effort": "L",
+   "sources": [
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
+   ],
+   "evidence": [
+    "src/domain/cpm.ts",
+    "src/server/db/schema/purchasing.ts"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-205",
+   "verdict": "ajout_critique",
+   "title": "Analyse de risques Monte-Carlo sur coût et délai",
+   "description": "Simuler l’incertitude des durées et des coûts (lois triangulaires sur les activités et les risques liés) pour produire des distributions de fin de projet et de coût à terminaison avec niveaux de confiance (P50 / P80). Fonction avancée du marché (Primavera Cloud). Aujourd’hui le registre des risques est en probabilité × impact seulement ; le lien risque ↔ activité existe déjà dans le modèle (risks.activity_id). Analyse comparative du 25 oct. 2026 : priorité P3, à décider.",
+   "category": "couts_contrat_finance",
+   "kind": "fonction_manquante",
+   "priority": "a_decider",
+   "status": "non_commence",
+   "waiting_on": "Validation du responsable produit",
+   "effort": "L",
+   "sources": [
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
+   ],
+   "evidence": [
+    "src/domain/risk.ts",
+    "src/server/db/schema/control.ts",
+    "src/domain/cpm.ts"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-206",
+   "verdict": "ajout_critique",
+   "title": "Diagnostic de la qualité du planning (métriques DCMA 14 points, analyse forensique des retards)",
+   "description": "Évaluer la qualité d’un planning avec les 14 contrôles DCMA (liens manquants, contraintes dures, marges négatives, durées longues, retards, liens début-fin…) et fournir une analyse forensique des retards (comparaison référence / actuel par activité, glissement du chemin critique). Fonction différenciante du marché (Deltek Acumen). Absent aujourd’hui. Analyse comparative du 25 oct. 2026 : priorité P3, à décider.",
+   "category": "planning",
+   "kind": "fonction_manquante",
+   "priority": "a_decider",
+   "status": "non_commence",
+   "waiting_on": "Validation du responsable produit",
+   "effort": "M",
+   "sources": [
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
+   ],
+   "evidence": [
+    "src/domain/cpm.ts",
+    "src/domain/schedule.ts"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-207",
+   "verdict": "ajout_critique",
+   "title": "Automatisations sans code (règles si / alors, approbations automatiques)",
+   "description": "Offrir un éditeur de règles si / alors (déclencheur, condition, action : notifier, changer un statut, créer une tâche, approuver automatiquement sous un seuil) configurable par les administrateurs. Standard du marché (monday, Smartsheet). Aujourd’hui les circuits d’approbation sont codés en dur (src/server/approvals/). Analyse comparative du 25 oct. 2026 : priorité P3, à décider.",
+   "category": "nouveaux_modules_backlog",
+   "kind": "fonction_manquante",
+   "priority": "a_decider",
+   "status": "non_commence",
+   "waiting_on": "Validation du responsable produit",
+   "effort": "XL",
+   "sources": [
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
+   ],
+   "evidence": [
+    "src/server/approvals/index.ts",
+    "src/server/approvals/types.ts"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-208",
+   "verdict": "ajout_critique",
+   "title": "IA prédictive de dérive délai / coût et suggestions de mitigation",
+   "description": "Prédire la dérive de délai et de coût d’un projet à partir de l’historique (référence, avancement, valeur acquise, REX) et proposer des mitigations (réaffectation, resserrement, alerte précoce). Fonction avancée du marché (Planview, Planisware). Aujourd’hui l’IA ne sert qu’à l’analyse des transcriptions de réunion (src/server/ai/transcripts/). Analyse comparative du 25 oct. 2026 : priorité P3, à décider ; suppose un historique réel de projets.",
+   "category": "portefeuille_pilotage_kpi",
+   "kind": "fonction_manquante",
+   "priority": "a_decider",
+   "status": "non_commence",
+   "waiting_on": "Validation du responsable produit ; historique de projets réels",
+   "effort": "XL",
+   "sources": [
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
+   ],
+   "evidence": [
+    "src/server/ai/transcripts/index.ts",
+    "src/domain/schedule-rollup.ts"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-209",
+   "verdict": "ajout_critique",
+   "title": "Multilingue au-delà du français et de l’anglais pour les filiales pays",
+   "description": "Ajouter d’autres langues d’interface (espagnol, portugais… selon les filiales) : dictionnaires supplémentaires dans src/i18n, règles de complétude par langue, libellés des termes métier (R-147) et choix de langue par utilisateur (R-018). Standard du marché. Aujourd’hui FR / EN seulement. Analyse comparative du 25 oct. 2026 : besoin transverse, à décider selon les langues des filiales utilisatrices.",
+   "category": "ergonomie_i18n_accessibilite",
+   "kind": "fonction_manquante",
+   "priority": "a_decider",
+   "status": "non_commence",
+   "waiting_on": "Liste des langues des filiales, validation du responsable produit",
+   "effort": "L",
+   "sources": [
+    "Analyse comparative avec les solutions du commerce, 25 oct. 2026"
+   ],
+   "evidence": [
+    "src/i18n/translate.ts",
+    "src/i18n/fr-dict.json",
+    "src/i18n/completeness.test.ts"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 26 oct. 2026 (analyse comparative) ; à valider avant de construire."
+   }
+  },
+  {
+   "id": "R-210",
+   "verdict": "ajout_critique",
+   "title": "Application Windows (.exe) à côté de l’accès web",
+   "description": "Le responsable produit (31 oct. 2026, questionnaire L9-X2) : l’accès web reste la solution pour accéder à Keystone de n’importe où ; une application Windows (.exe), installable par ceux qui le souhaitent, coexiste avec lui pour laisser le choix à l’utilisateur. Fenêtre native (WebView2) sur le serveur Keystone d’EPC2i, connexion Microsoft habituelle, sans serveur local.",
+   "category": "plateforme_production",
+   "kind": "fonction_manquante",
+   "priority": "prochaine_etape",
+   "status": "non_commence",
+   "waiting_on": "",
+   "effort": "M",
+   "sources": [
+    "Questionnaire de la livraison 9, L9-X2 (31 oct. 2026)"
+   ],
+   "evidence": [
+    "desktop/KeystoneApp.swift (équivalent macOS, R-019)"
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 9",
+    "note": "31 oct. 2026 : application construite (C# Windows Forms + WebView2, .NET 10, Keystone.exe autonome win-x64, docs/delivery-9/notes-r210-windows-app.md) ; compilée sous Linux, fabrication à la demande (windows-app.yml). Reste : essai sur un PC Windows avec un serveur hébergé (I-1a), signature de code et mode de diffusion (DSI)."
    }
   }
  ]

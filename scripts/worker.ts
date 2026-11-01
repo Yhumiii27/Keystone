@@ -4,6 +4,8 @@
 // stdout / stderr) and leased in the database (table job_locks) so two workers never run the same job at once.
 // Options and database rules: src/server/jobs/cli.ts. Stops cleanly on SIGINT / SIGTERM (waits for the runs in progress).
 // The Friday freeze is not a job yet (S-4 open).
+// First: Next's react-server resolution of next/navigation (src/server/jobs/next-shims.ts, R-199 reports).
+import '@/server/jobs/next-shims';
 import path from 'node:path';
 import { getConfig } from '@/server/config';
 import { lockPgliteFolder } from '@/server/db/pglite-lock';

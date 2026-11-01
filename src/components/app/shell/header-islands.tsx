@@ -2,7 +2,7 @@
 // Interactive parts of the page header (docs/spec/01 §5, §7.2): project switcher, global search,
 // notifications, language toggle, Export, zone bar. Strings arrive translated from the server.
 import {
-  ArrowsClockwise, At, Bell, CaretDown, CheckSquare, Export, Eye, FileCsv, FilePdf, FileXls, FolderOpen, GitBranch, MagnifyingGlass,
+  ArrowsClockwise, At, Bell, BellRinging, CaretDown, CheckSquare, Export, Eye, FileCsv, FilePdf, FileXls, FolderOpen, GitBranch, MagnifyingGlass,
   PaperPlaneTilt, Receipt, SealCheck, ShieldWarning, Truck, Warning,
 } from '@phosphor-icons/react/dist/ssr';
 import type { Icon } from '@phosphor-icons/react';
@@ -23,6 +23,7 @@ import type { ScreenId } from '@/config/screens';
 import type { ExportMenuFormat } from '@/features/exports/catalog';
 import { downloadExport } from '@/features/exports/download';
 import { exportHref } from '@/lib/export-href';
+import { useReminderPreferences } from '@/features/reminders/preferences-dialog';
 import { useShell } from './shell-provider';
 import type { NotificationView, ProjectOptionView, SearchHitView, ZoneOptionView } from './types';
 import styles from './header.module.css';
@@ -224,9 +225,14 @@ const NOTIF_ICON: Record<string, Icon> = {
   mention: At, request: PaperPlaneTilt, invoice: Receipt, task: CheckSquare, sync: ArrowsClockwise,
 };
 
-export function Notifications({ items, role }: { items: NotificationView[]; role: string }) {
+/**
+ * The bell. `emailOn`: an e-mail transport is configured (R-199 / R-036: notifications — immediate or daily digest —, reminders
+ * and weekly reports also by e-mail); the footer opens the viewer's "Notifications & reminders" preferences (no Teams: X-6b).
+ */
+export function Notifications({ items, role, emailOn = false }: { items: NotificationView[]; role: string; emailOn?: boolean }) {
   const { t } = useI18n();
   const shell = useShell();
+  const prefs = useReminderPreferences();
   const readNotifs = shell.readNotifs(role);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -280,9 +286,11 @@ export function Notifications({ items, role }: { items: NotificationView[]; role
                     setOpen(false);
                   }}
                 >
-                  <span className={cx(styles.dot, !read && styles.dotOn)} />
+                  <span className={cx(styles.dot, !read && styles.dotOn)} aria-hidden />
+                  {/* R-154: the unread dot is read out too. */}
+                  {!read && <span className="sr-only">{t('Unread')}</span>}
                   <span className={styles.notifIcon}>
-                    <I />
+                    <I aria-hidden />
                   </span>
                   <span className={styles.stack}>
                     <span className={styles.notifText}>{n.title}</span>
@@ -292,11 +300,25 @@ export function Notifications({ items, role }: { items: NotificationView[]; role
                 </Link>
               );
             })}
-            {/* X-6b / S-11 (R-037): no e-mail digest nor Teams channel post exists — the bell says so (e-mail: R-036). */}
-            <span className={styles.notifFoot}>{t('E-mail not connected yet — notifications stay in Keystone · preferences in Settings')}</span>
+            {/* X-6b / S-11 (R-037): no Teams channel post exists; R-199 / R-036: e-mail when IT's transport is configured. */}
+            <div className={styles.notifFoot}>
+              <span>{t(emailOn ? 'Notifications, reminders and weekly reports are also sent by e-mail, as you chose' : 'E-mail not connected yet — reminders and notifications stay in Keystone')}</span>
+              <button
+                type="button"
+                className={cx('btn btn-ghost', styles.markAll)}
+                disabled={prefs.pending}
+                onClick={() => {
+                  setOpen(false);
+                  prefs.open();
+                }}
+              >
+                <BellRinging aria-hidden /> {t('Notifications & reminders')}
+              </button>
+            </div>
           </div>
         </>
       )}
+      {prefs.dialog}
     </div>
   );
 }

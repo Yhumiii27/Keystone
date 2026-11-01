@@ -26,9 +26,10 @@ import {
   type ConfirmStatus, type CursusVerdict, type EquipmentSource, type HseIncident, type HseItemKind, type HseStatus, type Weather,
 } from '@/server/db/codes';
 import {
-  activities, dailyReports, departments, leaveEntries, missionCostLines, persons, projects, risks, siteConflictArbitrations, siteEquipment, sitePrerequisites,
-  siteRotations, siteSheets,
+  activities, cursusClearances, dailyReports, departments, leaveEntries, missionCostLines, persons, projects, risks, siteConflictArbitrations, siteEquipment,
+  sitePrerequisites, siteRotations, siteSheets, vigieHseItems,
 } from '@/server/db/schema';
+import { readClearances } from '@/server/integrations/cursus/mirror';
 import { cursusChantierUrl } from '@/server/integrations/cursus/links';
 import { getCursusConnector, type CursusClearanceView } from '@/server/integrations/cursus/connector';
 import { vigieConnectorMode } from '@/server/integrations/vigie/connection';
@@ -270,16 +271,52 @@ export const cursusLabels = (c: Pick<CursusClearanceView, 'visa' | 'vaccination'
 
 /**
  * "NO GO" when the project has a site sheet and Go chantier is not reached (Site nav badge), per project. R-118: sheets are now
- * created from Études, so this full read per sheet grows with the portfolio, and a new sheet shows NO GO until Cursus sends
- * verdicts (R-120) — a lighter query and a J-30 window are for the owner to confirm (docs/delivery-8/notes-site-quality.md).
+ * created from Études, and a new sheet shows NO GO until Cursus sends verdicts (R-120) — a J-30 window is for the owner to
+ * confirm (docs/delivery-8/notes-site-quality.md). R-017: the same verdict (`goChantier`) without the full site read of each
+ * project: the prerequisites, equipment, HSE permits (Vigie mirror) and Cursus verdicts (Cursus mirror — never a call to Cursus
+ * or Vigie on the page) of every sheet in five reads; the team conflicts, the costly condition, are computed only for a sheet
+ * whose other conditions are all met (otherwise the verdict is NO GO whatever they are).
  */
 export async function siteBadgeByProject(): Promise<Record<string, string>> {
   const db = await getDb();
-  const rows = await db.select({ code: projects.code }).from(siteSheets).innerJoin(projects, eq(projects.id, siteSheets.projectId));
+  const [sheets, pre, equipment, hse, clearances] = await Promise.all([
+    db.select({ id: projects.id, code: projects.code }).from(siteSheets).innerJoin(projects, eq(projects.id, siteSheets.projectId)),
+    db.select({ projectId: sitePrerequisites.projectId, status: sitePrerequisites.status }).from(sitePrerequisites).innerJoin(siteSheets, eq(siteSheets.projectId, sitePrerequisites.projectId)),
+    db.select({ projectId: siteEquipment.projectId, status: siteEquipment.status }).from(siteEquipment).innerJoin(siteSheets, eq(siteSheets.projectId, siteEquipment.projectId)),
+    db.select({ projectCode: vigieHseItems.projectCode, status: vigieHseItems.status }).from(vigieHseItems),
+    db.select({ projectCode: cursusClearances.projectCode, verdict: cursusClearances.verdict }).from(cursusClearances),
+  ]);
+  const group = <T, K>(xs: T[], key: (x: T) => K) => {
+    const m = new Map<K, T[]>();
+    for (const x of xs) {
+      const list = m.get(key(x));
+      if (list) list.push(x);
+      else m.set(key(x), [x]);
+    }
+    return m;
+  };
+  const preOf = group(pre, (x) => x.projectId);
+  const eqOf = group(equipment, (x) => x.projectId);
+  const hseOf = group(hse, (x) => x.projectCode);
+  const peopleOf = group(clearances, (x) => x.projectCode);
   const out: Record<string, string> = {};
-  for (const r of rows) {
-    const s = await getSite(r.code);
-    if (s && !s.go.ok) out[r.code] = 'NO GO';
+  let pool: ResourcePool | null = null;
+  for (const sh of sheets) {
+    const facts = {
+      prerequisites: preOf.get(sh.id) ?? [], equipment: eqOf.get(sh.id) ?? [], hse: hseOf.get(sh.code) ?? [], people: peopleOf.get(sh.code) ?? [],
+    };
+    if (!goChantier({ ...facts, collisions: [] }).ok) {
+      out[sh.code] = 'NO GO';
+      continue;
+    }
+    // Every other condition is met: the team conflicts decide, as on the Site page (`getSite`).
+    pool ??= await getResourcePool();
+    const [rot, gng] = await Promise.all([
+      db.select().from(siteRotations).where(eq(siteRotations.projectId, sh.id)).orderBy(asc(siteRotations.position)),
+      readClearances(db, sh.code),
+    ]);
+    const collisions = collisionRows(siteConflicts(await conflictFacts(db, sh.id, rot, gng.people, pool)));
+    if (!goChantier({ ...facts, collisions }).ok) out[sh.code] = 'NO GO';
   }
   return out;
 }

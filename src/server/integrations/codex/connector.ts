@@ -14,6 +14,7 @@ import { getDb } from '@/server/db/client';
 import { CODEX_CONNECTOR_NAME, connectorEnabled } from '@/server/integrations/connector-enabled';
 import type { CodexSyncStatus } from '@/server/db/codes';
 import { log, logWarning } from '@/server/log';
+import { readStoredFile } from '@/server/storage/files';
 import { codexApiUrl, codexConnectorMode, type CodexConnectorMode } from './config';
 import { applyCodexDocumentStates, applyCodexIndex, isCodexDocumentState, type CodexDocumentState, type CodexIndexResult } from './mirror';
 import { claimCodexDelivery, codexEntrySyncStatus, markCodexDelivery, openCodexEntries, undeliveredCodexEntries } from './outbox';
@@ -67,8 +68,22 @@ async function codexFetch(path: string, init?: RequestInit): Promise<Response> {
 }
 
 /**
- * TODO(codex): POST /api/documents/:number/approvals (a step decision) or /api/documents/:number/circuit (start of an
- * engineering deliverable's circuit); Codex answers { id }. Returns the numbers delivered.
+ * R-158 lot B — the body of a `deposit` entry (a document Keystone generated, a shipping document): the record's metadata and the
+ * PDF as filed, base64. TODO(codex): payload to agree with Codex (OPEN QUESTION D-1).
+ */
+async function depositBody(e: Awaited<ReturnType<typeof undeliveredCodexEntries>>[number]) {
+  const file = e.storedFileId ? await readStoredFile(e.storedFileId) : null;
+  if (!file || file.blocked) throw new Error('Codex deposit: the generated file is missing');
+  return {
+    revision: e.revision, actor: { name: e.actorName, role: e.actorRole }, recordedAt: e.recordedAt, keystoneId: e.id,
+    file: { name: file.meta.name, mime: file.meta.mime, sha256: file.meta.sha256, content: file.data.toString('base64') },
+  };
+}
+
+/**
+ * TODO(codex): POST /api/documents/:number/approvals (a step decision), /api/documents/:number/circuit (start of an
+ * engineering deliverable's circuit) or /api/documents/:number/deposit (R-158 lot B: a document Keystone generated, with its
+ * file); Codex answers { id }. Returns the numbers delivered.
  */
 async function deliverOutbox(): Promise<{ delivered: number; failed: number; numbers: string[] }> {
   const db = await getDb();
@@ -80,11 +95,13 @@ async function deliverOutbox(): Promise<{ delivered: number; failed: number; num
   for (const e of await undeliveredCodexEntries(db)) {
     if (!(await claimCodexDelivery(db, e.id))) continue; // another delivery is sending it (R-010)
     const actor = { name: e.actorName, role: e.actorRole };
-    const path = `/api/documents/${encodeURIComponent(e.documentNumber)}/${e.kind === 'approval' ? 'approvals' : 'circuit'}`;
-    const body = e.kind === 'approval'
-      ? { revision: e.revision, step: e.stepPosition, role: e.role, decision: e.decision, comment: e.comment, actor, recordedAt: e.recordedAt, keystoneId: e.id }
-      : { revision: e.revision, actor, recordedAt: e.recordedAt, keystoneId: e.id };
+    const path = `/api/documents/${encodeURIComponent(e.documentNumber)}/${e.kind === 'approval' ? 'approvals' : e.kind === 'deposit' ? 'deposit' : 'circuit'}`;
     try {
+      const body = e.kind === 'approval'
+        ? { revision: e.revision, step: e.stepPosition, role: e.role, decision: e.decision, comment: e.comment, actor, recordedAt: e.recordedAt, keystoneId: e.id }
+        : e.kind === 'deposit'
+          ? await depositBody(e)
+          : { revision: e.revision, actor, recordedAt: e.recordedAt, keystoneId: e.id };
       const res = await codexFetch(path, { method: 'POST', body: JSON.stringify(body) });
       const ack = (await res.json().catch(() => ({}))) as { id?: unknown };
       await markCodexDelivery(db, e.id, { ok: true, codexRef: typeof ack.id === 'string' ? ack.id : null });

@@ -50,7 +50,7 @@ describe('activity drawer — A1250 (EN)', () => {
   const v = view('A1250', 'en', A1250_RES);
 
   it('header and General', () => {
-    expect([v.id, v.name, v.status]).toEqual(['A1250', 'Steel erection — Bays 3–4', { label: 'In progress · 72%', className: 'tag tag-accent' }]);
+    expect([v.id, v.name, v.status]).toEqual(['A1250', 'Steel erection — Bays 3–4', { label: 'In progress · 72%', className: 'tag tag-outline' }]);
     expect(v.general.map((g) => [g.k, g.v, g.lo])).toEqual([
       ['WBS', '1.4 Steel structure', false],
       ['Type', 'Task dependent', false],

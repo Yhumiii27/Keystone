@@ -9,6 +9,7 @@ import {
   WHATIF_PRIORITIES, WHATIF_RULES, autoLevel, createsRequest, evaluateScenario, leverEffects, leverLabel, leverSetKey, legacyLeverSet, prepareWhatIf, rankLevers,
   scenarioRequests, type WhatIfContext, type WhatIfLever, type WhatIfModel, type WhatIfPriority, type WhatIfRequestDraft, type WhatIfResult,
 } from '@/domain/whatif';
+import { versionedRead } from '@/server/cache/read-cache';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import { isoOfDisplayDate, weekLabelOfIso, whatIfPriority } from '@/server/db/codes';
 import { businessToday } from '@/server/clock';
@@ -921,6 +922,13 @@ export interface RebalancingSuggestion {
  * of overloaded people, cheapest) — of one project, or of every project with a plan (portfolio Resources).
  */
 export async function getRebalancingSuggestions(opts: { projectCode?: string; limit?: number } = {}): Promise<RebalancingSuggestion[]> {
+  // R-017: the portfolio's suggestions run the what-if of every project with a plan — computed once per database version and
+  // business date (exact, src/server/cache/read-cache.ts); nothing in them depends on the viewer.
+  const today = await businessToday();
+  return versionedRead(`rebalancing|${today}|${opts.projectCode ?? '*'}|${opts.limit ?? 3}`, () => computeRebalancingSuggestions(opts));
+}
+
+async function computeRebalancingSuggestions(opts: { projectCode?: string; limit?: number }): Promise<RebalancingSuggestion[]> {
   const db = await getDb();
   const list = await db
     .selectDistinct({ id: projects.id, code: projects.code, name: projects.name, short: projects.shortName, pos: projects.sortOrder })

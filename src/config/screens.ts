@@ -5,7 +5,8 @@
 // the registry without loading the icon components.
 
 // R-044 (P-4, P-12 c, C-9): 'finance' — contract, billing (read), the rate grid and the budget rate.
-export type RoleKey = 'director' | 'pm' | 'depthead' | 'member' | 'englead' | 'quality' | 'procurement' | 'finance' | 'client';
+// R-158 (owner's decision 7, 25 Oct 2026): 'logistics' — prepares and follows the shipments (Shipments screen, every project).
+export type RoleKey = 'director' | 'pm' | 'depthead' | 'member' | 'englead' | 'quality' | 'procurement' | 'finance' | 'logistics' | 'client';
 
 export type ScreenId =
   | 'home' | 'myprojects' | 'client' | 'mywork' | 'task' | 'myapprovals' | 'docs'
@@ -13,12 +14,12 @@ export type ScreenId =
   | 'contract' | 'billing' | 'plan' | 'schedule' | 'budget' | 'hours' | 'contingency' | 'presources'
   | 'meetings' | 'stakeholders' | 'interfaces'
   | 'eng' | 'eng-process' | 'eng-meca' | 'eng-elec' | 'eng-auto' | 'pid' | 'bom'
-  | 'risks' | 'changes' | 'quality' | 'itp' | 'site' | 'commissioning' | 'trends' | 'rex'
-  | 'plm' | 'eco' | 'drawings' | 'procurement' | 'orders' | 'deliveries' | 'stock' | 'fleet' | 'sav'
+  | 'risks' | 'changes' | 'quality' | 'itp' | 'site' | 'shipments' | 'commissioning' | 'trends' | 'rex'
+  | 'plm' | 'eco' | 'drawings' | 'catalogue' | 'procurement' | 'orders' | 'deliveries' | 'stock' | 'fleet' | 'sav'
   | 'resources' | 'requests' | 'approvals' | 'whatif' | 'skills' | 'leave' | 'rates'
   | 'settings' | 'mtypes' | 'doctypes' | 'plumbing';
 
-export type SectionKey = 'portfolio' | 'project' | 'tech' | 'stock' | 'sav' | 'res' | 'admin';
+export type SectionKey = 'portfolio' | 'project' | 'tech' | 'catalogue' | 'stock' | 'sav' | 'res' | 'admin';
 
 export interface ScreenDef {
   id: ScreenId;
@@ -85,6 +86,8 @@ export const SCREENS: ScreenDef[] = [
   S({ id: 'itp', title: 'Inspection & test plan · punch list', navLabel: 'Inspections & punch list', nav: 'project', group: 'Control', scope: 'project', slug: 'itp', built: true }),
   // Project › Site & handover
   S({ id: 'site', title: 'Site — readiness, mobilisation & execution', navLabel: 'Site (chantier)', nav: 'project', group: 'Site & handover', scope: 'project', slug: 'site', built: true }),
+  // R-158 (owner's decision 1, 25 Oct 2026): the project's shipments of its equipment to the site — a project view only.
+  S({ id: 'shipments', title: 'Shipments — packing, transport & customs', navLabel: 'Shipments', nav: 'project', group: 'Site & handover', scope: 'project', slug: 'shipments', built: true }),
   S({ id: 'commissioning', title: 'Commissioning & handover dossier', navLabel: 'Commissioning & handover', nav: 'project', group: 'Site & handover', scope: 'project', slug: 'commissioning', built: true }),
   // Project › Project review
   S({ id: 'trends', title: 'Trends & status report', navLabel: 'Trends & status', nav: 'project', group: 'Project review', scope: 'project', slug: 'trends', built: true }),
@@ -93,6 +96,9 @@ export const SCREENS: ScreenDef[] = [
   S({ id: 'plm', title: 'PLM — parts catalogue', navLabel: 'Parts (PLM)', nav: 'tech', scope: 'global', slug: 'reference/parts', built: true }),
   S({ id: 'eco', title: 'Engineering change orders', navLabel: 'Change orders (ECO)', nav: 'tech', scope: 'global', slug: 'reference/eco', built: true }),
   S({ id: 'drawings', title: 'Drawings — PDM vault', navLabel: 'Drawings', nav: 'tech', scope: 'global', slug: 'reference/drawings', built: true }),
+  // Machine catalogue (owner, 25 Oct 2026: Keystone owns the catalogue, AC-4 — a section of its own, only to manage it). Placed
+  // right after Technical reference: the catalogue is built on the machine types and read by the engineering roles.
+  S({ id: 'catalogue', title: 'Machine catalogue', navLabel: 'Machine catalogue', nav: 'catalogue', scope: 'global', slug: 'catalogue/machines', built: true }),
   // Purchasing & stock
   S({ id: 'procurement', title: 'Sourcing, invoices & suppliers', navLabel: 'Sourcing & invoices', nav: 'stock', scope: 'global', slug: 'purchasing/sourcing', built: true }),
   S({ id: 'orders', title: 'Purchase orders', navLabel: 'Purchase orders', nav: 'stock', scope: 'project', slug: 'orders', built: true }),
@@ -123,6 +129,7 @@ export const SECTIONS: { key: SectionKey; label: string }[] = [
   { key: 'portfolio', label: 'Portfolio' },
   { key: 'project', label: 'Project' },
   { key: 'tech', label: 'Technical reference' },
+  { key: 'catalogue', label: 'Machine catalogue' },
   { key: 'stock', label: 'Purchasing & stock' },
   { key: 'sav', label: 'Warranty & after-sales' },
   { key: 'res', label: 'Resources' },

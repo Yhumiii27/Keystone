@@ -8,7 +8,7 @@ import 'server-only';
 import { and, eq } from 'drizzle-orm';
 import { ROLE_SCREENS, canSee } from '@/config/role-screens';
 import type { RoleKey, ScreenId } from '@/config/screens';
-import { financeReadOnly } from '@/domain/rights';
+import { canEditShipments, roleReadOnly } from '@/domain/rights';
 import { findPerson } from '@/server/db/helpers';
 import { projectMembers, projects } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
@@ -40,10 +40,11 @@ export async function onProjectTeam(q: Q, actor: Actor, projectId: string): Prom
 /**
  * `getProjectContext(code).canEdit(screen)` for an internal writer: the screen is in the actor's workspace and the actor is
  * on the project's team (or is the director). A client is refused. R-044: Finance reads Budget, Hours and Billing even on its
- * teams (`financeReadOnly`). The Contract screen follows P-4 instead: `editsContract`.
+ * teams (`financeReadOnly`), R-158 Logistics the BOM, Site, Schedule and Deliveries (`roleReadOnly`). The Contract screen follows
+ * P-4 instead: `editsContract`; the Shipments `editsShipments`.
  */
 export async function editsProjectScreen(q: Q, actor: Actor, projectId: string, screen: ScreenId): Promise<boolean> {
-  return actorSees(actor, screen) && !financeReadOnly(actor.role as RoleKey, screen) && (await onProjectTeam(q, actor, projectId));
+  return actorSees(actor, screen) && !roleReadOnly(actor.role as RoleKey, screen) && (await onProjectTeam(q, actor, projectId));
 }
 
 /**
@@ -54,6 +55,17 @@ export async function editsProjectScreen(q: Q, actor: Actor, projectId: string, 
 export async function editsContract(q: Q, actor: Actor, projectId: string): Promise<boolean> {
   if (actor.role === 'client' || !actorSees(actor, 'contract')) return false;
   if (actor.role === 'director' || actor.role === 'finance') return true;
+  const person = await findPerson(q, actor.name);
+  return !!person && leadsProject(q, projectId, person.id);
+}
+
+/**
+ * R-158 — `canEditShipments` (src/domain/rights.ts) for the shipment writers: the director and Logistics on every project;
+ * otherwise a lead of the project (PM of record, co-PM, deputy) whose workspace has the Shipments screen. A client is refused.
+ */
+export async function editsShipments(q: Q, actor: Actor, projectId: string): Promise<boolean> {
+  if (!Object.hasOwn(ROLE_SCREENS, actor.role) || !canEditShipments(actor.role as RoleKey, { lead: true })) return false;
+  if (actor.role === 'director' || actor.role === 'logistics') return true;
   const person = await findPerson(q, actor.name);
   return !!person && leadsProject(q, projectId, person.id);
 }

@@ -6,13 +6,14 @@
 // (`BILLING` 3541) migrated into `billing_plans` + `payment_milestones` (fixed amounts, no contract): Cash flow,
 // Prioritisation margins and the client portal read the same rows. A project with a contract derives its billing
 // plan from the contract (value = base + signed amendments; milestone amount = round(value × share / 100)).
-import { date, integer, pgTable, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { date, index, integer, pgTable, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { AmendmentStatus, BillingModel, BondType, ContractType, PaymentMilestoneStatus, PaymentRule } from '../codes';
-import { id, keur, num, timestamps } from './_common';
+import { id, keur, num, rowVersion, timestamps } from './_common';
 import { changeRequests } from './change';
 import { documents } from './documents';
 import { clients } from './organisation';
 import { projects } from './portfolio';
+import { incoterms } from './shipments';
 
 /** Client contract of a project (CONTRACTS 3713 — HLT-026 only). The contract sheet fields are editable. */
 export const contracts = pgTable('contracts', {
@@ -47,6 +48,14 @@ export const contracts = pgTable('contracts', {
   warranty: text('warranty').notNull(),
   governingLaw: text('governing_law').notNull(),
   scope: text('scope').notNull(),
+  /**
+   * R-158 (owner's decision 2): the contract's Incoterm and its named place ("DAP" + "Dakar — site"); the shipments organise
+   * the seller's steps from it. Null = not set yet.
+   */
+  incotermId: uuid('incoterm_id').references(() => incoterms.id),
+  incotermPlace: text('incoterm_place'),
+  /** R-010: optimistic locking (see rowVersion). */
+  version: rowVersion(),
   ...timestamps,
 });
 
@@ -70,7 +79,7 @@ export const contractAmendments = pgTable('contract_amendments', {
   documentRef: text('document_ref'),
   documentId: uuid('document_id').references(() => documents.id, { onDelete: 'set null' }),
   ...timestamps,
-});
+}, (t) => [index('contract_amendments_contract_id_idx').on(t.contractId)]);
 
 /** Bonds and guarantees. In force unless released. */
 export const contractBonds = pgTable('contract_bonds', {
@@ -84,7 +93,7 @@ export const contractBonds = pgTable('contract_bonds', {
   validUntil: date('valid_until', { mode: 'string' }),
   releasedOn: date('released_on', { mode: 'string' }),
   ...timestamps,
-});
+}, (t) => [index('contract_bonds_contract_id_idx').on(t.contractId)]);
 
 /**
  * Billing plan of a project (BILLING 3541): billing model and, for projects without a contract, the contract value
@@ -124,9 +133,11 @@ export const paymentMilestones = pgTable(
     condition: text('condition'),
     status: text('status').$type<PaymentMilestoneStatus>().notNull(),
     position: integer('position').notNull(),
+    /** R-010: optimistic locking (see rowVersion). */
+    version: rowVersion(),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.number)],
+  (t) => [unique().on(t.projectId, t.number), index('payment_milestones_contract_id_idx').on(t.contractId)],
 );
 
 /**

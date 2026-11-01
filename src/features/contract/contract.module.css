@@ -74,3 +74,13 @@ textarea:global(.input).textarea { resize: vertical; min-height: 56px; }
 .subtotalHint { font-size: 12px; }
 .rateLine { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px solid var(--color-neutral-900); font-size: 12.5px; }
 .rateForm { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)) auto; gap: 10px 14px; align-items: end; }
+.clientName { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+
+/* R-158 lot A: the contract's Incoterm card. */
+.incotermHead { font-size: 13px; color: var(--color-neutral-200); display: flex; flex-wrap: wrap; gap: 4px; align-items: baseline; }
+.incotermHead strong { color: var(--color-accent-300); font-size: 15px; letter-spacing: 0.04em; }
+.incotermMuted { font-size: 12px; color: var(--color-neutral-400); }
+.incotermSplit { display: flex; flex-wrap: wrap; gap: 6px; }
+.incotermSeller, .incotermBuyer { font-size: 11px; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.incotermSeller { background: var(--color-accent-900); color: var(--color-accent-200); box-shadow: inset 0 0 0 1px var(--color-accent-800); }
+.incotermBuyer { background: var(--color-neutral-900); color: var(--color-neutral-400); box-shadow: inset 0 0 0 1px var(--color-neutral-800); }

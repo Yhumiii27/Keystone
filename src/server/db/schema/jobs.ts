@@ -18,3 +18,15 @@ export const jobLocks = pgTable('job_locks', {
   lastError: text('last_error'),
   runCount: integer('run_count').notNull().default(0),
 });
+
+/**
+ * R-010: shared refresh slots of the connectors' read-through mirrors (Vigie ECOs, Vigie NCR / HSE, Cursus go / no-go per
+ * project). With several Keystone instances on one PostgreSQL server, the instance that claims a key refreshes the shared
+ * mirror; the others read it until the slot expires (src/server/integrations/refresh-claims.ts).
+ */
+export const connectorRefreshClaims = pgTable('connector_refresh_claims', {
+  /** "vigie-ecos", "vigie-quality", "cursus-go-no-go:HLT-026". */
+  key: text('key').primaryKey(),
+  /** Database clock of the last claim; the slot is free again REFRESH_EVERY after it. */
+  claimedAt: timestamp('claimed_at', { withTimezone: true }).notNull(),
+});

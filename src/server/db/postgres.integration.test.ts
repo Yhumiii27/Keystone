@@ -5,7 +5,11 @@
 // - driver parity: the DAL reads the same values from PostgreSQL (node-postgres) as from PGlite;
 // - concurrent writes on separate connections: business numbers stay unique (SERIALIZABLE + retry), the S-3 rule holds;
 // - shared-server layout (M-01): tables, journal and pub_ views in the schema `keystone`, nothing in `public`;
-// - Arche K-11 (R-193): the maj_le indexes are in `keystone` and an incremental read reaches them through the security_barrier views.
+// - Arche K-11 (R-193): the maj_le indexes are in `keystone` and an incremental read reaches them through the security_barrier views;
+// - Arche K-02 (R-187): the capex connector reads Arche's views arche.pub_capex and arche.pub_besoins_machines on the shared
+//   server (schema-qualified, from Keystone's connection in search_path=keystone) into its mirror;
+// - Matrix D21 / D22: the subsidiaries connector reads matrix.pub_filiales on the shared server; pub_rex and pub_clients
+//   (filiale_code) in `keystone`.
 import { randomBytes } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -33,7 +37,11 @@ import { pendingMigrations } from './migrations';
 import { openDatabase } from './open';
 import { SeedChoiceRequiredError, migrateAndSeedPostgres, openPostgres, type PostgresHandle } from './postgres';
 import { readSeedRecord } from './seed/mode';
-import { SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COUNT } from './share-contracts';
+import { EXPEDITIONS_VIEW_TYPES, PACK_VIEW_TYPES, REX_VIEW_TYPES, SHARE_MAJ_LE_INDEXES, SHARE_VIEW_COUNT } from './share-contracts';
+import { refreshCapexMirror } from '@/server/integrations/capex/connector';
+import { SIMULATED_PUB_FILIALES } from '@/server/integrations/matrix/simulation';
+import { refreshSubsidiaryMirror } from '@/server/integrations/matrix/subsidiaries';
+import { SIMULATED_PUB_BESOINS_MACHINES, SIMULATED_PUB_CAPEX } from '@/server/integrations/capex/simulation';
 import type { DB } from './types';
 
 const ADMIN_URL = process.env.KEYSTONE_TEST_DATABASE_URL?.trim();
@@ -57,7 +65,10 @@ async function admin(sqlText: string, database?: string): Promise<void> {
 }
 
 /** JSON copy with the generated ids (random UUIDs, different in each seeded database) replaced by a placeholder. */
-const plain = (v: unknown) => JSON.parse(JSON.stringify(v).replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, '<uuid>'));
+const plain = (v: unknown) =>
+  JSON.parse(JSON.stringify(v).replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, '<uuid>')
+    // R-010: a version token carries the time of its read (src/domain/record-version.ts); the versions are compared.
+    .replace(/"version":"(\d+)\.\d+"/g, '"version":"$1"'));
 
 describe.skipIf(!ADMIN_URL)('PostgreSQL server (KEYSTONE_TEST_DATABASE_URL)', () => {
   const name = `ks_test_${randomBytes(4).toString('hex')}`;
@@ -99,6 +110,60 @@ describe.skipIf(!ADMIN_URL)('PostgreSQL server (KEYSTONE_TEST_DATABASE_URL)', ()
     expect(journal.rows[0].n).toBeGreaterThan(30);
     const counts = await pg.pool.query<{ v: number; t: number }>('select (select count(*)::int from pub_projets) as v, (select count(*)::int from projects) as t');
     expect(counts.rows[0].v).toBe(counts.rows[0].t);
+    // R-190 (0052_internal_client_share): the internal client at the end of pub_projets in `keystone`, never null.
+    const cols = await pg.pool.query<{ c: string; t: string }>(`select column_name as c, data_type as t from information_schema.columns
+      where table_schema = 'keystone' and table_name = 'pub_projets' order by ordinal_position desc limit 2`);
+    expect(cols.rows.reverse()).toEqual([{ c: 'client_interne', t: 'boolean' }, { c: 'filiale_code', t: 'text' }]);
+    const nulls = await pg.pool.query<{ n: number }>('select count(*)::int as n from pub_projets where client_interne is null');
+    expect(nulls.rows[0].n).toBe(0);
+    // R-191 (Arche K-08, 0058-0060): pub_pack_ingenierie in `keystone` with the K-08 types; the provisional standard list and the
+    // mapping of the document types are reference data of the production seed.
+    const pack = await pg.pool.query<{ c: string; t: string }>(`select column_name as c, data_type as t from information_schema.columns
+      where table_schema = 'keystone' and table_name = 'pub_pack_ingenierie' order by ordinal_position`);
+    expect(Object.fromEntries(pack.rows.map((r) => [r.c, r.t]))).toEqual(PACK_VIEW_TYPES);
+    const ref = await pg.pool.query<{ lists: number; types: number; mapped: number }>(`select (select count(*)::int from machine_type_pack_families) as lists,
+      (select count(*)::int from machine_types) as types, (select count(*)::int from document_types where pack_family is not null) as mapped`);
+    expect(ref.rows[0]).toEqual({ lists: 5 * ref.rows[0].types, types: ref.rows[0].types, mapped: 5 });
+    // R-158 lot B (0063-0064): pub_expeditions in `keystone` with its types.
+    const exp = await pg.pool.query<{ c: string; t: string }>(`select column_name as c, data_type as t from information_schema.columns
+      where table_schema = 'keystone' and table_name = 'pub_expeditions' order by ordinal_position`);
+    expect(Object.fromEntries(exp.rows.map((r) => [r.c, r.t]))).toEqual(EXPEDITIONS_VIEW_TYPES);
+  });
+
+  it('R-187 (Arche K-02): the capex connector reads arche.pub_capex and arche.pub_besoins_machines on the shared server', async () => {
+    // Arche's schema and views, as Arche's migrations create them on the shared server (literal rows of the simulated source).
+    const lit = (rows: readonly Record<string, unknown>[]) => `'${JSON.stringify(rows).replace(/'/g, "''")}'::jsonb`;
+    await admin(`create schema arche;
+      create view arche.pub_capex as select x->>'code' as code, x->>'filiale' as filiale, x->>'intitule' as intitule, (x->>'g2_le')::date as g2_le,
+        (x->>'maj_le')::timestamptz as maj_le from jsonb_array_elements(${lit(SIMULATED_PUB_CAPEX)}) x;
+      create view arche.pub_besoins_machines as select x->>'besoin_ref' as besoin_ref, x->>'capex_code' as capex_code, x->>'ligne' as ligne,
+        x->>'catalogue_code' as catalogue_code, (x->>'catalogue_version')::int as catalogue_version, (x->>'quantite')::int as quantite, x->'options' as options,
+        (x->>'capacite_visee')::numeric as capacite_visee, x->>'unite_capacite' as unite_capacite, x->>'statut' as statut, (x->>'maj_le')::timestamptz as maj_le
+        from jsonb_array_elements(${lit(SIMULATED_PUB_BESOINS_MACHINES)}) x;`, name);
+    expect(await refreshCapexMirror('job', { source: 'server', db: pg.db, checkEnabled: false })).toEqual({ state: 'done', source: 'server', capex: 2, needs: 5, skipped: 0 });
+    const { rows } = await pg.pool.query<{ n: number; s: string }>(`select count(*)::int as n, string_agg(status, ',' order by need_ref) as s from capex_needs`);
+    expect(rows[0]).toEqual({ n: 5, s: 'submitted,submitted,ordered,withdrawn,ordered' });
+    const mirror = await pg.pool.query<{ schema: string }>(`select table_schema as schema from information_schema.tables where table_name = 'capex_needs'`);
+    expect(mirror.rows).toEqual([{ schema: 'keystone' }]);
+    await admin('drop schema arche cascade', name);
+  });
+
+  it('Matrix D21 / D22: matrix.pub_filiales read on the shared server; pub_rex and pub_clients.filiale_code in "keystone"', async () => {
+    const lit = `'${JSON.stringify(SIMULATED_PUB_FILIALES).replace(/'/g, "''")}'::jsonb`;
+    await admin(`create schema matrix;
+      create view matrix.pub_filiales as select x->>'code' as code, x->>'nom' as nom, x->>'pays_iso2' as pays_iso2, x->>'zone_code' as zone_code,
+        x->>'devise' as devise, (x->>'ordre')::int as ordre, (x->>'actif')::boolean as actif from jsonb_array_elements(${lit}) x;`, name);
+    expect(await refreshSubsidiaryMirror({ source: 'server', db: pg.db })).toEqual({ state: 'done', source: 'server', subsidiaries: 2, active: 2, skipped: 0 });
+    const mirror = await pg.pool.query<{ schema: string; n: number }>(`select table_schema as schema, (select count(*)::int from matrix_subsidiaries) as n
+      from information_schema.tables where table_name = 'matrix_subsidiaries'`);
+    expect(mirror.rows).toEqual([{ schema: 'keystone', n: 2 }]);
+    await admin('drop schema matrix cascade', name);
+    const rex = await pg.pool.query<{ c: string; t: string }>(`select column_name as c, data_type as t from information_schema.columns
+      where table_schema = 'keystone' and table_name = 'pub_rex' order by ordinal_position`);
+    expect(Object.fromEntries(rex.rows.map((r) => [r.c, r.t]))).toEqual(REX_VIEW_TYPES);
+    const clientsView = await pg.pool.query<{ c: string }>(`select column_name as c from information_schema.columns
+      where table_schema = 'keystone' and table_name = 'pub_clients' order by ordinal_position`);
+    expect(clientsView.rows.map((r) => r.c)).toEqual(['id', 'name', 'code3', 'filiale_code']);
   });
 
   it('K-11: the maj_le indexes are in "keystone"; an incremental read of the view reaches them', async () => {
@@ -206,5 +271,52 @@ describe.skipIf(!ADMIN_URL)('PostgreSQL server (KEYSTONE_TEST_DATABASE_URL)', ()
     expect(results.filter((r) => r.status === 'fulfilled').map((r) => (r as PromiseFulfilledResult<{ code: string }>).value.code)).toEqual(['BL1']);
     for (const r of results.filter((x) => x.status === 'rejected')) expect((r as PromiseRejectedResult).reason).toBeInstanceOf(BaselinePolicyError);
     expect((await listProjectBaselines('EWA-051')).map((b) => b.code)).toEqual(['BL0', 'BL1']);
+  }, 120_000);
+
+  it('R-010 on separate connections: two saves of a risk read on the same version → one saved, one refused; the version trigger runs in "keystone"', async () => {
+    setDb(pg.db);
+    const { listRisks, updateRisk } = await import('@/server/dal/risks');
+    const { StaleRecordError } = await import('@/server/dal/record-version');
+    const token = (await listRisks('HLT-026')).find((r) => r.id === 'R-03')!.version;
+    const results = await Promise.allSettled([
+      updateRisk('HLT-026', 'R-03', { probability: 1 }, 'Romain Aubert', { version: token }),
+      updateRisk('HLT-026', 'R-03', { probability: 5 }, 'Léa Marchand', { version: token }),
+      updateRisk('HLT-026', 'R-03', { impact: 1 }, 'Marie Lefebvre', { version: token }),
+    ]);
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    for (const r of results.filter((x) => x.status === 'rejected')) expect((r as PromiseRejectedResult).reason).toBeInstanceOf(StaleRecordError);
+    const { rows } = await pg.pool.query<{ version: number }>("select r.version from risks r join projects p on p.id = r.project_id where p.code = 'HLT-026' and r.number = 'R-03'");
+    expect(rows[0].version).toBe(Number(token.split('.')[0]) + 1);
+  }, 120_000);
+
+  it('R-010 on separate connections: a business number taken meanwhile is drawn again (unique violation → retry)', async () => {
+    setDb(pg.db);
+    const { nextNumber, requireProject } = await import('./helpers');
+    const { risks } = await import('./schema');
+    const p = await requireProject(pg.db, 'HLT-026');
+    const stale = await nextNumber(pg.db, risks, risks.number, 'R-', 2, 20);
+    await createRisk('HLT-026', { title: 'Taken meanwhile', category: 'technical', response: 'mitigate' }, 'System');
+    let attempts = 0;
+    const got = await pg.db.transaction(async (tx) => {
+      attempts++;
+      const number = attempts === 1 ? stale : await nextNumber(tx, risks, risks.number, 'R-', 2, 20);
+      await tx.insert(risks).values({
+        projectId: p.id, number, title: 'Collision', category: 'technical', probability: 1, impact: 1, response: 'accept', responsePlan: '—', trigger: '—',
+        status: 'open', trend: 'flat', sortOrder: -1000, costKeur: 0,
+      });
+      return number;
+    });
+    expect([attempts, got]).toEqual([2, `R-${Number(stale.slice(2)) + 1}`]);
+  }, 120_000);
+
+  it('R-010: the connectors\' refresh slot is claimed by exactly one of several instances', async () => {
+    const { claimRefresh } = await import('@/server/integrations/refresh-claims');
+    const others = await Promise.all(Array.from({ length: 3 }, () => openPostgres({ url: urlOf(name), poolMax: 2 })));
+    try {
+      const won = await Promise.all([pg, ...others].flatMap((h) => [claimRefresh('vigie-ecos', 60_000, h.db), claimRefresh('vigie-ecos', 60_000, h.db)]));
+      expect(won.filter(Boolean)).toHaveLength(1);
+    } finally {
+      await Promise.all(others.map((h) => h.close()));
+    }
   }, 120_000);
 });

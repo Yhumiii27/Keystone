@@ -2,6 +2,7 @@
 // (templates 1529–1597, 2237–2267 and their prototype French), the links (machine-type list, display, source chips,
 // audit export), the edit controls for the workspace and the read-only rendering outside it (no ×, no Add, no toggle,
 // no Sync now, read-only fields).
+import { withoutL9X3Plumbing } from '@/test/l9-x3';
 import { createElement as h, type ReactElement } from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }), usePathname: () => '/admin/settings', useSearchParams: () => new URLSearchParams() }));
@@ -111,7 +112,9 @@ describe('Machine types body', () => {
 describe('Activity, integrations & audit body', () => {
   async function body(lang: Lang, view: 'activity' | 'connectors' | 'imports' | 'audit', canEdit = true) {
     const t = makeT(lang);
-    const [activity, connectors, imports, audit, counts] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), getPlumbingCounts()]);
+    const [activity0, connectors, imports, audit0, counts0] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), getPlumbingCounts()]);
+    // L9-X3: as the prototype had it, without the rows of the shipping documents the demo files in Codex (src/test/l9-x3.ts).
+    const { activity, audit, counts } = withoutL9X3Plumbing(activity0, audit0, counts0);
     const v = plumbingView({ view, source: null, activity, connectors, imports, audit, counts, unread: 3, personaTitle: 'Portfolio director', ratesVisible: true }, t, lang);
     return html(h(PlumbingBody, { view: v, canEdit, t }), lang);
   }
@@ -135,13 +138,14 @@ describe('Activity, integrations & audit body', () => {
     for (const l of ['Connectors', 'System', 'Data', 'Frequency', 'Status', 'Last sync', 'Last volume', 'Sync now', 'Configure']) expect(plain, l).toContain(label(l, lang));
     // R-021: Lucca is no longer listed (header + 9 rows); Codex, Cursus and Vigie are mocks, MS Project a file exchange, the
     // other five "Not connected" — no seeded "Warning" (Outlook) any more, and "Sync now" only on the three mocks.
-    expect(count(out, /<tr>/g)).toBe(10);
-    expect(count(out, /class="[^"]*connMode/g)).toBe(4);
+    // R-187: + Arche (the CAPEX application), a mock over the demo source.
+    expect(count(out, /<tr>/g)).toBe(11);
+    expect(count(out, /class="[^"]*connMode/g)).toBe(5);
     expect(count(out, /class="tag tag-accent"/g)).toBe(0);
     expect(count(out, new RegExp(`>${lang === 'en' ? 'Not connected' : 'Non connecté'}<`, 'g'))).toBe(5);
-    expect(count(out, new RegExp(`>${lang === 'en' ? 'Mock' : 'Simulé'}<`, 'g'))).toBe(3);
-    expect(count(out, new RegExp(`aria-label="${label('Sync now', lang)} · `, 'g'))).toBe(3);
-    expect(count(out, new RegExp(`aria-label="${label('Configure', lang)} · `, 'g'))).toBe(9);
+    expect(count(out, new RegExp(`>${lang === 'en' ? 'Mock' : 'Simulé'}<`, 'g'))).toBe(4);
+    expect(count(out, new RegExp(`aria-label="${label('Sync now', lang)} · `, 'g'))).toBe(4);
+    expect(count(out, new RegExp(`aria-label="${label('Configure', lang)} · `, 'g'))).toBe(10);
     expect(plain).toContain(lang === 'en' ? 'Vigie Mock connector · local mirror' : 'Vigie Connecteur simulé · miroir local');
     expect(plain).toContain(lang === 'en' ? 'MS Project File exchange · no live connection' : 'MS Project Échange de fichiers · pas de connexion directe');
     const ro = await body(lang, 'connectors', false);
@@ -163,7 +167,7 @@ describe('Activity, integrations & audit body', () => {
     expect(await body('en', 'audit', false)).not.toContain('audit.csv');
     // French connector volumes the prototype left in English (R-021: the not-connected PDM shows none); an empty audit trail
     // says so.
-    expect(text(await body('fr', 'connectors'))).toContain('412 fiches · 38 liées à HLT-026');
+    expect(text(await body('fr', 'connectors'))).toContain('415 fiches · 38 liées à HLT-026 · 3 en attente de synchro'); // L9-X3: 412 + the demo's 3 shipping documents, pending sync
     expect(text(await body('fr', 'connectors'))).not.toContain('1 248 plans');
     const t = makeT('fr');
     const empty = plumbingView({ view: 'audit', source: null, activity: [], connectors: [], imports: [], audit: [], counts: { eventsToday: 0, auditLast7Days: 0 }, unread: 0, personaTitle: 'Portfolio director', ratesVisible: true }, t, 'fr');

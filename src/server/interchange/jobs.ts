@@ -44,7 +44,7 @@ export interface ImportViewer {
 async function importRel(viewer: ImportViewer): Promise<(p: ProjectRow) => { member: boolean; lead: boolean }> {
   const teams = await listProjectTeams();
   const v = { role: viewer.role, name: viewer.name, short: viewer.short, personId: viewer.personId ?? null, organisation: viewer.organisation ?? null };
-  return (p) => projectAccess(v, { client: p.client, pm: p.pm, pmPersonId: p.pmPersonId, team: teams.get(p.code) ?? [] });
+  return (p) => projectAccess(v, { client: p.client, clientInternal: p.clientInternal, pm: p.pm, pmPersonId: p.pmPersonId, team: teams.get(p.code) ?? [] });
 }
 
 /** One preview row as the dialog shows it. */

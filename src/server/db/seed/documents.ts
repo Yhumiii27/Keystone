@@ -2,6 +2,7 @@
 // history the prototype synthesises at render time (docRow / docRevs / docAppr / docDist, logic 5020–5047) materialised
 // as rows, and the Codex sync state ("Last sync 08:02 · 412 records"). See schema/documents.ts. Delivery 8 (D-2 = a,
 // R-127): the download log (docDl) is not seeded — it stays in Codex; the revision rows are kept (KPI, A-15 demo history).
+import { PACK_DOCUMENT_TYPES } from '@/domain/engineering-pack';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
 import { addDaysIso, approverRole, confidentiality, docFamily, docLinkKind, documentStatus, isoOfDemoDate, parisInstant, type DocRecipient, type DocService } from '../codes';
 import {
@@ -37,6 +38,8 @@ export async function seedDocumentTypes(tx: Tx): Promise<ProtoDocType[]> {
   await tx.insert(documentTypes).values(
     types.map((t, position) => ({
       code: t.code, label: t.label, family: docFamily.code(PROTO.DOC_FAM[t.fam]), retention: t.retention, isoClause: t.iso, isClientDeliverable: t.client, position,
+      // R-191: the provisional mapping of the types to the engineering-pack families (same as migration 0059).
+      packFamily: PACK_DOCUMENT_TYPES[t.code] ?? null,
     })),
   );
   await tx.insert(documentTypeCircuitSteps).values(

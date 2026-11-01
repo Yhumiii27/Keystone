@@ -31,6 +31,11 @@ import {
 import type { Tx } from '@/server/db/types';
 import type { Actor } from './ops-common';
 import { editsContract } from './team-guard';
+import { assertRecordFresh, tokenOf, type VersionedTable } from './record-version';
+
+/** R-010: the contract sheet and its payment milestones under optimistic locking (audit entities "contract", "payment_milestone"). */
+const CONTRACT_VERSION: VersionedTable = { table: contracts, id: contracts.id, version: contracts.version, entityType: 'contract' };
+const MILESTONE_VERSION: VersionedTable = { table: paymentMilestones, id: paymentMilestones.id, version: paymentMilestones.version, entityType: 'payment_milestone' };
 
 // ── Read model ─────────────────────────────────────────────────────────────────────────────────────────
 
@@ -65,6 +70,8 @@ export interface ContractSheet {
   warranty: string;
   governingLaw: string;
   scope: string;
+  /** R-010: the contract's version token, sent back by the sheet's field edits (src/domain/record-version.ts). */
+  version: string;
 }
 
 export interface AmendmentRow {
@@ -147,6 +154,8 @@ export interface ContractMilestoneRow {
   condition: string | null;
   status: PaymentMilestoneStatus;
   statusLabel: string;
+  /** R-010: the milestone's version token, sent back by its "Edit" form. */
+  version: string;
   /** Planned, billable and contractual date before the prototype's now (Billing badge, "· Late"). */
   late: boolean;
   /** Delivery 8 (R-077, C-7): its schedule group exceeds 100 % — "Issue invoice" is refused until the schedule is corrected. */
@@ -201,6 +210,7 @@ function isoOrNull(v: string | null | undefined, what: string): string | null {
 /** Contract of a project with its amendments, bonds, payment schedule and invoices; null when none is registered. */
 export async function getContract(projectCode: string): Promise<ProjectContract | null> {
   const db = await getDb();
+  const readAt = new Date();
   const today = await businessToday();
   const [row] = await db
     .select({ c: contracts, docId: documents.id, currency: projects.currency, budgetRate: projects.budgetRate })
@@ -265,7 +275,7 @@ export async function getContract(projectCode: string): Promise<ProjectContract 
     return {
       number: m.number, label: m.label, sharePct: m.sharePct, amountKeur: m.amountKeur, amendment: m.amendment ?? null, billable: m.billable,
       contractualDue: m.contractualDue, dueText: dash(m.contractualDue, displayOfIso), condition: m.condition, status: m.status,
-      statusLabel: paymentMilestoneStatus.label(m.status), late: m.late, blocked: m.blocked,
+      statusLabel: paymentMilestoneStatus.label(m.status), version: tokenOf(ms[k].version, readAt), late: m.late, blocked: m.blocked,
       invoice: i ? {
         number: i.number, milestoneNumber: m.number, milestoneLabel: m.label, issuedOn: i.issuedOn, issuedText: dayText(i.issuedOn),
         amountKeur: i.amountKeur, currency: currencyOf(stored?.currency ?? currency), dueOn: i.dueOn, dueText: dayText(i.dueOn),
@@ -281,6 +291,7 @@ export async function getContract(projectCode: string): Promise<ProjectContract 
       signedText: c.signedOn ? displayOfIso(c.signedOn) : '', baseAmountKeur: c.baseAmountKeur, currency, paymentTerms: paymentTermsText(terms),
       paymentRule: terms.rule, paymentDays: terms.days, termsDays: terms.days,
       retentionPct: c.retentionPct, retentionNote: c.retentionNote, liquidatedDamages: c.liquidatedDamages, warranty: c.warranty, governingLaw: c.governingLaw, scope: c.scope,
+      version: tokenOf(c.version, readAt),
     },
     fx: projectFxOf({ currency: row.currency, budgetRate: row.budgetRate }),
     amendments,
@@ -443,10 +454,12 @@ const SHEET_COLUMN = {
  * and the payment rule and days (C-6; the terms text follows). Changing the base amount re-prices the planned base milestones
  * (invoiced ones keep their amount); the rule changes the due dates. Writes one audit row with the changed fields.
  */
-export async function updateContractSheet(projectCode: string, patch: ContractSheetPatch, actorName: string): Promise<void> {
+export async function updateContractSheet(projectCode: string, patch: ContractSheetPatch, actorName: string, opts: { version?: string | null } = {}): Promise<void> {
   const db = await getDb();
   await db.transaction(async (tx) => {
-    const { p, c } = await loadContract(tx, projectCode);
+    const { p, c } = await loadContract(tx, projectCode); // row locked
+    // R-010: refused when someone else changed the contract since the sheet was read.
+    await assertRecordFresh(tx, CONTRACT_VERSION, c.id, opts.version, { name: actorName, personId: (await findPerson(tx, actorName))?.id ?? null });
     const input: ContractSheetPatch = { ...patch };
     if (input.paymentTerms !== undefined) {
       const t = termsOfText(input.paymentTerms);
@@ -730,7 +743,7 @@ export interface PaymentMilestonePatch {
  * of a PLANNED milestone; the basis (base contract or amendment) does not change. Guarded update (status still planned),
  * audited (area Contract, entity payment_milestone). Returns the number.
  */
-export async function updatePaymentMilestone(projectCode: string, number: string, patch: PaymentMilestonePatch, actor: Actor): Promise<string> {
+export async function updatePaymentMilestone(projectCode: string, number: string, patch: PaymentMilestonePatch, actor: Actor, opts: { version?: string | null } = {}): Promise<string> {
   const db = await getDb();
   return db.transaction(async (tx) => {
     const { p, c } = await loadContract(tx, projectCode);
@@ -739,8 +752,11 @@ export async function updatePaymentMilestone(projectCode: string, number: string
     if (!label || label.length > 200) throw new Error('The milestone is required');
     if (!Number.isFinite(patch.sharePct) || patch.sharePct < 0 || patch.sharePct > 100) throw new Error('Invalid share');
     if (!isIso(patch.contractualDue)) throw new Error('Invalid contractual date');
-    const [m] = await tx.select().from(paymentMilestones).where(and(eq(paymentMilestones.contractId, c.id), eq(paymentMilestones.number, number)));
-    if (!m) throw new MilestoneEditError('unknown', 'Unknown milestone');
+    const [found] = await tx.select({ id: paymentMilestones.id }).from(paymentMilestones).where(and(eq(paymentMilestones.contractId, c.id), eq(paymentMilestones.number, number)));
+    if (!found) throw new MilestoneEditError('unknown', 'Unknown milestone');
+    // R-010: refused when someone else changed the milestone since the form was opened.
+    await assertRecordFresh(tx, MILESTONE_VERSION, found.id, opts.version, { name: actor.name, personId: (await findPerson(tx, actor.name))?.id ?? null });
+    const [m] = await tx.select().from(paymentMilestones).where(eq(paymentMilestones.id, found.id));
     if (m.status !== 'planned') throw new MilestoneEditError('not_planned', 'Only a planned milestone can be changed');
     const condition = patch.condition?.trim() || null;
     const changes: string[] = [];

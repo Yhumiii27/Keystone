@@ -52,6 +52,8 @@ export interface RightsViewer {
 export interface ProjectFacts {
   /** Client organisation name ("Port authority"). */
   client: string;
+  /** R-190: the client is a group subsidiary (internal client) — no client-portal access (R-179, I-2b). Absent = external. */
+  clientInternal?: boolean;
   /** Short name of the PM of record ("R. Aubert", '—' when none). */
   pm: string;
   pmPersonId: string | null;
@@ -83,7 +85,7 @@ export const isViewerMember = (v: Pick<RightsViewer, 'personId' | 'short'>, m: P
 /** The viewer's rights on a project (R-041). */
 export function projectAccess(v: RightsViewer, p: ProjectFacts): ProjectAccess {
   if (v.role === 'client') {
-    const own = !!v.organisation && p.client === v.organisation;
+    const own = !clientRefusedProject(v, p);
     return { member: own, lead: false, pm: false, client: own, readOnly: !own, refused: !own, teamRole: null };
   }
   const isPmOfRecord = v.personId ? !!p.pmPersonId && p.pmPersonId === v.personId : p.pm === v.short;
@@ -126,9 +128,43 @@ export const canSetCapexLink = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) =
  */
 export const canSetProjectEquipment = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) => canSetCapexLink(role, a);
 
+/**
+ * R-189 (Arche K-04): which schedule milestone is which CAPEX milestone (Schedule screen) — the same people as the CAPEX link: the
+ * director and the project's leads who see the Schedule screen; not Finance, not the client.
+ */
+export const canSetCapexMilestone = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) =>
+  role === 'director' || (a.lead && role !== 'client' && role !== 'finance' && canSee(role, 'schedule'));
+
 /** R-044: Finance reads Budget, Hours and Billing, even on a project whose team it is on (billing gate unchanged). */
 export const FINANCE_READ_ONLY_SCREENS: readonly ScreenId[] = ['budget', 'hours', 'billing'];
 export const financeReadOnly = (role: RoleKey, screen: ScreenId) => role === 'finance' && FINANCE_READ_ONLY_SCREENS.includes(screen);
+
+// ── R-158 · Logistics and the shipments (owner's decisions 1 and 7, 25 Oct 2026) ──────────────────────────────────
+
+/** R-158: Logistics reads the screens a shipment needs (BOM, Site, Schedule, Deliveries), even on a project whose team it is on. */
+export const LOGISTICS_READ_ONLY_SCREENS: readonly ScreenId[] = ['bom', 'site', 'schedule', 'deliveries'];
+export const logisticsReadOnly = (role: RoleKey, screen: ScreenId) => role === 'logistics' && LOGISTICS_READ_ONLY_SCREENS.includes(screen);
+
+/** A screen of the role's workspace the role only reads (Finance: Budget, Hours, Billing — R-044; Logistics — R-158). */
+export const roleReadOnly = (role: RoleKey, screen: ScreenId) => financeReadOnly(role, screen) || logisticsReadOnly(role, screen);
+
+/**
+ * R-158: who prepares and follows a project's shipments (Shipments screen: shipments, loads, content, packing control, transport
+ * steps, status) — the portfolio director and Logistics on every project (like Finance on the contract: EPC2i's logistics serves
+ * every project, not a named team), or one of the project's leads (PM of record, co-PM, deputy) whose workspace has the screen.
+ * The rest of the team and the other internal roles read; the client is refused the screen.
+ */
+export const canEditShipments = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) =>
+  // R-158 lot B: the team member has the screen to point the reception only (`canRecordReception`), never to edit shipments.
+  role !== 'client' && role !== 'member' && canSee(role, 'shipments') && (role === 'director' || role === 'logistics' || a.lead);
+
+/**
+ * R-158 lot B (decision 5): who points a shipment's site reception (loads and content received, missing, damaged — the gaps raise
+ * punch items) — the shipment editors (`canEditShipments`) and the site team: a member of the project's team who edits its Site
+ * screen (the team member on site, a department head on the team).
+ */
+export const canRecordReception = (role: RoleKey, a: Pick<ProjectAccess, 'lead' | 'member'>) =>
+  canEditShipments(role, a) || (role !== 'client' && canSee(role, 'site') && !roleReadOnly(role, 'site') && a.member);
 
 /** C-9 (R-044 default, DELIVERY-7 §8 open question): the project currency and budget rate — the director and Finance. */
 export const BUDGET_RATE_ROLES: readonly RoleKey[] = ['director', 'finance'];
@@ -148,9 +184,13 @@ export const canPreviewClientView = (role: RoleKey, a: Pick<ProjectAccess, 'lead
 /** P-1: a client is refused (sent to their home) on any screen outside their workspace; internal roles read it. */
 export const clientRefusedScreen = (role: RoleKey, screen: ScreenId) => role === 'client' && !canSee(role, screen);
 
-/** P-10a: a client is refused every project of another organisation (and every project when they have no organisation). */
-export const clientRefusedProject = (v: Pick<RightsViewer, 'role' | 'organisation'>, p: { client: string }) =>
-  v.role === 'client' && !(!!v.organisation && p.client === v.organisation);
+/**
+ * P-10a: a client is refused every project of another organisation (and every project when they have no organisation).
+ * R-190 (R-179, I-2b): and every project whose client is a group subsidiary — an internal client follows its projects in the
+ * CAPEX application, the client portal is for external clients only.
+ */
+export const clientRefusedProject = (v: Pick<RightsViewer, 'role' | 'organisation'>, p: { client: string; clientInternal?: boolean }) =>
+  v.role === 'client' && !(!!v.organisation && p.client === v.organisation && !p.clientInternal);
 
 // ── R-043 · What the client does not see of their own project (P-10b) ──────────────────────────────────────────────
 
@@ -185,6 +225,11 @@ export const canSeeSupplierPrices = (role: RoleKey) => SUPPLIER_PRICE_ROLES.incl
 export const PRICE_MASK = '•••';
 /** Hint shown where prices are masked (EN source). */
 export const PRICES_HIDDEN = 'Prices are visible to the director, the project managers and procurement';
+/**
+ * R-158: the customs values of a shipment (content lines, per-HS-code summary) come from the BOM valuation — ordered, last purchase
+ * or catalogue prices — so they follow NEW-D2-1, plus Logistics, which declares them (export declaration, insurance).
+ */
+export const canSeeShipmentValues = (role: RoleKey) => canSeeSupplierPrices(role) || role === 'logistics';
 // Hourly rates (task cost note, rate card, what-if helpers): `canSeeRates` in src/domain/hr.ts (director, PM, Finance — P-12 c);
 // editing the grid: `canEditRates` (director, Finance).
 

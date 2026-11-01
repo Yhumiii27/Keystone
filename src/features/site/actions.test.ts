@@ -76,14 +76,15 @@ describe('site Server Functions', () => {
   });
 
   it('"Client confirms" then "Signed on site" on a prerequisite; a stale step is refused; Go conditions follow', async () => {
-    expect(await advancePrerequisiteAction(HLT, 4, 'signed', await preStamp(4))).toEqual({ ok: false, error: 'This step is not available any more' });
+    // R-157: each refusal says why.
+    expect(await advancePrerequisiteAction(HLT, 4, 'signed', await preStamp(4))).toEqual({ ok: false, error: 'The client must confirm this prerequisite before it is signed on site' });
     const pending = await preStamp(3);
     expect(await advancePrerequisiteAction(HLT, 3, 'confirmed', pending)).toEqual({ ok: true });
     expect(revalidatePath).toHaveBeenCalledWith('/', 'layout');
     // The page that still shows it Pending (its stamp), or a fresh one asking the same step again: refused.
-    expect(await advancePrerequisiteAction(HLT, 3, 'confirmed', pending)).toEqual({ ok: false, error: 'This step is not available any more' });
-    expect(await advancePrerequisiteAction(HLT, 3, 'confirmed', await preStamp(3))).toEqual({ ok: false, error: 'This step is not available any more' });
-    expect(await advancePrerequisiteAction(HLT, 3, 'signed', pending)).toEqual({ ok: false, error: 'This step is not available any more' });
+    expect(await advancePrerequisiteAction(HLT, 3, 'confirmed', pending)).toEqual({ ok: false, error: 'This line was changed by someone else meanwhile: check it again' });
+    expect(await advancePrerequisiteAction(HLT, 3, 'confirmed', await preStamp(3))).toEqual({ ok: false, error: 'The client has already confirmed this prerequisite' });
+    expect(await advancePrerequisiteAction(HLT, 3, 'signed', pending)).toEqual({ ok: false, error: 'This line was changed by someone else meanwhile: check it again' });
     expect(await advancePrerequisiteAction(HLT, 3, 'signed', await preStamp(3))).toEqual({ ok: true });
     let s = (await getSite(HLT))!;
     expect(s.prerequisites[3].status).toBe('signed');
@@ -97,11 +98,11 @@ describe('site Server Functions', () => {
 
   it('equipment "Confirm" (once); the equipment condition follows; the NO GO badge stays (Cursus, collisions, HSE)', async () => {
     as('depthead', 'Marion Kerviel');
-    expect(await confirmEquipmentAction(HLT, 0, await eqStamp(0))).toEqual({ ok: false, error: 'This step is not available any more' });
+    expect(await confirmEquipmentAction(HLT, 0, await eqStamp(0))).toEqual({ ok: false, error: 'This equipment is already confirmed' });
     const pending = await eqStamp(2);
     expect(await confirmEquipmentAction(HLT, 2, pending)).toEqual({ ok: true });
-    expect(await confirmEquipmentAction(HLT, 2, pending)).toEqual({ ok: false, error: 'This step is not available any more' });
-    expect(await confirmEquipmentAction(HLT, 2, await eqStamp(2))).toEqual({ ok: false, error: 'This step is not available any more' });
+    expect(await confirmEquipmentAction(HLT, 2, pending)).toEqual({ ok: false, error: 'This line was changed by someone else meanwhile: check it again' });
+    expect(await confirmEquipmentAction(HLT, 2, await eqStamp(2))).toEqual({ ok: false, error: 'This equipment is already confirmed' });
     expect(await confirmEquipmentAction(HLT, 4, await eqStamp(4))).toEqual({ ok: true });
     const s = (await getSite(HLT))!;
     expect(s.go.conditions.find((c) => c.key === 'equipment')).toMatchObject({ ok: true, sub: 'Ready' });
@@ -112,8 +113,8 @@ describe('site Server Functions', () => {
   it('"Remind in Cursus": once per person not GO, pending sync with Cursus; GO refused; FR toast', async () => {
     as('pm', 'Romain Aubert');
     expect(await remindInCursusAction(HLT, 'Thomas Kerbrat')).toEqual({ ok: true, toast: GOLDEN.toasts.en.remind });
-    expect(await remindInCursusAction(HLT, 'Thomas Kerbrat')).toEqual({ ok: false, error: 'This step is not available any more' });
-    expect(await remindInCursusAction(HLT, 'Julien Wagner')).toEqual({ ok: false, error: 'This step is not available any more' });
+    expect(await remindInCursusAction(HLT, 'Thomas Kerbrat')).toEqual({ ok: false, error: 'A reminder for this person already waits for Cursus' });
+    expect(await remindInCursusAction(HLT, 'Julien Wagner')).toEqual({ ok: false, error: 'This person is already GO in Cursus' });
     viewer.lang = 'fr';
     expect(await remindInCursusAction(HLT, 'Pauline Noguès')).toEqual({ ok: true, toast: 'Relance envoyée via Cursus · Pauline Noguès' });
     const people = (await getSite(HLT))!.cursus.people;

@@ -133,8 +133,8 @@ export async function listParts(): Promise<PartRow[]> {
 }
 
 /** Catalogue rows of some references (catalogue order); unknown refs are skipped. */
-export async function getPartsByRef(refs: string[]): Promise<PartRow[]> {
-  return loadParts(await getDb(), uniq(refs));
+export async function getPartsByRef(refs: string[], q?: Q): Promise<PartRow[]> {
+  return loadParts(q ?? (await getDb()), uniq(refs));
 }
 
 export async function getPart(ref: string): Promise<PartRow | null> {

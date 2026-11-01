@@ -74,6 +74,21 @@ import d9ShareViews from './d9-share-views.json';
 import d9Equipment from './d9-equipment.json';
 import d9Catalogue from './d9-catalogue.json';
 import d9EstimateClass from './d9-estimate-class.json';
+import d9CapexMilestones from './d9-capex-milestones.json';
+import d9EngineeringPack from './d9-engineering-pack.json';
+import d9Volumes from './d9-volumes.json';
+import d9Gantt from './d9-gantt.json';
+import d9Shipments from './d9-shipments.json';
+import d9ShipmentsB from './d9-shipments-b.json';
+import d9CapexNeeds from './d9-capex-needs.json';
+import d9InternalClient from './d9-internal-client.json';
+import d9MatrixSubsidiaries from './d9-matrix-subsidiaries.json';
+import d9CatalogueScreen from './d9-catalogue-screen.json';
+import d9Reminders from './d9-reminders.json';
+import d9UxA11y from './d9-ux-a11y.json';
+import d9Delegations from './d9-delegations.json';
+import d9NotificationMail from './d9-notification-mail.json';
+import d9Concurrency from './d9-concurrency.json';
 
 export const EXTRA_FR: Record<string, string> = {
   ...common,
@@ -148,4 +163,19 @@ export const EXTRA_FR: Record<string, string> = {
   ...d9Equipment,
   ...d9Catalogue,
   ...d9EstimateClass,
+  ...d9CapexNeeds,
+  ...d9InternalClient,
+  ...d9MatrixSubsidiaries,
+  ...d9CatalogueScreen,
+  ...d9CapexMilestones,
+  ...d9EngineeringPack,
+  ...d9Volumes,
+  ...d9Gantt,
+  ...d9Shipments,
+  ...d9ShipmentsB,
+  ...d9Reminders,
+  ...d9UxA11y,
+  ...d9Delegations,
+  ...d9NotificationMail,
+  ...d9Concurrency,
 };

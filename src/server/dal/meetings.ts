@@ -371,7 +371,11 @@ export async function addMeetingLine(meetingNumber: string, point: number, line:
 }
 
 /** Action checkbox (`toggleLine`): ticks / unticks an action line (any meeting status, as the prototype). Returns the new state. */
-export async function toggleMeetingAction(meetingNumber: string, point: number, position: number, actorName: string): Promise<boolean> {
+/**
+ * Ticks / unticks an action line; returns the new state. `done` (R-010): the state the viewer asked for — set as is (two people
+ * ticking at once leave it ticked, nothing written when it already is); without it the line flips.
+ */
+export async function toggleMeetingAction(meetingNumber: string, point: number, position: number, actorName: string, opts: { done?: boolean } = {}): Promise<boolean> {
   const db = await getDb();
   return db.transaction(async (tx) => {
     const m = await loadMeeting(tx, meetingNumber);
@@ -382,7 +386,8 @@ export async function toggleMeetingAction(meetingNumber: string, point: number, 
       .where(and(eq(meetingAgendaPoints.meetingId, m.id), eq(meetingAgendaPoints.position, point), eq(meetingLines.position, position)));
     if (!row) throw new Error(`Unknown line ${meetingNumber}|${point}|${position}`);
     if (row.l.type !== 'action') throw new Error('Only actions can be ticked');
-    const done = !row.l.done;
+    const done = opts.done ?? !row.l.done;
+    if (done === row.l.done) return done;
     await tx.update(meetingLines).set({ done, doneAt: done ? new Date() : null }).where(eq(meetingLines.id, row.l.id));
     await audit(tx, actorName, meetingNumber, `action ${done ? 'closed' : 'reopened'} · ${row.l.text}`, m.projectId, m.id);
     return done;

@@ -1,9 +1,11 @@
 // Planning (docs/spec/11 §3.3, docs/spec/05 §0.5 / §1 / §2): WBS nodes, activities, logic links, resource
 // assignments, milestones, schedule bars (TASKS), pipeline stage plans and the project control header
 // (the display figures of projectData()).
-import { boolean, date, index, integer, jsonb, pgTable, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { boolean, check, date, index, integer, jsonb, pgTable, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import type { CapexMilestoneCode } from '@/domain/capex-milestones';
 import type { CalendarCode, ConstraintType, LinkType, MilestoneStatus, PipelineWindow } from '../codes';
-import { id, keur, months, num, timestamps } from './_common';
+import { id, keur, months, num, rowVersion, timestamps } from './_common';
 import { departments, persons } from './organisation';
 import { projectEquipments, projects } from './portfolio';
 
@@ -38,7 +40,7 @@ export const wbsNodes = pgTable(
     /** R-185: the equipment line a work package specific to an equipment belongs to (wizard); null = common to the project. */
     equipmentId: uuid('equipment_id').references(() => projectEquipments.id, { onDelete: 'set null' }),
   },
-  (t) => [unique().on(t.projectId, t.code)],
+  (t) => [unique().on(t.projectId, t.code), index('wbs_nodes_parent_id_idx').on(t.parentId)],
 );
 
 /** Activities (ACTS rows with an id). Dates are kept as the prototype's display strings plus ISO dates. */
@@ -99,11 +101,13 @@ export const activities = pgTable(
     scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
     /** UID in the imported MS Project / P6 file (S-9 update matching). */
     externalUid: text('external_uid'),
+    /** R-010: optimistic locking (see rowVersion). */
+    version: rowVersion(),
     ...timestamps,
     /** R-185: the equipment line of an activity of a lot specific to an equipment (wizard); null = common to the project. */
     equipmentId: uuid('equipment_id').references(() => projectEquipments.id, { onDelete: 'set null' }),
   },
-  (t) => [unique().on(t.projectId, t.code)],
+  (t) => [unique().on(t.projectId, t.code), index('activities_wbs_node_id_idx').on(t.wbsNodeId), index('activities_owner_person_id_idx').on(t.ownerPersonId)],
 );
 
 /** Logic links (`p` = [[predId, type, lag]] on the successor). */
@@ -121,7 +125,7 @@ export const activityLinks = pgTable(
     /** Chapter 4 (S-1): the link drives the successor's early date (last "Reschedule"). */
     isDriving: boolean('is_driving').notNull().default(false),
   },
-  (t) => [unique().on(t.successorId, t.predecessorId)],
+  (t) => [unique().on(t.successorId, t.predecessorId), index('activity_links_project_id_idx').on(t.projectId), index('activity_links_predecessor_id_idx').on(t.predecessorId)],
 );
 
 /** Activity resource assignments (A1250_RES 3227). */
@@ -150,21 +154,38 @@ export const activityAssignments = pgTable('activity_assignments', {
   departmentId: uuid('department_id').references(() => departments.id),
   /** Resource UID in the imported file. */
   externalUid: text('external_uid'),
-});
+}, (t) => [index('activity_assignments_activity_id_idx').on(t.activityId), index('activity_assignments_person_id_idx').on(t.personId)]);
 
 /** Milestones (HMILES 3122 / generated MILES). Months are fractional offsets from the project start. */
-export const milestones = pgTable('milestones', {
-  id: id(),
-  projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
-  position: integer('position').notNull(),
-  name: text('name').notNull(),
-  baselineMonth: months('baseline_month').notNull(),
-  forecastMonth: months('forecast_month').notNull(),
-  status: text('status').$type<MilestoneStatus>().notNull(),
-  activityId: uuid('activity_id').references(() => activities.id),
-  /** Last change (R-195: `maj_le` of pub_jalons, read by Crucible); set by the schedule's milestone roll-up. */
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+export const milestones = pgTable(
+  'milestones',
+  {
+    id: id(),
+    projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+    position: integer('position').notNull(),
+    name: text('name').notNull(),
+    baselineMonth: months('baseline_month').notNull(),
+    forecastMonth: months('forecast_month').notNull(),
+    status: text('status').$type<MilestoneStatus>().notNull(),
+    activityId: uuid('activity_id').references(() => activities.id),
+    /** Last change (R-195: `maj_le` of pub_jalons, read by Crucible); set by the schedule's milestone roll-up. */
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * R-189 (Arche K-04): the CAPEX milestone this schedule milestone is (`commande` … `fin_garantie`, src/domain/capex-milestones.ts),
+     * one per project; null = none. Set by the name rule (seed, import, 0056 backfill) when unambiguous, corrected by the leads on
+     * the Schedule screen. pub_jalons_projets publishes the milestone's BL1 date as `reference_le`.
+     */
+    capexMilestoneCode: text('capex_milestone_code').$type<CapexMilestoneCode>(),
+  },
+  (t) => [
+    unique('milestones_project_capex_code_unique').on(t.projectId, t.capexMilestoneCode),
+    check(
+      'milestones_capex_milestone_code_check',
+      sql`${t.capexMilestoneCode} in ('commande', 'fin_etudes', 'fat', 'expedition', 'arrivee_site', 'sat', 'pv_reception', 'fin_garantie')`,
+    ),
+    index('milestones_activity_id_idx').on(t.activityId),
+  ],
+);
 
 /**
  * Schedule bars (HTASKS 3113 / generated TASKS): one bar per work package, as shown on the Schedule screen.
@@ -183,7 +204,7 @@ export const scheduleBars = pgTable('schedule_bars', {
   forecastEnd: months('forecast_end').notNull(),
   percentComplete: integer('percent_complete').notNull(),
   critical: boolean('critical').notNull(),
-});
+}, (t) => [index('schedule_bars_project_id_idx').on(t.projectId)]);
 
 /** Pipeline stage plan (PIPE_PLAN 3665): windows in month offsets from Jan 2026. */
 export const pipelineStagePlans = pgTable('pipeline_stage_plans', {
@@ -193,7 +214,7 @@ export const pipelineStagePlans = pgTable('pipeline_stage_plans', {
   window: text('window').$type<PipelineWindow>().notNull(),
   startMonth: months('start_month').notNull(),
   endMonth: months('end_month').notNull(),
-});
+}, (t) => [index('pipeline_stage_plans_project_id_idx').on(t.projectId)]);
 
 /**
  * Project control header — the figures and display strings of projectData() (HLT_PD 3308 / generated,

@@ -8,7 +8,7 @@ import { codexVaultItems } from '@/domain/approvals';
 import { yearOfIso } from '@/domain/clock';
 import { DEFAULT_PROJECT } from '@/config/screens';
 import { getDb } from '@/server/db/client';
-import { listVaultDocuments } from '@/server/dal/documents';
+import { listReleaseProposedDocuments } from '@/server/dal/documents';
 import { codexDocumentUrl } from '@/server/integrations/codex/links';
 import { codexDecisionsBy } from '@/server/integrations/codex/outbox';
 import type { ApprovalProvider } from './types';
@@ -18,7 +18,8 @@ export const codexDocumentProvider: ApprovalProvider = {
   scope: 'global',
   source: 'db',
   async items({ viewer, project, today }) {
-    const docs = await listVaultDocuments();
+    // R-017: only the records in Release proposed can have a step open for the viewer (`codexVaultItems`).
+    const docs = await listReleaseProposedDocuments();
     const byNumber = new Map(docs.map((d) => [d.number, d]));
     return codexVaultItems(docs, viewer.short, project?.code ?? DEFAULT_PROJECT, yearOfIso(today), (d) => codexDocumentUrl(d.number, d.revision, byNumber.get(d.number)?.codexUrl));
   },

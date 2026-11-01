@@ -216,7 +216,7 @@ export const satPlans = pgTable('sat_plans', {
   plannedByName: text('planned_by_name').notNull(),
   plannedByPersonId: uuid('planned_by_person_id').references(() => persons.id),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [index('sat_plans_project_id_idx').on(t.projectId)]);
 
 /** Handover dossier (DOE) items (COMMISSIONING.dossier: HLT-026 × 8) with their Codex document type and document. */
 export const handoverItems = pgTable(
@@ -258,7 +258,8 @@ export const lessonsLearned = pgTable(
     position: integer('position').notNull(),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.number)],
+  // Matrix D22 (K-11 pattern): pub_rex.maj_le = updated_at, read incrementally by Matrix's unified REX.
+  (t) => [unique().on(t.projectId, t.number), index('lessons_learned_updated_at_idx').on(t.updatedAt)],
 );
 
 /** Project closure checklist (CLOSURE 3733: HLT-026 × 10). */

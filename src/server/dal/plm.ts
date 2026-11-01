@@ -8,7 +8,7 @@ import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { revisionEventsOf, parentChains, type PartRevisionEvent } from '@/domain/parts';
 import { assemblyLinks, drawingRevisions, drawings as drawingsTable, parts, revisionDiffLines, revisionDiffs } from '@/server/db/schema';
-import { listVaultDocuments, type VaultDocument } from './documents';
+import { listPartDocuments, type VaultDocument } from './documents';
 import { listDrawings, type DrawingRow } from './drawings';
 import { listEcos, openEcoByPart, type EcoView } from './eco';
 import { machinesCarryingPart, type FittedMachine } from './machines';
@@ -104,8 +104,8 @@ async function drawingsOf(ref: string): Promise<PartDrawing[]> {
 export async function getPartDrawer(ref: string): Promise<PartDrawerData | null> {
   const record = await getPartRecord(ref);
   if (!record) return null;
-  const [vault, ecos, machines, stock, drawingRows, revisions, usedInAssemblies, today] = await Promise.all([
-    listVaultDocuments(),
+  const [documents, ecos, machines, stock, drawingRows, revisions, usedInAssemblies, today] = await Promise.all([
+    listPartDocuments(ref),
     listEcos({ partRefs: [ref] }),
     machinesCarryingPart(ref),
     listStock(),
@@ -116,7 +116,7 @@ export async function getPartDrawer(ref: string): Promise<PartDrawerData | null>
   ]);
   return {
     record,
-    documents: vault.filter((d) => d.links.some((l) => l.ref === ref) || d.tags.includes(ref)),
+    documents,
     ecos: ecos.filter((e) => e.parts.includes(ref)),
     machines,
     stock: stock.filter((s) => s.ref === ref),

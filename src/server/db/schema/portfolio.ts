@@ -3,6 +3,7 @@
 import { sql } from 'drizzle-orm';
 import { boolean, check, date, doublePrecision, foreignKey, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { CalendarCode, CostType, MachineTypeCode, StageCode, StageGroup, TransitionMode, ValidationStatus, ZoneCode } from '../codes';
+import type { PackFamily } from '@/domain/engineering-pack';
 import { id, keur, months, num, timestamps } from './_common';
 import { clients, countries, persons, zones } from './organisation';
 
@@ -110,6 +111,29 @@ export const machineTypeItpSystems = pgTable(
     name: text('name').notNull(),
   },
   (t) => [primaryKey({ columns: [t.machineTypeCode, t.position] })],
+);
+
+/**
+ * R-191 (Arche K-08): the standard list of the engineering pack of a machine type — one row per family of
+ * src/domain/engineering-pack.ts (PACK_FAMILIES), weight in whole % (the type's weights total 100, checked by the writer) and
+ * the minimum number of documents expected. Provisional list (owner, 25 Oct 2026, pending C-9): five families × 20 %, one
+ * document each; edited on the Machine types screen. `updated_at` feeds pub_pack_ingenierie.maj_le.
+ */
+export const machineTypePackFamilies = pgTable(
+  'machine_type_pack_families',
+  {
+    machineTypeCode: text('machine_type_code').$type<MachineTypeCode>().notNull().references(() => machineTypes.code, { onDelete: 'cascade' }),
+    family: text('family').$type<PackFamily>().notNull(),
+    weight: integer('weight').notNull(),
+    minExpected: integer('min_expected').notNull().default(1),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.machineTypeCode, t.family] }),
+    check('machine_type_pack_families_family_check', sql`${t.family} in ('pid', 'bom', 'layout', 'electrique', 'analyse_fonctionnelle')`),
+    check('machine_type_pack_families_weight_check', sql`${t.weight} between 0 and 100`),
+    check('machine_type_pack_families_min_expected_check', sql`${t.minExpected} between 0 and 99`),
+  ],
 );
 
 /** REX references of a machine type (REX_FIN[mt].refs). */

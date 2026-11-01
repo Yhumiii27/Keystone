@@ -4,14 +4,14 @@
 // viewer's permission, writes through the DAL and revalidates every screen (stages show up on Home, Overview,
 // My projects, the shell…). Messages are English source strings (the client shows them with toast showEn).
 import { revalidatePath } from 'next/cache';
-import {
-  CATEGORY_TYPES, CONTINGENCIES, DAS_LIST, WIZARD_CURRENCIES, effectiveDateError, isTransitionAllowed, moveError,
-} from '@/domain/lifecycle';
-import { parseCatalogueChoice } from '@/domain/machine-catalogue';
-import { MAX_EQUIPMENT_LINES, MAX_EQUIPMENT_QUANTITY } from '@/domain/project-equipment';
-import { WIZARD_CALENDAR_OPTIONS, WIZARD_REQUIRED, wizardSiteError, wizardWindowError } from '@/domain/project-template';
-import { costType, machineType, stage as stageCodec, type MachineTypeCode, type StageCode } from '@/server/db/codes';
+import { RESERVED_CLIENT_CODE } from '@/domain/subsidiaries';
+import { effectiveDateError, isTransitionAllowed, moveError } from '@/domain/lifecycle';
+import { stage as stageCodec, type StageCode } from '@/server/db/codes';
 import { BL1_DELIVERABLE_MESSAGE, bl1TickRefused } from '@/domain/baseline-policy';
+import { PACKING_DELIVERABLE_MESSAGE, PACKING_DELIVERABLE_NO_SHIPMENT } from '@/domain/shipments';
+import { packingDeliverableRefusal } from '@/server/dal/shipments';
+
+const PACKING_DELIVERABLE_MESSAGES: readonly string[] = [PACKING_DELIVERABLE_MESSAGE, PACKING_DELIVERABLE_NO_SHIPMENT];
 import { StageChangeError, getStageChangeBounds, listStages, projectHasBl1 } from '@/server/dal/lifecycle';
 import {
   createWizardProject, getNewProjectSetup, getProjectStage, missingDeliverables, moveProjectStage, setDeliverableAndAdvance,
@@ -21,6 +21,7 @@ import { getProject } from '@/server/dal/projects';
 import { getScreenAccess, projectAccessResolver } from '@/server/project-context';
 import { getViewer } from '@/server/session';
 import { CREATE_PROJECT_ROLES } from './permissions';
+import { parseProjectDraft, type NewProjectDraft } from './draft';
 import { logError } from '@/server/log';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -121,9 +122,16 @@ export async function setDeliverableAction(input: { code: string; stage: string;
       refresh();
       return { ok: false, error: BL1_DELIVERABLE_MESSAGE };
     }
+    // R-158 (decision 4): « Colisage & documents douaniers » waits for every shipment's validated packing list.
+    const packing = await packingDeliverableRefusal(code, { stage: input.stage, position: input.index, done: input.done });
+    if (packing) {
+      refresh();
+      return { ok: false, error: packing };
+    }
     await setDeliverableAndAdvance(code, input.stage, input.index, input.done, (await getViewer()).short);
   } catch (e) {
     if (e instanceof Error && e.message === BL1_DELIVERABLE_MESSAGE) return { ok: false, error: BL1_DELIVERABLE_MESSAGE };
+    if (e instanceof Error && PACKING_DELIVERABLE_MESSAGES.includes(e.message)) return { ok: false, error: e.message };
     logError('setDeliverableAction', e);
     return { ok: false, error: FAILED };
   }
@@ -131,40 +139,11 @@ export async function setDeliverableAction(input: { code: string; stage: string;
   return { ok: true };
 }
 
-/** Draft of the New project wizard (`state.np` without UI fields). Labels are the wizard's EN / data values. */
-export interface NewProjectDraft {
-  name: string;
-  client: string;
-  das: string;
-  /** Machine type label: EMP, MEMU, SPUR, AUTRE, R&D, or a custom type's code — the main type (first equipment line). */
-  mt: string;
-  /**
-   * R-185: the equipment lines (type label × quantity), the first one of `mt`; absent → one line of `mt`, quantity 1.
-   */
-  lines?: { mt: string; qty: number; cat?: string }[];
-  cur: string;
-  /** 'blank' or the machine type label of the template. */
-  template: string;
-  /** Type = EN label (Labor…); budget = the free text typed (parseFloat, as npTotal). */
-  cats: { name: string; type: string; budget: string }[];
-  cont: number;
-  /** Calendar code (WIZARD_CALENDAR_OPTIONS) or its EN label. */
-  cal: string;
-  /** Project manager, person id (L-3). */
-  pm?: string | null;
-  /** Planned window, ISO dates (L-3). The finish is optional (L-3b): '' / absent → taken from the instantiated plan. */
-  start?: string;
-  finish?: string | null;
-  /** Site (L-3b, required): city, and a country of the countries table (EN name). */
-  city?: string;
-  country?: string;
-}
+export type { NewProjectDraft } from './draft';
 
 export type CreateProjectResult =
   | { ok: true; code: string; number: string; analytic: string; name: string }
   | { ok: false; error: string };
-
-const INVALID_SETUP = 'Invalid project setup';
 
 /**
  * npCreate (3969): creates the project at Initiative with the next number, its analytic code and cost categories, and
@@ -175,72 +154,16 @@ const INVALID_SETUP = 'Invalid project setup';
 export async function createProjectAction(draft: NewProjectDraft): Promise<CreateProjectResult> {
   const viewer = await getViewer();
   if (!CREATE_PROJECT_ROLES.includes(viewer.role)) return { ok: false, error: 'You are not allowed to create projects' };
-  if (WIZARD_REQUIRED.name && !str(draft?.name)) return { ok: false, error: 'Project name is required' };
-  if (WIZARD_REQUIRED.client && !str(draft?.client)) return { ok: false, error: 'Client / sponsor is required' };
-  const finish = typeof draft?.finish === 'string' && draft.finish ? draft.finish : null;
-  const windowError = wizardWindowError(draft?.start, finish);
-  if (windowError) return { ok: false, error: windowError };
   const setup = await getNewProjectSetup({ name: viewer.name, role: viewer.role });
-  const siteError = WIZARD_REQUIRED.location ? wizardSiteError(draft?.city, draft?.country, setup.countries) : null;
-  if (siteError) return { ok: false, error: siteError };
-  const das = (DAS_LIST as readonly string[]).includes(draft?.das) ? draft.das : null;
-  const mt = typeof draft?.mt === 'string' && setup.machineTypes.includes(draft.mt) ? draft.mt : null;
-  const cur = (WIZARD_CURRENCIES as readonly string[]).includes(draft?.cur) ? (draft.cur as 'EUR' | 'USD') : null;
-  const cont = (CONTINGENCIES as readonly number[]).includes(draft?.cont) ? draft.cont : null;
-  const cal = WIZARD_CALENDAR_OPTIONS.find((o) => o.value === draft?.cal || o.label === draft?.cal)?.value ?? null;
-  const template = draft?.template === 'blank' || draft?.template === mt ? draft.template : null;
-  const cats = Array.isArray(draft?.cats) && draft.cats.length <= 50 ? draft.cats : null;
-  const pm = draft?.pm == null ? setup.defaultManagerId : setup.managers.some((m) => m.id === draft.pm) ? draft.pm : undefined;
-  if (pm === undefined || (WIZARD_REQUIRED.pm && !pm)) return { ok: false, error: 'Choose the project manager among the proposed people' };
-  if (!das || !mt || !cur || cont == null || !cal || !template || !cats) return { ok: false, error: INVALID_SETUP };
-  const codeOf = (label: string) => (machineType.labels.includes(label) ? machineType.code(label) : label) as MachineTypeCode;
-  const mtCode = codeOf(mt);
-  // R-185: equipment lines — known active types, whole quantities, the first one of the main type.
-  const rawLines: unknown = draft?.lines;
-  let equipments: { machineType: MachineTypeCode; quantity: number; catalogueCode: string | null; catalogueVersion: number | null }[] | undefined;
-  if (rawLines !== undefined && rawLines !== null) {
-    if (!Array.isArray(rawLines) || !rawLines.length || rawLines.length > MAX_EQUIPMENT_LINES) return { ok: false, error: INVALID_SETUP };
-    equipments = [];
-    for (const l of rawLines as { mt?: unknown; qty?: unknown; cat?: unknown }[]) {
-      if (typeof l?.mt !== 'string' || !setup.machineTypes.includes(l.mt)) return { ok: false, error: 'Choose the machine type among the proposed types' };
-      const qty = l.qty;
-      if (typeof qty !== 'number' || !Number.isInteger(qty) || qty < 1 || qty > MAX_EQUIPMENT_QUANTITY)
-        return { ok: false, error: `The quantity is a whole number from 1 to ${MAX_EQUIPMENT_QUANTITY}` };
-      // R-186: an optional published catalogue version of the line's type ("EMP-40T@1").
-      const cat = parseCatalogueChoice(l.cat);
-      if (!cat.ok || (cat.value && !setup.catalogue.some((c) => c.value === l.cat && c.mt === l.mt))) return { ok: false, error: 'Unknown catalogue entry' };
-      equipments.push({ machineType: codeOf(l.mt), quantity: qty, catalogueCode: cat.value?.code ?? null, catalogueVersion: cat.value?.version ?? null });
-    }
-    if (equipments[0].machineType !== mtCode) return { ok: false, error: INVALID_SETUP };
-  }
-  const categories = [];
-  for (const c of cats) {
-    if (!(CATEGORY_TYPES as readonly string[]).includes(c?.type)) return { ok: false, error: INVALID_SETUP };
-    const budget = parseFloat(String(c?.budget ?? '')) || 0;
-    if (!Number.isFinite(budget) || Math.abs(budget) > 1e9) return { ok: false, error: INVALID_SETUP };
-    categories.push({ name: str(c?.name), type: costType.code(c.type), budget });
-  }
+  const parsed = parseProjectDraft(draft, setup);
+  if (!parsed.ok) return parsed;
   try {
-    const created = await createWizardProject({
-      name: str(draft?.name),
-      client: str(draft?.client),
-      das,
-      machineType: mtCode,
-      equipments,
-      currency: cur,
-      templateCode: template === 'blank' ? 'blank' : mtCode,
-      categories,
-      contingencyPct: cont,
-      calendar: cal,
-      pmPersonId: pm,
-      plannedStart: draft.start,
-      plannedFinish: finish,
-      site: typeof draft.city === 'string' && typeof draft.country === 'string' ? { city: draft.city.trim().slice(0, 120), country: draft.country } : null,
-      actorName: viewer.name,
-    });
+    const created = await createWizardProject({ ...parsed.input, actorName: viewer.name });
     refresh();
     return { ok: true, code: created.code, number: created.number, analytic: created.analytic, name: created.name };
   } catch (e) {
+    // Matrix D21: the client's proposed code is a group subsidiary's (an EN source string the wizard translates).
+    if (e instanceof Error && e.message === RESERVED_CLIENT_CODE) return { ok: false, error: RESERVED_CLIENT_CODE };
     logError('createProjectAction', e);
     return { ok: false, error: 'The project could not be created' };
   }

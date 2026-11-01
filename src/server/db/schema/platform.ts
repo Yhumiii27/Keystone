@@ -2,6 +2,7 @@
 // 10 §2 activity feed and audit trail).
 import { index, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import type { ActivityKind, NotificationKind } from '../codes';
+import type { MailState } from '../../../domain/notification-mail';
 import { id } from './_common';
 import { persons, users } from './organisation';
 import { projects } from './portfolio';
@@ -29,7 +30,7 @@ export const notifications = pgTable('notifications', {
   /** Bell-panel order (NOTIFS order; new notifications are prepended with a lower value). */
   sortOrder: integer('sort_order').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [index('notifications_project_id_idx').on(t.projectId)]);
 
 /** Delivery of a notification to a user, with the per-user read state (replaces `state.readNotifs`). */
 export const notificationRecipients = pgTable(
@@ -38,8 +39,20 @@ export const notificationRecipients = pgTable(
     notificationId: uuid('notification_id').notNull().references(() => notifications.id, { onDelete: 'cascade' }),
     userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     readAt: timestamp('read_at', { withTimezone: true }),
+    /**
+     * R-036: the e-mail of this notice to this user (src/domain/notification-mail.ts MailState): immediate / digest while it
+     * waits, then sent, digested, seen, failed…; null = not e-mailed by this channel (rows from before R-036, the deadline
+     * reminders and weekly reports, which send their own e-mail).
+     */
+    mailState: text('mail_state').$type<MailState>(),
+    /** When the e-mail state last moved (sent, digested, failed…). */
+    mailAt: timestamp('mail_at', { withTimezone: true }),
+    mailError: text('mail_error'),
   },
-  (t) => [primaryKey({ columns: [t.notificationId, t.userId] })],
+  (t) => [
+    primaryKey({ columns: [t.notificationId, t.userId] }), index('notification_recipients_user_id_idx').on(t.userId),
+    index('notification_recipients_mail_state_idx').on(t.mailState),
+  ],
 );
 
 /** Cross-project activity feed (ACTIVITY 3557), newest first. Actors are persons or systems (Lucca, System, Sage X3). */
@@ -58,11 +71,14 @@ export const activityEvents = pgTable('activity_events', {
   messageKey: text('message_key'),
   messageParams: jsonb('message_params').$type<Record<string, unknown>>(),
   kind: text('kind').$type<ActivityKind>().notNull(),
+  /** R-051 (P-7d): the approver a substitute decided for (actor = the substitute); null otherwise. */
+  onBehalfOfName: text('on_behalf_of_name'),
   projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   /** Share D18 (Matrix): keystone.pub_journal is read by period. */
   index('activity_events_occurred_at_idx').on(t.occurredAt),
+  index('activity_events_project_id_idx').on(t.projectId),
 ]);
 
 /**
@@ -96,7 +112,10 @@ export const auditEntries = pgTable('audit_entries', {
   /** R-184: the system message the change text was built from, and its typed parameters (as on activity_events). */
   messageKey: text('message_key'),
   messageParams: jsonb('message_params').$type<Record<string, unknown>>(),
+  /** R-051 (P-7d): the approver a substitute decided for (actor = the substitute, "on behalf of"); null otherwise. */
+  onBehalfOfName: text('on_behalf_of_name'),
 }, (t) => [
   /** Share D18 (Matrix): keystone.pub_journal is read by period. */
   index('audit_entries_occurred_at_idx').on(t.occurredAt),
+  index('audit_entries_project_id_idx').on(t.projectId),
 ]);

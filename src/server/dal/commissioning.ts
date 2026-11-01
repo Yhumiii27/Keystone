@@ -17,6 +17,7 @@ import {
 import { commissioningSteps, commissioningSystems, documents, handoverItems, projectEquipments, punchItems, satPlans } from '@/server/db/schema';
 import { listProjectTemplateSystems, planLinesOf, templateSystemsOf } from './itp';
 import { isIsoDate, projectOf, requireWorkspace, trace, whoIs, type Actor } from './ops-common';
+import { notifySatPlanned } from './event-notices';
 
 export type { Actor };
 
@@ -125,13 +126,15 @@ export interface PlanSatInput {
  * "Plan SAT" (AF.commissioning: "SAT planned · invitation sent to the client"): records the SAT plan and dates the
  * system's SAT step (status unchanged). On a project without a commissioning plan the form offers the inspection
  * template's systems (`ITPSYS`, as the prototype): the plan is recorded and the screen keeps its empty panel (no grid is
- * invented). The invitation itself is not sent (no mail connector — Outlook, SMTP).
+ * invented). R-015 / R-036: the invitation goes to the project's client contacts after the commit — a bell notice and an e-mail
+ * at once (as every client notice; nothing while IT's transport is not configured) — never to a group subsidiary (R-190).
+ * Returns the number of client contacts invited.
  */
-export async function planSat(projectCode: string, input: PlanSatInput, actor: Actor): Promise<void> {
+export async function planSat(projectCode: string, input: PlanSatInput, actor: Actor): Promise<number> {
   requireWorkspace('commissioning', actor, 'Commissioning & handover');
   if (!isIsoDate(input.date)) throw new Error('Invalid date');
   const db = await getDb();
-  await db.transaction(async (tx) => {
+  const actorPersonId = await db.transaction(async (tx) => {
     const p = await projectOf(tx, projectCode);
     const own = await tx.select().from(commissioningSystems).where(eq(commissioningSystems.projectId, p.id));
     const sys = own.find((s) => s.name === input.system) ?? null;
@@ -152,7 +155,9 @@ export async function planSat(projectCode: string, input: PlanSatInput, actor: A
       entityType: sys ? 'commissioning_system' : undefined, entityId: sys?.id ?? null, projectId: p.id,
       activity: { text: `Planned the SAT of ${input.system} on ${on} · invitation to the client`, kind: 'client' },
     });
+    return who.personId;
   });
+  return (await notifySatPlanned(projectCode, { system: input.system, date: input.date, witnesses: input.clientWitnesses }, actorPersonId)).length;
 }
 
 /** Interfaces (or punch items) blocking a commissioning step of a project ("Blocked · IF-02") — Interfaces "Blocking commissioning". */

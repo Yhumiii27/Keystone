@@ -2,7 +2,7 @@
 // any screen. URL state of /projects/[code]/documents:
 //   ?scope=all              "All projects" (default: current project + QMS)
 //   ?view=bpe|audit|client|pending|obsolete   saved view (default all)
-//   ?fam=<family code>      ?status=<status code>   ?q=<search>
+//   ?fam=<family code>      ?status=<status code>   ?q=<search>   ?page=2 (R-017: the list's page, 1 omitted)
 //   ?doc=PID-HLT-026        open document record drawer (any record, whatever the filters)
 //   ?deposit=new            "Deposit in Codex" dialog for a new document, with optional context
 //                           &dtype=CER (proposed type) &po=PO-2026-118 (linked order) &part=CR-RAIL-A100 (linked article)
@@ -15,6 +15,8 @@ export interface DocsQuery {
   fam?: string | null;
   status?: string | null;
   q?: string | null;
+  /** R-017: page of the vault list (1 omitted). */
+  page?: string | null;
   doc?: string | null;
   deposit?: string | null;
   dtype?: string | null;
@@ -22,7 +24,7 @@ export interface DocsQuery {
   part?: string | null;
 }
 
-const ORDER: (keyof DocsQuery)[] = ['scope', 'view', 'fam', 'status', 'q', 'doc', 'deposit', 'dtype', 'po', 'part'];
+const ORDER: (keyof DocsQuery)[] = ['scope', 'view', 'fam', 'status', 'q', 'page', 'doc', 'deposit', 'dtype', 'po', 'part'];
 
 /** `/projects/{project}/documents` with its state (defaults omitted). */
 export function documentsHref(project: string, query: DocsQuery = {}): string {

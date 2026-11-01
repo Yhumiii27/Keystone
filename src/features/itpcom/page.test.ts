@@ -90,11 +90,12 @@ describe('/projects/[code]/itp', () => {
     ]);
     // A-6 'a' (R-117): one punch list per project — the 5 items raised by inspections and the 3 raised on site (P-06…P-08).
     // R-185 part 2: + Harbor Line's EQ-02 demo item (P-09); the form asks for the equipment line.
-    expect((p.ItpBody.props.view as ItpScreenView).punch!.rows.map((r) => r.number)).toEqual(['P-01', 'P-02', 'P-03', 'P-04', 'P-05', 'P-06', 'P-07', 'P-08', 'P-09']);
+    // R-158 lot B: + P-10, raised on EQ-02 by the demo reception of the shipment EXP-01.
+    expect((p.ItpBody.props.view as ItpScreenView).punch!.rows.map((r) => r.number)).toEqual(['P-01', 'P-02', 'P-03', 'P-04', 'P-05', 'P-06', 'P-07', 'P-08', 'P-09', 'P-10']);
     expect((primary.props.form as any).fields.find((f: any) => f.id === 'equipment').options.map((o: any) => o.value)).toEqual(['common', 'EQ-01', 'EQ-02']);
     // ?equipment=EQ-02 on the punch list: EQ-02's items, the form's default line.
     const eq2 = await itp({ view: 'punch', equipment: 'EQ-02' });
-    expect((eq2.ItpBody.props.view as ItpScreenView).punch!.rows.map((r) => r.number)).toEqual(['P-09']);
+    expect((eq2.ItpBody.props.view as ItpScreenView).punch!.rows.map((r) => r.number)).toEqual(['P-09', 'P-10']);
     expect(((eq2.PageHeader.props.primary as El).props.form as any).fields.find((f: any) => f.id === 'equipment').defaultValue).toBe('EQ-02');
     // ?equipment=EQ-02 on the plan: EQ-02's plan, "Add inspection" on it with its MEMU systems.
     const plan2 = await itp({ equipment: 'EQ-02' });

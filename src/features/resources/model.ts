@@ -303,16 +303,21 @@ export function resourcesView(input: ResourcesInput, t: T, lang: Lang): Resource
       const bar = capacityBar(r);
       return { name: roleName(r), text: `${r.demandH} / ${r.capacityH} h`, color: bar.over ? LO : 'var(--color-neutral-300)', demandH: r.demandH, capacityH: r.capacityH };
     }),
-    suggestions: input.suggestions
-      ? input.suggestions.map((s) => ({
-          projectCode: s.projectCode,
-          leverCode: s.lever.code,
-          title: leverText(s.lever, t, lang),
-          hint: `${s.lever.activity} · ${dataText(s.lever.activityName, lang)}`,
-          impact: [s.projectLabel ? t(s.projectLabel) : null, leverEffectText(s.effect, { peakPct: s.currentPeakPct }, t, lang)].filter(Boolean).join(' · '),
-          requested: s.requested ? `${lang === 'fr' ? 'Demandée' : 'Requested'} · ${s.requested}` : null,
-          canApply: s.canApply,
-        }))
-      : null,
+    suggestions: suggestionViews(input.suggestions, t, lang),
   };
+}
+
+/** The "Suggested rebalancing" rows (null hides the card) — also built on their own for the streamed card of Resources (R-017). */
+export function suggestionViews(suggestions: SuggestionInput[] | null, t: T, lang: Lang): SuggestionView[] | null {
+  return suggestions
+    ? suggestions.map((s) => ({
+        projectCode: s.projectCode,
+        leverCode: s.lever.code,
+        title: leverText(s.lever, t, lang),
+        hint: `${s.lever.activity} · ${dataText(s.lever.activityName, lang)}`,
+        impact: [s.projectLabel ? t(s.projectLabel) : null, leverEffectText(s.effect, { peakPct: s.currentPeakPct }, t, lang)].filter(Boolean).join(' · '),
+        requested: s.requested ? `${lang === 'fr' ? 'Demandée' : 'Requested'} · ${s.requested}` : null,
+        canApply: s.canApply,
+      }))
+    : null;
 }

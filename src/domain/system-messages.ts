@@ -76,6 +76,55 @@ const MESSAGES = {
     (p) => `CAPEX link: ${p.from} → ${p.to}`,
     (p) => `Rattachement CAPEX : ${p.from} → ${p.to}`,
   ),
+  // R-189 (Arche K-04): the CAPEX milestone a schedule milestone is, set on the Schedule screen (labels of
+  // src/domain/capex-milestones.ts; 'Not a CAPEX milestone' = none).
+  'milestone.capexCode': def(
+    { milestone: 'data', from: 'label', to: 'label' },
+    (p) => `CAPEX milestone of ${p.milestone}: ${p.from} → ${p.to}`,
+    (p, f) => `Jalon CAPEX de ${f.data(p.milestone)} : ${f.label(p.from)} → ${f.label(p.to)}`,
+  ),
+  // R-198: edits made on the Schedule screen's interactive Gantt (activity feed; "FS+5" relationship labels as the Plan writes them).
+  'gantt.moved': def(
+    { activity: 'ref', date: 'date' },
+    (p) => `Moved ${p.activity} on the Gantt · start no earlier than ${p.date}`,
+    (p, f) => `${p.activity} déplacée sur le Gantt · début au plus tôt le ${f.date(p.date)}`,
+  ),
+  'gantt.durationChanged': def(
+    { activity: 'ref', days: 'count' },
+    (p) => `Changed the duration of ${p.activity} on the Gantt · ${p.days} working days`,
+    (p, f) => `Durée de ${p.activity} modifiée sur le Gantt · ${f.plural(p.days, 'jour ouvré', 'jours ouvrés')}`,
+  ),
+  'gantt.constraintCleared': def(
+    { activity: 'ref' },
+    (p) => `Removed the date constraint of ${p.activity} on the Gantt`,
+    (p) => `Contrainte de date de ${p.activity} retirée sur le Gantt`,
+  ),
+  'gantt.linkAdded': def(
+    { pred: 'ref', succ: 'ref', link: 'ref' },
+    (p) => `Linked ${p.pred} → ${p.succ} on the Gantt · ${p.link}`,
+    (p) => `Lien ${p.pred} → ${p.succ} créé sur le Gantt · ${p.link}`,
+  ),
+  'gantt.linkChanged': def(
+    { pred: 'ref', succ: 'ref', link: 'ref' },
+    (p) => `Changed the link ${p.pred} → ${p.succ} on the Gantt · ${p.link}`,
+    (p) => `Lien ${p.pred} → ${p.succ} modifié sur le Gantt · ${p.link}`,
+  ),
+  'gantt.linkRemoved': def(
+    { pred: 'ref', succ: 'ref' },
+    (p) => `Removed the link ${p.pred} → ${p.succ} on the Gantt`,
+    (p) => `Lien ${p.pred} → ${p.succ} supprimé sur le Gantt`,
+  ),
+  // R-190: the project's client flagged as a group subsidiary (internal client) or back to external ('—' = subsidiary code not known).
+  'client.internalSet': def(
+    { client: 'data', subsidiary: 'ref' },
+    (p) => `Client ${p.client} marked internal · group subsidiary ${p.subsidiary}`,
+    (p, f) => `Client ${f.data(p.client)} marqué interne · filiale du groupe ${p.subsidiary}`,
+  ),
+  'client.internalCleared': def(
+    { client: 'data' },
+    (p) => `Client ${p.client} marked external`,
+    (p, f) => `Client ${f.data(p.client)} marqué externe`,
+  ),
   // R-185: the project's equipment lines edited on the Contract screen (audit trail and activity feed; "3 × MEMU").
   'project.equipmentAdded': def(
     { ref: 'ref', equipment: 'ref' },
@@ -108,11 +157,95 @@ const MESSAGES = {
   ),
   'catalogue.retired': def({ ref: 'ref' }, (p) => `Catalogue ${p.ref} retired`, (p) => `Catalogue ${p.ref} retiré`),
   'catalogue.discarded': def({ ref: 'ref' }, (p) => `Catalogue draft ${p.ref} discarded`, (p) => `Brouillon catalogue ${p.ref} abandonné`),
+  // R-187 (Arche K-02, K-10): Keystone's answers to the subsidiaries' machine needs, and the project at the order.
+  'needAnswer.recorded': def(
+    { number: 'ref', need: 'ref', nature: 'label' },
+    (p) => `Answer ${p.number} to need ${p.need} recorded · ${p.nature}`,
+    (p, f) => `Réponse ${p.number} au besoin ${p.need} enregistrée · ${f.label(p.nature)}`,
+  ),
+  'needAnswer.edited': def({ number: 'ref', need: 'ref' }, (p) => `Answer ${p.number} to need ${p.need} edited`, (p) => `Réponse ${p.number} au besoin ${p.need} modifiée`),
+  'needAnswer.status': def(
+    { number: 'ref', need: 'ref', from: 'label', to: 'label' },
+    (p) => `Answer ${p.number} to need ${p.need}: ${p.from} → ${p.to}`,
+    (p, f) => `Réponse ${p.number} au besoin ${p.need} : ${f.label(p.from)} → ${f.label(p.to)}`,
+  ),
+  'needAnswer.projectCreated': def(
+    { need: 'ref', project: 'ref' },
+    (p) => `Project ${p.project} created from ordered need ${p.need}`,
+    (p) => `Projet ${p.project} créé à partir du besoin commandé ${p.need}`,
+  ),
+  'needAnswer.lineAdded': def(
+    { need: 'ref', project: 'ref', ref: 'ref' },
+    (p) => `Ordered need ${p.need} added to project ${p.project} as ${p.ref}`,
+    (p) => `Besoin commandé ${p.need} ajouté au projet ${p.project} en ${p.ref}`,
+  ),
   // R-185 / R-186: a standard phase flagged specific to an equipment (generated once per equipment line) or common to the project.
   'machineType.phaseScope': def(
     { type: 'ref', phase: 'data', perEquipment: 'label' },
     (p) => `Machine type ${p.type} · phase ${p.phase}: ${p.perEquipment}`,
     (p, f) => `Type de machine ${p.type} · phase ${f.data(p.phase)} : ${f.label(p.perEquipment)}`,
+  ),
+  // R-191: the standard list of the engineering pack of a machine type (weights and minimums, "pid 20 % · min 1 · …").
+  'machineType.pack': def(
+    { type: 'ref', list: 'ref' },
+    (p) => `Machine type ${p.type} · engineering pack: ${p.list}`,
+    (p) => `Type de machine ${p.type} · pack ingénierie : ${p.list}`,
+  ),
+  // R-158 lot A: the Incoterms of Settings (split "S S S S B …" in INCOTERM_STEPS order) and the contract's Incoterm.
+  'incoterm.added': def({ code: 'ref', split: 'ref' }, (p) => `Incoterm ${p.code} added · ${p.split}`, (p) => `Incoterm ${p.code} ajouté · ${p.split}`),
+  'incoterm.edited': def({ code: 'ref', split: 'ref' }, (p) => `Incoterm ${p.code} edited · ${p.split}`, (p) => `Incoterm ${p.code} modifié · ${p.split}`),
+  'incoterm.deleted': def({ code: 'ref' }, (p) => `Incoterm ${p.code} deleted`, (p) => `Incoterm ${p.code} supprimé`),
+  'incoterm.deactivated': def(
+    { code: 'ref', contracts: 'count' },
+    (p) => `Incoterm ${p.code} deactivated · used by ${p.contracts} contract(s)`,
+    (p, f) => `Incoterm ${p.code} désactivé · utilisé par ${f.plural(p.contracts, 'contrat', 'contrats')}`,
+  ),
+  'incoterm.reactivated': def({ code: 'ref' }, (p) => `Incoterm ${p.code} reactivated`, (p) => `Incoterm ${p.code} réactivé`),
+  'contract.incoterm': def(
+    { project: 'ref', incoterm: 'ref', place: 'data' },
+    (p) => `${p.project} · contract Incoterm: ${p.incoterm || 'none'}${p.place ? ` ${p.place}` : ''}`,
+    (p, f) => `${p.project} · Incoterm du contrat : ${p.incoterm || 'aucun'}${p.place ? ` ${f.data(p.place)}` : ''}`,
+  ),
+  // R-158 lot A: the shipments (Shipments screen). `what` / statuses / steps are Keystone labels (EN source strings).
+  'shipment.created': def({ project: 'ref', ref: 'ref', equipment: 'dataList' }, (p) => `${p.project} · shipment ${p.ref} created · ${p.equipment.join(', ')}`,
+    (p) => `${p.project} · expédition ${p.ref} créée · ${p.equipment.join(', ')}`),
+  'shipment.edited': def({ project: 'ref', ref: 'ref' }, (p) => `${p.project} · shipment ${p.ref} edited`, (p) => `${p.project} · expédition ${p.ref} modifiée`),
+  'shipment.removed': def({ project: 'ref', ref: 'ref' }, (p) => `${p.project} · shipment ${p.ref} removed`, (p) => `${p.project} · expédition ${p.ref} supprimée`),
+  'shipment.content': def(
+    { project: 'ref', ref: 'ref', what: 'label', item: 'data' },
+    (p) => `${p.project} · shipment ${p.ref} · ${p.what}${p.item ? ` · ${p.item}` : ''}`,
+    (p, f) => `${p.project} · expédition ${p.ref} · ${f.label(p.what)}${p.item ? ` · ${f.data(p.item)}` : ''}`,
+  ),
+  'shipment.gapJustified': def(
+    { project: 'ref', ref: 'ref', item: 'data', reason: 'data' },
+    (p) => `${p.project} · shipment ${p.ref} · gap justified · ${p.item} · ${p.reason}`,
+    (p, f) => `${p.project} · expédition ${p.ref} · écart justifié · ${f.data(p.item)} · ${f.data(p.reason)}`,
+  ),
+  'shipment.status': def(
+    { project: 'ref', ref: 'ref', from: 'label', to: 'label' },
+    (p) => `${p.project} · shipment ${p.ref} · status: ${p.from} → ${p.to}`,
+    (p, f) => `${p.project} · expédition ${p.ref} · statut : ${f.label(p.from)} → ${f.label(p.to)}`,
+  ),
+  'shipment.step': def(
+    { project: 'ref', ref: 'ref', step: 'label' },
+    (p) => `${p.project} · shipment ${p.ref} · step updated · ${p.step}`,
+    (p, f) => `${p.project} · expédition ${p.ref} · étape mise à jour · ${f.label(p.step)}`,
+  ),
+  // R-158 lot B: the site reception, the documents filed in Codex and the freight-delay risk.
+  'shipment.reception': def(
+    { project: 'ref', ref: 'ref', what: 'label', item: 'data' },
+    (p) => `${p.project} · shipment ${p.ref} · reception · ${p.what}${p.item ? ` · ${p.item}` : ''}`,
+    (p, f) => `${p.project} · expédition ${p.ref} · réception · ${f.label(p.what)}${p.item ? ` · ${f.data(p.item)}` : ''}`,
+  ),
+  'shipment.documentFiled': def(
+    { project: 'ref', ref: 'ref', document: 'label', number: 'ref', revision: 'ref' },
+    (p) => `${p.project} · shipment ${p.ref} · ${p.document} filed in Codex · ${p.number} rev ${p.revision}`,
+    (p, f) => `${p.project} · expédition ${p.ref} · ${f.label(p.document)} versé dans Codex · ${p.number} ind. ${p.revision}`,
+  ),
+  'shipment.riskRaised': def(
+    { project: 'ref', ref: 'ref', risk: 'ref' },
+    (p) => `${p.project} · shipment ${p.ref} · freight delay · risk ${p.risk} raised`,
+    (p) => `${p.project} · expédition ${p.ref} · retard de fret · risque ${p.risk} ouvert`,
   ),
 } as const;
 
