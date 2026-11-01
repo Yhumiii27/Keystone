@@ -505,13 +505,6 @@
       "when": 1793531564889,
       "tag": "0071_project_category_share",
       "breakpoints": true
-    },
-    {
-      "idx": 72,
-      "version": "7",
-      "when": 1793540255843,
-      "tag": "0072_risk_analysis",
-      "breakpoints": true
     }
   ]
 }
