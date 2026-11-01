@@ -36,7 +36,7 @@ export interface SiteSheetDefaults {
   country: string;
   /** The contract's currency, else the project's, else EUR. */
   currency: CurrencyCode;
-  /** The first client stakeholder of the project ("Nadia Bensaïd · n.bensaid@port-lehavre.fr"); '' when none. */
+  /** The first client stakeholder of the project ("Nadia Bensaïd · n.bensaid@port-exemple.fr"); '' when none. */
   clientContact: string;
 }
 
