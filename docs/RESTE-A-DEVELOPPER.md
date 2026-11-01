@@ -8,21 +8,21 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-11-01 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 121 faits, 34 en cours, 55 à faire, sur 210 points.
+**Avancement** : 122 faits, 33 en cours, 55 à faire, sur 210 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
 | Bloquant production | 15 | ≈ 102 |
-| Prochaine étape | 28 | ≈ 247 |
+| Prochaine étape | 27 | ≈ 243 |
 | À décider | 26 | ≈ 191 |
 | Plus tard | 20 | ≈ 126 |
-| **Total** | **89** | **≈ 666** |
+| **Total** | **88** | **≈ 662** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
-| Non commencé | 40 |
+| Non commencé | 39 |
 | Partiel | 9 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
@@ -31,7 +31,7 @@ L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il
 |---|---:|---:|---:|---:|---:|---:|
 | Plateforme et mise en production | 6 | 4 | 0 | 2 | 12 | 15 |
 | Authentification, utilisateurs et droits | 1 | 0 | 2 | 0 | 3 | 14 |
-| Intégrations avec les autres systèmes | 5 | 8 | 2 | 6 | 21 | 5 |
+| Intégrations avec les autres systèmes | 5 | 7 | 2 | 6 | 20 | 6 |
 | Projets, cycle de vie et modèles par type de machine | 0 | 1 | 2 | 2 | 5 | 5 |
 | Planning | 1 | 2 | 3 | 1 | 7 | 5 |
 | Coûts, contrat et finance | 0 | 3 | 2 | 0 | 5 | 13 |
@@ -299,7 +299,7 @@ L’approbateur déclare un suppléant et des dates ; pendant cette période, se
 Chercher commandes, CR, NCR et risques sur tous les projets, chaque résultat ouvrant son projet, en filtrant les résultats selon les droits du lecteur (un client ne voit que ses projets). Aujourd’hui la recherche ignore l’utilisateur et limite ces objets au projet courant.  
 *Avancement : Livraison 8 : recherche globale sur tout le portefeuille (X-5), projet courant d’abord ; le client voit les demandes de modification de ses propres projets. · Sources : X-5, 01 OQ18, 00 §7.6, DELIVERY-1.md §4*
 
-### 2.3 Intégrations avec les autres systèmes (21 restants, 5 faits)
+### 2.3 Intégrations avec les autres systèmes (20 restants, 6 faits)
 
 **R-022 · Réconcilier les codes projet (#000, XXX000, Cursus, Vigie) dans la fiche projet** — *Bloquant production · attend le responsable produit · effort M*  
 La fiche projet doit porter et réconcilier le numéro ingénierie #000 (liste incrémentée) et le code analytique XXX000 créé dans Sage et donc imposé, au lieu de les générer. Elle doit aussi tenir la correspondance avec les identifiants Cursus (chantier K-26xx) et Vigie (K-2025-042), clé commune de tous les connecteurs.  
@@ -344,10 +344,6 @@ Synchroniser chaque heure les données des plans (numéro, titre, révision, ét
 **R-036 · Envoyer les notifications par e-mail, avec préférences par utilisateur** — *Prochaine étape · non commencé · effort L* · **en cours (Livraison 9)**  
 Ajouter le canal e-mail (Microsoft Graph via l’application Entra, ou SMTP) : envoi immédiat pour ce qui attend une action et pour les clients, résumé quotidien pour le reste, préférences réglées par chacun. Les invitations SAT et les notifications client, affichées comme envoyées, ne partent pas aujourd’hui, et le pied du panneau de notifications annonce à tort un résumé e-mail, un canal Teams (non retenu par X-6b) et des préférences inexistantes. Analyse comparative du 25 oct. 2026 : le canal e-mail avec rappels d’échéances et rapports programmés est un standard du marché (Smartsheet, Wrike, MS Project) ; aucune dépendance SMTP ni Graph n’est encore en place. Priorité suggérée P1 (voir aussi R-199 pour les rappels et rapports programmés).  
 *Avancement : Livraison 9 : e-mail immédiat ou résumé quotidien par famille et par personne, invitations SAT envoyées, pied du panneau corrigé (sans Teams) ; reste le transport réel (relais SMTP ou Microsoft 365 Mail.Send), l’expéditeur et l’URL publique, fournis par la DSI. · Attend : IT : relais SMTP ou déclaration de Keystone dans Microsoft 365 ; comptes réels avec adresse e-mail · Sources : X-6b, I-3c, DELIVERY-5.md §6, §8 X-6, DELIVERY-6.md §6 (Mail), Analyse comparative avec les solutions du commerce, 25 oct. 2026*
-
-**R-195 · Vue pub_jalons des échéances des projets (pour Crucible)** — *Prochaine étape · non commencé · effort M* · **en cours (Livraison 9)**  
-Crucible (K-2) lit les échéances des projets pour anticiper les besoins d’essais : vue pub_jalons (projet_code, jalon_id, nom, mois_reference, mois_prevu, statut, activite_code, date_activite_fin = fin au plus tôt de l’activité liée si datée, maj_le). La lecture de pub_projets par crucible_app (K-1) est un droit à accorder dans Matrix (partage/90-droits.sql), pas un changement de Keystone. Proche de pub_jalons_projets demandée par Arche (R-189) : une seule vue pour les deux lecteurs si les colonnes se rejoignent.  
-*Avancement : 01/11/2026 (K-195) : Crucible lira pub_jalons_projets telle quelle ; droit crucible_app à demander à Matrix. · Sources : Crucible (application de planification des moyens d’essais R&D), docs/DEMANDES-KEYSTONE.md, 22 oct. 2026*
 
 **R-196 · Catégorie « R&D » des projets lisible dans pub_projets (pour Crucible)** — *Prochaine étape · non commencé · effort S* · **en cours (Livraison 9)**  
 Crucible (K-3) filtre les projets R&D : si les projets R&D sont des projets internes de Keystone, une nature ou une étiquette « R&D » lisible dans pub_projets (colonne en fin de vue, ex. categorie). Le type de machine « R&D » existe déjà ; à décider : type de machine, nature du projet ou étiquette.  
@@ -400,6 +396,10 @@ Point d’entrée HTTP protégé par clé d’API pour heures.validees, absence.
 **~~R-180 · Exposer à Cursus les tâches Keystone de chaque personne par semaine~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 9)**  
 Pour que Cursus propose les lignes de feuille de temps « depuis les tâches Keystone » et renvoie les heures par tâche (NEW-CURSUS-5 = c), Keystone doit offrir un point de lecture authentifié : tâches et activités affectées à un matricule pour une semaine, avec leur identifiant et le code projet. Aucune route de ce type n'existe ; c'est le pendant sortant de la réception des heures.  
 *Avancement : Lot « cursus-tasks » (docs/delivery-9/notes-cursus-tasks.md, contrat docs/integrations/cursus-contract.md § 7) : selon le contrat de Cursus, Keystone pousse (pas de route de lecture) — chaque nuit à 02:00 (tâche cursus-tasks) et avec « Synchroniser » : PUT /v1/projets/{code} pour les projets cités, puis PUT /v1/instantane (section taches, depuis = lundi courant moins 4 semaines ; Cursus supprime les tâches absentes). Envoyées pour chaque personne qui a un matricule : affectations nominatives du planning (heures par jour ouvré du calendrier de l’activité) et tâches Keystone (règle de la vue pub_taches_jours), une tâche couverte par une affectation de la même personne sur la même activité n’étant pas envoyée deux fois. Échec réessayable renvoyé par cursus-outbox ; tâche refusée par Cursus (matricule inconnu) retirée et comptée ; connecteur simulé : envoi enregistré, rien n’est envoyé ; ligne Cursus d’Activité & intégrations : dernier envoi, tâches, refus, personnes sans matricule. À confirmer : la priorité affectation / tâche, l’heure de nuit ; les personnes n’ont pas encore de matricule (annuaire R-027). · Attend : Contrat d'API à convenir avec Cursus (Cursus lit aujourd'hui ses propres données fictives) · Sources : BACKLOG.md §1 bis (« Point de lecture des tâches »), NEW-CURSUS-5, R-6a, C-2b*
+
+**~~R-195 · Vue pub_jalons des échéances des projets (pour Crucible)~~** — *Prochaine étape · partiel · effort M* · **fait (Livraison 9)**  
+Crucible (K-2) lit les échéances des projets pour anticiper les besoins d’essais : vue pub_jalons (projet_code, jalon_id, nom, mois_reference, mois_prevu, statut, activite_code, date_activite_fin = fin au plus tôt de l’activité liée si datée, maj_le). La lecture de pub_projets par crucible_app (K-1) est un droit à accorder dans Matrix (partage/90-droits.sql), pas un changement de Keystone. Proche de pub_jalons_projets demandée par Arche (R-189) : une seule vue pour les deux lecteurs si les colonnes se rejoignent.  
+*Avancement : 01/11/2026 : rien à construire — la vue pub_jalons (migration 0038, colonnes projet_code, jalon_id, nom, position, mois_reference, mois_prevu, statut, activite_code, date_fin_activite, maj_le) existe déjà et Matrix l’accorde à crucible_app (90-droits.sql) ; pub_jalons_projets reste la vue des 8 jalons CAPEX pour Arche. · Sources : Crucible (application de planification des moyens d’essais R&D), docs/DEMANDES-KEYSTONE.md, 22 oct. 2026*
 
 **~~R-187 · Besoins machines des filiales : connecteur capex, réponse chiffrée, création du projet à la commande~~** — *À décider · non commencé · effort L* · **fait (9)**  
 Connecteur capex (miroir de pub_capex et pub_besoins_machines, liens profonds, simulation) ; corbeille « Besoins des filiales » ; qualification, réponse chiffrée avec classe d’estimation, devis puis offre (Codex) ; création du projet EPC2i au G2 du CAPEX avec la référence du CAPEX et du besoin ; vue pub_reponses_besoins. Rejoint la proposition P6 (offres et chiffrage).  
@@ -995,6 +995,7 @@ Module demandé mais à cadrer avec le responsable produit avant construction : 
 
 ## 3. Mises à jour
 
+- 2026-11-01 — R-195 fait : la vue pub_jalons existe déjà (0038) et Matrix l’accorde à Crucible.
 - 2026-11-01 — Cadrage des lots R-195 à R-209 (questionnaire) : lancés R-196, R-201, R-203, R-205, R-206, R-208, puis R-204 ; R-195 et Power BI par Matrix ; plus tard R-197, R-200, R-202, R-207, R-209.
 - 2026-10-31 — R-210 : application Windows construite (en attente d’un essai sur PC Windows et de l’hébergement).
 - 2026-10-31 — L9-X3 fait : documents d’expédition pré-versés dans Codex dans la démonstration.

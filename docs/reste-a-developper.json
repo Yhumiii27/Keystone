@@ -238,6 +238,10 @@
   {
    "date": "2026-11-01",
    "text": "Cadrage des lots R-195 à R-209 (questionnaire) : lancés R-196, R-201, R-203, R-205, R-206, R-208, puis R-204 ; R-195 et Power BI par Matrix ; plus tard R-197, R-200, R-202, R-207, R-209."
+  },
+  {
+   "date": "2026-11-01",
+   "text": "R-195 fait : la vue pub_jalons existe déjà (0038) et Matrix l’accorde à Crucible."
   }
  ],
  "items": [
@@ -5760,7 +5764,7 @@
    "category": "integrations",
    "kind": "integration",
    "priority": "prochaine_etape",
-   "status": "non_commence",
+   "status": "partiel",
    "waiting_on": "",
    "effort": "M",
    "sources": [
@@ -5771,9 +5775,9 @@
     "src/server/db/schema (jalons des projets)"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 9",
-    "note": "01/11/2026 (K-195) : Crucible lira pub_jalons_projets telle quelle ; droit crucible_app à demander à Matrix."
+    "note": "01/11/2026 : rien à construire — la vue pub_jalons (migration 0038, colonnes projet_code, jalon_id, nom, position, mois_reference, mois_prevu, statut, activite_code, date_fin_activite, maj_le) existe déjà et Matrix l’accorde à crucible_app (90-droits.sql) ; pub_jalons_projets reste la vue des 8 jalons CAPEX pour Arche."
    }
   },
   {
