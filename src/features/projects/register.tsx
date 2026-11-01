@@ -17,6 +17,7 @@ import {
   VIEW_HINT, matchesQuery, missingOf, moveModeFor, sliderStopOf, stageAtStop, stageCounts, stageSelection,
   type RegisterView, type StageCode,
 } from '@/domain/lifecycle';
+import { PROJECT_CATEGORIES, PROJECT_CATEGORY_FILTER_LABEL, isProjectCategory, type ProjectCategory } from '@/domain/project-category';
 import { useI18n } from '@/i18n/client';
 import { moveStageAction } from './actions';
 import { forcedMoveToastText } from './toasts';
@@ -39,6 +40,8 @@ export interface ProjectsRegisterProps {
   initialView: RegisterView;
   initialStatus: StageCode | null;
   initialQuery: string;
+  /** R-196: category filter (?cat=client|rd); null = every project. */
+  initialCategory?: ProjectCategory | null;
 }
 
 /** Writes one search param without a navigation (Next syncs useSearchParams with the History API). */
@@ -49,7 +52,7 @@ function replaceParam(key: string, value: string | null) {
   window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
 }
 
-export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, editableCodes, initialView, initialStatus, initialQuery }: ProjectsRegisterProps) {
+export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, editableCodes, initialView, initialStatus, initialQuery, initialCategory = null }: ProjectsRegisterProps) {
   const editable = editableCodes ? new Set(editableCodes) : null;
   const canEditRow = (code: string) => canEdit && (!editable || editable.has(code));
   const { t, lang } = useI18n();
@@ -80,6 +83,13 @@ export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, editableCod
     setStatusState(v);
     replaceParam('status', v);
   };
+  // R-196: client projects / R&D projects (shown only when the zone has an R&D project or the filter is set).
+  const [category, setCategoryState] = useState<ProjectCategory | null>(initialCategory);
+  const setCategory = (v: string) => {
+    const next = isProjectCategory(v) ? v : null;
+    setCategoryState(next);
+    replaceParam('cat', next);
+  };
   const setQ = (v: string) => {
     setQState(v);
     replaceParam('q', v.trim() ? v : null);
@@ -96,8 +106,10 @@ export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, editableCod
   }, []);
 
   const stageOf = (r: RegisterRow) => optStage[r.code] ?? r.stage;
-  const counts = stageCounts(rows.map(stageOf));
-  const shown = rows.filter((r) => (!status || stageOf(r) === status) && matchesQuery(r.search, q));
+  const inCategory = (r: RegisterRow) => !category || (category === 'rd') === !!r.rd;
+  const showCategory = category !== null || rows.some((r) => r.rd);
+  const counts = stageCounts(rows.filter(inCategory).map(stageOf));
+  const shown = rows.filter((r) => inCategory(r) && (!status || stageOf(r) === status) && matchesQuery(r.search, q));
   const stop = sliderStopOf(status);
   // Stage labels and LIFE descriptions arrive translated; the count and hint are EN source strings.
   const sel = stageSelection(status ? labelOf(status) : null, status ? (counts[status] ?? 0) : rows.length, status ? (stageMap.get(status)?.description ?? '') : null);
@@ -163,6 +175,18 @@ export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, editableCod
       <FilterBar>
         <FilterLabel icon={Eye}>{t('Display')}</FilterLabel>
         <Segmented options={viewOptions} value={view} onChange={setView} wrap label={t('Display')} />
+        {showCategory && (
+          <Segmented
+            options={[
+              { value: 'all', label: t('All projects') },
+              ...PROJECT_CATEGORIES.map((c) => ({ value: c, label: t(PROJECT_CATEGORY_FILTER_LABEL[c]) })),
+            ]}
+            value={category ?? 'all'}
+            onChange={setCategory}
+            wrap
+            label={t('Project category')}
+          />
+        )}
       </FilterBar>
 
       <div className={s.filterRow}>

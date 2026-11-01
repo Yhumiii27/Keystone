@@ -33,6 +33,8 @@ export interface ProjectRow {
   client: string;          // 'Port authority'
   /** R-190: the client is a group subsidiary (internal client); present (true) only then — no client-portal access (R-179). */
   clientInternal?: true;
+  /** R-196 (K-196): an R&D project (projects.category 'rd'); present (true) only then. */
+  rd?: true;
   start: string;           // 'Jan 2026'
   finish: string;          // 'Dec 2026'
   budget: number;          // k€
@@ -92,6 +94,7 @@ function toRow(r: Joined, th: HealthThresholds, evm: ProjectEvm | undefined, lin
     city: r.city, country: r.country, zone: r.zoneOverride ?? r.countryZone ?? 'euna', hasData: r.controls != null,
     stage: p.stage, shortCode: p.shortCode, isNew: p.isNew, lat: r.lat, lng: r.lng,
     ...(r.clientInternal ? { clientInternal: true as const } : {}),
+    ...(p.category === 'rd' ? { rd: true as const } : {}),
   };
   return { ...row, health: healthOf(row, th) };
 }

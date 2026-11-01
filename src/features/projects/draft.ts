@@ -3,6 +3,7 @@
 // are English source strings (the client shows them with toast showEn).
 import { CATEGORY_TYPES, CONTINGENCIES, DAS_LIST, WIZARD_CURRENCIES } from '@/domain/lifecycle';
 import { parseCatalogueChoice } from '@/domain/machine-catalogue';
+import { DEFAULT_PROJECT_CATEGORY, isProjectCategory } from '@/domain/project-category';
 import { MAX_EQUIPMENT_LINES, MAX_EQUIPMENT_QUANTITY } from '@/domain/project-equipment';
 import { WIZARD_CALENDAR_OPTIONS, WIZARD_REQUIRED, wizardSiteError, wizardWindowError } from '@/domain/project-template';
 import { costType, machineType, type MachineTypeCode } from '@/server/db/codes';
@@ -13,6 +14,8 @@ export interface NewProjectDraft {
   name: string;
   client: string;
   das: string;
+  /** R-196 (K-196): 'client' (default when absent) or 'rd' — an R&D project. */
+  category?: string;
   /** Machine type label: EMP, MEMU, SPUR, AUTRE, R&D, or a custom type's code — the main type (first equipment line). */
   mt: string;
   /**
@@ -57,6 +60,8 @@ export function parseProjectDraft(draft: NewProjectDraft, setup: NewProjectSetup
   const siteError = WIZARD_REQUIRED.location ? wizardSiteError(draft?.city, draft?.country, setup.countries) : null;
   if (siteError) return { ok: false, error: siteError };
   const das = (DAS_LIST as readonly string[]).includes(draft?.das) ? draft.das : null;
+  const category = draft?.category == null ? DEFAULT_PROJECT_CATEGORY : isProjectCategory(draft.category) ? draft.category : null;
+  if (!category) return { ok: false, error: 'Choose the project category' };
   const mt = typeof draft?.mt === 'string' && setup.machineTypes.includes(draft.mt) ? draft.mt : null;
   const cur = (WIZARD_CURRENCIES as readonly string[]).includes(draft?.cur) ? (draft.cur as 'EUR' | 'USD') : null;
   const cont = (CONTINGENCIES as readonly number[]).includes(draft?.cont) ? draft.cont : null;
@@ -100,6 +105,7 @@ export function parseProjectDraft(draft: NewProjectDraft, setup: NewProjectSetup
       name: str(draft?.name),
       client: str(draft?.client),
       das,
+      category,
       machineType: mtCode,
       equipments,
       currency: cur,
