@@ -270,6 +270,10 @@
   {
    "date": "2026-11-02",
    "text": "Livraison 9 : lots R-168 (avant / après et motif du journal d’audit) et R-171 (nettoyage du code) lancés."
+  },
+  {
+   "date": "2026-11-02",
+   "text": "R-168 : avant / après et motif dans tout le journal d’audit, garde-fou de couverture. R-171 : nettoyage du code (reste client_communications, attend D-5)."
   }
  ],
  "items": [
@@ -5070,7 +5074,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "Livraison 8",
-    "note": "Livraison 8, lot journal d’audit : table en ajout seul (déclencheurs), utilisateur, avant / après, motif, 4 colonnes de plus dans l’export CSV ISO. Reste : remplir avant / après / motif dans les autres écritures (balayage après la livraison) et REVOKE quand l’hébergement est choisi (I-1a). 2 nov. 2026 : lot « audit » lancé (avant / après et motif dans les écritures restantes)."
+    "note": "Livraison 8, lot journal d’audit : table en ajout seul (déclencheurs), utilisateur, avant / après, motif, 4 colonnes de plus dans l’export CSV ISO. Reste : remplir avant / après / motif dans les autres écritures (balayage après la livraison) et REVOKE quand l’hébergement est choisi (I-1a). 2 nov. 2026 : lot « audit » lancé (avant / après et motif dans les écritures restantes). Fait le 2 nov. 2026 (docs/delivery-9/notes-r168-audit.md) : ~120 écritures portent avant / après (champs modifiés seulement, changedValues) et motif ; garde-fou src/server/audit-coverage.test.ts (exceptions listées : créations, événements, système). Reste : REVOKE quand l’hébergement est choisi (I-1a)."
    }
   },
   {
@@ -5169,7 +5173,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "Livraison 9",
-    "note": "2 nov. 2026 : lot « nettoyage » lancé (code mort, doublons, commentaires périmés ; client_communications attend D-5)."
+    "note": "2 nov. 2026 (docs/delivery-9/notes-r171-cleanup.md) : code mort nommé retiré (addTaskAttachment, INDEX_ALERT, disponibilités de resources.ts, getPortfolioCashForecast, transferTargets, copie de priorityScore), ~45 exports et 2 fichiers sans référence, 11 classes CSS, commentaires « OPEN QUESTION » rattachés aux décisions et commentaires périmés corrigés. Reste : client_communications et son DAL (attend D-5)."
    }
   },
   {
