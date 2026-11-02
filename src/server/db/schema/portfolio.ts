@@ -400,7 +400,7 @@ export const stageTransitions = pgTable(
     /** Snapshot of unticked deliverables when forcing. */
     missingDeliverables: text('missing_deliverables').array(),
     requestedByPersonId: uuid('requested_by_person_id').references(() => persons.id),
-    /** Forced moves only (OPEN QUESTION L-1; informational in the prototype). */
+    /** Forced moves only (L-1: the director confirms or reverts). */
     validationStatus: text('validation_status').$type<ValidationStatus>(),
     validatedByPersonId: uuid('validated_by_person_id').references(() => persons.id),
     validatedAt: timestamp('validated_at', { withTimezone: true }),

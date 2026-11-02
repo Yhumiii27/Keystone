@@ -19,7 +19,7 @@ interface Analysis { summary: string; decisions: string[]; actions: [string, str
 
 /**
  * Transcript analysis results (logic 4840): MTG-119 and MTG-121 have their own; any other meeting with a transcript
- * gets the Nordvolt FAT result (here MTG-120). Simulated analysis — OPEN QUESTION S-10.
+ * gets the Nordvolt FAT result (here MTG-120). The prototype's pre-baked analysis (demo seed; S-10 analyses imports).
  */
 export const TRANSCRIPT_ANALYSES: Readonly<Record<string, Analysis>> = {
   'MTG-119': {

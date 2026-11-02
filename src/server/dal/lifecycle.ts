@@ -75,13 +75,6 @@ export async function getStageChecklist(projectCode: string): Promise<Record<Sta
   return out;
 }
 
-/** Unticked deliverables of a stage (missingOf 3920). */
-export async function getMissingDeliverables(projectCode: string, stage: StageCode): Promise<string[]> {
-  const [stages, checklist] = await Promise.all([listStages(), getStageChecklist(projectCode)]);
-  const s = stages.find((x) => x.code === stage);
-  return (s?.deliverables ?? []).filter((_, i) => !checklist[stage]?.[i]);
-}
-
 export interface StageHistoryRow {
   stage: StageCode;
   /** Prototype label of the stage entered. */

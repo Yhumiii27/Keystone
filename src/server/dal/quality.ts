@@ -453,7 +453,7 @@ export async function deliverableWbsOptions(projectCode: string): Promise<{ code
   return db.select({ code: wbsNodes.code, name: wbsNodes.name }).from(wbsNodes).where(eq(wbsNodes.projectId, p.id)).orderBy(asc(wbsNodes.position));
 }
 
-/** Links the issued document (a Codex index record) to a deliverable (the drawer's drop slot; OPEN QUESTION D-1). */
+/** Links the issued document (a Codex index record) to a deliverable (the drawer's drop slot; Codex index, R-033). */
 export async function linkDeliverableDocument(projectCode: string, number: string, documentNumber: string, actor: Actor): Promise<void> {
   requireWorkspace('quality', actor, 'Quality');
   const db = await getDb();
@@ -486,13 +486,4 @@ export async function deliverableDecidedCount(actor: Actor): Promise<number> {
   const rows = await db.select({ change: auditEntries.change }).from(auditEntries)
     .where(and(eq(auditEntries.area, 'Deliverables'), eq(auditEntries.actorName, who), eq(auditEntries.entityType, 'deliverable')));
   return rows.filter((r) => r.change.startsWith('status: Submitted → ')).length;
-}
-
-/** Submitted deliverables per project (client portal "Awaiting your decision", client Home). */
-export async function submittedDeliverablesByProject(): Promise<Record<string, number>> {
-  const db = await getDb();
-  const rows = await db.select({ code: projects.code }).from(deliverables).innerJoin(projects, eq(projects.id, deliverables.projectId)).where(eq(deliverables.status, 'submitted'));
-  const out: Record<string, number> = {};
-  for (const r of rows) out[r.code] = (out[r.code] ?? 0) + 1;
-  return out;
 }

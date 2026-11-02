@@ -157,7 +157,7 @@ export const engImports = pgTable('eng_imports', {
 
 /**
  * P&ID sheet under validation (PID 3583, HLT-026): the Codex record it belongs to and the revision the tags were
- * extracted from (rev C, Under review — Codex has rev D released, 11 §7 #10, OPEN QUESTION A-9).
+ * extracted from (rev C, Under review — Codex has rev D released, 11 §7 #10; A-9: the gap is flagged with a re-import, R-109).
  */
 export const pidSheets = pgTable('pid_sheets', {
   id: id(),

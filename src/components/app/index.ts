@@ -2,9 +2,9 @@
 // components/app/shell). Server-compatible unless noted; client components: SearchField, ClickableRow,
 // FormDialog, WizardDialog.
 export * from './tones';
-export { SectionCard, Stack, PageSection, CardGrid, FlexRow } from './SectionCard';
+export { SectionCard, Stack, CardGrid, FlexRow } from './SectionCard';
 export type { SectionCardProps } from './SectionCard';
-export { Eyebrow, SectionLabel, GroupDivider } from './Eyebrow';
+export { Eyebrow, GroupDivider } from './Eyebrow';
 export type { EyebrowProps, EyebrowVariant, GroupDividerProps } from './Eyebrow';
 export { KpiGrid, KpiTile, TrendKpiCard, ReconStep } from './Kpi';
 export type { KpiGridProps, KpiTileProps, TrendKpiCardProps, ReconStepProps } from './Kpi';

@@ -65,6 +65,3 @@ export function depositHref(project: string, ctx: DepositContext = {}, keep: Doc
   if (ctx.revisionOf) return documentsHref(project, { ...keep, doc: null, deposit: ctx.revisionOf });
   return documentsHref(project, { ...keep, doc: null, deposit: 'new', dtype: ctx.type, po: ctx.po, part: ctx.part });
 }
-
-/** Alias of `depositHref` (`openDep(ctx)` of the prototype). */
-export const openDepositHref = depositHref;

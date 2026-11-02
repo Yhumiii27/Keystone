@@ -288,11 +288,3 @@ export async function handleClientIssue(projectCode: string, number: string, h: 
   }
   return done.to;
 }
-
-/** Open (not closed) issues of a project ("Open issues · Raised by you"). */
-export async function countOpenClientIssues(projectCode: string): Promise<number> {
-  const db = await getDb();
-  const p = await projectOf(db, projectCode);
-  const rows = await db.select({ s: clientIssues.status }).from(clientIssues).where(and(eq(clientIssues.projectId, p.id)));
-  return rows.filter((r) => r.s !== 'closed').length;
-}

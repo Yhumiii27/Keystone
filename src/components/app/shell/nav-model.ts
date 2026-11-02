@@ -88,8 +88,6 @@ export function swapProjectInPath(pathname: string, code: string, search?: strin
 export const PROJECT_SCREENS: ScreenId[] = SCREENS.filter((s) => s.scope === 'project').map((s) => s.id);
 /** Project screens whose primary action is hidden in project read-only mode (line 5176: picker list minus client, docs). */
 export const PROJECT_EDITABLE: ScreenId[] = PROJECT_SCREENS.filter((id) => id !== 'client' && id !== 'docs');
-/** Screens showing the zone bar (`zoneBar`, line 5211). */
-export const ZONE_SCREENS: ScreenId[] = SCREENS.filter((s) => s.scope === 'zone').map((s) => s.id);
 
 /** `outside` (line 5153): the screen is not in the role's workspace (task counts as mywork). */
 export const isOutside = (role: RoleKey, id: ScreenId) => !canSee(role, id);

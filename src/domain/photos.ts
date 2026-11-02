@@ -64,6 +64,3 @@ export function parsePhotoOwner(v: { kind?: unknown; code?: unknown; ref?: unkno
   }
   return { kind, code, ref, register };
 }
-
-/** "3 photos" / "1 photo" (EN; FR through the caller's dictionary). */
-export const photoCountText = (n: number) => `${n} ${n === 1 ? 'photo' : 'photos'}`;

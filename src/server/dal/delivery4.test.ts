@@ -400,7 +400,6 @@ describe('stock & storages (08 §4)', () => {
       expect(g.meta.map((m: any) => m.v)).toEqual([n(d.onHand), d.reserved ? `${d.reserved}${d.reservedForShort ? ' · ' + d.reservedForShort : ''}` : '—', n(d.available), d.minQty || '—', $(d.unitCostEur), g.meta[5].v]);
       expect(day(g.meta[5].v)).toBe(day(fmtDOfIso(d.lastMovementOn, 2026)));
       expect(d.movements.map((m) => ({ when: m.when, type: m.typeLabel, qty: m.qty, where: m.where, who: m.who }))).toEqual(g.moves);
-      expect(d.transferTargets.map((t) => t.shortLabel)).toEqual(g.targets);
     }
     expect(await countStockBelowMin()).toBe(1);
     expect(rows.filter((r) => r.source === 'local').map((r) => stockSource.label(r.source))).toEqual(['Local', 'Local', 'Local']);

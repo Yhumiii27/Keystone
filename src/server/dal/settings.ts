@@ -60,13 +60,6 @@ export interface SettingsData {
   dcma?: DcmaThresholds;
 }
 
-/** Active values of one list, in order. */
-export async function listReferenceValues(listKey: ReferenceListKey): Promise<ReferenceValueRow[]> {
-  const db = await getDb();
-  return db.select({ code: referenceValues.code, label: referenceValues.label }).from(referenceValues)
-    .where(and(eq(referenceValues.listKey, listKey), eq(referenceValues.active, true))).orderBy(asc(referenceValues.position));
-}
-
 /** Project health thresholds (On track ≥ risk, At risk below risk, Off track below off) — uncached, for writers and tests. */
 export async function getHealthThresholds(): Promise<HealthThresholds> {
   return readHealthThresholds();
@@ -368,11 +361,4 @@ export async function resetSettings(actor: Actor): Promise<void> {
       ...changedValues(settingsBefore, { [APP_SETTING_HEALTH]: health, [APP_SETTING_HOURS_VARIANCE]: hours, [APP_SETTING_DCMA]: dcma, [APP_SETTING_CCB]: { keur: ccb } }),
     });
   });
-}
-
-/** Labels of several lists at once (forms: risk categories, deliverable types, cost categories). */
-export async function referenceLists(keys: ReferenceListKey[]): Promise<Record<string, ReferenceValueRow[]>> {
-  const db = await getDb();
-  const rows = await db.select().from(referenceValues).where(and(inArray(referenceValues.listKey, keys), eq(referenceValues.active, true))).orderBy(asc(referenceValues.position));
-  return Object.fromEntries(keys.map((k) => [k, rows.filter((r) => r.listKey === k).map((r) => ({ code: r.code, label: r.label }))]));
 }

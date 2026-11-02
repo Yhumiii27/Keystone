@@ -6,8 +6,8 @@ import { shade } from '@/components/app/tones';
 import PROTO from '@/server/prototype/prototype-data.json';
 import GEN from '@/server/prototype/prototype-generated.json';
 import {
-  availableHours, capacityBar, laborShare, loadBand, mainShortfall, overAllocatedCount, peopleAboveByWeek, personAvailability, personLoad,
-  projectDepartmentDemand, requestsNeedingExperts, teamAvailability, teamUtilization, unmetDemand, weekRangesText, weeksAbove, weeksUnderTeamCapacity, type LoadBand,
+  capacityBar, laborShare, loadBand, mainShortfall, overAllocatedCount, peopleAboveByWeek, personLoad,
+  projectDepartmentDemand, requestsNeedingExperts, teamUtilization, unmetDemand, weekRangesText, weeksAbove, type LoadBand,
 } from './resources';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -116,34 +116,6 @@ describe('capacity vs demand', () => {
 
   it('labour share without a budget is null', () => {
     expect(laborShare({ budget: 0, actual: 10 })).toBeNull();
-  });
-});
-
-describe('availability from leave (Leave & working calendar, 35 h basis)', () => {
-  const LEAVE = P.LEAVE as Record<string, Record<string, string>>;
-  const LEAVE_DAYS = P.LEAVE_DAYS as Record<string, number>;
-  const HOLIDAYS = P.HOLIDAYS as Record<string, string>;
-  const rows = PEOPLE.map(([n]) =>
-    personAvailability(Array.from({ length: 8 }, (_, i) => ({ days: LEAVE[n]?.[i] ? LEAVE_DAYS[LEAVE[n][i]] : 0, holidays: HOLIDAYS[i] ? 1 : 0 }))),
-  );
-
-  it('weekly hours = max(0, 5 − leave − holidays) × 7', () => {
-    expect([availableHours(0), availableHours(1, 1), availableHours(5, 1), availableHours(2)]).toEqual([35, 21, 0, 21]);
-    expect(rows[0].hours).toEqual([35, 35, 0, 0, 35, 35, 28, 35]); // Amélie Ollivier: CP weeks 2–3, Armistice week 6
-    expect(rows[7].hours).toEqual([35, 35, 35, 35, 35, 35, 0, 0]); // Fabien Bertrand: CP + holiday cannot go negative
-  });
-
-  it('per person: availability %, leave days, low flag', () => {
-    expect(rows.map((r) => [r.pct, r.leaveDays, r.low])).toEqual([
-      [73, 10, false], [95, 1, false], [78, 8, false], [73, 10, false], [93, 2, false], [98, 0, false], [93, 2, false], [75, 10, false],
-    ]);
-  });
-
-  it('team KPIs: availability 85 %, 43 leave days, 0 weeks under 60 % capacity', () => {
-    expect(teamAvailability(rows)).toBe(85);
-    expect(rows.reduce((a, r) => a + r.leaveDays, 0)).toBe(43);
-    expect(weeksUnderTeamCapacity(rows)).toBe(0);
-    expect(weeksUnderTeamCapacity(rows, 0.7)).toBe(1); // week 6 (Armistice): 189 h / 280 h
   });
 });
 

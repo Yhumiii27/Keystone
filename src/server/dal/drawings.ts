@@ -1,7 +1,7 @@
 import 'server-only';
 // Drawings — PDM vault DAL (docs/spec/09 §5; 11 §3.9 Drawing). A read-only mirror of the SolidWorks PDM vault: drawings
 // linked to catalogue parts with revision, state, last check-in and the Vigie ECO that drives them. "Sync vault" is a
-// simulated hand-off until the PDM connector exists (OPEN QUESTION E-7): it records the run, changes no drawing.
+// simulated hand-off until the PDM connector exists (E-7 "a", R-035): it records the run, changes no drawing.
 import { asc, desc, eq, sql } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import { drawingState, parisParts, partStatus, vaultSyncScope, vaultSyncSource, type DrawingState, type PartStatus, type VaultSyncScope, type VaultSyncSource } from '@/server/db/codes';

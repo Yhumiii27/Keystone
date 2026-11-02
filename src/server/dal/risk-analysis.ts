@@ -119,14 +119,6 @@ export async function latestRiskAnalysisRunsByCode(q?: Q): Promise<Map<string, S
   return out;
 }
 
-/** Latest stored run of a project; null when it was never run. */
-export async function latestRiskAnalysis(code: string, q?: Q): Promise<StoredRun | null> {
-  const db = q ?? (await getDb());
-  const [p] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, code));
-  if (!p) return null;
-  return (await latestRiskAnalysisRuns([p.id], db)).get(p.id) ?? null;
-}
-
 /** Everything the "Risk analysis" section shows; null for an unknown project. */
 export async function getRiskAnalysis(code: string, q?: Q): Promise<RiskAnalysisData | null> {
   const db = q ?? (await getDb());

@@ -229,7 +229,7 @@ export interface ForcedStageChangeRow {
   pm: string | null;
 }
 
-/** Forced stage changes awaiting the director's validation (My approvals "Forced stage change", OPEN QUESTION L-1). */
+/** Forced stage changes awaiting the director's validation (My approvals "Forced stage change", L-1). */
 export async function listPendingForcedStageChanges(): Promise<ForcedStageChangeRow[]> {
   const db = await getDb();
   const req = alias(persons, 'req');

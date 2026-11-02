@@ -32,8 +32,6 @@ export function authMode(e: Env = env()): AuthMode {
   throw new AuthConfigError(`KEYSTONE_AUTH must be "demo" or "entra" (got "${e.KEYSTONE_AUTH}")`);
 }
 
-export const isEntraMode = (e: Env = env()) => authMode(e) === 'entra';
-
 const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const MIN_SECRET_LENGTH = 32;
 const DEFAULT_SESSION_HOURS = 12;

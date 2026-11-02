@@ -16,7 +16,7 @@ import type { Tx } from '@/server/db/types';
 import { safeCodexUrl } from './links';
 import { closeCodexEntries, openCodexEntries } from './outbox';
 
-/** State of a record as Codex reports it — TODO(codex): payload to confirm with Codex's API (OPEN QUESTION D-1). */
+/** State of a record as Codex reports it — TODO(codex): payload to confirm with Codex's API (R-033). */
 export interface CodexDocumentState {
   number: string;
   revision: string;
@@ -96,7 +96,7 @@ export async function applyCodexDocumentStates(tx: Tx, records: readonly CodexDo
 
 /**
  * A record of Codex's index as Keystone reads it — TODO(codex): payload of `GET /api/documents?since=…` proposed until Codex
- * publishes its API (OPEN QUESTION D-1). D-2 scope: the record, its current revision and its current circuit — no earlier
+ * publishes its API (R-033). D-2 scope: the record, its current revision and its current circuit — no earlier
  * revision, no download log. `project` is Keystone's project code ("HLT-026") or "QMS" for a company quality document
  * (NEW-SYS-1: the project key is likely to change).
  */

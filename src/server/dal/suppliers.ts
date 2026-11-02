@@ -8,18 +8,6 @@ import { locationType, type LocationType, type SupplierGrade } from '@/server/db
 import { goodsReceipts, parts, projects, receiptLines, storageLocations, suppliers } from '@/server/db/schema';
 import { listProjectNcrRefs } from './quality';
 
-export interface SupplierRow {
-  name: string;
-  isInternal: boolean;
-  x3Code: string | null;
-}
-
-/** Every company known to Keystone (scorecard suppliers first, then manufacturers and other bidders). */
-export async function listSuppliers(): Promise<SupplierRow[]> {
-  const db = await getDb();
-  return db.select({ name: suppliers.name, isInternal: suppliers.isInternal, x3Code: suppliers.x3Code }).from(suppliers).orderBy(asc(suppliers.position));
-}
-
 export interface ScorecardRow {
   name: string;
   onTimeDeliveryPct: number;

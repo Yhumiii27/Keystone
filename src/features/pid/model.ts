@@ -69,7 +69,7 @@ export interface PidScreenView {
     rev: string;
     /** Codex record of the P&ID (Codex owns the document); null when the sheet has none. */
     docHref: string | null;
-    /** "Codex · rev D · Released" (tooltip of the document link — OPEN QUESTION A-9: Codex is ahead of the tag list). */
+    /** "Codex · rev D · Released" (tooltip of the document link — A-9: Codex may be ahead of the tag list). */
     docTitle: string | null;
     placeholder: string;
     /**

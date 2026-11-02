@@ -2,7 +2,7 @@
 // numeric quantities of the resource assignments (S-7). Reads the database it seeds — not the prototype JSON — so the same
 // code seeds a fresh database and backfills one seeded before migration 0005 (see seedIfEmpty). Nothing here changes a
 // displayed value: the BL1 rows carry exactly what the Plan and the Change control register showed before.
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 import { parseAssignmentQuantities } from '@/domain/assignments';
 import { BUILTIN_CALENDARS, BUILTIN_CALENDAR_BY_CODE, WorkCalendar } from '@/domain/calendar';
 import { DEFAULT_PROJECT_CALENDAR } from '@/domain/ch4-defaults';
@@ -105,9 +105,4 @@ export async function seedChapter4(tx: Tx): Promise<void> {
   await seedBaselineSnapshots(tx);
   await classifySeedBaselines(tx);
   await seedAssignmentQuantities(tx);
-}
-
-/** Codes of the built-in calendars present in the database (db-check). */
-export async function builtinCalendarCodes(tx: Tx): Promise<string[]> {
-  return (await tx.select({ code: calendars.code }).from(calendars).where(inArray(calendars.code, BUILTIN_CALENDARS.map((c) => c.code)))).map((c) => c.code);
 }

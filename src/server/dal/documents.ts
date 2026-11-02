@@ -1,9 +1,9 @@
 import 'server-only';
 // Documents — Codex index DAL (docs/spec/10 §4 Documents, §5 Document types register; 11 §3.10). Keystone mirrors
 // the Codex records (number, revision, status, confidentiality, tags, links), shows the approval proof, distribution
-// and acknowledgements, and hands deposits over to Codex (simulated: the index record is created at once, OPEN QUESTION
-// D-1). Writers follow the vault's state machine (10 §9): Draft → Frozen → Release proposed → (approvals) → Released;
-// client acknowledgement of released client deliverables.
+// and acknowledgements, and hands deposits over to Codex (simulated: the index record is created at once until Codex's
+// prefilled deposit form exists — D-1a "a", R-125). Writers follow the vault's state machine (10 §9): Draft → Frozen →
+// Release proposed → (approvals) → Released; client acknowledgement of released client deliverables.
 // Delivery 8 (D-2 = a, A-15 = a; R-127): Keystone keeps the record, its current revision and its current circuit — the
 // earlier revisions and the download log stay in Codex (the drawer links there); no Keystone download log is written.
 // R-128: the drawer's relations (deliverable, order, punch item) resolve in the record's own project.

@@ -73,7 +73,7 @@ export interface CursusRequestReceipt {
 }
 
 /**
- * Cursus's staff directory (R-027, NEW-CURSUS-2 "a"). TODO(cursus) — OPEN QUESTION C-4 (new): Cursus has no directory
+ * Cursus's staff directory (R-027, NEW-CURSUS-2 "a"). TODO(cursus) — Cursus question C-4: Cursus has no directory
  * access yet; Keystone proposes GET /api/integrations/keystone/annuaire (X-Api-Key) → [{ matricule, nom, prenom, email,
  * equipe }] (docs/integrations/cursus-contract.md). Rows that are not usable (no matricule or name) are counted, not kept.
  */

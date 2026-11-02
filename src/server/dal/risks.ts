@@ -181,7 +181,7 @@ const clamp15 = (v: number | undefined) => Math.max(1, Math.min(5, Math.round(v 
 const cost2 = (v: number | undefined) => (v != null && Number.isFinite(v) ? Math.max(0, Math.round(v * 100) / 100) : 0);
 
 /**
- * Adds a risk to a project's register (AF.risks): number R-21… (global sequence, OPEN QUESTION Q-7), status
+ * Adds a risk to a project's register (AF.risks): number R-21… (global sequence until Q-7's per-project numbering is built, R-014), status
  * Open, trend flat, prepended to the register. Returns the new number.
  */
 export async function createRisk(projectCode: string, input: NewRiskInput, actorName: string, inTx?: Tx): Promise<string> {

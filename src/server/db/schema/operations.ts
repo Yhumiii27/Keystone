@@ -83,7 +83,7 @@ export const itpPlanSystems = pgTable(
   (t) => [primaryKey({ columns: [t.planId, t.position] }), unique().on(t.planId, t.name)],
 );
 
-/** Inspections and tests of a plan ("I-03 Paint thickness (DFT)"); results are read-only (OPEN QUESTION Q-6). */
+/** Inspections and tests of a plan ("I-03 Paint thickness (DFT)"); results recorded by `recordItpResult` (Q-6a, R-112). */
 export const itpInspections = pgTable(
   'itp_inspections',
   {

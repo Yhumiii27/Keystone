@@ -6,7 +6,6 @@ import 'server-only';
 // Write rule: the currency of a project changes only while none of its documents uses the current one (else they would be
 // left without a rate); the rate itself can change at any time (the consolidated figures follow).
 import { and, eq, sql } from 'drizzle-orm';
-import { cache } from 'react';
 import { changedValues } from '@/domain/audit-trail';
 import { BASE_CURRENCY, isCurrency, parseBudgetRate, projectFxOf, type CurrencyCode, type ProjectFx } from '@/domain/currency';
 import { canSetBudgetRate } from '@/domain/rights';
@@ -15,13 +14,6 @@ import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '
 import { contracts, customerInvoices, paymentMilestones, projects, purchaseOrders, supplierInvoices } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
 import type { Actor } from './ops-common';
-
-/** Currency and budget rate of every project, keyed by code (one read per request). */
-export const listProjectFx = cache(async (): Promise<Record<string, ProjectFx>> => {
-  const db = await getDb();
-  const rows = await db.select({ code: projects.code, currency: projects.currency, budgetRate: projects.budgetRate }).from(projects);
-  return Object.fromEntries(rows.map((r) => [r.code, projectFxOf(r)]));
-});
 
 /** Currency and budget rate of a project (EUR without rate when the code is unknown). */
 export async function getProjectFx(code: string, q?: DB | Tx): Promise<ProjectFx> {

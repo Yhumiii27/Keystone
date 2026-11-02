@@ -28,7 +28,7 @@ export const wbsNodes = pgTable(
     finishText: text('finish_text'),
     baselineFinishText: text('baseline_finish_text'),
     totalFloatDays: integer('total_float_days'),
-    /** Added work packages (OPEN QUESTION S-6). */
+    /** Added work packages (S-6 under discussion: analytic and NIM codes per task, R-082). */
     ownerPersonId: uuid('owner_person_id').references(() => persons.id),
     scope: text('scope'),
     /** Chapter 4 (A-7): roll-up dates of the node's activities, written by "Reschedule" (null until then). */
@@ -189,7 +189,7 @@ export const milestones = pgTable(
 
 /**
  * Schedule bars (HTASKS 3113 / generated TASKS): one bar per work package, as shown on the Schedule screen.
- * Kept as data (golden values) — not recomputed from the activities (OPEN QUESTION A-7).
+ * Seeded with the prototype's rows; rewritten as roll-ups of the WBS by the first Reschedule (A-7, `refreshRollups`).
  */
 export const scheduleBars = pgTable('schedule_bars', {
   id: id(),

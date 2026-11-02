@@ -16,7 +16,7 @@ import 'server-only';
 // - mock (default; tests and the default run never need Cursus): the local mirror seeded from the prototype's SITE_DOCS;
 //   reminders and travel requests wait in the outbox ("pending sync with Cursus");
 // - http (CURSUS_API_URL set): refreshes the mirror from the go-no-go endpoint and delivers travel requests. Cursus has
-//   no reminder endpoint: reminders stay pending (TODO(cursus), OPEN QUESTION C-2).
+//   no reminder endpoint: reminders stay pending (TODO(cursus): Cursus question C-2, DELIVERY-5 §8).
 import { and, eq, inArray } from 'drizzle-orm';
 import { directoryEntryOf } from '@/domain/directory';
 import { cursusSyncStatus, inWorkspace, type CursusClearance, type CursusVerdict } from '@/server/db/codes';

@@ -6,7 +6,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { cache } from 'react';
 import { getDb } from '@/server/db/client';
 import type { ZoneCode } from '@/server/db/codes';
-import { clients, countries, departmentCapacities, departments, persons, users, zones } from '@/server/db/schema';
+import { clients, departmentCapacities, departments, persons, users, zones } from '@/server/db/schema';
 
 export interface PersonRow {
   id: string;
@@ -61,11 +61,6 @@ export async function getPersonByName(name: string): Promise<PersonRow | null> {
     .leftJoin(clients, eq(clients.id, persons.clientId))
     .where(or(eq(persons.fullName, name), eq(persons.shortName, name)));
   return r ? toPerson(r) : null;
-}
-
-/** Person by planner owner key ("JW"). */
-export async function getPersonByOwnerCode(code: string): Promise<PersonRow | null> {
-  return (await listPeople()).find((p) => p.ownerCode === code) ?? null;
 }
 
 /** The planner owners (OWN 3195) in prototype order: the owner select of the Plan screen. */
@@ -136,24 +131,6 @@ export async function listZones(): Promise<ZoneRow[]> {
     .leftJoin(persons, eq(persons.id, zones.managerPersonId))
     .orderBy(asc(zones.sortOrder));
   return rows.map(({ z, manager }) => ({ code: z.code, label: z.label, manager, bounds: [z.boundsW, z.boundsN, z.boundsE, z.boundsS] }));
-}
-
-/** Country → zone (COUNTRY_ZONE). */
-export async function getCountryZones(): Promise<Record<string, ZoneCode>> {
-  const db = await getDb();
-  const rows = await db.select().from(countries).orderBy(asc(countries.sortOrder));
-  return Object.fromEntries(rows.map((c) => [c.name, c.zoneCode]));
-}
-
-export interface ClientRow {
-  name: string;
-  /** Registered 3-letter code; null when none was registered. */
-  code3: string | null;
-}
-
-export async function listClients(): Promise<ClientRow[]> {
-  const db = await getDb();
-  return db.select({ name: clients.name, code3: clients.code3 }).from(clients).orderBy(asc(clients.sortOrder));
 }
 
 /** Registered client codes (CLIENT_CODES shape). */

@@ -88,13 +88,6 @@ export interface PartRow {
 
 const uniq = <T,>(xs: T[]) => [...new Set(xs)];
 
-/** Last purchase price by reference (LAST_PRICE; parts without one fall back to their list price). */
-export async function lastPriceByRef(q?: Q): Promise<Record<string, number>> {
-  const db = q ?? (await getDb());
-  const rows = await db.select({ ref: parts.ref, list: parts.listPriceEur, last: partLastPrices.unitPriceEur }).from(parts).leftJoin(partLastPrices, eq(partLastPrices.partId, parts.id));
-  return Object.fromEntries(rows.map((r) => [r.ref, r.last ?? r.list]));
-}
-
 async function loadParts(q: Q, refs?: string[]): Promise<PartRow[]> {
   const where = refs ? inArray(parts.ref, refs.length ? refs : ['']) : undefined;
   const validator = sql<string | null>`(select coalesce(${persons.fullName}, ${persons.shortName}) from ${persons} where ${persons.id} = ${parts.validatedByPersonId})`;
@@ -219,7 +212,7 @@ export interface NewPartInput {
 
 /**
  * "New part" (AF.plm): appended to the catalogue as Not validated (qualification pending), revision A. The Family
- * maps to a catalogue type (OPEN QUESTION E-1); make / buy follows the supplier (a Keystone workshop → Manufactured).
+ * maps to a catalogue type (the prototype's two lists, spec 00 §10 E-1); make / buy follows the supplier (a Keystone workshop → Manufactured).
  * Returns the reference.
  */
 export async function createPart(input: NewPartInput, actorName: string): Promise<string> {

@@ -16,7 +16,7 @@ import { yearOfIso } from '@/domain/clock';
 import { inExecution } from '@/domain/portfolio';
 import { getDb } from '@/server/db/client';
 import { billingModel, paymentMilestoneStatus, type BillingModel, type PaymentMilestoneStatus } from '@/server/db/codes';
-import { billingPlans, paymentMilestones, portfolioCashForecasts, projects } from '@/server/db/schema';
+import { billingPlans, paymentMilestones, projects } from '@/server/db/schema';
 import type { ZoneKey } from '@/server/session';
 import { getContract } from './contract';
 import { cashProjectInputs } from './kpis';
@@ -148,20 +148,13 @@ export interface CashForecastMonth {
   cashOutKeur: number;
 }
 
+
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 /** "Oct" / "Jan ’28": a January after the business year `year` carries its year (R-013; the prototype compared with 2026). */
 const monthLabel = (iso: string, year: number) => {
   const [y, m] = iso.split('-').map((x) => parseInt(x, 10));
   return MON[m - 1] + (y > year && m === 1 ? ' ’' + String(y).slice(2) : '');
 };
-
-/** The prototype's stored portfolio cash plan (next 6 months, k€) — no longer read by the screens since A-12 (chapter 4). */
-export async function getPortfolioCashForecast(): Promise<CashForecastMonth[]> {
-  const db = await getDb();
-  const rows = await db.select().from(portfolioCashForecasts).orderBy(asc(portfolioCashForecasts.position));
-  const year = yearOfIso(await businessToday());
-  return rows.map((r) => ({ month: r.month, label: monthLabel(r.month, year), cashInKeur: r.cashInKeur, cashOutKeur: r.cashOutKeur }));
-}
 
 export interface CashFlowRow {
   project: ProjectRow;
