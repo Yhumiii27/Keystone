@@ -23,6 +23,7 @@ import { I18nProvider } from '@/i18n/client';
 import { makeT, type Lang } from '@/i18n/translate';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
+import { withoutK14Demo } from '@/test/k14';
 import { clients, projects } from '@/server/db/schema';
 import { resolveCurrentProject } from '@/server/dal/current-project';
 import { getProjectClient, listSubsidiaries, markNeedSubsidiaryClient } from '@/server/dal/internal-client';
@@ -46,7 +47,9 @@ const card = (lang: Lang, canEdit: boolean, client: { name: string; isInternal: 
     lang, children: h(ProjectClientCard, { client, code: 'HLT-026', canEdit, subsidiaries: [{ code: 'SAI', name: 'Sahel Agro Industries' }], t: makeT(lang), lang }),
   }));
 
-beforeAll(async () => setDb(await openDatabase()), 60_000);
+// K-14: without APM-008 and its client Atlas Process Maroc (src/test/k14.ts) — these tests give the subsidiary code APM to the Port
+// authority and register Atlas Process Maroc themselves.
+beforeAll(async () => setDb(await withoutK14Demo(await openDatabase())), 60_000);
 
 describe('setInternalClientAction (R-190)', () => {
   it('refuses a project manager (even a lead), Finance, and a project whose Contract the director may not edit', async () => {

@@ -24,6 +24,7 @@ import InstalledBasePage from '@/app/(app)/after-sales/fleet/page';
 import WarrantyClaimsPage from '@/app/(app)/after-sales/claims/page';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
+import { withoutK14Demo } from '@/test/k14';
 import type { FleetView, SavScreenView } from './model';
 
 type El = ReactElement<Record<string, unknown> & { children?: ReactNode }>;
@@ -41,7 +42,7 @@ const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'pr
 const EDITORS = ['director', 'pm', 'quality', 'procurement'];
 
 beforeAll(async () => {
-  setDb(await openDatabase());
+  setDb(await withoutK14Demo(await openDatabase())); // K-14: compared with the prototype without the APM-008 rows (src/test/k14.ts)
 }, 60_000);
 beforeEach(() => Object.assign(session, { role: 'director', lang: 'en', project: 'HLT-026', zone: null }));
 

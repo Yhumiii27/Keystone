@@ -72,6 +72,8 @@ describe('pub_reponses_besoins (K-02, K-03)', () => {
       ['RB-003', 'CPX-SAI-2026-01/B01', 'offre_ferme', 'E10', 'acceptee', 'RCF-019'],
       ['RB-004', 'CPX-APM-2026-01/B01', 'indicatif', 'E50', 'remise', null],
       ['RB-005', 'CPX-APM-2026-01/B01', 'devis', 'E30', 'remise', null],
+      // K-14: the oven of CPX-APM-2025-01, ordered in 2025 and delivered by APM-008 (src/server/db/seed/capex-k14.ts).
+      ['RB-006', 'CPX-APM-2025-01/B01', 'offre_ferme', 'E10', 'acceptee', 'APM-008'],
     ]);
     const r4 = await viewRow('RB-004');
     expect([Number(r4.montant_central_keur), Number(r4.montant_bas_keur), Number(r4.montant_haut_keur)]).toEqual([4218, 2109, 6327]);
@@ -100,7 +102,7 @@ describe('rights', () => {
     await expect(recordNeedAnswerAction('CPX-APM-2026-01/B02', {})).rejects.toThrow('REDIRECT');
     as('pm', 'fr');
     expect(await createProjectFromNeedAction('CPX-SAI-2026-01/B03', draft())).toEqual({ error: 'Seul le directeur de portefeuille répond aux besoins machines des filiales' });
-    expect((await view()).length).toBe(5);
+    expect((await view()).length).toBe(6); // K-14: RB-006
   });
 });
 
@@ -115,33 +117,34 @@ describe('answers', () => {
     expect(await recordNeedAnswerAction('bad', {})).toEqual({ error: 'Requête invalide' });
     as('director');
     const r = await recordNeedAnswerAction('CPX-APM-2026-01/B02', { nature: 'qualification', qualification: 'a_etudier', reason: 'Variante B : refroidissement à dimensionner' });
-    expect(r).toEqual({ ok: true, code: 'RB-006' });
-    expect(await viewRow('RB-006')).toMatchObject({ besoin_ref: 'CPX-APM-2026-01/B02', capex_code: 'CPX-APM-2026-01', nature: 'qualification', qualification: 'a_etudier', motif: 'Variante B : refroidissement à dimensionner', classe_estimation: null, statut: 'en_cours', projet_code: null });
+    // K-14: the demo's answers end at RB-006 (APM-008's accepted offer): the first new one is RB-007.
+    expect(r).toEqual({ ok: true, code: 'RB-007' });
+    expect(await viewRow('RB-007')).toMatchObject({ besoin_ref: 'CPX-APM-2026-01/B02', capex_code: 'CPX-APM-2026-01', nature: 'qualification', qualification: 'a_etudier', motif: 'Variante B : refroidissement à dimensionner', classe_estimation: null, statut: 'en_cours', projet_code: null });
     // Edit: now an indicative price E50 (range computed).
-    expect(await editNeedAnswerAction('RB-006', { nature: 'indicatif', qualification: 'faisable', estimateClass: 'E50', centralKeur: '650', leadTimeWeeks: '30' })).toEqual({ ok: true });
-    const edited = await viewRow('RB-006');
+    expect(await editNeedAnswerAction('RB-007', { nature: 'indicatif', qualification: 'faisable', estimateClass: 'E50', centralKeur: '650', leadTimeWeeks: '30' })).toEqual({ ok: true });
+    const edited = await viewRow('RB-007');
     expect([edited.nature, edited.classe_estimation, Number(edited.montant_bas_keur), Number(edited.montant_haut_keur), edited.delai_semaines]).toEqual(['indicatif', 'E50', 325, 975, 30]);
     const time = (v: unknown) => new Date(v as string | Date).getTime();
-    const before = time((await viewRow('RB-006')).repondu_le);
-    expect(await setNeedAnswerStatusAction('RB-006', 'remise')).toEqual({ ok: true });
-    const sent = await viewRow('RB-006');
+    const before = time((await viewRow('RB-007')).repondu_le);
+    expect(await setNeedAnswerStatusAction('RB-007', 'remise')).toEqual({ ok: true });
+    const sent = await viewRow('RB-007');
     expect([sent.statut, time(sent.repondu_le) >= before]).toEqual(['remise', true]);
-    expect(await editNeedAnswerAction('RB-006', { nature: 'indicatif', estimateClass: 'E50', centralKeur: '700' })).toEqual({ error: 'Only an answer in preparation is edited: record a new answer' });
-    expect(await setNeedAnswerStatusAction('RB-006', 'acceptee')).toEqual({ error: 'Only a quote or a firm offer is accepted' });
-    expect((await answerAudit('RB-006')).map((a) => a.change)).toEqual([
-      'Answer RB-006 to need CPX-APM-2026-01/B02 recorded · Qualification',
-      'Answer RB-006 to need CPX-APM-2026-01/B02 edited',
-      'Answer RB-006 to need CPX-APM-2026-01/B02: In preparation → Sent to the subsidiary',
+    expect(await editNeedAnswerAction('RB-007', { nature: 'indicatif', estimateClass: 'E50', centralKeur: '700' })).toEqual({ error: 'Only an answer in preparation is edited: record a new answer' });
+    expect(await setNeedAnswerStatusAction('RB-007', 'acceptee')).toEqual({ error: 'Only a quote or a firm offer is accepted' });
+    expect((await answerAudit('RB-007')).map((a) => a.change)).toEqual([
+      'Answer RB-007 to need CPX-APM-2026-01/B02 recorded · Qualification',
+      'Answer RB-007 to need CPX-APM-2026-01/B02 edited',
+      'Answer RB-007 to need CPX-APM-2026-01/B02: In preparation → Sent to the subsidiary',
     ]);
-    const acts = await (await getDb()).select({ text: activityEvents.text }).from(activityEvents).where(sql`${activityEvents.text} like 'Answer RB-006%'`);
+    const acts = await (await getDb()).select({ text: activityEvents.text }).from(activityEvents).where(sql`${activityEvents.text} like 'Answer RB-007%'`);
     expect(acts.length).toBe(2);
   });
 
   it('a quote is sent with its Codex reference; a firm offer with its validity and lead time', async () => {
-    expect(await recordNeedAnswerAction('CPX-APM-2026-01/B01', { nature: 'devis', estimateClass: 'E30', centralKeur: '4100' })).toEqual({ ok: true, code: 'RB-007' });
-    expect(await setNeedAnswerStatusAction('RB-007', 'remise')).toEqual({ error: 'A quote or a firm offer is sent with its Codex document reference' });
-    expect(await setNeedAnswerStatusAction('RB-007', 'caduque')).toEqual({ ok: true });
-    expect(await setNeedAnswerStatusAction('RB-007', 'remise')).toEqual({ error: 'This answer is closed: record a new answer' });
+    expect(await recordNeedAnswerAction('CPX-APM-2026-01/B01', { nature: 'devis', estimateClass: 'E30', centralKeur: '4100' })).toEqual({ ok: true, code: 'RB-008' });
+    expect(await setNeedAnswerStatusAction('RB-008', 'remise')).toEqual({ error: 'A quote or a firm offer is sent with its Codex document reference' });
+    expect(await setNeedAnswerStatusAction('RB-008', 'caduque')).toEqual({ ok: true });
+    expect(await setNeedAnswerStatusAction('RB-008', 'remise')).toEqual({ error: 'This answer is closed: record a new answer' });
   });
 });
 
@@ -181,15 +184,15 @@ describe('the order (K-10)', () => {
     await db.update(capexNeeds).set({ status: 'ordered', orderedOn: '2026-10-20' }).where(eq(capexNeeds.needRef, 'CPX-APM-2026-01/B01'));
     expect(await addNeedToProjectAction('CPX-APM-2026-01/B01', { project: 'DRR-009' })).toEqual({ error: 'Choose a project that is not closed or cancelled' });
     expect(await addNeedToProjectAction('CPX-APM-2026-01/B01', { project: 'NOPE-1' })).toEqual({ error: 'Unknown project' });
-    // The latest answer is RB-007 (lapsed): RB-005 (the sent quote) is not the most recent — record a sent quote again.
-    expect(await recordNeedAnswerAction('CPX-APM-2026-01/B01', { nature: 'devis', estimateClass: 'E30', centralKeur: '4150', documentRef: 'DEV-CPX-APM-2026-01-002' })).toEqual({ ok: true, code: 'RB-009' });
-    expect(await setNeedAnswerStatusAction('RB-009', 'remise')).toEqual({ ok: true });
+    // The latest answer is RB-008 (lapsed): RB-005 (the sent quote) is not the most recent — record a sent quote again.
+    expect(await recordNeedAnswerAction('CPX-APM-2026-01/B01', { nature: 'devis', estimateClass: 'E30', centralKeur: '4150', documentRef: 'DEV-CPX-APM-2026-01-002' })).toEqual({ ok: true, code: 'RB-010' });
+    expect(await setNeedAnswerStatusAction('RB-010', 'remise')).toEqual({ ok: true });
     expect(await addNeedToProjectAction('CPX-APM-2026-01/B01', { project: 'HLT-026' })).toEqual({ ok: true, code: 'EQ-03' });
     const line = (await listProjectEquipments('HLT-026')).find((l) => l.ref === 'EQ-03')!;
     expect([line.machineTypeCode, line.quantity, line.besoinRef, line.catalogueCode, line.options]).toEqual(['EMP', 1, 'CPX-APM-2026-01/B01', 'EMP-40T', ['TELE · Télécommande radio']]);
     const [p] = await db.select({ capexCode: projects.capexCode, besoinRef: projects.besoinRef }).from(projects).where(eq(projects.code, 'HLT-026'));
     expect(p).toEqual({ capexCode: 'CPX-APM-2026-01', besoinRef: 'CPX-APM-2026-01/B01' });
-    expect([(await viewRow('RB-009')).statut, (await viewRow('RB-009')).projet_code, (await viewRow('RB-004')).projet_code]).toEqual(['acceptee', 'HLT-026', 'HLT-026']);
+    expect([(await viewRow('RB-010')).statut, (await viewRow('RB-010')).projet_code, (await viewRow('RB-004')).projet_code]).toEqual(['acceptee', 'HLT-026', 'HLT-026']);
     expect(await addNeedToProjectAction('CPX-APM-2026-01/B01', { project: 'NDC-031' })).toEqual({ error: 'This need is already delivered by a project · HLT-026' });
   });
 

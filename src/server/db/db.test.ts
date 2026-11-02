@@ -7,6 +7,7 @@ import { PROTO, PROTO_GEN } from '@/server/prototype';
 import { D7_ACTUAL, D7_PROGRESS_PCT } from '@/test/d7-cost-control';
 import { setDb } from './client';
 import { openDatabase } from './open';
+import { withoutK14Demo } from '@/test/k14';
 
 const plain = (v: unknown) => JSON.parse(JSON.stringify(v));
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -21,7 +22,7 @@ const D7_KEYS = ['PV', 'EV', 'AC', 'pct', 'CATS', 'WPS', 'CRS', 'recon', 'note']
 
 describe('database seed and DAL', () => {
   beforeAll(async () => {
-    setDb(await openDatabase());
+    setDb(await withoutK14Demo(await openDatabase())); // K-14: compared with the prototype without the APM-008 rows (src/test/k14.ts)
   }, 60_000);
 
   it('has the 17 projects of initialProjects(), 6 with data', async () => {

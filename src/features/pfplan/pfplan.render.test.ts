@@ -17,6 +17,7 @@ import { D7_PROGRESS_PCT } from '@/test/d7-cost-control';
 import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
+import { withoutK14Demo } from '@/test/k14';
 import { getPortfolioSchedule } from '@/server/dal/pipeline';
 import { COOKIE, type ZoneKey } from '@/server/session';
 import { PfPlanBody } from './view';
@@ -51,7 +52,7 @@ const goldenView = (g: any) => ({
 const protoSchedule = async (zone: Parameters<typeof getPortfolioSchedule>[0]) => ({ ...(await getPortfolioSchedule(zone, '2026-09-30')), now: 8.97 });
 
 beforeAll(async () => {
-  setDb(await openDatabase());
+  setDb(await withoutK14Demo(await openDatabase())); // K-14: compared with the prototype without the APM-008 rows (src/test/k14.ts)
 }, 60_000);
 
 describe.each(['en', 'fr'] as Lang[])('portfolio schedule on the database vs prototype (%s)', (lang) => {

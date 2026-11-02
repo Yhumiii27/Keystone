@@ -74,6 +74,7 @@ import { getSite, remindInCursus, saveDailyReport } from '@/server/dal/site';
 import { setDb } from '@/server/db/client';
 import { riskCategory, riskResponse, riskStatus, stage } from '@/server/db/codes';
 import { openDatabase } from '@/server/db/open';
+import { withoutK14Demo } from '@/test/k14';
 import { setFilesRoot } from '@/server/storage/files';
 import * as schema from '@/server/db/schema';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
@@ -147,8 +148,9 @@ const D4_COUNTS: Record<string, number> = {
  */
 const D5_COUNTS: Record<string, number> = {
   deliverables: 30, deliverable_raci: 150, vigie_ncrs: 15, vigie_ncr_progress: 0, vigie_hse_items: 5, itp_plans: 2, itp_plan_systems: 11, itp_inspections: 15, punch_items: 10 /* R-158 lot B: + P-10, the demo reception of EXP-01 */,
-  commissioning_systems: 7, commissioning_steps: 35, handover_items: 8, sat_plans: 0, lessons_learned: 4, closure_items: 10, satisfaction_scores: 5,
-  machines: 8, machine_part_revisions: 31, warranty_claims: 8, interventions: 6, site_sheets: 1, site_equipment: 8, site_prerequisites: 6, site_rotations: 6,
+  // K-14 (src/server/db/seed/capex-k14.ts): APM-008's commissioning system (5 steps done) and machine MCH-045, RCF-019's SAT plan.
+  commissioning_systems: 7 + 1, commissioning_steps: 35 + 5, handover_items: 8, sat_plans: 0 + 1, lessons_learned: 4, closure_items: 10, satisfaction_scores: 5,
+  machines: 8 + 1, machine_part_revisions: 31, warranty_claims: 8, interventions: 6, site_sheets: 1, site_equipment: 8, site_prerequisites: 6, site_rotations: 6,
   site_collisions: 4, site_conflict_arbitrations: 0, mission_cost_lines: 6, daily_reports: 2, cursus_clearances: 5, cursus_requests: 0, cursus_sync_runs: 1, cursus_events: 0,
   client_issues: 3,
   eng_disciplines: 4, eng_inputs: 12, eng_consistency_rules: 6, eng_checks: 10, eng_outputs: 6, eng_changes: 4, eng_import_tools: 4,
@@ -359,8 +361,9 @@ async function main() {
   const rep = (await db.execute(sql`select (select count(*)::int from pub_reponses_besoins) as answers,
       (select string_agg(numero || ':' || nature || ':' || coalesce(classe_estimation, '-') || ':' || statut || ':' || coalesce(projet_code, '-'), ',' order by numero) from pub_reponses_besoins) as rows,
       (select count(*)::int from capex_needs) as needs, (select count(*)::int from capex_mirror) as capex`)).rows[0] as { answers: number; rows: string; needs: number; capex: number };
-  check('pub_reponses_besoins: 5 demo answers (E50 indicative, E30 quote, two E10 firm offers accepted, RB-003 → RCF-019); mirror 2 CAPEX, 5 needs',
-    rep.answers === 5 && rep.needs === 5 && rep.capex === 2 && rep.rows === 'RB-001:qualification:-:remise:-,RB-002:offre_ferme:E10:acceptee:-,RB-003:offre_ferme:E10:acceptee:RCF-019,RB-004:indicatif:E50:remise:-,RB-005:devis:E30:remise:-', rep);
+  // K-14: Arche's five published demo CAPEX and six needs; RB-006, the oven's firm offer accepted, → APM-008.
+  check('pub_reponses_besoins: 6 demo answers (E50 indicative, E30 quote, three E10 firm offers accepted, RB-003 → RCF-019, RB-006 → APM-008); mirror 5 CAPEX, 6 needs',
+    rep.answers === 6 && rep.needs === 6 && rep.capex === 5 && rep.rows === 'RB-001:qualification:-:remise:-,RB-002:offre_ferme:E10:acceptee:-,RB-003:offre_ferme:E10:acceptee:RCF-019,RB-004:indicatif:E50:remise:-,RB-005:devis:E30:remise:-,RB-006:offre_ferme:E10:acceptee:APM-008', rep);
   let firmChecked = false;
   try {
     await db.execute(sql`update need_answers set estimate_class = 'E30' where nature = 'offre_ferme'`);
@@ -369,13 +372,14 @@ async function main() {
   }
   check('need_answers: a firm offer is E10 (database check, K-03)', firmChecked, firmChecked);
   // R-190 (0051_internal_clients, 0052_internal_client_share): the internal client at the end of pub_projets, never null; the demo's
-  // subsidiary Sahel Agro Industries (SAI) registered as an internal client, no demo project with it yet.
+  // subsidiary Sahel Agro Industries (SAI) registered as an internal client, no demo project with it yet; K-14: Atlas Process Maroc
+  // (APM), the internal client of APM-008.
   const internal = (await db.execute(sql`select (select count(*)::int from pub_projets where client_interne is null) as nulls,
       (select count(*)::int from pub_projets where client_interne) as internal_projects,
       (select string_agg(name || ':' || coalesce(subsidiary_code, '-'), ',' order by name) from clients where is_internal) as internal_clients`)).rows[0] as
     { nulls: number; internal_projects: number; internal_clients: string | null };
-  check('pub_projets: client_interne never null; demo internal client Sahel Agro Industries (SAI), no project yet (R-190)',
-    internal.nulls === 0 && internal.internal_projects === 0 && internal.internal_clients === 'Sahel Agro Industries:SAI', internal);
+  check('pub_projets: client_interne never null; demo internal clients Atlas Process Maroc (APM, APM-008) and Sahel Agro Industries (SAI, no project yet) (R-190, K-14)',
+    internal.nulls === 0 && internal.internal_projects === 1 && internal.internal_clients === 'Atlas Process Maroc:APM,Sahel Agro Industries:SAI', internal);
   // R-196 (0070, 0071_project_category_share): the project's category at the end of pub_projets, never null; no demo R&D project.
   const category = (await db.execute(sql`select (select count(*)::int from pub_projets where categorie is null) as nulls,
       (select count(*)::int from pub_projets where categorie not in ('client', 'rd')) as others`)).rows[0] as { nulls: number; others: number };
@@ -402,8 +406,8 @@ async function main() {
       (select string_agg(name || ':' || coalesce(code3, '-') || ':' || filiale_code, ',' order by name) from pub_clients where filiale_code is not null) as filiales,
       (select count(*)::int from clients where subsidiary_code is not null and code3 is distinct from subsidiary_code) as misaligned`)).rows[0] as
     { mirror: string | null; filiales: string | null; misaligned: number };
-  check('Matrix D21: subsidiaries mirror APM, SAI; pub_clients.filiale_code SAI (Sahel Agro Industries, code3 SAI); code3 = subsidiary code',
-    d21.mirror === 'APM:true,SAI:true' && d21.filiales === 'Sahel Agro Industries:SAI:SAI' && d21.misaligned === 0, d21);
+  check('Matrix D21: subsidiaries mirror APM, SAI; pub_clients.filiale_code APM (Atlas Process Maroc, K-14), SAI (Sahel Agro Industries); code3 = subsidiary code',
+    d21.mirror === 'APM:true,SAI:true' && d21.filiales === 'Atlas Process Maroc:APM:APM,Sahel Agro Industries:SAI:SAI' && d21.misaligned === 0, d21);
   const idx = (await db.execute(sql`select indexname as i from pg_indexes where schemaname = current_schema() and indexname in
       (${sql.join(Object.values(SHARE_MAJ_LE_INDEXES).map((x) => sql`${x.index}`), sql`, `)})`)).rows as { i: string }[];
   check(`maj_le indexes (K-11): ${Object.values(SHARE_MAJ_LE_INDEXES).map((x) => x.index).join(', ')}`, idx.length === Object.keys(SHARE_MAJ_LE_INDEXES).length, idx.map((r) => r.i));
@@ -423,6 +427,8 @@ async function main() {
   console.log('\nR-158 shipments (golden row counts)');
   for (const [table, n] of Object.entries(R158_COUNTS)) check(`${table} = ${n}`, counts[table] === n, counts[table]);
 
+  // K-14: the comparisons with the prototype below run without APM-008, its machine, answer and client (src/test/k14.ts).
+  await withoutK14Demo(db);
   console.log('\nProjects');
   const list = await listProjects();
   check('17 projects', list.length === 17, list.length);

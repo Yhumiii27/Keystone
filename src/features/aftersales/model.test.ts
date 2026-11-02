@@ -17,6 +17,7 @@ import { SAV_VIEWS, type SavView, type ZoneCode } from '@/domain/aftersales';
 import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
+import { withoutK14Demo } from '@/test/k14';
 import { claimFormOptions, getFleetScreen, getSavScreen, machineTypeOptions } from '@/server/dal/aftersales';
 import { vigieEcoUrl } from '@/server/integrations/vigie/links';
 import GOLDEN from '@/domain/aftersales.golden.json';
@@ -42,7 +43,7 @@ const NOTICE: Record<Lang, Record<'machine' | SavView, string>> = {
 };
 
 beforeAll(async () => {
-  setDb(await openDatabase());
+  setDb(await withoutK14Demo(await openDatabase())); // K-14: compared with the prototype without the APM-008 rows (src/test/k14.ts)
 }, 60_000);
 
 // R-013: "ends in n d" counts from the business date (25 Sep 2026 on the demo data set), not the prototype's 30 Sep: MCH-035

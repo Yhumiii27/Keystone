@@ -197,8 +197,9 @@ describe('share views of delivery 9 (0038_share_followup)', () => {
   it('pub_projets: the internal client at the end — false for an external client, never null (R-190)', async () => {
     const v = await rows<{ code: string; client_interne: boolean | null; filiale_code: string | null }>(sql`select code, client_interne, filiale_code from pub_projets`);
     expect(v.length).toBeGreaterThan(0);
-    // The demo's subsidiary (Sahel Agro Industries, SAI) has no project yet: every demo project has an external client.
-    expect(v.every((r) => r.client_interne === false && r.filiale_code === null)).toBe(true);
+    // The demo's subsidiary Sahel Agro Industries (SAI) has no project yet; K-14: APM-008 is Atlas Process Maroc's (APM). Every other
+    // demo project has an external client.
+    expect(v.filter((r) => r.client_interne !== false || r.filiale_code !== null)).toEqual([{ code: 'APM-008', client_interne: true, filiale_code: 'APM' }]);
     // The database refuses a subsidiary code on an external client and a malformed code.
     await expect(db.update(clients).set({ subsidiaryCode: 'HTR' }).where(eq(clients.name, 'Health trust'))).rejects.toThrow();
     await expect(db.update(clients).set({ isInternal: true, subsidiaryCode: 'H1' }).where(eq(clients.name, 'Health trust'))).rejects.toThrow();
@@ -247,7 +248,8 @@ describe('share views of delivery 9 (0038_share_followup)', () => {
     const v = await rows<{ name: string; code3: string | null; filiale_code: string | null }>(sql`select name, code3, filiale_code from pub_clients order by name`);
     const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(clients);
     expect(v).toHaveLength(n);
-    expect(v.filter((r) => r.filiale_code)).toEqual([{ name: 'Sahel Agro Industries', code3: 'SAI', filiale_code: 'SAI' }]);
+    // K-14: Atlas Process Maroc, the client of APM-008.
+    expect(v.filter((r) => r.filiale_code)).toEqual([{ name: 'Atlas Process Maroc', code3: 'APM', filiale_code: 'APM' }, { name: 'Sahel Agro Industries', code3: 'SAI', filiale_code: 'SAI' }]);
   });
 
   it('pub_parc_machines: machine type, delivery date and last change at the end, one row per machine for Arche (K-07)', async () => {

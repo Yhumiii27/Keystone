@@ -9,6 +9,7 @@ import { eq, sql } from 'drizzle-orm';
 import { cursusRequests } from '@/server/db/schema';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
+import { withoutK14Demo } from '@/test/k14';
 import { seedIfEmpty } from '@/server/db/seed';
 import { prototypeNcrSnapshot, type ProtoNcrRow } from '@/server/integrations/vigie/prototype-snapshot';
 import { upsertNcrMirror } from '@/server/integrations/vigie/quality-mirror';
@@ -48,7 +49,7 @@ const A = {
 const HLT = 'HLT-026';
 
 beforeAll(async () => {
-  setDb(await openDatabase());
+  setDb(await withoutK14Demo(await openDatabase())); // K-14: compared with the prototype without the APM-008 rows (src/test/k14.ts)
 }, 60_000);
 
 afterEach(() => {

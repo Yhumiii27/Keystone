@@ -22,7 +22,8 @@ import { seedDocuments } from './documents';
 import { seedEngineering } from './engineering';
 import { demoCatalogueToBackfill, seedDemoCatalogue } from './machine-catalogue';
 import { demoMatrixSubsidiariesToBackfill, seedDemoMatrixSubsidiaries } from './matrix-subsidiaries';
-import { demoCapexNeedsToBackfill, demoInternalClientToBackfill, ensureArcheConnector, seedDemoCapexNeeds, seedDemoInternalClient } from './capex-needs';
+import { demoCapexNeedsToBackfill, demoInternalClientToBackfill, ensureArcheConnector, refreshDemoCapexMirror, seedDemoCapexNeeds, seedDemoInternalClient } from './capex-needs';
+import { demoK14ProjectToBackfill, demoK14RcfSatToBackfill, seedDemoK14Project, seedDemoK14RcfSat } from './capex-k14';
 import { seedExecution } from './execution';
 import { seedOperations } from './operations';
 import { seedOrganisation } from './organisation';
@@ -193,6 +194,16 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
     // R-190: the demo subsidiary registered as an internal client (once: while no client is internal nor uses its name or codes).
     if (await demoInternalClientToBackfill(db)) {
       await db.transaction(async (tx) => { await seedDemoInternalClient(tx); }).catch((e) => logError('Delivery 9 demo internal client backfill', e, { component: 'seed' }));
+    }
+    // K-14 (Arche, 2 Nov 2026; after R-190, whose backfill wants no internal client yet): the mirror refreshed from the simulated
+    // source (Arche's three other demo CAPEX and the oven's need; the connector replaces it at every read anyway), then the oven's
+    // project APM-008 with its machine and accepted offer, and RCF-019's SAT (each once: while its code, number, machine and need are
+    // free / while RCF-019 has no SAT plan).
+    if (await demoK14ProjectToBackfill(db)) {
+      await db.transaction(async (tx) => { await refreshDemoCapexMirror(tx); await seedDemoK14Project(tx); }).catch((e) => logError('Delivery 9 K-14 demo project backfill', e, { component: 'seed' }));
+    }
+    if (await demoK14RcfSatToBackfill(db)) {
+      await db.transaction(async (tx) => { await seedDemoK14RcfSat(tx); }).catch((e) => logError('Delivery 9 K-14 RCF-019 SAT backfill', e, { component: 'seed' }));
     }
     // Matrix D21: the demo subsidiaries mirrored from Matrix (once: while the mirror is empty).
     if (await demoMatrixSubsidiariesToBackfill(db)) {

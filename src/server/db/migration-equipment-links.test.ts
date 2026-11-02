@@ -10,6 +10,7 @@ import path from 'node:path';
 import { sql } from 'drizzle-orm';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { openDatabase } from './open';
+import { withoutK14Demo } from '@/test/k14';
 import type { DB } from './types';
 
 const file = (suffix: string) => {
@@ -42,7 +43,8 @@ const fleet = (db: DB) =>
 describe('NNNN_equipment_links_backfill (R-185 part 2, custom, after the generated columns)', () => {
   let db: DB;
   beforeAll(async () => {
-    db = await openDatabase();
+    // K-14: a database of before R-185 has no APM-008 (src/test/k14.ts).
+    db = await withoutK14Demo(await openDatabase());
   }, 60_000);
 
   it('the seed already writes the links the migration writes', async () => {

@@ -54,6 +54,8 @@ describe('equipment lines in the demo data set (R-185)', () => {
     const rows = await listProjects();
     expect(Object.fromEntries(rows.filter((p) => p.machineType).map((p) => [p.code, p.equipment]))).toEqual({
       'HLT-026': '1 × EMP · 3 × MEMU', 'NDC-031': 'AUTRE', 'RCF-019': 'MEMU', 'ERP-202': 'R&D', 'WSA-044': 'SPUR', 'MSR-012': 'MEMU',
+      // K-14: the ageing oven project delivering CPX-APM-2025-01/B01 (src/server/db/seed/capex-k14.ts).
+      'APM-008': 'AUTRE',
     });
     // The main type stays the first line's; the projects without type have no line.
     expect((await getProject('HLT-026'))?.machineType).toBe('EMP');

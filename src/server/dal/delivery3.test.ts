@@ -17,6 +17,7 @@ import { setDb } from '@/server/db/client';
 import { addDaysIso, beforePgNow, monthIndexOfIso, shortDateOfIso } from '@/server/db/codes';
 import { DEMO_TODAY_ISO, monthNowOf } from '@/domain/clock';
 import { openDatabase } from '@/server/db/open';
+import { withoutK14Demo } from '@/test/k14';
 import { PROTO } from '@/server/prototype';
 import { L9X3_FILED, withoutL9X3, withoutL9X3Type } from '@/test/l9-x3';
 import { getBudgetContract } from './budget';
@@ -61,7 +62,7 @@ const R073_FILL: Record<string, string> = { 'HLT-026': '63%', 'NDC-031': '46%', 
 const R073_HEALTH: Record<string, string> = { 'HLT-026': 'Off track', 'NDC-031': 'At risk', 'RCF-019': 'At risk', 'ERP-202': 'On track', 'MSR-012': 'On track' };
 
 beforeAll(async () => {
-  setDb(await openDatabase());
+  setDb(await withoutK14Demo(await openDatabase())); // K-14: compared with the prototype without the APM-008 rows (src/test/k14.ts)
 }, 60_000);
 
 // ── Documents ──────────────────────────────────────────────────────────────────────────────────────────

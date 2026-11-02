@@ -14,6 +14,7 @@ import { eq } from 'drizzle-orm';
 import { getDb, setDb } from '@/server/db/client';
 import { connectors as connectorsTable } from '@/server/db/schema';
 import { openDatabase } from '@/server/db/open';
+import { withoutK14Demo } from '@/test/k14';
 import { listAdminConnectors } from '@/server/dal/admin-connectors';
 import { getPlumbingCounts, listImportFormats } from '@/server/dal/integrations';
 import { createMachineType, listMachineTypes, setMachineTypeCostCategories, setMachineTypePhases, updateMachineType } from '@/server/dal/mtypes';
@@ -94,7 +95,7 @@ describe('French of the administration screens', () => {
 
 describe('Settings view model', () => {
   beforeAll(async () => {
-    setDb(await openDatabase());
+    setDb(await withoutK14Demo(await openDatabase())); // K-14: compared with the prototype without the APM-008 rows (src/test/k14.ts)
   }, 60_000);
 
   it.each(['en', 'fr'] as const)('%s: KPI tiles, health rule, the seven cards and the location types equal the prototype', async (lang) => {
@@ -134,7 +135,7 @@ describe('Settings view model', () => {
 
 describe('Machine types view model', () => {
   beforeAll(async () => {
-    setDb(await openDatabase());
+    setDb(await withoutK14Demo(await openDatabase())); // K-14
   }, 60_000);
 
   /** The prototype's "1 ITP systems" → "1 ITP system" (FR "1 système ITP"). */
@@ -209,7 +210,7 @@ describe('Machine types view model', () => {
 
 describe('Activity, integrations & audit view model', () => {
   beforeAll(async () => {
-    setDb(await openDatabase());
+    setDb(await withoutK14Demo(await openDatabase())); // K-14
   }, 60_000);
 
   it.each(['en', 'fr'] as const)('%s: KPI tiles, display, chips, feed, import / export and audit trail equal the prototype', async (lang) => {
