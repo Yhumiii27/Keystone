@@ -128,6 +128,7 @@ code { font-family: var(--font-data); font-size: .92em; }
     <div class="filters" role="search">
       <input type="search" id="q" placeholder="Rechercher (titre, P-4, fichier…)" aria-label="Rechercher">
       <select id="fprog" aria-label="Avancement"></select>
+      <select id="fdeliv" aria-label="Livraison"></select>
       <select id="fstatus" aria-label="Statut"></select>
       <label class="chk"><input type="checkbox" id="fowner"> Attend une réponse du responsable produit</label>
       <button class="reset" id="reset" type="button">Tout afficher</button>
@@ -148,6 +149,7 @@ const ITEMS = __DATA__;
 const META = __META__;
 const PROG = { a_faire: 'À faire', en_cours: 'En cours', fait: 'Fait' };
 const progOf = x => (x.progress && x.progress.state) || 'a_faire';
+const delivOf = x => (x.progress && x.progress.delivery) || '';
 const remaining = x => progOf(x) !== 'fait';
 const CAT = [
  ['plateforme_production','Plateforme et mise en production'], ['droits_acces','Authentification, utilisateurs et droits'],
@@ -167,7 +169,7 @@ const PRI = [
 const PL = Object.fromEntries(PRI.map(p => [p[0], p]));
 const ST = { non_commence: 'Non commencé', partiel: 'Partiel', bloque_attente_proprietaire: 'Attend le responsable produit', bloque_systeme_externe: 'Attend une autre application' };
 const DAYS = { S: 1.5, M: 4, L: 12, XL: 30 };
-const state = { pri: null, cat: null, status: '', owner: false, q: '', prog: 'restant' };
+const state = { pri: null, cat: null, status: '', deliv: '', owner: false, q: '', prog: 'restant' };
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmt = n => Math.round(n).toLocaleString('fr-FR');
@@ -198,6 +200,7 @@ function matches(x) {
   if (state.pri && x.priority !== state.pri) return false;
   if (state.cat && x.category !== state.cat) return false;
   if (state.status && x.status !== state.status) return false;
+  if (state.deliv && (state.deliv === '-' ? delivOf(x) !== '' : delivOf(x) !== state.deliv)) return false;
   if (state.owner && !waitsOwner(x)) return false;
   if (state.q) {
     const hay = [x.id, x.title, x.description, x.waiting_on, ...x.sources, ...x.evidence].join(' ').toLowerCase();
@@ -243,12 +246,18 @@ function render() { progress(); tiles(); domains(); list(); }
 
 $('fprog').innerHTML = [['restant', 'Restant (à faire et en cours)'], ['a_faire', 'À faire'], ['en_cours', 'En cours'], ['fait', 'Fait'], ['tout', 'Tous les points']].map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
 $('fprog').addEventListener('change', e => { state.prog = e.target.value; list(); });
+{
+  const ds = [...new Set(ITEMS.map(delivOf).filter(Boolean))].sort((a, b) => (parseInt(a.replace(/\D/g, ''), 10) || 0) - (parseInt(b.replace(/\D/g, ''), 10) || 0) || a.localeCompare(b));
+  const cnt = d => ITEMS.filter(x => (d === '-' ? delivOf(x) === '' : delivOf(x) === d)).length;
+  $('fdeliv').innerHTML = '<option value="">Toutes les livraisons</option>' + ds.map(d => `<option value="${esc(d)}">${esc(d)} (${cnt(d)})</option>`).join('') + `<option value="-">Non planifié (${cnt('-')})</option>`;
+}
+$('fdeliv').addEventListener('change', e => { state.deliv = e.target.value; list(); });
 $('history').innerHTML = (META.history || []).slice().reverse().map(h => `<li><span class="num">${esc(h.date)}</span> — ${esc(h.text)}</li>`).join('');
 $('fstatus').innerHTML = '<option value="">Tous les statuts</option>' + Object.entries(ST).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
 $('q').addEventListener('input', e => { state.q = e.target.value.trim(); list(); });
 $('fstatus').addEventListener('change', e => { state.status = e.target.value; list(); });
 $('fowner').addEventListener('change', e => { state.owner = e.target.checked; list(); });
-$('reset').onclick = () => { Object.assign(state, { pri: null, cat: null, status: '', owner: false, q: '', prog: 'restant' }); $('q').value = ''; $('fprog').value = 'restant'; $('fstatus').value = ''; $('fowner').checked = false; render(); };
+$('reset').onclick = () => { Object.assign(state, { pri: null, cat: null, status: '', deliv: '', owner: false, q: '', prog: 'restant' }); $('q').value = ''; $('fdeliv').value = ''; $('fprog').value = 'restant'; $('fstatus').value = ''; $('fowner').checked = false; render(); };
 render();
 if (/^#R-\d{3}$/.test(location.hash)) { const el = document.getElementById(location.hash.slice(1)); if (el) { el.open = true; el.scrollIntoView({ block: 'start' }); } }
 </script>

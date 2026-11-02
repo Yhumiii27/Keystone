@@ -755,7 +755,7 @@
    ],
    "progress": {
     "state": "fait",
-    "delivery": "9",
+    "delivery": "Livraison 9",
     "note": "26 oct. 2026 (docs/delivery-9/notes-r017-volumes.md) : jeu agrandi (npm run load:seed : 150 projets, 30 000 activités, 20 000 documents, 8 000 commandes, 50 000 lignes d’audit, 500 personnes), mesures (npm run load:measure, load:check), 72 index (migration 0062), points chauds corrigés (calendriers, listes IN, valeur acquise, coffre documentaire, approbations, badges sans appel Cursus / Vigie), cache de lecture (versionedRead exact, badges ttlRead 30 s ; KEYSTONE_READ_CACHE=off), pagination ?page= (coffre, piste d’audit). Tous les écrans mesurés < 300 ms à chaud en PGlite, < 150 ms sur PostgreSQL. Reste : coût après écriture de l’accueil directeur (1–2 s), suggestions de rééquilibrage à calculer dans le worker."
    }
   },
@@ -4808,7 +4808,7 @@
    ],
    "progress": {
     "state": "fait",
-    "delivery": "9",
+    "delivery": "Livraison 9",
     "note": "25 oct. 2026 : le responsable produit redemande le module (« il manque un module de gestion des expéditions du matériel vers la filiale ») ; cadrage rédigé (docs/delivery-9/cadrage-r158-expeditions.md) : écran projet Expéditions, chargements et colis, contrôle colisage ↔ nomenclature, douane (codes HS), documents (packing list, proforma) versés dans Codex, réception sur site et réserves, jalons expedition / arrivee_site, vue pub_expeditions pour la filiale ; 8 points à valider. Même jour : choix tranchés (cadrage § 5) — vue projet seulement, transport d’après l’Incoterm du contrat, Keystone génère tous les documents sauf les factures, contrôle colisage bloquant, écart à la réception = réserve, suivi filiale dans Arche, nouveau profil Logistique, transitaires externes sans accès, Incoterms 2020 paramétrables, conteneurs et contenus déclarés par EPC2i ; construction lancée. Lot A fait (docs/delivery-9/notes-r158-shipments.md) : profil Logistique (10ᵉ), 11 Incoterms 2020 paramétrables (Paramètres) avec répartition vendeur / acheteur, Incoterm et lieu sur le contrat, écran projet Expéditions (EXP-nn, étapes d’après l’Incoterm, chargements et contenu déclarés, contrôle colisage ↔ nomenclature, synthèse par code SH), case « Colisage & documents douaniers » bloquée tant que le contrôle n’est pas soldé (migration 0061). Lot B : documents, réception sur site et réserves, jalons, pub_expeditions. 26 oct. 2026 : lot B fait — 8 documents générés sans facture (packing list, par conteneur, bon de livraison, marquage, CMR, instructions d’expédition, demande d’origine / EUR.1, déclaration d’export ; gabarits génériques remplaçables), versés dans Codex (type SHP, outbox de dépôt), réception sur site chargement par chargement (écart → réserve : endommagé A, manquant B), jalons expedition / arrivee_site de pub_jalons_projets nourris par les expéditions, vue pub_expeditions sans valeurs pour Arche, alerte retard de fret avec « Ouvrir un risque » (migrations 0063-0064). Reste : formats standard EPC2i, API de dépôt Codex. Vues pub_expeditions et pub_jalons_projets recopiées et accordées par Matrix (29 oct. 2026). 31 oct. 2026 (L9-X3) : la démonstration contient trois documents d’EXP-01 versés dans Codex (packing list, CMR, bon de livraison : SHP-HLT-040 à 042, dépôts en attente de synchro)."
    }
   },
@@ -5554,7 +5554,7 @@
    ],
    "progress": {
     "state": "fait",
-    "delivery": "9",
+    "delivery": "Livraison 9",
     "note": "Consigné le 15 oct. 2026 à la demande du responsable produit ; à cadrer avant la livraison 9. 22 oct. 2026 : prérequis du lien avec l’application CAPEX (un besoin de plusieurs machines = un projet EPC2i à plusieurs équipements, recommandé). Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-10 — un besoin de plusieurs machines doit pouvoir créer un projet EPC2i à plusieurs équipements ou en ajouter à un projet existant. 23 oct. 2026 : AC-5 tranché (oui) — un besoin de plusieurs machines = un projet EPC2i à plusieurs équipements ; cadrage proposé dans docs/delivery-9/cadrage-r185-r186.md, 5 choix à valider avant de construire. 23 oct. 2026 : les 5 choix du cadrage validés par le responsable produit. Partie 1 faite (docs/delivery-9/notes-r185-equipments.md) : lignes d’équipement project_equipments (type × quantité, EQ-01…), reprise des projets existants (migrations 0041-0042), carte « Équipement » sur l’écran Contrat, résumé « 1 × EMP · 3 × MEMU » au registre, assistant à plusieurs lignes avec lots propres à chaque équipement (phases per_equipment), budget de référence = somme des types × quantité. Reste (partie 2) : un plan ITP par ligne, réserves, mise en service, nomenclature et parc installé rattachés à l’équipement. Partie 2 faite (même notes, section « Partie 2 ») : un plan ITP par ligne d’équipement (migrations 0043-0044, plans existants rattachés à la ligne principale, numéros d’inspection uniques sur le projet), réserves, systèmes de mise en service, nomenclature et machines du parc installé rattachés à une ligne (ou communs), écrans ITP, réserves, mise en service, nomenclature et parc installé filtrés par équipement quand le projet a plusieurs lignes ; démonstration : HLT-026 EQ-02 (3 × MEMU) a son plan, deux inspections, une réserve C et un système. Reste : ventilation des coûts par équipement au Budget (à décider). 23 oct. 2026 : parties 1 et 2 fusionnées dans main (PR #29, #30), CI verte. 24 oct. 2026 : ventilation des coûts par équipement faite à la demande du responsable produit (carte « Budget par équipement », Budget › Structure : budget actuel, réel, EAC, valeur acquise et commandes ouvertes par ligne ; catégories de coûts et engagé hors commandes restent au niveau du projet)."
    }
   },
@@ -5579,7 +5579,7 @@
    ],
    "progress": {
     "state": "fait",
-    "delivery": "9",
+    "delivery": "Livraison 9",
     "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-01 — pub_catalogue_machines (fiches publiées, versions, options, capacité nominale, prix indicatif, délai type, statut). 23 oct. 2026 : AC-4 tranché (oui) — le catalogue machines est un module de Keystone, construit à partir des types de machine ; cadrage dans docs/delivery-9/cadrage-r185-r186.md. 24 oct. 2026 : fait (docs/delivery-9/notes-r186-catalogue.md) — fiches catalogue versionnées (brouillon → publié → retiré, version publiée figée par déclencheur, une version en vigueur par code), section « Catalogue machines » de l’écran Types de machine (directeur et responsable ingénierie), case « propre à chaque équipement » sur les phases, vue pub_catalogue_machines au contrat K-01 (migrations 0045-0046), ligne d’équipement liée à une version publiée. Reste côté Matrix : recopier la vue dans 30-keystone.sql."
    }
   },
@@ -5604,7 +5604,7 @@
    ],
    "progress": {
     "state": "fait",
-    "delivery": "9",
+    "delivery": "Livraison 9",
     "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-02 — connecteur capex (lire arche.pub_capex et arche.pub_besoins_machines, liens profonds <ARCHE_URL>/capex/<code>), corbeille « Besoins des filiales », pub_reponses_besoins ; K-10 — à la commande, créer le projet EPC2i ou ajouter des équipements à un projet existant, code publié dans pub_reponses_besoins.projet_code. 24 oct. 2026 : fait côté Keystone (docs/delivery-9/notes-r187-capex-needs.md) — connecteur capex (miroir de arche.pub_capex et arche.pub_besoins_machines : lecture directe sur le serveur commun, simulation en démonstration, tâche toutes les 15 min, liens profonds ARCHE_URL), carte « Besoins machines des filiales » sous le registre de Portefeuille › Projets (directeur ; chefs de projet en lecture), réponses chiffrées RB-nnn (qualification, indicatif, devis, offre ferme E10 ; fourchette par la classe), création du projet ou ajout d’une ligne d’équipement à la commande (action du directeur), vue pub_reponses_besoins (migrations 0049-0050). Reste : Arche publie ses deux vues (son lot L4) ; Matrix recopie la vue et vérifie les droits. 2 nov. 2026 (K-14) : démonstration alignée sur Arche — cinq CAPEX et six besoins simulés, projet APM-008 livré pour CPX-APM-2025-01/B01 (docs/delivery-9/notes-k14-demo.md)."
    }
   },
@@ -5629,7 +5629,7 @@
    ],
    "progress": {
     "state": "fait",
-    "delivery": "9",
+    "delivery": "Livraison 9",
     "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-03 — classe d’estimation E50 / E30 / E10 et fourchette sur les réponses et les offres ; offre ferme = E10. 24 oct. 2026 : fait (docs/delivery-9/notes-r188-estimate-class.md) — classes E50 (±50 %), E30 (±30 %), E10 (+10 / −5 %) d’après ANALYSE-DIG-PRODI § 3 ; classe portée par chaque version de budget (baselines.estimate_class, migrations 0047-0048, proposée selon la phase au gel), tuile « Fourchette d’estimation » au Budget, indicateur « Écart d’incertitude » à la vue d’ensemble du portefeuille ; règle « offre ferme = E10 » prête pour les réponses aux besoins d’Arche (R-187, colonnes de pub_reponses_besoins)."
    }
   },
@@ -5677,7 +5677,7 @@
    ],
    "progress": {
     "state": "fait",
-    "delivery": "9",
+    "delivery": "Livraison 9",
     "note": "Livraison 9, lot « share-views » : projects.capex_code et besoin_ref (formats d’Arche CPX-SAI-2026-01, CPX-SAI-2026-01/B01, contrôlés en base), carte « Rattachement CAPEX » de l’écran Contrat pour le directeur et les responsables du projet (audit et fil d’activité), publiés en fin de pub_projets. Un client peut déjà être une filiale (saisie libre) ; drapeau « client interne » non ajouté (aucun écran d’administration des clients) — à reprendre avec R-179 (portail réservé aux clients externes) et la création du projet à la commande (R-187). 24 oct. 2026 : fait (docs/delivery-9/notes-r190-internal-client.md) — clients.is_internal et subsidiary_code (migration 0051, un client par filiale), carte « Client » de l’écran Contrat (directeur), badge « Interne », portail client fermé aux projets d’un client interne, client interne posé à la création d’un projet depuis un besoin d’Arche, client_interne et filiale_code en fin de pub_projets (0052). Reste : R-179 (connexion des clients au portail) ; Matrix recopie pub_projets."
    }
   },
@@ -5702,7 +5702,7 @@
    ],
    "progress": {
     "state": "fait",
-    "delivery": "9",
+    "delivery": "Livraison 9",
     "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. 25 oct. 2026 : fait avec la liste provisoire validée par le responsable produit (docs/delivery-9/notes-r191-engineering-pack.md) — 5 familles × 20 % par type de machine (P&ID, nomenclature, implantation, électrique, analyse fonctionnelle), modifiables sur l’écran Types de machine ; pièces = documents de l’index Codex par type de document, validées = diffusées ; carte « Pack ingénierie · part EPC2i » sur la Synthèse ingénierie (cible > 80 %) ; vue pub_pack_ingenierie (migrations 0058-0060). Reste : la vraie liste type (C-9)."
    }
   },
