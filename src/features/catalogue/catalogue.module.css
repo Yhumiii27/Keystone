@@ -1,6 +1,5 @@
 /* Machine catalogue screen (owner, 25 Oct 2026; R-186): KPI tiles, filters, the list card and the entry detail. */
 .root { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.readNote { font-size: 12px; color: var(--color-neutral-400); text-wrap: pretty; }
 .codeCell { font-variant-numeric: tabular-nums; font-size: 12.5px; font-weight: 600; white-space: nowrap; color: var(--color-neutral-200); }
 .codeOn { color: var(--color-accent-300); }
 .cell12 { font-size: 12px; }
