@@ -1,6 +1,6 @@
 {
  "generated": "2026-10-10",
- "updated": "2026-11-01",
+ "updated": "2026-11-02",
  "branch": "main-2a2fep",
  "history": [
   {
@@ -258,6 +258,10 @@
   {
    "date": "2026-11-01",
    "text": "R-204 fait : planning multi-niveaux (codes d’activité, plannings fournisseurs consolidés)."
+  },
+  {
+   "date": "2026-11-02",
+   "text": "Demandes Matrix M-17 et M-18 traitées : vues pub_ définies par Matrix (garde-fou sur les nouvelles migrations), échanges par vues pub_ et API, règles dans CLAUDE.md."
   }
  ],
  "items": [
