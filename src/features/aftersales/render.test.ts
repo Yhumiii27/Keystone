@@ -17,6 +17,7 @@ import { I18nProvider } from '@/i18n/client';
 import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
+import { withoutK14Demo } from '@/test/k14';
 import { claimFormOptions, getFleetScreen, getSavScreen, machineTypeOptions } from '@/server/dal/aftersales';
 import GOLDEN from '@/domain/aftersales.golden.json';
 import { AddMachineButton, NewClaimButton } from './add-buttons';
@@ -32,7 +33,7 @@ const headers = (markup: string) => [...markup.matchAll(/<th[^>]*>([^<]*)<\/th>/
 const tr = (lang: Lang, en: string) => (lang === 'fr' ? L[en] : en);
 
 beforeAll(async () => {
-  setDb(await openDatabase());
+  setDb(await withoutK14Demo(await openDatabase())); // K-14: compared with the prototype without the APM-008 rows (src/test/k14.ts)
 }, 60_000);
 
 describe('Installed base body', () => {

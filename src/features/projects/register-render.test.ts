@@ -9,6 +9,7 @@ import { I18nProvider } from '@/i18n/client';
 import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
+import { withoutK14Demo } from '@/test/k14';
 import { getRegisterData } from '@/server/dal/projects-register';
 import type { RegisterView, StageCode } from '@/domain/lifecycle';
 import { ProjectsRegister } from './register';
@@ -27,7 +28,7 @@ const headers = (html: string) => [...html.matchAll(/<th[^>]*>([^<]*)<\/th>/g)].
 
 describe('ProjectsRegister render', () => {
   beforeAll(async () => {
-    setDb(await openDatabase());
+    setDb(await withoutK14Demo(await openDatabase())); // K-14: compared with the prototype without the APM-008 rows (src/test/k14.ts)
   }, 60_000);
 
   it('health view (EN)', async () => {

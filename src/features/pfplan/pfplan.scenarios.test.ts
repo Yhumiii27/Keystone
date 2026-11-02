@@ -12,6 +12,7 @@ import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { stage } from '@/server/db/codes';
 import { openDatabase } from '@/server/db/open';
+import { withoutK14Demo } from '@/test/k14';
 import { recordStageChange } from '@/server/dal/lifecycle';
 import { getPortfolioSchedule } from '@/server/dal/pipeline';
 import { createProject } from '@/server/dal/projects';
@@ -59,7 +60,7 @@ const protoSchedule = async (zone: Parameters<typeof getPortfolioSchedule>[0]) =
 describe('portfolio schedule after a stage change or a new project (prototype scenarios)', () => {
   it.each(Object.keys(G.scenarios))('%s', async (key) => {
     const sc = G.scenarios[key];
-    setDb(await openDatabase());
+    setDb(await withoutK14Demo(await openDatabase())); // K-14: compared with the prototype without the APM-008 rows (src/test/k14.ts)
     await apply(sc);
     const data = await protoSchedule(null);
     for (const lang of ['en', 'fr'] as Lang[]) {

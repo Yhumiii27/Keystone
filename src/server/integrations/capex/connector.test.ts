@@ -38,22 +38,23 @@ beforeAll(async () => {
 }, 60_000);
 
 describe('capex connector (Arche K-02)', () => {
-  it('the demo seed mirrors the simulated source: 2 CAPEX, 5 needs (submitted, ordered, withdrawn), 5 answers; a refresh changes nothing', async () => {
+  // K-14: Arche's five published demo CAPEX and six needs (CPX-APM-2025-01/B01, the oven delivered by APM-008, answered by RB-006).
+  it('the demo seed mirrors the simulated source: 5 CAPEX, 6 needs (submitted, ordered, withdrawn), 6 answers; a refresh changes nothing', async () => {
     const db = await getDb();
     const before = await needRefs();
     expect(before).toEqual([
-      'CPX-APM-2026-01/B01:submitted', 'CPX-APM-2026-01/B02:submitted', 'CPX-SAI-2026-01/B01:ordered', 'CPX-SAI-2026-01/B02:withdrawn', 'CPX-SAI-2026-01/B03:ordered',
+      'CPX-APM-2025-01/B01:ordered', 'CPX-APM-2026-01/B01:submitted', 'CPX-APM-2026-01/B02:submitted', 'CPX-SAI-2026-01/B01:ordered', 'CPX-SAI-2026-01/B02:withdrawn', 'CPX-SAI-2026-01/B03:ordered',
     ]);
     const r = await refreshCapexMirror('job', { source: 'simulation' });
-    expect(r).toEqual({ state: 'done', source: 'simulation', capex: 2, needs: 5, skipped: 0 });
-    expect(capexRefreshSummary(r)).toBe('2 CAPEX · 5 needs (simulated)');
+    expect(r).toEqual({ state: 'done', source: 'simulation', capex: 5, needs: 6, skipped: 0 });
+    expect(capexRefreshSummary(r)).toBe('5 CAPEX · 6 needs (simulated)');
     expect(await needRefs()).toEqual(before);
     expect((await db.select().from(capexMirror)).map((c) => [c.code, c.subsidiaryName, c.g2On])).toEqual(expect.arrayContaining([
-      ['CPX-APM-2026-01', 'Atlas Process Maroc', null], ['CPX-SAI-2026-01', 'Sahel Agro Industries', '2026-07-08'],
+      ['CPX-APM-2026-01', 'Atlas Process Maroc', null], ['CPX-SAI-2026-01', 'Sahel Agro Industries', '2026-07-08'], ['CPX-APM-2025-01', 'Atlas Process Maroc', '2025-09-15'],
     ]));
     // The mirror keeps no e-mail of Arche's people (pub_capex publishes them; Keystone does not need them).
     expect(JSON.stringify(await db.select().from(capexMirror))).not.toContain('@');
-    expect((await db.select({ n: sql<number>`count(*)::int` }).from(needAnswers))[0].n).toBe(5);
+    expect((await db.select({ n: sql<number>`count(*)::int` }).from(needAnswers))[0].n).toBe(6);
   });
 
   it('server source: reads arche.pub_capex and arche.pub_besoins_machines through SQL; the mirror is replaced (answers stay)', async () => {
@@ -63,14 +64,14 @@ describe('capex connector (Arche K-02)', () => {
     // One malformed row (no CAPEX of its own reference) is skipped and counted.
     await createArcheViews(SIMULATED_PUB_CAPEX, [...needs, { ...needs[0], besoin_ref: 'CPX-XXX-2026-01/B09' }]);
     const r = await refreshCapexMirror('job', { source: 'server' });
-    expect(r).toEqual({ state: 'done', source: 'server', capex: 2, needs: 4, skipped: 1 });
-    expect(await needRefs()).toEqual(['CPX-APM-2026-01/B01:ordered', 'CPX-APM-2026-01/B02:submitted', 'CPX-SAI-2026-01/B01:ordered', 'CPX-SAI-2026-01/B03:ordered']);
+    expect(r).toEqual({ state: 'done', source: 'server', capex: 5, needs: 5, skipped: 1 }); // K-14: 5 CAPEX, 6 needs
+    expect(await needRefs()).toEqual(['CPX-APM-2025-01/B01:ordered', 'CPX-APM-2026-01/B01:ordered', 'CPX-APM-2026-01/B02:submitted', 'CPX-SAI-2026-01/B01:ordered', 'CPX-SAI-2026-01/B03:ordered']);
     const [b01] = await db.select().from(capexNeeds).where(eq(capexNeeds.needRef, 'CPX-APM-2026-01/B01'));
     expect([b01.options, b01.targetCapacity, b01.orderedOn, b01.catalogueCode, b01.catalogueVersion]).toEqual([['TELE'], 40, '2026-10-20', 'EMP-40T', 1]);
     // The answer to the need that left the view stays (no foreign key: Arche's references).
     expect((await db.select().from(needAnswers).where(eq(needAnswers.needRef, 'CPX-SAI-2026-01/B02'))).length).toBe(1);
     const [run] = await db.select().from(capexSyncRuns).orderBy(sql`${capexSyncRuns.syncedAt} desc`).limit(1);
-    expect([run.source, run.trigger, run.ok, run.needCount, run.skipped]).toEqual(['server', 'job', true, 4, 1]);
+    expect([run.source, run.trigger, run.ok, run.needCount, run.skipped]).toEqual(['server', 'job', true, 5, 1]);
   });
 
   it('a failed read keeps the mirror and is recorded', async () => {
@@ -101,6 +102,6 @@ describe('capex connector (Arche K-02)', () => {
   it('Activity & integrations: the Arche row is a mock over the demo source (ARCHE_SOURCE defaults to simulation without DATABASE_URL)', async () => {
     const row = (await listConnectors()).find((c) => c.name === 'Arche');
     expect(row).toMatchObject({ kind: 'static', mode: 'mock', link: 'mock', state: 'mock', canSync: true, lastSyncAt: null });
-    expect(row?.lastVolume).toMatch(/^2 CAPEX · \d+ needs · 5 answers$/);
+    expect(row?.lastVolume).toMatch(/^5 CAPEX · \d+ needs · 6 answers$/); // K-14
   });
 });

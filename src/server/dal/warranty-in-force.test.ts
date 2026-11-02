@@ -10,13 +10,14 @@ import { fleetKpis, savKpis } from '@/domain/aftersales';
 import { makeT } from '@/i18n/translate';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
+import { withoutK14Demo } from '@/test/k14';
 import { machines, warrantyClaims } from '@/server/db/schema';
 import { fleetView, savView } from '@/features/aftersales/model';
 import { getFleetScreen, getSavScreen } from './aftersales';
 import { listMachines } from './fleet';
 
 beforeAll(async () => {
-  setDb(await openDatabase());
+  setDb(await withoutK14Demo(await openDatabase())); // K-14: compared with the prototype without the APM-008 rows (src/test/k14.ts)
   const db = await getDb();
   const [{ position }] = await db.select({ position: machines.position }).from(machines).where(eq(machines.number, 'MCH-040'));
   const rows = await db

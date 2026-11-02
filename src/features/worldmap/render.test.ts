@@ -16,6 +16,7 @@ import { I18nProvider } from '@/i18n/client';
 import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
+import { withoutK14Demo } from '@/test/k14';
 import { getProjectsMap } from '@/server/dal/geo';
 import type { ZoneCode } from '@/server/db/codes';
 import { geoNaturalEarth1 } from 'd3-geo';
@@ -70,7 +71,7 @@ const models = new Map<string, WorldMapModel>();
 const modelOf = (lang: Lang, zone: ZoneCode | null) => models.get(`${lang}|${zone}`)!;
 
 beforeAll(async () => {
-  setDb(await openDatabase());
+  setDb(await withoutK14Demo(await openDatabase())); // K-14: compared with the prototype without the APM-008 rows (src/test/k14.ts)
   for (const lang of LANGS) for (const zone of ZONES) models.set(`${lang}|${zone}`, buildWorldMapModel(await getProjectsMap(zone), makeT(lang), lang));
 }, 60_000);
 

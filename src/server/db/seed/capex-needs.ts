@@ -3,11 +3,14 @@
 // submitted, withdrawn and ordered), and five answers dated before the demo day (DEMO_TODAY_ISO, 25 Sep 2026): a qualification
 // "to be studied" (the withdrawn need), two firm offers E10 accepted at G2 — one already delivered by RCF-019 (its CAPEX link and
 // EQ-01 need set), one whose project is still to be created —, an indicative price E50 and a budgetary quote E30 on the Kénitra
-// extrusion line. The production seed has the connector row only (the needs come from Arche).
+// extrusion line. K-14 (2 Nov 2026): Arche's three other demo CAPEX and the oven need CPX-APM-2025-01/B01, delivered by APM-008 with
+// its accepted offer RB-006, and RCF-019's SAT planned (./capex-k14.ts). The production seed has the connector row only (the needs
+// come from Arche).
 import { and, eq, sql } from 'drizzle-orm';
 import { estimateRange } from '@/domain/estimate-class';
 import { snapshotOf, applyCapexSnapshot, recordCapexRun } from '@/server/integrations/capex/mirror';
 import { simulatedArcheViews } from '@/server/integrations/capex/simulation';
+import { seedDemoK14 } from './capex-k14';
 import { findPerson, nameOf } from '../helpers';
 import { capexMirror, clients, connectors, needAnswers, projectEquipments, projects } from '../schema';
 import type { DB, Tx } from '../types';
@@ -83,6 +86,13 @@ export async function seedDemoCapexNeeds(tx: Tx): Promise<void> {
     await tx.update(projects).set({ capexCode: DEMO_NEED_PROJECT.capexCode, besoinRef: DEMO_NEED_PROJECT.needRef }).where(eq(projects.id, rcf.id));
     await tx.update(projectEquipments).set({ besoinRef: DEMO_NEED_PROJECT.needRef }).where(and(eq(projectEquipments.projectId, rcf.id), eq(projectEquipments.ref, 'EQ-01')));
   }
+  // K-14: the oven of CPX-APM-2025-01 delivered by APM-008 (its accepted offer RB-006), and RCF-019's SAT planned (./capex-k14.ts).
+  await seedDemoK14(tx);
+}
+
+/** K-14: the demo mirror replaced by the simulated source's current rows (as a successful read of the connector does). */
+export async function refreshDemoCapexMirror(tx: Tx): Promise<void> {
+  await applyCapexSnapshot(tx, snapshotOf(simulatedArcheViews()), new Date());
 }
 
 /**

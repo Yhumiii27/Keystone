@@ -9,6 +9,7 @@ import { sql } from 'drizzle-orm';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { PER_EQUIPMENT_PHASES } from '@/domain/project-equipment';
 import { openDatabase } from './open';
+import { withoutK14Demo } from '@/test/k14';
 import type { DB } from './types';
 
 const file = (suffix: string) => {
@@ -31,7 +32,8 @@ const flagged = async (db: DB) =>
 describe('NNNN_project_equipments_backfill (R-185, custom, after the generated table)', () => {
   let db: DB;
   beforeAll(async () => {
-    db = await openDatabase();
+    // K-14: a database of before R-185 has no APM-008 (src/test/k14.ts).
+    db = await withoutK14Demo(await openDatabase());
   }, 60_000);
 
   it('the seed already wrote the lines and flags the migration writes', async () => {

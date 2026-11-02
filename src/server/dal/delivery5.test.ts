@@ -17,6 +17,7 @@ import {
   D5_SCREEN_ROLES, NCR_FLOW, addDaysIso, fmtDOfIso, ncrStatus, shortDateOfIso, stampText, type D5Screen,
 } from '@/server/db/codes';
 import { openDatabase } from '@/server/db/open';
+import { withoutK14Demo } from '@/test/k14';
 import { getClientPortal } from './client';
 import { getContract } from './contract';
 import { claimCostsByMachine, listClaims, listInterventions, savNavBadge } from './claims';
@@ -53,7 +54,7 @@ const CLIENT = actor('client', 'Nadia Bensaïd');
 const QUALITY = actor('quality', 'Gabriel Comte');
 
 beforeAll(async () => {
-  setDb(await openDatabase());
+  setDb(await withoutK14Demo(await openDatabase())); // K-14: compared with the prototype without the APM-008 rows (src/test/k14.ts)
 }, 60_000);
 
 describe('workspace roles (D5_SCREEN_ROLES mirrors ROLE_SCREENS)', () => {

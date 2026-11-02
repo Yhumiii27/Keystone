@@ -4,6 +4,7 @@ import { canSee, type RoleKey, type ScreenId } from '@/config/screens';
 import { approvalCount } from '@/server/approvals';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
+import { withoutK14Demo } from '@/test/k14';
 import { openClaim } from './claims';
 import { addPaymentMilestone } from './contract';
 import { recordDocumentDecision } from './documents';
@@ -21,7 +22,7 @@ import { listProjects } from './projects';
 // Golden values need the pristine seed: use a fresh in-memory database, never the local ./.data one
 // (which the running app mutates, e.g. a project created by the wizard changes the counts).
 beforeAll(async () => {
-  setDb(await openDatabase());
+  setDb(await withoutK14Demo(await openDatabase())); // K-14: compared with the prototype without the APM-008 rows (src/test/k14.ts)
 }, 60_000);
 
 describe('shell badges (golden values, docs/spec/01 §4.3–4.4)', () => {

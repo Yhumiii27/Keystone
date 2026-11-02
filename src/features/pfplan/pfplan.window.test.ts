@@ -12,6 +12,7 @@ import { pgTodayL, portfolioScheduleModel, type PgFilter } from '@/domain/pfplan
 import { makeT } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
+import { withoutK14Demo } from '@/test/k14';
 import { getPortfolioSchedule } from '@/server/dal/pipeline';
 import { COOKIE } from '@/server/session';
 import { PfPlanBody, filterHref, pfplanHref } from './view';
@@ -19,7 +20,7 @@ import { PfPlanBody, filterHref, pfplanHref } from './view';
 const text = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&#x27;/g, "'").replace(/\s+/g, ' ');
 
 beforeAll(async () => {
-  setDb(await openDatabase());
+  setDb(await withoutK14Demo(await openDatabase())); // K-14: compared with the prototype without the APM-008 rows (src/test/k14.ts)
 }, 60_000);
 
 describe('links', () => {
