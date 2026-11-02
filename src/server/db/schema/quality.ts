@@ -46,7 +46,7 @@ export const deliverables = pgTable(
     rejectedOn: date('rejected_on', { mode: 'string' }),
     rejectedByPersonId: uuid('rejected_by_person_id').references(() => persons.id),
     reviewComments: text('review_comments'),
-    /** Issued document in the Codex index (the drawer's drop slot; OPEN QUESTION D-1). */
+    /** Issued document in the Codex index (the drawer's drop slot; Codex index, R-033). */
     documentId: uuid('document_id').references(() => documents.id, { onDelete: 'set null' }),
     /** Register order (HLT_DELIVS order). */
     position: integer('position').notNull(),

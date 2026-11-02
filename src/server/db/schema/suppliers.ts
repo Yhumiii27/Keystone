@@ -16,7 +16,7 @@ export const suppliers = pgTable('suppliers', {
   name: text('name').notNull().unique(),
   /** Sage X3 supplier code (not in the prototype). */
   x3Code: text('x3_code'),
-  /** Scorecard (static in the prototype; derivation OPEN QUESTION SC-6): on-time delivery, quality acceptance, NCR rate (%). */
+  /** Scorecard (static in the prototype; SC-6 "b": graded in Vigie, R-026): on-time delivery, quality acceptance, NCR rate (%). */
   onTimeDeliveryPct: num('on_time_delivery_pct'),
   qualityAcceptancePct: num('quality_acceptance_pct'),
   ncrRatePct: num('ncr_rate_pct'),

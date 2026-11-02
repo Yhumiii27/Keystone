@@ -8,7 +8,7 @@ import 'server-only';
 // - mock (default): reads the local read-only mirror (seeded from the prototype's ECOS) and queues progress in the
 //   outbox, where it stays "pending sync with Vigie";
 // - http (when VIGIE_API_URL is set): refreshes the mirror from Vigie and delivers the outbox — TODO(vigie): the
-//   endpoints are a proposal until Vigie publishes its API (OPEN QUESTION V-2).
+//   endpoints are a proposal until Vigie publishes its API (V-2 answered "a"; R-023).
 import { ecosToAnnounce } from '@/domain/vigie-events';
 import { getDb } from '@/server/db/client';
 import { vigieEcos } from '@/server/db/schema';
@@ -49,7 +49,7 @@ export const mockEcoConnector: VigieEcoConnector = {
   },
 };
 
-// ── HTTP (TODO(vigie): endpoints to confirm with Vigie, OPEN QUESTION V-2) ─────────────────────────────
+// ── HTTP (TODO(vigie): endpoints to confirm with Vigie, R-023) ─────────────────────────────────────────
 
 const HTTP_TIMEOUT_MS = 5000;
 /** Reads refresh the mirror at most once a minute (a failed refresh is retried at the next read). */

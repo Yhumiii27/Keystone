@@ -450,7 +450,7 @@ export async function deliverableWbsOptions(projectCode: string): Promise<{ code
   return db.select({ code: wbsNodes.code, name: wbsNodes.name }).from(wbsNodes).where(eq(wbsNodes.projectId, p.id)).orderBy(asc(wbsNodes.position));
 }
 
-/** Links the issued document (a Codex index record) to a deliverable (the drawer's drop slot; OPEN QUESTION D-1). */
+/** Links the issued document (a Codex index record) to a deliverable (the drawer's drop slot; Codex index, R-033). */
 export async function linkDeliverableDocument(projectCode: string, number: string, documentNumber: string, actor: Actor): Promise<void> {
   requireWorkspace('quality', actor, 'Quality');
   const db = await getDb();

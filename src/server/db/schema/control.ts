@@ -21,7 +21,7 @@ export const risks = pgTable(
   {
     id: id(),
     projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
-    /** "R-03" (numbering global in the prototype: added risks R-21…, OPEN QUESTION Q-7). */
+    /** "R-03" (numbering global as in the prototype: added risks R-21…; per project once Q-7 is built, R-014). */
     number: text('number').notNull(),
     title: text('title').notNull(),
     category: text('category').$type<RiskCategory>().notNull(),

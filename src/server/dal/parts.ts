@@ -211,7 +211,7 @@ export interface NewPartInput {
 
 /**
  * "New part" (AF.plm): appended to the catalogue as Not validated (qualification pending), revision A. The Family
- * maps to a catalogue type (OPEN QUESTION E-1); make / buy follows the supplier (a Keystone workshop → Manufactured).
+ * maps to a catalogue type (the prototype's two lists, spec 00 §10 E-1); make / buy follows the supplier (a Keystone workshop → Manufactured).
  * Returns the reference.
  */
 export async function createPart(input: NewPartInput, actorName: string): Promise<string> {

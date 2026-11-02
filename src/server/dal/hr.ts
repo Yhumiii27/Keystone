@@ -571,7 +571,7 @@ export async function markHoursImported(
 /** Refusal of an "Assign" on a line already assigned (EN source, shown by the Hours screen). */
 export const HOURS_ALREADY_ASSIGNED = 'These hours are already assigned';
 
-/** "Assign" of an unassigned line (by its position in the list) to a work package (OPEN QUESTION R-6). */
+/** "Assign" of an unassigned line (by its position in the list) to a work package (until Cursus sends hours per task, R-6a, R-030). */
 export async function assignUnassignedHours(projectCode: string, position: number, wbsCode: string, actor: Actor): Promise<void> {
   const actorName = actor.name;
   const db = await getDb();

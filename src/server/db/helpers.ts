@@ -54,7 +54,7 @@ export async function requireProject(q: Q, code: string): Promise<{ id: string; 
 }
 
 /**
- * Next "PREFIX-nnn" number over every row of `column` (global sequence, as in the prototype — OPEN QUESTION Q-7):
+ * Next "PREFIX-nnn" number over every row of `column` (global sequence, as in the prototype — Q-7's per-project numbering is R-014):
  * max(existing, floor) + 1, where `floor` (the prototype's continuation number) applies to a demo database only (R-011,
  * seed/mode.ts demoFloor). Call inside the writing transaction: it runs SERIALIZABLE (src/server/db/transactions.ts), so two
  * concurrent writers never get the same number — one of them is run again (R-010).

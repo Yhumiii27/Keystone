@@ -31,7 +31,7 @@ export const portfolioScores = pgTable(
   (t) => [primaryKey({ columns: [t.projectId, t.axis] })],
 );
 
-/** Weights edited on the Prioritisation screen (`pfWeights`), per user (scope OPEN QUESTION L-5). Absent = default. */
+/** Weights edited on the Prioritisation screen (`pfWeights`), per user (as in the prototype). Absent = default. */
 export const scoreWeights = pgTable(
   'score_weights',
   {

@@ -42,7 +42,7 @@ export const meetings = pgTable('meetings', {
   minutesNumber: text('minutes_number'),
   minutesDocumentId: uuid('minutes_document_id').references(() => documents.id, { onDelete: 'set null' }),
   minutesSentOn: date('minutes_sent_on', { mode: 'string' }),
-  /** Outlook event id (OPEN QUESTION S-11). */
+  /** Outlook event id (S-11: Outlook → Keystone, R-037). */
   externalCalendarId: text('external_calendar_id'),
   /** MEETINGS order 1…n; created meetings come first, in creation order (`createdSortOrder`, MTG-130 → −999870). */
   sortOrder: integer('sort_order').notNull(),
@@ -106,8 +106,8 @@ export const meetingLines = pgTable(
 );
 
 /**
- * Meeting transcript (MTG_TRANSCRIPTS 3711) and its analysis. The analysis is simulated (OPEN QUESTION S-10): the
- * prototype's pre-baked summary and proposals are stored with the transcript and revealed by "Analyse transcript".
+ * Meeting transcript (MTG_TRANSCRIPTS 3711) and its analysis: Claude or the local rules (S-10, src/server/ai/transcripts);
+ * the demo seed stores the prototype's pre-baked summary and proposals with its transcripts.
  */
 export const meetingTranscripts = pgTable('meeting_transcripts', {
   meetingId: uuid('meeting_id').primaryKey().references(() => meetings.id, { onDelete: 'cascade' }),
@@ -187,7 +187,7 @@ export const stakeholders = pgTable('stakeholders', {
   organisation: text('organisation').notNull(),
   role: text('role').notNull(),
   type: text('type').$type<StakeholderType>().notNull(),
-  /** Always 0 / 0 / '' in the seed (OPEN QUESTION S-13). */
+  /** Always 0 / 0 / '' in the seed (S-13a under discussion, R-059). */
   influence: integer('influence').notNull().default(0),
   interest: integer('interest').notNull().default(0),
   attitude: text('attitude').notNull().default(''),

@@ -20,7 +20,7 @@ export const rfqs = pgTable('rfqs', {
   /** Project the purchase is for; null for the seed RFQs (the prototype does not record it). */
   projectId: uuid('project_id').references(() => projects.id, { onDelete: 'set null' }),
   title: text('title').notNull(),
-  /** Article requested (seed RFQ-2026-031: title "Steel plate S355" but part KS-STL-0450, OPEN QUESTION SC-7 — kept as is). */
+  /** Article requested (seed RFQ-2026-031: title "Steel plate S355" but part KS-STL-0450, kept as is; SC-7a under discussion, R-100). */
   partId: uuid('part_id').references(() => parts.id),
   /** Quantity requested; null when the New RFQ form named the articles in free text only. */
   quantity: num('quantity'),

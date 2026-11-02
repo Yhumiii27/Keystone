@@ -159,7 +159,7 @@ export interface ProposalScore {
 
 /**
  * "Score a proposal" (AF.portfolio, "Save score"): records the 5 axes of the ranking on a pipeline project (the
- * prototype only toasted, OPEN QUESTION L-5; L-5a = a, R-134: the form scores every axis of the ranking) with the
+ * prototype only toasted; L-5a = a, R-134: the form scores every axis of the ranking) with the
  * scorer and comment. An axis added to the register later and absent from the form gets 1 when new.
  */
 export async function saveProposalScore(projectCode: string, input: ProposalScore, by: string | { name: string; role: string }, at: Date = new Date()): Promise<void> {

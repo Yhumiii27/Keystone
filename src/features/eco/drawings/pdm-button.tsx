@@ -1,6 +1,6 @@
 'use client';
 // "Open in PDM" of the drawing drawer (template 1415): opens the drawing in SolidWorks PDM when the vault sync provides
-// a link; the prototype's button had no handler and the PDM deep link is OPEN QUESTION E-7 (09 OQ17), so without a
+// a link; the prototype's button had no handler and the PDM deep link waits on the PDM connector (E-7, R-035), so without a
 // link it announces "coming soon" (toast), like the other connectors' placeholders.
 import { ArrowSquareOut } from '@phosphor-icons/react/dist/ssr';
 import { Button } from '@/components/ds/Button';

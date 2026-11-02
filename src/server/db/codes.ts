@@ -433,7 +433,7 @@ export function relativeStampText(at: Date, today: string): string {
 export const relativeDayText = (iso: string, today: string) =>
   iso === today ? 'today' : iso === addDaysIso(today, -1) ? 'yesterday' : shortDateOfIso(iso);
 
-/** Next business number of a "PREFIX-nnn" sequence: max(existing, floor) + 1, zero-padded (OPEN QUESTION Q-7). */
+/** Next business number of a "PREFIX-nnn" sequence: max(existing, floor) + 1, zero-padded (Q-7: per-project registers not built yet, R-014). */
 export function nextBusinessNumber(existing: readonly string[], prefix: string, pad: number, floor = 0): string {
   let max = floor;
   for (const s of existing) {
@@ -519,7 +519,7 @@ export const approverRole = codec<ApproverRole, string>([
   ['direction', 'Direction'], ['client', 'Client'], ['quality_verification', 'Quality (verification)'], ['hse_officer', 'HSE officer'],
   ['buyer', 'Buyer'], ['site_manager', 'Site manager'], ['auditor', 'Auditor'],
 ]);
-/** Hand-off state of a deposit to Codex (simulated: recorded at once, OPEN QUESTION D-1). */
+/** Hand-off state of a deposit to Codex (simulated: recorded at once until Codex's prefilled deposit form exists, D-1a, R-125). */
 export type DepositStatus = 'handed_off' | 'recorded';
 /**
  * What a Codex outbox entry asks Codex (Delivery 7, P-7b / P-7c): a circuit step decision of the named approver, or
@@ -655,7 +655,7 @@ export const partType = codec<PartType, string>([
   ['architectural', 'Architectural'], ['medical', 'Medical'], ['mechanical', 'Mechanical'], ['electronics', 'Electronics'], ['it_hardware', 'IT hardware'],
   ['assembly', 'Assembly'], ['consumable', 'Consumable'], ['software', 'Software'],
 ]);
-/** "Family" of the New part form (AF.plm) and the catalogue type it creates (OPEN QUESTION E-1: two lists). */
+/** "Family" of the New part form (AF.plm) and the catalogue type it creates (the prototype's two lists, spec 00 §10 E-1). */
 export type PartFamily = 'structure' | 'mechanical' | 'electrical' | 'automation' | 'consumable';
 export const partFamily = codec<PartFamily, string>([
   ['structure', 'Structure'], ['mechanical', 'Mechanical'], ['electrical', 'Electrical'], ['automation', 'Automation'], ['consumable', 'Consumable'],

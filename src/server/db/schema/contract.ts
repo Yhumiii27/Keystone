@@ -1,7 +1,7 @@
 // Contract, billing and cash (docs/spec/11 §3.5 Contract / Amendment / Bond / PaymentMilestone / CustomerInvoice,
 // §7 #3; screens 04 §3 Contract, §4 Billing, §1.6 Budget › Cash & recovery; 03 §7 Cash flow, §6 margin).
 //
-// Billing source of truth (OPEN QUESTION A-5, resolved as 11 §7 #3): the contract (`contracts` + its payment
+// Billing source of truth (A-5, as 11 §7 #3): the contract (`contracts` + its payment
 // milestones and customer invoices) is authoritative. Projects without a contract keep their legacy billing plan
 // (`BILLING` 3541) migrated into `billing_plans` + `payment_milestones` (fixed amounts, no contract): Cash flow,
 // Prioritisation margins and the client portal read the same rows. A project with a contract derives its billing
@@ -162,8 +162,8 @@ export const customerInvoices = pgTable('customer_invoices', {
 
 /**
  * Portfolio cash forecast, next 6 months (CASH_M 3542 with the prototype's cash-in / cash-out arrays, logic 4518):
- * planning figures in k€ for the whole portfolio, scaled by zone share on screen. OPEN QUESTION C-10: derive cash-in
- * from the billing plan and cash-out from the forecast spend.
+ * the prototype's planning figures in k€, seeded but no longer read — since A-12 / C-10a the screens compute cash-in from
+ * the billing plans and cash-out from the forecast spend (`cashForecast`, src/domain/kpis.ts).
  */
 export const portfolioCashForecasts = pgTable('portfolio_cash_forecasts', {
   /** First day of the month. */

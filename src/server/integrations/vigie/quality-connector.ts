@@ -7,7 +7,7 @@ import 'server-only';
 // - mock (default): reads the local read-only mirrors (seeded from the prototype's HLT_NCRS and SITE_HSE) and queues
 //   NCR progress in the outbox, where it stays "pending sync with Vigie";
 // - http (VIGIE_API_URL set): refreshes the mirrors from Vigie and delivers the outbox — TODO(vigie): the endpoints
-//   below are a proposal until Vigie publishes its API (OPEN QUESTION V-3).
+//   below are a proposal until Vigie publishes its API (R-023).
 import { and, eq } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import { VIGIE_CONNECTOR_NAME, connectorEnabled } from '@/server/integrations/connector-enabled';
@@ -55,7 +55,7 @@ export const mockQualityConnector: VigieQualityConnector = {
   },
 };
 
-// ── HTTP (TODO(vigie): endpoints to confirm with Vigie, OPEN QUESTION V-3) ─────────────────────────────
+// ── HTTP (TODO(vigie): endpoints to confirm with Vigie, R-023) ─────────────────────────────────────────
 
 const HTTP_TIMEOUT_MS = 5000;
 const REFRESH_EVERY_MS = 60_000;

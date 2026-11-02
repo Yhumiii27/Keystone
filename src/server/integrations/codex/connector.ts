@@ -8,7 +8,7 @@ import 'server-only';
 // - mock (default): entries stay "pending sync with Codex"; the index is never changed;
 // - http (when CODEX_API_URL is set): delivers the outbox, then refreshes the records concerned from Codex
 //   (mirror.ts, the only writer of their status and approval proof) — TODO(codex): the endpoints below are a proposal
-//   until Codex publishes its API (OPEN QUESTION D-1). Delivery 8 (R-033): it also reads Codex's index (`readCodexIndex`,
+//   until Codex publishes its API (D-1 answered; waits on Codex, R-033). Delivery 8 (R-033): it also reads Codex's index (`readCodexIndex`,
 //   "Sync now" and the hourly "codex-index" job).
 import { getDb } from '@/server/db/client';
 import { CODEX_CONNECTOR_NAME, connectorEnabled } from '@/server/integrations/connector-enabled';
@@ -49,7 +49,7 @@ export const mockCodexConnector: CodexApprovalConnector = {
   },
 };
 
-// ── HTTP (TODO(codex): endpoints to confirm with Codex, OPEN QUESTION D-1) ──────────────────────────────
+// ── HTTP (TODO(codex): endpoints to confirm with Codex, R-033) ──────────────────────────────────────────
 
 const HTTP_TIMEOUT_MS = 5000;
 
@@ -69,7 +69,7 @@ async function codexFetch(path: string, init?: RequestInit): Promise<Response> {
 
 /**
  * R-158 lot B — the body of a `deposit` entry (a document Keystone generated, a shipping document): the record's metadata and the
- * PDF as filed, base64. TODO(codex): payload to agree with Codex (OPEN QUESTION D-1).
+ * PDF as filed, base64. TODO(codex): payload to agree with Codex (R-033).
  */
 async function depositBody(e: Awaited<ReturnType<typeof undeliveredCodexEntries>>[number]) {
   const file = e.storedFileId ? await readStoredFile(e.storedFileId) : null;
@@ -128,7 +128,7 @@ async function refreshFromCodex(numbers: readonly string[]): Promise<number> {
 /**
  * Index read (Delivery 8, R-033; D-2 scope) — TODO(codex): `GET /api/documents?since=…[&project=…]` returning the records
  * changed since the last read (the whole index without `since`), each with its current revision and current circuit
- * (mirror.ts `CodexIndexRecord`). A proposal until Codex publishes its API (OPEN QUESTION D-1); the HTTP connector only.
+ * (mirror.ts `CodexIndexRecord`). A proposal until Codex publishes its API (R-033); the HTTP connector only.
  * Unknown projects and types are skipped and logged (A-15: never a phantom QMS record). `onlyNew`: the re-read of records
  * that waited for a project or type of Keystone writes only those, when not indexed yet (`applyCodexIndex`).
  */

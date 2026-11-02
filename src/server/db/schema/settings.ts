@@ -9,7 +9,7 @@ import { persons } from './organisation';
 /**
  * Company reference lists edited in Settings (SETTINGS0 3467): skills 10, cost categories 6, project statuses 13, risk
  * categories 7, deliverable types 8, public holidays 11, location types 5. "Remove" deactivates the value (records that
- * use it keep their code, OPEN QUESTION A-14); "Reset to defaults" restores the seed list.
+ * use it keep their code, A-14); "Reset to defaults" restores the seed list.
  */
 export const referenceValues = pgTable(
   'reference_values',

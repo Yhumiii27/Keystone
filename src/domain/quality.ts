@@ -13,7 +13,7 @@
 // Deviations from the prototype (docs/spec/07 OQ5, OQ14, 00 §7.16):
 // - "Due in 30 days" is computed from the business date (R-013; due between it and 30 days later, not accepted)
 //   instead of the literal dates {25 Sep, 30 Sep}; the counts are the prototype's.
-// - "Overdue actions" counts the open NCRs whose action is due on or before the as-of date (OPEN QUESTION 07 OQ5: the
+// - "Overdue actions" counts the open NCRs whose action is due on or before the as-of date (07 OQ5: the
 //   prototype listed the literal dates {30 Sep, 2 Oct}); the as-of date is the next weekly review after the business
 //   date (business date + 7 days, R-013 — on the demo data set 25 Sep + 7 = 2 Oct, the prototype's count).
 // - Step buttons follow the viewer: the client never advances NCRs nor produces deliverables, NCR closure is the quality
@@ -89,8 +89,8 @@ export const severityTagOf = (s: NcrSeverity) => tag(SEVERITY_TAG[s]);
 export const ncrStatusTagOf = (s: NcrStatus) => tag(NCR_STATUS_TAG[s]);
 
 /**
- * As-of date of "Overdue actions" (see the header, OPEN QUESTION 07 OQ5): the business date + 7 days (R-013; was the frozen
- * status date + 7 = 2 Oct 2026, the same value on the demo data set).
+ * As-of date of "Overdue actions" (see the header, 07 OQ5): the business date + 7 days (R-013; on the demo data set
+ * 25 Sep + 7 = 2 Oct 2026, the prototype's value).
  */
 export const ncrOverdueAsOf = (today: string) => addDaysIso(today, 7);
 

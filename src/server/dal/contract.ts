@@ -1,6 +1,6 @@
 import 'server-only';
 // Contract & Billing DAL (docs/spec/04 §3 Contract, §4 Billing, §1.6 Budget › Cash & recovery; 11 §3.5, §7 #3).
-// The contract is the billing source of truth (OPEN QUESTION A-5): its value is the base amount plus the signed
+// The contract is the billing source of truth (A-5): its value is the base amount plus the signed
 // amendments. Payment milestones of the base contract are priced on the base amount, an amendment's own milestones on the
 // amendment's amount and become billable when it is signed (NEW-D3-3, R-079); an invoiced milestone keeps its invoice's
 // amount. Customer invoices are 1:1 with the invoiced milestones and fall due by the contract's payment rule (C-6, R-076).
