@@ -52,9 +52,6 @@ export const levelTone = (level: RiskLevel): 'accent' | 'outline' | 'neutral' =>
 /** Drawer tag text "Critical · 16" (English; translate per segment). */
 export const levelTagText = (r: Pick<RiskFacts, 'probability' | 'impact'>) => `${levelLabel(levelOf(scoreOf(r)))} · ${scoreOf(r)}`;
 
-/** Probability scale of the EMV (Q-1): P = 1 → 20 %, …, P = 5 → 100 %. */
-export const probabilityShare = (probability: number) => Math.max(1, Math.min(5, probability)) / 5;
-
 const round2 = (v: number) => Math.round(v * 100) / 100;
 
 /** EMV = cost if it occurs × P / 5 (Q-1), k€ to two decimals. */

@@ -87,13 +87,6 @@ export interface PartRow {
 
 const uniq = <T,>(xs: T[]) => [...new Set(xs)];
 
-/** Last purchase price by reference (LAST_PRICE; parts without one fall back to their list price). */
-export async function lastPriceByRef(q?: Q): Promise<Record<string, number>> {
-  const db = q ?? (await getDb());
-  const rows = await db.select({ ref: parts.ref, list: parts.listPriceEur, last: partLastPrices.unitPriceEur }).from(parts).leftJoin(partLastPrices, eq(partLastPrices.partId, parts.id));
-  return Object.fromEntries(rows.map((r) => [r.ref, r.last ?? r.list]));
-}
-
 async function loadParts(q: Q, refs?: string[]): Promise<PartRow[]> {
   const where = refs ? inArray(parts.ref, refs.length ? refs : ['']) : undefined;
   const validator = sql<string | null>`(select coalesce(${persons.fullName}, ${persons.shortName}) from ${persons} where ${persons.id} = ${parts.validatedByPersonId})`;

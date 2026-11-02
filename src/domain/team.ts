@@ -4,7 +4,7 @@
 // texts, the row actions, the nav badge rule and the parsing of the two add-forms. No I/O, no translation: labels are
 // the prototype's English source strings. Golden values: src/domain/team.test.ts.
 import {
-  interfaceStatus, keystoneSide, monthIndexOfIso, stakeholderType,
+  keystoneSide, monthIndexOfIso, stakeholderType,
   type InterfaceEffectiveStatus, type InterfaceStatus, type KeystoneSide, type StakeholderType,
 } from '@/server/db/codes';
 import { yearOfIso } from './clock';
@@ -310,6 +310,3 @@ export function parseReceivedOn(raw: string | undefined, today: string): ParseRe
   if (iso > today) return { ok: false, error: RECEIVED_AFTER_TODAY };
   return { ok: true, value: iso };
 }
-
-/** English status label of an interface ("Late"). */
-export const interfaceStatusLabel = (s: InterfaceEffectiveStatus) => interfaceStatus.label(s);

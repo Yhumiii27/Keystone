@@ -186,24 +186,3 @@ export async function upsertCalendar(input: CalendarInput, actorName: string, q?
   if (q) return run(q);
   return (await getDb()).transaction(run);
 }
-
-/** Adds or replaces one exception of a calendar (closure or exceptional working day). */
-export async function setCalendarException(calendarCode: string, e: CalendarException, actorName: string): Promise<void> {
-  if (!isIsoDate(e.date)) throw new Error(`Invalid date "${e.date}"`);
-  const db = await getDb();
-  await db.transaction(async (tx) => {
-    const [c] = await tx.select({ code: calendars.code }).from(calendars).where(eq(calendars.code, calendarCode));
-    if (!c) throw new Error(`Unknown calendar "${calendarCode}"`);
-    await tx.delete(calendarExceptions).where(and(eq(calendarExceptions.calendarCode, calendarCode), eq(calendarExceptions.date, e.date)));
-    await tx.insert(calendarExceptions).values({ calendarCode, date: e.date, working: e.working, name: e.name ?? '' });
-    await writeAudit(tx, { actorName, objectRef: `Calendar ${calendarCode}`, change: `${e.date}: ${e.working ? 'working' : 'non-working'}`, area: 'Planning', entityType: 'calendar' });
-  });
-}
-
-export async function removeCalendarException(calendarCode: string, date: string, actorName: string): Promise<void> {
-  const db = await getDb();
-  await db.transaction(async (tx) => {
-    const del = await tx.delete(calendarExceptions).where(and(eq(calendarExceptions.calendarCode, calendarCode), eq(calendarExceptions.date, date))).returning({ id: calendarExceptions.id });
-    if (del.length) await writeAudit(tx, { actorName, objectRef: `Calendar ${calendarCode}`, change: `${date}: exception removed`, area: 'Planning', entityType: 'calendar' });
-  });
-}

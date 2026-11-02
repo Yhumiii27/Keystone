@@ -27,9 +27,6 @@ export const viewingNoteText = (firstName: string, lang: Lang) =>
 /** Tag of a task created by an approved resource request: "New · approved by Engineering". */
 export const freshTagText = (dept: string, t: T, lang: Lang) => (lang === 'fr' ? `Nouveau · approuvé par ${t(dept)}` : `New · approved by ${dept}`);
 
-/** "Logged this week" sub: "of 40 h · 38%". */
-export const loggedSubText = (pct: number, lang: Lang) => (lang === 'fr' ? `sur 40 h · ${pct} %` : `of 40 h · ${pct}%`);
-
 /** Day counts in FR: "-27d" → "-27 j", "+20d" → "+20 j" (as on the Plan screen). */
 export const daysText = (s: string, lang: Lang) => (lang === 'fr' ? s.replace(/([+\-−]?\d+)d\b/g, '$1 j') : s);
 

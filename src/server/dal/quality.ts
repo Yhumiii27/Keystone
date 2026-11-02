@@ -480,12 +480,3 @@ export async function deliverableDecidedCount(actor: Actor): Promise<number> {
     .where(and(eq(auditEntries.area, 'Deliverables'), eq(auditEntries.actorName, who), eq(auditEntries.entityType, 'deliverable')));
   return rows.filter((r) => r.change.startsWith('status: Submitted → ')).length;
 }
-
-/** Submitted deliverables per project (client portal "Awaiting your decision", client Home). */
-export async function submittedDeliverablesByProject(): Promise<Record<string, number>> {
-  const db = await getDb();
-  const rows = await db.select({ code: projects.code }).from(deliverables).innerJoin(projects, eq(projects.id, deliverables.projectId)).where(eq(deliverables.status, 'submitted'));
-  const out: Record<string, number> = {};
-  for (const r of rows) out[r.code] = (out[r.code] ?? 0) + 1;
-  return out;
-}

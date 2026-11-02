@@ -24,9 +24,6 @@ export const TAG_CLASS: Record<Tone, string> = {
   muted: 'text-muted',
 };
 
-/** LO when `bad`, else OK (KPI values, metric cells). */
-export const toneColor = (bad: boolean) => (bad ? LO : OK);
-
 // ── Project health & lifecycle ───────────────────────────────────────────────────────────────────
 
 export type HealthCode = 'on_track' | 'at_risk' | 'off_track';
@@ -260,18 +257,6 @@ export function approvalDot(decision: 'ok' | 'rejected' | 'na' | 'pending' | str
   if (decision === 'rejected') return { dot: 'var(--color-neutral-100)', ring: 'none' };
   if (decision === 'na') return { dot: 'transparent', ring: 'inset 0 0 0 1px var(--color-neutral-700)' };
   return { dot: 'var(--color-neutral-700)', ring: 'none' };
-}
-
-/** Task / checklist check (todoLite 3896, checklist 4089). */
-export function checkLook(done: boolean): { ring: string; fill: string; titleColor: string; deco: string } {
-  return done
-    ? { ring: 'var(--color-accent)', fill: 'var(--color-accent)', titleColor: 'var(--color-neutral-500)', deco: 'line-through' }
-    : { ring: 'var(--color-neutral-600)', fill: 'transparent', titleColor: 'var(--color-text)', deco: 'none' };
-}
-
-/** Board column dot (4078): done neutral-500 · todo neutral-400 · doing/review accent. */
-export function boardDot(status: 'todo' | 'doing' | 'review' | 'done' | string): string {
-  return status === 'done' ? 'var(--color-neutral-500)' : status === 'todo' ? 'var(--color-neutral-400)' : 'var(--color-accent)';
 }
 
 /** Glow used on the current step of flow steppers. */

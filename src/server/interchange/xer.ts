@@ -96,11 +96,6 @@ const CONSTRAINT: Record<string, string | null> = {
 const LINK: Record<string, LinkType> = { PR_FS: 'FS', PR_SS: 'SS', PR_FF: 'FF', PR_SF: 'SF' };
 const MAPPED_TABLES = new Set(['PROJECT', 'CALENDAR', 'PROJWBS', 'TASK', 'TASKPRED', 'RSRC', 'TASKRSRC', 'ACTVTYPE', 'ACTVCODE', 'TASKACTV', 'CURRTYPE', 'OBS', 'PROJPCAT', 'PCATTYPE', 'PCATVAL']);
 
-/** Projects of an XER file (id, short name, name) — the dialog lets the user pick one when there are several. */
-export function xerProjects(tables: XerTables): { id: string; shortName: string }[] {
-  return (tables.PROJECT ?? []).map((p) => ({ id: p.proj_id, shortName: p.proj_short_name || p.proj_id }));
-}
-
 /** Parses an XER export (one project). `projectId`: the proj_id to read (default: the first exported project). */
 export function parseXer(text: string, opts: { projectId?: string | null } = {}): ImportedSchedule {
   const tables = readXerTables(text);

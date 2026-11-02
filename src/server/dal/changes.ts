@@ -33,8 +33,6 @@ export const CHANGE_TYPE_LABEL: Record<ChangeType, string> = { budget: 'Budget',
 export const CHANGE_STEP_LABEL: Record<ChangeStep, string> = {
   pm: 'Project manager', director: 'Portfolio director', client: 'Client / sponsor', ccb: 'Change control board',
 };
-/** Drawer tag of a step decision. */
-export const STEP_DECISION_TAG: Record<StepDecision, string> = { ok: 'Approved', rejected: 'Rejected', na: 'Not required', pending: 'Pending' };
 
 export interface ChainStep {
   step: ChangeStep;

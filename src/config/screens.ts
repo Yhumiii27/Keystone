@@ -138,9 +138,6 @@ export const SECTIONS: { key: SectionKey; label: string }[] = [
   { key: 'admin', label: 'Administration' },
 ];
 
-/** Project section groups, in display order. Default open: "Steering" only. */
-export const PROJECT_GROUPS = ['Contract', 'Steering', 'Team & exchanges', 'Project engineering', 'Control', 'Site & handover', 'Project review'];
-
 /** Fixed entries order (docs/spec/01 §4.3). `client` replaces `myprojects` for the client role. */
 export const FIXED_ORDER: ScreenId[] = ['home', 'myprojects', 'client', 'mywork', 'myapprovals', 'dashboards', 'docs'];
 

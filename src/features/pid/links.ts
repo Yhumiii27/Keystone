@@ -60,8 +60,5 @@ export function pidHref(code: string, s: Partial<PidState> = {}): string {
   return qs ? `${base}?${qs}` : base;
 }
 
-/** A tag's drawer on the P&ID screen of `code` (links from other screens). */
-export const pidTagHref = (code: string, tag: string) => pidHref(code, { tag });
-
 /** An activity's drawer on the project plan (`?act=`). */
 export const activityHref = (code: string, activityCode: string) => `${screenHref('plan', { code })}?act=${encodeURIComponent(activityCode)}`;

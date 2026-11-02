@@ -37,6 +37,3 @@ export async function exportFile(request: APIRequestContext, href: string): Prom
   const res = await request.get(href, { headers: { 'sec-fetch-site': 'same-origin' } });
   return { status: res.status(), type: res.headers()['content-type'] ?? '', disposition: res.headers()['content-disposition'] ?? '', body: await res.body() };
 }
-
-/** Cookie header of a persona for API calls made outside the page. */
-export const cookieOf = (role: Role, lang: 'en' | 'fr' = 'en') => `ks-role=${role}; ks-lang=${lang}`;

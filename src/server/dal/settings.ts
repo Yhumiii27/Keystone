@@ -7,7 +7,7 @@ import 'server-only';
 // Chapter 4 (A-13, A-14 — rules in src/domain/settings-rules.ts): only the portfolio director edits; "Remove" deactivates
 // a value still in use (or a default) and deletes an unused custom one; the lists drive the modules through
 // src/server/dal/settings-lists.ts; the thresholds drive the one health rule (src/server/dal/health-thresholds.ts).
-import { and, asc, eq, inArray, notInArray, sql } from 'drizzle-orm';
+import { and, asc, eq, notInArray, sql } from 'drizzle-orm';
 import { yearOfIso } from '@/domain/clock';
 import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
@@ -57,13 +57,6 @@ export interface SettingsData {
   ccbThresholdKeur?: number;
   /** R-206 (K-206b): the schedule quality thresholds (optional for callers building the data by hand: the standard). */
   dcma?: DcmaThresholds;
-}
-
-/** Active values of one list, in order. */
-export async function listReferenceValues(listKey: ReferenceListKey): Promise<ReferenceValueRow[]> {
-  const db = await getDb();
-  return db.select({ code: referenceValues.code, label: referenceValues.label }).from(referenceValues)
-    .where(and(eq(referenceValues.listKey, listKey), eq(referenceValues.active, true))).orderBy(asc(referenceValues.position));
 }
 
 /** Project health thresholds (On track ≥ risk, At risk below risk, Off track below off) — uncached, for writers and tests. */
@@ -356,11 +349,4 @@ export async function resetSettings(actor: Actor): Promise<void> {
       .onConflictDoUpdate({ target: appSettings.key, set: { value: { keur: ccb }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
     await trace(tx, who, { objectRef: 'Settings', change: 'reset to defaults', area: 'Settings', activity: { text: 'Reset the settings lists to their defaults', kind: 'change' } });
   });
-}
-
-/** Labels of several lists at once (forms: risk categories, deliverable types, cost categories). */
-export async function referenceLists(keys: ReferenceListKey[]): Promise<Record<string, ReferenceValueRow[]>> {
-  const db = await getDb();
-  const rows = await db.select().from(referenceValues).where(and(inArray(referenceValues.listKey, keys), eq(referenceValues.active, true))).orderBy(asc(referenceValues.position));
-  return Object.fromEntries(keys.map((k) => [k, rows.filter((r) => r.listKey === k).map((r) => ({ code: r.code, label: r.label }))]));
 }

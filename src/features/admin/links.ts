@@ -8,8 +8,6 @@
 import { screenHref } from '@/config/screens';
 import type { PlumbView } from '@/domain/admin';
 
-export const settingsHref = () => screenHref('settings');
-
 /** Machine types with `type` selected (default: the first type). */
 export function machineTypesHref(type?: string | null): string {
   const base = screenHref('mtypes');
