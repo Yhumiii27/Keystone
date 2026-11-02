@@ -79,7 +79,7 @@ Format d'une entrée :
 - Détails techniques : uniquement le jeu de démonstration / la simulation, aucun changement de contrat des vues `pub_`. Les champs des CAPEX et du besoin suivent les colonnes de `arche.pub_capex` et `arche.pub_besoins_machines` déjà simulées (`docs/CONTRATS.md` du dépôt Arche ; valeurs exactes dans `src/server/db/seed/demo.ts` d'Arche, `DEMO_CAPEX`). Le projet relié au besoin publie `besoin_ref = 'CPX-APM-2025-01/B01'` et `capex_code = 'CPX-APM-2025-01'` dans `pub_projets`, et son parc installé dans `pub_parc_machines` (R-193). La SAT de RCF-019 est un jalon daté dans `pub_jalons_projets` (R-189).
 
 ## [2026-10-30] Matrix → Keystone — M-17 : accès entre outils décidés par Matrix (plus de copie de vue, écritures par API ou fonction `pub_`)
-- Statut : OUVERTE
+- Statut : FAITE (02/11/2026 : règles reprises dans `CLAUDE.md` § « Exchanges with the other tools » ; inventaire dans `docs/delivery-9/notes-m17-m18.md` : lectures par vues `pub_` seulement (`matrix.pub_filiales`, `matrix.pub_organigramme`, `arche.pub_capex`, `arche.pub_besoins_machines`), écritures par API (Vigie, Cursus, Codex, déclaration Matrix), aucune écriture SQL dans un autre schéma, rien de non conforme ; point 3 remplacé par M-18)
 - Demande : appliquer dans Keystone la décision M-17 de Matrix (`docs/decisions.md` et `docs/architecture-postgres.md` § 8 sexies du dépôt Matrix) :
   1. **Lire** les données d'un autre outil uniquement par ses vues `pub_` (R2), jamais par ses tables ;
   2. **Écrire** chez un autre outil uniquement par son API ou par une fonction `pub_` qu'il fournit (R4), jamais par `INSERT` / `UPDATE` / `DELETE` dans son schéma ;
@@ -91,7 +91,7 @@ Format d'une entrée :
 - Validé par Guillaume le : 2026-10-30
 
 ## [2026-11-01] Matrix → Keystone — M-18 : Matrix définit vos vues `pub_` et décide de vos écritures croisées (plus de vue `pub_` dans vos migrations)
-- Statut : OUVERTE
+- Statut : FAITE (02/11/2026 : plus aucune vue `pub_` ni droit à un autre outil dans les nouvelles migrations, garde-fou `src/server/db/pub-views-owned-by-matrix.test.ts` (après 0074) ; règles dans `CLAUDE.md` ; les 22 vues listées sont exactement celles des migrations 0035 à 0071 ; écritures reçues par API seulement. Matrix peut reprendre les vues)
 - Demande : appliquer dans Keystone la décision M-18 de Matrix (`docs/decisions.md` et `docs/architecture-postgres.md` § 8 septies du dépôt Matrix), qui **remplace le point 3 de la demande M-17** du 30/10/2026 (« la migration reste la seule définition des vues `pub_` ») :
   1. **ne plus créer, modifier ni supprimer de vue `pub_` dans vos migrations** (les migrations déjà appliquées ne changent pas) : une nouvelle publication, ou une colonne de plus, se demande à Matrix, qui la définit dans son écran « Publications » (`matrix.publications`) et l'applique lui-même (rôle `matrix_gestion`). Votre migration crée les tables et colonnes ; la vue est celle de Matrix ;
   2. **avant de modifier ou de supprimer une colonne lue par une vue `pub_`**, le signaler à Matrix (entrée dans son `REQUESTS.md`) : la migration échouerait, la vue en dépend. Une colonne publiée ne se retire ni ne se renomme ; un changement incompatible passe par une vue `…_v2` ;
