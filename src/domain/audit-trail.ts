@@ -44,3 +44,29 @@ export function parseChange(change: string): ChangeSegment[] {
     return { kind: 'text', text: seg };
   });
 }
+
+/** The audit's before / after of one change (R-168): only the fields that changed, same keys on both sides. */
+export interface AuditValues {
+  before: Record<string, unknown>;
+  after: Record<string, unknown>;
+}
+
+const sameValue = (a: unknown, b: unknown): boolean =>
+  a === b || (a instanceof Date && b instanceof Date ? a.getTime() === b.getTime() : JSON.stringify(a ?? null) === JSON.stringify(b ?? null));
+
+/**
+ * The fields of `after` whose value differs from `before` (undefined in `after` = not part of the change; a missing value in
+ * `before` reads as null), as the compact before / after pair an audit row stores (R-168). Null when nothing changed.
+ */
+export function changedValues(before: Readonly<Record<string, unknown>>, after: Readonly<Record<string, unknown>>): AuditValues | null {
+  const b: Record<string, unknown> = {};
+  const a: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(after)) {
+    if (v === undefined) continue;
+    const old = before[k] ?? null;
+    if (sameValue(old, v)) continue;
+    b[k] = old;
+    a[k] = v;
+  }
+  return Object.keys(a).length ? { before: b, after: a } : null;
+}

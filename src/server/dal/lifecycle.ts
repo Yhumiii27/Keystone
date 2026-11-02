@@ -198,6 +198,7 @@ export async function recordStageChange(
     await writeAudit(tx, {
       actorName: who, actorPersonId: by?.id, objectRef: `${projectCode} stage`, area: 'Lifecycle', entityType: 'stage_transition', entityId: row.id, projectId: p.id, occurredAt: at,
       change: `stage: ${stageCodec.label(p.stage)} → ${stageCodec.label(to)} · ${mode} · effective ${date}${mode === 'forced' && opts.reason?.trim() ? ` — ${opts.reason.trim()}` : ''}`,
+      before: { stage: p.stage }, after: { stage: to, mode, effectiveOn }, reason: opts.reason,
     });
     await recordActivity(tx, {
       actorName: who, actorPersonId: by?.id, kind: 'change', projectId: p.id, occurredAt: at,
@@ -253,6 +254,7 @@ export async function markBl1Deliverable(tx: DB | Tx, projectId: string, actorNa
   await writeAudit(tx, {
     actorName: who, actorPersonId: actor?.id, objectRef: `${p?.code ?? ''} stage`, area: 'Lifecycle', entityType: 'stage_deliverable', entityId: def.id, projectId, occurredAt: at,
     change: `deliverable ticked: ${def.label} · BL1 set`,
+    before: { deliverable: def.label, done: false }, after: { deliverable: def.label, done: true },
   });
   await recordActivity(tx, { actorName: who, actorPersonId: actor?.id, kind: 'change', projectId, occurredAt: at, text: `${p?.code ?? ''} · “${def.label}” ticked · BL1 set` });
   return true;
@@ -427,6 +429,7 @@ export async function decideForcedStageChange(
         ? `forced stage change approved: ${move}${comment ? ` — ${comment}` : ''}`
         : `forced stage change rejected: ${move} · reverted to ${stageCodec.label(stage)}${comment ? ` — ${comment}` : ''}`,
       area: 'Lifecycle', entityType: 'stage_transition', entityId: t.id, projectId: row.p.id, occurredAt: at,
+      before: { validationStatus: 'pending', stage: t.toStage }, after: { validationStatus: decision, stage }, reason: comment,
     });
     await recordActivity(tx, {
       actorName: actor.name, actorPersonId: actor.personId, kind: 'change', projectId: row.p.id, occurredAt: at,

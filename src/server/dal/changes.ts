@@ -283,6 +283,7 @@ export async function createChangeRequest(projectCode: string, input: NewChangeR
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: number,
       change: `created · status: ${changeStatus.label(status)}${impact ? ` · contractual impact: ${contractImpactCodec.label(impact)}` : ''}`,
       area: 'Change control', entityType: 'change_request', entityId: cr.id, projectId: p.id,
+      after: { status, amountKeur, scheduleDays: Math.round(input.scheduleDays) || 0, contractImpact: impact, costCategoryCode: input.costCategoryCode?.trim() || null },
     });
     return number;
   });
@@ -311,7 +312,8 @@ export async function submitChangeRequest(projectCode: string, number: string, a
     await tx.insert(changeRequestSteps).values(await stepRows(tx, cr.id, { contractImpact: cr.contractImpact ?? null, amountKeur: cr.amountKeur }));
     const actor = await findPerson(tx, actorName);
     const who = actor ? nameOf(actor) : actorName;
-    await writeAudit(tx, { actorName: who, actorPersonId: actor?.id, objectRef: number, change: 'status: Draft → In review', area: 'Change control', entityType: 'change_request', entityId: cr.id, projectId: p.id });
+    await writeAudit(tx, { actorName: who, actorPersonId: actor?.id, objectRef: number, change: 'status: Draft → In review', area: 'Change control', entityType: 'change_request', entityId: cr.id, projectId: p.id,
+      before: { status: 'draft' }, after: { status: 'in_review' } });
     const amt = cr.amountKeur ? ` · ${cr.amountKeur > 0 ? '+' : '−'}${Math.abs(cr.amountKeur)} k€` : '';
     const days = cr.scheduleDays ? ` · ${cr.scheduleDays > 0 ? '+' : '−'}${Math.abs(cr.scheduleDays)} d` : '';
     await recordActivity(tx, { actorName: who, actorPersonId: actor?.id, text: `Submitted ${number} for review${amt}${days}`, kind: 'change', projectId: p.id });
@@ -378,7 +380,10 @@ export async function decideChangeStep(
       const posted = await postApprovedChange(tx, cr.id, actorName);
       if (posted?.amount) changes.push(`posted · BAC ${posted.bacBefore} → ${posted.bacAfter} k€${posted.amendmentLabel ? ' · amendment prepared' : ''}`);
     }
-    await writeAudit(tx, { actorName: who, actorPersonId: actor?.id, objectRef: number, change: changes.join(' · '), area: 'Change control', entityType: 'change_request', entityId: cr.id, projectId: p.id });
+    await writeAudit(tx, {
+      actorName: who, actorPersonId: actor?.id, objectRef: number, change: changes.join(' · '), area: 'Change control', entityType: 'change_request', entityId: cr.id, projectId: p.id,
+      before: { step, decision: 'pending', status: cr.status }, after: { step, decision, status }, reason: comment?.trim() || null,
+    });
     return status;
   });
 }

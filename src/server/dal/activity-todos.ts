@@ -115,6 +115,7 @@ export async function setActivityTodoDone(code: string, number: string, done: bo
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: number, change: `status: ${taskStatus.label(t.status)} → ${taskStatus.label(done ? 'done' : 'doing')}`,
       area: 'Tasks', entityType: 'task', entityId: t.id, projectId: t.projectId,
+      before: { status: t.status, percentComplete: t.percentComplete }, after: { status: done ? 'done' : 'doing', percentComplete: done ? 100 : 75 },
     });
     // R-201: closing a recurring task creates its next occurrence.
     if (done) await createNextOccurrence(tx, t, actorName, await businessToday());
@@ -130,6 +131,7 @@ export async function removeActivityTodo(code: string, number: string, actorName
     if (t.origin !== 'activity_todo' || n > 0 || t.loggedH > 0) throw new Error(`${number} cannot be removed here`);
     await tx.delete(tasks).where(eq(tasks.id, t.id));
     const actor = await findPerson(tx, actorName);
-    await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: number, change: 'to-do removed', area: 'Tasks', entityType: 'task', entityId: t.id, projectId: t.projectId });
+    await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: number, change: 'to-do removed', area: 'Tasks', entityType: 'task', entityId: t.id, projectId: t.projectId,
+      before: { title: t.title, status: t.status, dueDate: t.dueDate, assigneePersonId: t.assigneePersonId } });
   });
 }

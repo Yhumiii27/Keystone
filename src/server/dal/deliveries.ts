@@ -359,6 +359,7 @@ export async function registerReceipt(number: string, input: RegisterInput, acto
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: number,
       change: `status: Announced → QC pending${plan.value.complete ? '' : ' · received incomplete'}`, area: 'Deliveries', entityType: 'goods_receipt', entityId: r.id, projectId: r.projectId, occurredAt: at,
+      before: { status: 'announced', receivedOn: r.receivedOn }, after: { status: 'qc_pending', receivedOn: on, delivered: plan.value.delivered },
     });
   });
 }
@@ -497,6 +498,8 @@ async function decideReceipt(number: string, mode: 'accept' | 'reject' | 'lines'
       actorName: who, actorPersonId: actor?.id, objectRef: number,
       change: `QC ${result} · accepted ${totalAcc} · rejected ${totalRej} · status: QC pending → ${receiptStatus.label(status)}${poStatusNext !== po.status ? ` · ${po.number} → ${poStatusNext === 'received' ? 'Received' : 'Partially received'}` : ''}`,
       area: 'Deliveries', entityType: 'goods_receipt', entityId: r.id, projectId: r.projectId, occurredAt: at,
+      before: { status: r.status, qcResult: r.qcResult, purchaseOrderStatus: po.status },
+      after: { status, qcResult: result, accepted: totalAcc, rejected: totalRej, purchaseOrderStatus: poStatusNext },
     });
     await recordActivity(tx, { actorName: who, actorPersonId: actor?.id, text: `${number} ${receiptStatus.label(status).toLowerCase()} · ${totalAcc} to stock${totalRej ? ` · ${totalRej} to quarantine` : ''}`, kind: 'delivery', projectId: r.projectId, occurredAt: at });
     return status;

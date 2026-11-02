@@ -7,6 +7,7 @@ import 'server-only';
 // left without a rate); the rate itself can change at any time (the consolidated figures follow).
 import { and, eq, sql } from 'drizzle-orm';
 import { cache } from 'react';
+import { changedValues } from '@/domain/audit-trail';
 import { BASE_CURRENCY, isCurrency, parseBudgetRate, projectFxOf, type CurrencyCode, type ProjectFx } from '@/domain/currency';
 import { canSetBudgetRate } from '@/domain/rights';
 import { getDb } from '@/server/db/client';
@@ -83,6 +84,7 @@ export async function setProjectBudgetRate(projectCode: string, input: BudgetRat
     await writeAudit(tx, {
       actorName: who, actorPersonId: person?.id, objectRef: projectCode, change: `budget rate: ${text(old)} → ${text({ currency, budgetRate: rate })}`,
       area: 'Contract', entityType: 'project', entityId: p.id, projectId: p.id,
+      ...changedValues({ currency: old.currency, budgetRate: old.budgetRate }, { currency, budgetRate: rate }),
     });
     await recordActivity(tx, { actorName: who, actorPersonId: person?.id, text: `Budget rate ${text({ currency, budgetRate: rate })}`, kind: 'change', projectId: p.id });
     return { currency, budgetRate: rate };

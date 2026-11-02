@@ -103,7 +103,8 @@ export async function setClientCommunicationFollowUpDone(code: string, number: s
     if (!!c.followUpDoneAt === done) return;
     await tx.update(clientCommunications).set({ followUpDoneAt: done ? new Date() : null, updatedAt: new Date() }).where(eq(clientCommunications.id, c.id));
     const actor = await findPerson(tx, actorName);
-    await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `${code} ${number}`, change: `follow-up ${done ? 'done' : 'reopened'}`, area: 'Client', entityType: 'client_communication', entityId: c.id, projectId: p.id });
+    await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `${code} ${number}`, change: `follow-up ${done ? 'done' : 'reopened'}`, area: 'Client', entityType: 'client_communication', entityId: c.id, projectId: p.id,
+      before: { followUpDone: !!c.followUpDoneAt }, after: { followUpDone: done } });
   });
 }
 

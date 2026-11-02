@@ -8,6 +8,7 @@ import 'server-only';
 // person on it (`nameSourcedPerson`), which reassigns the task and completes the request.
 import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { changedValues } from '@/domain/audit-trail';
 import { workdayOffsetOf } from '@/domain/clock';
 import { businessToday } from '@/server/clock';
 import { getDb, type DB, type Tx } from '@/server/db/client';
@@ -344,7 +345,8 @@ export async function sendDraftRequest(number: string, actorName: string, on?: s
     const d = await dayOf(tx, on);
     await tx.update(resourceRequests).set({ status: 'pending', sentOn: d, updatedAt: new Date() }).where(eq(resourceRequests.id, r.id));
     await addEvent(tx, r.id, 'sent', d, actor?.id ?? null, null);
-    await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `Request ${number}`, change: 'draft → pending review', area: 'Resource requests', entityType: 'resource_request', entityId: r.id, projectId: r.projectId });
+    await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `Request ${number}`, change: 'draft → pending review', area: 'Resource requests', entityType: 'resource_request', entityId: r.id, projectId: r.projectId,
+      before: { status: 'draft', sentOn: r.sentOn }, after: { status: 'pending', sentOn: d } });
   });
 }
 
@@ -356,7 +358,8 @@ export async function discardDraftRequest(number: string, actorName: string): Pr
     if (r.status !== 'draft') throw new Error(`${number} is not a draft (${r.status})`);
     const actor = await findPerson(tx, actorName);
     await tx.delete(resourceRequests).where(eq(resourceRequests.id, r.id));
-    await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `Request ${number}`, change: 'draft discarded', area: 'Resource requests', entityType: 'resource_request', entityId: r.id, projectId: r.projectId });
+    await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `Request ${number}`, change: 'draft discarded', area: 'Resource requests', entityType: 'resource_request', entityId: r.id, projectId: r.projectId,
+      before: { status: 'draft', title: r.title, hours: r.hours, startDate: r.startDate, dueDate: r.dueDate } });
   });
 }
 
@@ -370,7 +373,8 @@ export async function withdrawResourceRequest(number: string, actorName: string,
     const d = await dayOf(tx, on);
     await tx.update(resourceRequests).set({ status: 'withdrawn', response: `Withdrawn by PM · ${dayLabelOfIso(d)}`, updatedAt: new Date() }).where(eq(resourceRequests.id, r.id));
     await addEvent(tx, r.id, 'withdrawn', d, actor?.id ?? null, null);
-    await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `Request ${number}`, change: `${r.status} → withdrawn`, area: 'Resource requests', entityType: 'resource_request', entityId: r.id, projectId: r.projectId });
+    await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `Request ${number}`, change: `${r.status} → withdrawn`, area: 'Resource requests', entityType: 'resource_request', entityId: r.id, projectId: r.projectId,
+      before: { status: r.status }, after: { status: 'withdrawn' } });
   });
 }
 
@@ -384,7 +388,8 @@ export async function reRequestResourceRequest(number: string, actorName: string
     const d = await dayOf(tx, on);
     await tx.update(resourceRequests).set({ status: 'pending', sentOn: d, response: '', proposedStart: null, proposedDue: null, updatedAt: new Date() }).where(eq(resourceRequests.id, r.id));
     await addEvent(tx, r.id, 'resent', d, actor?.id ?? null, null);
-    await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `Request ${number}`, change: `${r.status} → pending`, area: 'Resource requests', entityType: 'resource_request', entityId: r.id, projectId: r.projectId });
+    await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `Request ${number}`, change: `${r.status} → pending`, area: 'Resource requests', entityType: 'resource_request', entityId: r.id, projectId: r.projectId,
+      ...changedValues({ status: r.status, sentOn: r.sentOn, proposedStart: r.proposedStart, proposedDue: r.proposedDue }, { status: 'pending', sentOn: d, proposedStart: null, proposedDue: null }) });
   });
 }
 
@@ -500,6 +505,7 @@ export async function nameSourcedPerson(taskNumber: string, personName: string, 
     await writeAudit(tx, {
       actorName: nameOf(actor), actorPersonId: actor.id, objectRef: t.number, change: `named: ${person.name} · ${t.contractRole} · ${r.number}`, area: 'Resource requests',
       entityType: 'task', entityId: t.id, projectId: t.projectId,
+      before: { assignee: null, contractRole: t.contractRole }, after: { assignee: person.name, contractRole: null },
     });
     await recordActivity(tx, { actorName: nameOf(actor), actorPersonId: actor.id, text: `Named ${person.name} for resource request ${r.number} — ${r.title}`, kind: 'request', projectId: t.projectId });
     return { task: t.number, request: r.number, projectCode: p.code, person: person.name, personId: person.personId, pmPersonId: r.requestedByPersonId };
@@ -525,6 +531,7 @@ export async function approveResourceRequest(number: string, approverName: strin
     await writeAudit(tx, {
       actorName: nameOf(approver), actorPersonId: approver.id, objectRef: `Request ${number}`,
       change: `approved → task created for ${who ? (who.full ?? who.short) : task.sourcing ? 'Procurement' : (r.contractRole ?? '')}`, area: 'Approvals', entityType: 'resource_request', entityId: r.id, projectId: r.projectId,
+      before: { status: 'pending' }, after: { status: 'approved', task: task.number },
     });
     return task.number;
   });
@@ -548,7 +555,10 @@ export async function proposeReschedule(number: string, shiftWeeks: number, note
       })
       .where(eq(resourceRequests.id, r.id));
     await addEvent(tx, r.id, 'reschedule', d, approver.id, n || null);
-    await writeAudit(tx, { actorName: nameOf(approver), actorPersonId: approver.id, objectRef: `Request ${number}`, change: `reschedule proposed +${shift} wk`, area: 'Approvals', entityType: 'resource_request', entityId: r.id, projectId: r.projectId });
+    await writeAudit(tx, { actorName: nameOf(approver), actorPersonId: approver.id, objectRef: `Request ${number}`, change: `reschedule proposed +${shift} wk`, area: 'Approvals', entityType: 'resource_request', entityId: r.id, projectId: r.projectId,
+      before: { status: 'pending', proposedStart: r.proposedStart, proposedDue: r.proposedDue },
+      after: { status: 'reschedule', proposedStart: addDaysIso(r.startDate, 7 * shift), proposedDue: addDaysIso(r.dueDate, 7 * shift) }, reason: n || null,
+    });
   });
 }
 
@@ -563,7 +573,9 @@ export async function rejectResourceRequest(number: string, note: string, approv
     const n = note.trim();
     await tx.update(resourceRequests).set({ status: 'rejected', response: `Rejected · ${nameOf(approver)} · ${dayLabelOfIso(d)}${n ? ' — ' + n : ''}`, updatedAt: new Date() }).where(eq(resourceRequests.id, r.id));
     await addEvent(tx, r.id, 'rejected', d, approver.id, n || null);
-    await writeAudit(tx, { actorName: nameOf(approver), actorPersonId: approver.id, objectRef: `Request ${number}`, change: 'pending → rejected', area: 'Approvals', entityType: 'resource_request', entityId: r.id, projectId: r.projectId });
+    await writeAudit(tx, { actorName: nameOf(approver), actorPersonId: approver.id, objectRef: `Request ${number}`, change: 'pending → rejected', area: 'Approvals', entityType: 'resource_request', entityId: r.id, projectId: r.projectId,
+      before: { status: 'pending' }, after: { status: 'rejected' }, reason: n || null,
+    });
   });
 }
 
@@ -586,6 +598,7 @@ export async function acceptReschedule(number: string, actorName: string, on?: s
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `Request ${number}`, change: `reschedule accepted → task ${task.number}${task.sourcing ? ' created for Procurement' : ''}`,
       area: 'Resource requests', entityType: 'resource_request', entityId: r.id, projectId: r.projectId,
+      before: { status: 'reschedule', startDate: r.startDate, dueDate: r.dueDate }, after: { status: 'approved', startDate: r.proposedStart, dueDate: r.proposedDue, task: task.number },
     });
     return task.number;
   });

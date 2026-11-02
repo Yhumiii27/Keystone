@@ -60,7 +60,10 @@ export async function recordNcrProgressEntry(
   const text = kind === 'verification'
     ? `${decision === 'approved' ? 'Verified and closed' : 'Sent back to corrective action'} ${ncr.number} · ${pending}`
     : `Moved ${ncr.number} to ${ncrStatus.label(target)} · ${pending}`;
-  await writeAudit(tx, { actorName: who, actorPersonId: person?.id, objectRef: ncr.number, change, area: 'Quality', entityType: 'vigie_ncr_progress', entityId: entry.id, projectId: p?.id ?? null, occurredAt: at });
+  await writeAudit(tx, { actorName: who, actorPersonId: person?.id, objectRef: ncr.number, change, area: 'Quality', entityType: 'vigie_ncr_progress', entityId: entry.id, projectId: p?.id ?? null, occurredAt: at,
+    // R-168: the step requested of Vigie (pending sync) — Vigie owns the NCR and applies it.
+    before: { status: ncr.status }, after: { requestedStatus: target, ...(decision ? { verification: decision } : {}) }, reason: comment,
+  });
   await recordActivity(tx, { actorName: who, actorPersonId: person?.id, text, kind: 'quality', projectId: p?.id ?? null, occurredAt: at });
   return ncrEntryOf(entry);
 }

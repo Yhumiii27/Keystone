@@ -299,7 +299,8 @@ export async function submitPurchaseOrder(number: string, actorName: string): Pr
     const actor = await findPerson(tx, actorName);
     const at = new Date();
     await tx.update(purchaseOrders).set({ status: 'awaiting_approval', submittedByPersonId: actor?.id ?? null, submittedAt: at, updatedAt: at }).where(eq(purchaseOrders.id, o.id));
-    await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: number, change: 'status: Draft → Awaiting approval', area: 'Purchase orders', entityType: 'purchase_order', entityId: o.id, projectId: o.projectId, occurredAt: at });
+    await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: number, change: 'status: Draft → Awaiting approval', area: 'Purchase orders', entityType: 'purchase_order', entityId: o.id, projectId: o.projectId, occurredAt: at,
+      before: { status: 'draft' }, after: { status: 'awaiting_approval' } });
   });
 }
 
@@ -329,6 +330,7 @@ async function decidePurchaseOrder(number: string, to: 'ordered' | 'cancelled', 
     await writeAudit(tx, {
       actorName: a.name, actorPersonId: a.personId, objectRef: number, change: `status: Awaiting approval → ${poStatus.label(to)}${reason ? ` · ${reason}` : ''}`, area: 'Purchase orders',
       entityType: 'purchase_order', entityId: o.id, projectId: o.projectId, occurredAt: at,
+      before: { status: 'awaiting_approval' }, after: { status: to }, reason,
     });
     if (to === 'ordered') await recordActivity(tx, { actorName: a.name, actorPersonId: a.personId, text: `Approved and ordered ${number}`, kind: 'change', projectId: o.projectId, occurredAt: at });
     else await recordActivity(tx, { actorName: a.name, actorPersonId: a.personId, text: `Rejected ${number}`, kind: 'change', projectId: o.projectId, occurredAt: at });
@@ -413,6 +415,7 @@ export async function cancelPurchaseOrder(number: string, reason: string, actorN
     await writeAudit(tx, {
       actorName: actor.name, actorPersonId: actor.personId, objectRef: number, change: `status: ${poStatus.label(o.status)} → Cancelled · ${why}`, area: 'Purchase orders',
       entityType: 'purchase_order', entityId: o.id, projectId: o.projectId, occurredAt: at,
+      before: { status: o.status }, after: { status: 'cancelled' }, reason: why,
     });
     await recordActivity(tx, {
       actorName: actor.name, actorPersonId: actor.personId, text: kind === 'withdraw' ? `Withdrew ${number} from approval` : `Cancelled ${number}`, kind: 'change',
@@ -623,7 +626,8 @@ async function rfqTransition(number: string, from: RfqStatus, to: RfqStatus, act
     if (check) await check(tx, r.id);
     await tx.update(rfqs).set({ status: to, updatedAt: new Date() }).where(eq(rfqs.id, r.id));
     const actor = await findPerson(tx, actorName);
-    await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: number, change: `status: ${rfqStatus.label(from)} → ${rfqStatus.label(to)}`, area: 'Sourcing', entityType: 'rfq', entityId: r.id, projectId: r.projectId });
+    await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: number, change: `status: ${rfqStatus.label(from)} → ${rfqStatus.label(to)}`, area: 'Sourcing', entityType: 'rfq', entityId: r.id, projectId: r.projectId,
+      before: { status: from }, after: { status: to } });
   });
 }
 
@@ -674,6 +678,7 @@ export async function awardRfq(number: string, supplierName: string, actorName: 
     await writeAudit(tx, {
       actorName: a.name, actorPersonId: a.personId, objectRef: number, change: `awarded to ${supplierName} · ${quote.q.unitPriceEur} € / unit${poNumber ? ` · draft ${poNumber}` : ''} · status: Comparing → Awarded`,
       area: 'Sourcing', entityType: 'rfq', entityId: r.id, projectId, occurredAt: at,
+      before: { status: 'comparing' }, after: { status: 'awarded', supplier: supplierName, unitPriceEur: quote.q.unitPriceEur, purchaseOrder: poNumber },
     });
     await recordActivity(tx, { actorName: a.name, actorPersonId: a.personId, text: `Awarded ${number} to ${supplierName}${poNumber ? ` · draft ${poNumber}` : ''}`, kind: 'change', projectId, occurredAt: at });
     return { purchaseOrderNumber: poNumber };
@@ -819,7 +824,8 @@ async function decideInvoice(number: string, actorName: string, decide: (row: Su
       .where(eq(supplierInvoices.id, inv.id));
     const projectId = row.projectCode ? (await requireProject(tx, row.projectCode)).id : null;
     const who = actor ? nameOf(actor) : actorName;
-    await writeAudit(tx, { actorName: who, actorPersonId: actor?.id, objectRef: number, change: `${d.change} · status: ${row.statusLabel} → ${supplierInvoiceStatus.label(d.status)}`, area: 'Sourcing', entityType: 'supplier_invoice', entityId: inv.id, projectId, occurredAt: at });
+    await writeAudit(tx, { actorName: who, actorPersonId: actor?.id, objectRef: number, change: `${d.change} · status: ${row.statusLabel} → ${supplierInvoiceStatus.label(d.status)}`, area: 'Sourcing', entityType: 'supplier_invoice', entityId: inv.id, projectId, occurredAt: at,
+      before: { status: row.status, approvedAmountEur: row.approvedAmountEur }, after: { status: d.status, approvedAmountEur: d.approvedAmountEur ?? null } });
     await recordActivity(tx, { actorName: who, actorPersonId: actor?.id, text: `${number} · ${row.supplier} · ${d.change}`, kind: 'invoice', projectId, occurredAt: at });
   });
 }
