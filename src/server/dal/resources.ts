@@ -13,6 +13,7 @@ import { versionedRead } from '@/server/cache/read-cache';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import { isoOfDisplayDate, weekLabelOfIso, whatIfPriority } from '@/server/db/codes';
 import { businessToday } from '@/server/clock';
+import { changedValues } from '@/domain/audit-trail';
 import { yearOfIso } from '@/domain/clock';
 import { LOAD_WINDOW_WEEKS, isPastWindow, loadWindow, parseLoadViewParam, parseLoadWeekParam, type LoadWindow } from '@/domain/load-window';
 import type { WeekProjectHours } from '@/domain/load-week';
@@ -603,7 +604,7 @@ export async function listScenarioNames(projectCode: string): Promise<string[]> 
 async function scenarioOf(projectCode: string, name: string, q?: Q) {
   const db = q ?? (await getDb());
   const [s] = await db
-    .select({ id: whatIfScenarios.id, projectId: whatIfScenarios.projectId, priority: whatIfScenarios.priority })
+    .select({ id: whatIfScenarios.id, projectId: whatIfScenarios.projectId, priority: whatIfScenarios.priority, hypotheses: whatIfScenarios.hypotheses })
     .from(whatIfScenarios)
     .innerJoin(projects, eq(projects.id, whatIfScenarios.projectId))
     .where(and(eq(projects.code, projectCode), eq(whatIfScenarios.name, name)));
@@ -611,10 +612,17 @@ async function scenarioOf(projectCode: string, name: string, q?: Q) {
   return s;
 }
 
-async function audit(q: Q, actorName: string | undefined, s: { id: string; projectId: string }, objectRef: string, change: string) {
+async function audit(
+  q: Q, actorName: string | undefined, s: { id: string; projectId: string }, objectRef: string, change: string,
+  /** R-168: the changed fields before and after. */
+  values: { before?: Record<string, unknown> | null; after?: Record<string, unknown> | null } = {},
+) {
   if (!actorName) return;
   const actor = await findPerson(q, actorName);
-  await writeAudit(q, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef, change, area: WHATIF_AREA, entityType: 'whatif_scenario', entityId: s.id, projectId: s.projectId });
+  await writeAudit(q, {
+    actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef, change, area: WHATIF_AREA, entityType: 'whatif_scenario', entityId: s.id, projectId: s.projectId,
+    before: values.before, after: values.after,
+  });
 }
 
 /**
@@ -671,7 +679,7 @@ export async function setScenarioPriority(projectCode: string, name: string, pri
   await db.transaction(async (tx) => {
     const s = await scenarioOf(projectCode, name, tx);
     await tx.update(whatIfScenarios).set({ priority, updatedAt: new Date() }).where(eq(whatIfScenarios.id, s.id));
-    await audit(tx, actorName, s, `Scenario ${name}`, `priority → ${whatIfPriority.label(priority)}`);
+    await audit(tx, actorName, s, `Scenario ${name}`, `priority → ${whatIfPriority.label(priority)}`, { before: { priority: s.priority }, after: { priority } });
   });
 }
 
@@ -701,7 +709,7 @@ export async function toggleScenarioLever(projectCode: string, name: string, lev
       on = !sc.enabled.includes(lever);
       await saveScenarioLevers(tx, st, sc.row.id, on ? [...sc.enabled, lever] : sc.enabled.filter((c) => c !== lever));
     }
-    await audit(tx, actorName, sc.row, `Scenario ${name}`, `${on ? 'lever on' : 'lever off'}: ${leverLabelEn(l)}`);
+    await audit(tx, actorName, sc.row, `Scenario ${name}`, `${on ? 'lever on' : 'lever off'}: ${leverLabelEn(l)}`, { before: { lever, enabled: !on }, after: { lever, enabled: on } });
     return on;
   });
 }
@@ -714,7 +722,7 @@ export async function autoLevelScenario(projectCode: string, name: string, actor
   const db = await getDb();
   await db.transaction(async (tx) => {
     await saveScenarioLevers(tx, st, sc.row.id, next);
-    await audit(tx, actorName, sc.row, `Scenario ${name}`, `auto-level (${whatIfPriority.label(sc.row.priority)}): ${next.length} levers`);
+    await audit(tx, actorName, sc.row, `Scenario ${name}`, `auto-level (${whatIfPriority.label(sc.row.priority)}): ${next.length} levers`, { before: { levers: sc.enabled }, after: { levers: next } });
   });
   return next;
 }
@@ -887,7 +895,8 @@ export async function renameScenario(projectCode: string, name: string, input: {
       .update(whatIfScenarios)
       .set({ name: next, ...(input.hypotheses !== undefined ? { hypotheses: input.hypotheses?.trim() || null } : {}), updatedAt: new Date() })
       .where(eq(whatIfScenarios.id, s.id));
-    await audit(tx, actorName, s, `Scenario ${next}`, next === name ? 'hypotheses edited' : `renamed from ${name}`);
+    await audit(tx, actorName, s, `Scenario ${next}`, next === name ? 'hypotheses edited' : `renamed from ${name}`,
+      changedValues({ name, hypotheses: s.hypotheses }, { name: next, hypotheses: input.hypotheses !== undefined ? input.hypotheses?.trim() || null : undefined }) ?? {});
   });
 }
 
@@ -897,7 +906,7 @@ export async function deleteScenario(projectCode: string, name: string, actorNam
   await db.transaction(async (tx) => {
     const s = await scenarioOf(projectCode, name, tx);
     await tx.delete(whatIfScenarios).where(eq(whatIfScenarios.id, s.id));
-    await audit(tx, actorName, { id: s.id, projectId: s.projectId }, `Scenario ${name}`, 'deleted');
+    await audit(tx, actorName, { id: s.id, projectId: s.projectId }, `Scenario ${name}`, 'deleted', { before: { name, priority: s.priority, hypotheses: s.hypotheses } });
   });
 }
 

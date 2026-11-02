@@ -4,6 +4,7 @@ import 'server-only';
 // coupling, checklist ticks and items, comments by the viewer, time logging.
 import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { changedValues } from '@/domain/audit-trail';
 import { rateAt, taskLaborCost, type TaskCost } from '@/domain/hr';
 import { mentionedKeys } from '@/domain/mentions';
 import { applyProgress, applyStatus } from '@/domain/tasks';
@@ -250,9 +251,16 @@ async function loadTask(tx: Tx, number: string) {
   return t;
 }
 
-async function auditTask(tx: Tx, t: typeof tasks.$inferSelect, actorName: string, change: string) {
+async function auditTask(
+  tx: Tx, t: typeof tasks.$inferSelect, actorName: string, change: string,
+  /** R-168: the changed fields before and after. */
+  values: { before?: Record<string, unknown> | null; after?: Record<string, unknown> | null } = {},
+) {
   const actor = await findPerson(tx, actorName);
-  await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: t.number, change, area: 'Tasks', entityType: 'task', entityId: t.id, projectId: t.projectId });
+  await writeAudit(tx, {
+    actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: t.number, change, area: 'Tasks', entityType: 'task', entityId: t.id, projectId: t.projectId,
+    before: values.before, after: values.after,
+  });
 }
 
 /** Status segment / "Mark done": done ⇒ 100 %; leaving done from 100 % ⇒ 75 % (10 §7.4, domain applyStatus). */
@@ -263,7 +271,8 @@ export async function setTaskStatus(number: string, status: TaskStatus, actorNam
     if (t.status === status) return;
     const next = applyStatus({ status: t.status, pct: t.percentComplete }, status);
     await tx.update(tasks).set({ status: next.status, percentComplete: next.pct, updatedAt: new Date() }).where(eq(tasks.id, t.id));
-    await auditTask(tx, t, actorName, `status: ${taskStatus.label(t.status)} → ${taskStatus.label(next.status)}`);
+    await auditTask(tx, t, actorName, `status: ${taskStatus.label(t.status)} → ${taskStatus.label(next.status)}`,
+      changedValues({ status: t.status, percentComplete: t.percentComplete }, { status: next.status, percentComplete: next.pct }) ?? {});
     // R-201: closing a recurring task creates its next occurrence.
     if (next.status === 'done') await createNextOccurrence(tx, t, actorName, await businessToday());
   });
@@ -289,7 +298,8 @@ export async function setTaskProgress(number: string, pct: number, actorName: st
     const t = await loadTask(tx, number);
     const { status, pct: v } = applyProgress({ status: t.status, pct: t.percentComplete }, pct);
     await tx.update(tasks).set({ percentComplete: v, status, updatedAt: new Date() }).where(eq(tasks.id, t.id));
-    await auditTask(tx, t, actorName, `progress: ${t.percentComplete} % → ${v} %` + (status !== t.status ? ` · status: ${taskStatus.label(t.status)} → ${taskStatus.label(status)}` : ''));
+    await auditTask(tx, t, actorName, `progress: ${t.percentComplete} % → ${v} %` + (status !== t.status ? ` · status: ${taskStatus.label(t.status)} → ${taskStatus.label(status)}` : ''),
+      changedValues({ status: t.status, percentComplete: t.percentComplete }, { status, percentComplete: v }) ?? {});
     // R-201: closing a recurring task creates its next occurrence.
     if (status === 'done' && t.status !== 'done') await createNextOccurrence(tx, t, actorName, await businessToday());
   });
@@ -309,7 +319,8 @@ export async function toggleChecklistItem(number: string, position: number, acto
     const done = opts.done ?? !item.done;
     if (done === item.done) return done;
     await tx.update(taskChecklistItems).set({ done, doneAt: done ? new Date() : null }).where(eq(taskChecklistItems.id, item.id));
-    if (actorName) await auditTask(tx, t, actorName, `checklist: ${done ? 'ticked' : 'unticked'} "${item.text}"`);
+    if (actorName) await auditTask(tx, t, actorName, `checklist: ${done ? 'ticked' : 'unticked'} "${item.text}"`,
+      { before: { checklistItem: position, done: item.done }, after: { checklistItem: position, done } });
     return done;
   });
 }
@@ -388,7 +399,10 @@ export async function logTaskTime(number: string, input: LogTimeInput): Promise<
       note: input.note?.trim() || 'Work on ' + t.title, source: 'keystone', position: pos + 1,
     });
     await tx.update(tasks).set({ loggedH: sql`${tasks.loggedH} + ${input.hours}`, updatedAt: new Date() }).where(eq(tasks.id, t.id));
-    if (input.actorName) await auditTask(tx, t, input.actorName, `time logged: ${input.hours} h`);
+    if (input.actorName) {
+      await auditTask(tx, t, input.actorName, `time logged: ${input.hours} h`,
+        { before: { loggedH: t.loggedH }, after: { loggedH: t.loggedH + input.hours, workDate, hours: input.hours } });
+    }
   });
 }
 

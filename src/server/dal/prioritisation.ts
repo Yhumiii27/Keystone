@@ -6,6 +6,7 @@ import 'server-only';
 // from the billing plan (the contract when one exists, A-5) consolidated in euros (C-9) — it was (contract − budget) / contract.
 import { and, asc, eq } from 'drizzle-orm';
 // The role rules without the navigation icons (./screens.ts loads them; scripts such as db-check import this module).
+import { changedValues } from '@/domain/audit-trail';
 import { canSee } from '@/config/role-screens';
 import type { RoleKey } from '@/config/screens';
 import { inExecution } from '@/domain/portfolio';
@@ -180,6 +181,8 @@ export async function saveProposalScore(projectCode: string, input: ProposalScor
       ['fit', clamp(input.fit)], ['margin', clamp(input.margin)], ['risk', clamp(input.risk)], ['res', clamp(input.res)], ['client', clamp(input.client)],
     ];
     const axes = await tx.select({ code: scoreAxes.code }).from(scoreAxes);
+    const scoresBefore = Object.fromEntries((await tx.select({ axis: portfolioScores.axis, score: portfolioScores.score }).from(portfolioScores)
+      .where(eq(portfolioScores.projectId, p.id))).map((r) => [r.axis, r.score]));
     for (const a of axes) {
       const v = values.find(([k]) => k === a.code);
       if (v) {
@@ -194,6 +197,7 @@ export async function saveProposalScore(projectCode: string, input: ProposalScor
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: projectCode,
       change: `score: fit ${values[0][1]} · margin ${values[1][1]} · risk ${values[2][1]} · resources ${values[3][1]} · client ${values[4][1]}`, area: 'Prioritisation', entityType: 'project', entityId: p.id, projectId: p.id,
+      ...changedValues(scoresBefore, Object.fromEntries(values)), reason: input.comment?.trim() || null,
     });
   });
 }

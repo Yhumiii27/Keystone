@@ -5,6 +5,7 @@ import 'server-only';
 // Delivery 7 (R-072, owner decision Q-1): the cost if the risk occurs is stored; EMV = cost × P / 5 is derived on every read,
 // so the register, the exposure KPI, the Contingency register and the exports follow a change of probability.
 import { and, asc, eq, sql } from 'drizzle-orm';
+import { changedValues } from '@/domain/audit-trail';
 import { costIfOccurs, costOfLegacyEmv, emvOf } from '@/domain/risk';
 import { getDb } from '@/server/db/client';
 import {
@@ -281,6 +282,14 @@ export async function updateRisk(projectCode: string, riskNumber: string, patch:
       await writeAudit(tx, {
         actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: riskNumber, change: changes.join(' · '), area: 'Risks',
         entityType: 'risk', entityId: r.id, projectId: p.id,
+        // R-168: every field the edit changed (the change text names the scored ones only).
+        ...changedValues(
+          { ...r, costKeur: oldCost, emvKeur: oldEmv },
+          {
+            probability: set.probability, impact: set.impact, response: set.response, status: set.status, trend: set.trend, title: set.title, responsePlan: set.responsePlan,
+            trigger: set.trigger, costKeur: set.costKeur, emvKeur: newEmv, ownerPersonId: set.ownerPersonId,
+          },
+        ),
       });
     }
   });

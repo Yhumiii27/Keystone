@@ -5,6 +5,7 @@ import 'server-only';
 // (R-057): a type's changes apply to the projects created afterwards — an ITP plan keeps the systems frozen when it was
 // created (itp_plan_systems, itp.ts); Budget still reads the REX pattern live (budget.ts).
 import { and, asc, eq } from 'drizzle-orm';
+import { changedValues } from '@/domain/audit-trail';
 import { getDb } from '@/server/db/client';
 import { calendar, costType, machineType, type CalendarCode, type CostType, type MachineTypeCode } from '@/server/db/codes';
 import { machineTypeCostCategories, machineTypeItpSystems, machineTypePackFamilies, machineTypePhases, machineTypes, projects, rexReferences } from '@/server/db/schema';
@@ -142,7 +143,9 @@ export async function updateMachineType(code: string, patch: MachineTypePatch, a
     await tx.update(machineTypes).set(set).where(eq(machineTypes.code, t.code));
     // R-186: pub_catalogue_machines.type_libelle reads the label — the catalogue rows of the type move their maj_le.
     if (patch.label !== undefined && set.name !== (t.name ?? t.label)) await touchCatalogueOfType(tx, t.code);
-    await trace(tx, await whoIs(tx, actor), { objectRef: `Machine type ${t.label}`, change: changes.join(' · '), area: 'Settings', entityType: 'machine_type' });
+    const { updatedAt: _at, ...fields } = set;
+    void _at;
+    await trace(tx, await whoIs(tx, actor), { objectRef: `Machine type ${t.label}`, change: changes.join(' · '), area: 'Settings', entityType: 'machine_type', ...changedValues(t, fields) });
   });
 }
 
@@ -154,11 +157,13 @@ export async function setMachineTypePhases(code: string, phases: string[], actor
   await db.transaction(async (tx) => {
     const t = await loadType(tx, code);
     // R-185: a phase keeps its "specific to an equipment" flag while its name is kept (a new or renamed phase is common).
-    const perEquipment = new Set((await tx.select({ name: machineTypePhases.name, flag: machineTypePhases.perEquipment }).from(machineTypePhases)
-      .where(eq(machineTypePhases.machineTypeCode, t.code))).filter((p) => p.flag).map((p) => p.name));
+    const old = await tx.select({ name: machineTypePhases.name, flag: machineTypePhases.perEquipment }).from(machineTypePhases)
+      .where(eq(machineTypePhases.machineTypeCode, t.code)).orderBy(asc(machineTypePhases.position));
+    const perEquipment = new Set(old.filter((p) => p.flag).map((p) => p.name));
     await tx.delete(machineTypePhases).where(eq(machineTypePhases.machineTypeCode, t.code));
     if (names.length) await tx.insert(machineTypePhases).values(names.map((name, position) => ({ machineTypeCode: t.code, position, name, perEquipment: perEquipment.has(name) })));
-    await trace(tx, await whoIs(tx, actor), { objectRef: `Machine type ${t.label}`, change: `phases: ${names.length}`, area: 'Settings', entityType: 'machine_type' });
+    await trace(tx, await whoIs(tx, actor), { objectRef: `Machine type ${t.label}`, change: `phases: ${names.length}`, area: 'Settings', entityType: 'machine_type',
+      ...changedValues({ phases: old.map((p) => p.name) }, { phases: names }) });
   });
 }
 
@@ -193,9 +198,11 @@ export async function setMachineTypeItpSystems(code: string, systems: string[], 
   const db = await getDb();
   await db.transaction(async (tx) => {
     const t = await loadType(tx, code);
+    const old = await tx.select({ name: machineTypeItpSystems.name }).from(machineTypeItpSystems).where(eq(machineTypeItpSystems.machineTypeCode, t.code)).orderBy(asc(machineTypeItpSystems.position));
     await tx.delete(machineTypeItpSystems).where(eq(machineTypeItpSystems.machineTypeCode, t.code));
     if (names.length) await tx.insert(machineTypeItpSystems).values(names.map((name, position) => ({ machineTypeCode: t.code, position, name })));
-    await trace(tx, await whoIs(tx, actor), { objectRef: `Machine type ${t.label}`, change: `ITP systems: ${names.length}`, area: 'Settings', entityType: 'machine_type' });
+    await trace(tx, await whoIs(tx, actor), { objectRef: `Machine type ${t.label}`, change: `ITP systems: ${names.length}`, area: 'Settings', entityType: 'machine_type',
+      ...changedValues({ itpSystems: old.map((x) => x.name) }, { itpSystems: names }) });
   });
 }
 
@@ -211,10 +218,13 @@ export async function setMachineTypeCostCategories(code: string, cats: { name: s
   const db = await getDb();
   await db.transaction(async (tx) => {
     const t = await loadType(tx, code);
+    const old = await tx.select({ name: machineTypeCostCategories.name, costType: machineTypeCostCategories.costType, budgetKeur: machineTypeCostCategories.budgetKeur })
+      .from(machineTypeCostCategories).where(eq(machineTypeCostCategories.machineTypeCode, t.code)).orderBy(asc(machineTypeCostCategories.position));
     await tx.delete(machineTypeCostCategories).where(eq(machineTypeCostCategories.machineTypeCode, t.code));
     if (rows.length) await tx.insert(machineTypeCostCategories).values(rows.map((r, position) => ({ machineTypeCode: t.code, position, ...r })));
     await trace(tx, await whoIs(tx, actor), {
       objectRef: `Machine type ${t.label}`, change: `cost categories: ${rows.length} · ${rows.reduce((s, r) => s + r.budgetKeur, 0)} k€`, area: 'Settings', entityType: 'machine_type',
+      ...changedValues({ costCategories: old }, { costCategories: rows }),
     });
   });
 }
@@ -259,7 +269,8 @@ export async function removeRexReference(code: string, analyticCode: string, act
     const r = refs.find((x) => x.analyticCode === analyticCode);
     if (!r) throw new Error(`Unknown reference project ${analyticCode}`);
     await tx.delete(rexReferences).where(eq(rexReferences.id, r.id));
-    await trace(tx, await whoIs(tx, actor), { objectRef: `Machine type ${t.label}`, change: `REX reference removed: ${analyticCode} · ${r.projectName}`, area: 'Settings', entityType: 'machine_type' });
+    await trace(tx, await whoIs(tx, actor), { objectRef: `Machine type ${t.label}`, change: `REX reference removed: ${analyticCode} · ${r.projectName}`, area: 'Settings', entityType: 'machine_type',
+      before: { rexReference: analyticCode, projectName: r.projectName }, after: null });
   });
 }
 

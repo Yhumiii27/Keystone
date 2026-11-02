@@ -77,6 +77,7 @@ export async function applyCodexDocumentStates(tx: Tx, records: readonly CodexDo
       await writeAudit(tx, {
         actorName: 'Codex', objectRef: d.number, change: `status: ${documentStatus.label(d.status)} → ${documentStatus.label(rec.status)} · synced from Codex`,
         area: 'Documents', entityType: 'document', entityId: d.id, projectId: d.projectId, occurredAt: at,
+        before: { status: d.status }, after: { status: rec.status },
       });
     }
     const moved = rec.status !== 'release_proposed';
@@ -269,6 +270,7 @@ export async function applyCodexIndex(tx: Tx, records: readonly unknown[], at = 
       await writeAudit(tx, {
         actorName: 'Codex', objectRef: rec.number, change: `revision ${existing.currentRevision} → ${rec.revision.letter} · synced from Codex`, area: 'Documents',
         entityType: 'document', entityId: documentId, projectId, occurredAt: at,
+        before: { revision: existing.currentRevision }, after: { revision: rec.revision.letter },
       });
       if (existing.status === 'released' && rec.status === 'released' && rec.withdrawnRevision && rec.withdrawnOn) {
         await tx.update(documents).set({ lastWithdrawnRevision: rec.withdrawnRevision, lastWithdrawnOn: rec.withdrawnOn }).where(eq(documents.id, documentId));

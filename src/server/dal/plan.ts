@@ -593,6 +593,7 @@ export async function addActivityLink(code: string, link: { pred: string; succ: 
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: link.succ,
       change: `relationship added: ${link.pred} ${link.type}${link.lag ? (link.lag > 0 ? '+' : '') + link.lag : ''} → ${link.succ}`,
       area: 'Planning', entityType: 'activity', entityId: ends.succId, projectId: ends.projectId,
+      before: null, after: { pred: link.pred, succ: link.succ, type: link.type, lag: link.lag },
     });
     return { ok: true as const };
   });
@@ -636,13 +637,14 @@ export async function removeActivityLink(code: string, pred: string, succ: strin
     const del = await tx
       .delete(activityLinks)
       .where(and(eq(activityLinks.predecessorId, ends.predId), eq(activityLinks.successorId, ends.succId)))
-      .returning({ type: activityLinks.type });
+      .returning({ type: activityLinks.type, lag: activityLinks.lagDays });
     if (!del.length) return { error: 'missing' as const };
     await tx.update(activities).set({ updatedAt: new Date(), version: bumpVersion(activities.version) }).where(eq(activities.id, ends.succId));
     const actor = await findPerson(tx, actorName);
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: succ, change: `relationship removed: ${pred} ${del[0].type} → ${succ}`,
       area: 'Planning', entityType: 'activity', entityId: ends.succId, projectId: ends.projectId,
+      before: { pred, succ, type: del[0].type, lag: del[0].lag }, after: null,
     });
     return { ok: true as const };
   });

@@ -11,6 +11,7 @@ import { businessToday } from '@/server/clock';
 import { DEFAULT_DISPLAYED_BASELINE, displayedBaselineCode, nextBaselineCode, projectDataDate } from '@/domain/ch4-defaults';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import type { BaselineSource, BaselineState } from '@/server/db/codes';
+import { changedValues } from '@/domain/audit-trail';
 import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import { activities, baselineActivities, baselines, changeRequests, projects, wbsNodes } from '@/server/db/schema';
 import { markBl1Deliverable } from './lifecycle';
@@ -236,8 +237,11 @@ export async function snapshotIntoBaseline(code: string, baselineCode: string, i
   const run = async (tx: Q) => {
     const proj = await requireProject(tx, code);
     const p = await projectHead(tx, code);
-    const [b] = await tx.select({ id: baselines.id }).from(baselines).where(and(eq(baselines.projectId, proj.id), eq(baselines.code, baselineCode)));
+    const [b] = await tx
+      .select({ id: baselines.id, setOn: baselines.setOn, dataDate: baselines.dataDate, finishDate: baselines.finishDate, bacKeur: baselines.bacKeur, state: baselines.state })
+      .from(baselines).where(and(eq(baselines.projectId, proj.id), eq(baselines.code, baselineCode)));
     if (!b) throw new Error(`Unknown baseline ${baselineCode}`);
+    const [{ count: activitiesBefore }] = await tx.select({ count: sql<number>`count(*)::int` }).from(baselineActivities).where(eq(baselineActivities.baselineId, b.id));
     await tx.delete(baselineActivities).where(eq(baselineActivities.baselineId, b.id));
     const rows = await snapshotRows(tx, proj.id, b.id);
     if (rows.length) await tx.insert(baselineActivities).values(rows);
@@ -255,6 +259,10 @@ export async function snapshotIntoBaseline(code: string, baselineCode: string, i
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : input.actorName, actorPersonId: actor?.id, objectRef: `${code} ${baselineCode}`, change: `baseline snapshot · ${rows.length} activities${input.makeCurrent ? ' · current' : ''}`,
       area: 'Planning', entityType: 'baseline', entityId: b.id, projectId: proj.id,
+      ...changedValues(
+        { setOn: b.setOn, dataDate: b.dataDate, finishDate: b.finishDate, bacKeur: b.bacKeur, state: b.state, activities: activitiesBefore },
+        { setOn: input.setOn ?? dataDate, dataDate, finishDate: finish ?? undefined, bacKeur: input.bacKeur ?? undefined, state: input.makeCurrent ? 'current' : undefined, activities: rows.length },
+      ),
     });
     // R-054 (L-2 "a"): a BLn ≥ 1 made current (the change request's re-baseline) ticks « Planning BL1 posé ».
     if (input.makeCurrent && baselineNumber(baselineCode) >= 1) await markBl1Deliverable(tx, proj.id, input.actorName);

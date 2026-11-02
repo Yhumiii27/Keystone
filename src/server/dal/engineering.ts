@@ -238,6 +238,7 @@ export async function confirmEngInput(projectCode: string, consumer: Discipline,
       .where(and(eq(engInputs.projectId, p.id), eq(engInputs.consumer, consumer), eq(engInputs.documentNumber, documentNumber))).returning({ id: engInputs.id });
     await trace(tx, who, {
       objectRef: documentNumber, change: `consumption confirmed by ${discipline.label(consumer)} · rev ${row.revisionInUse}`, area: 'Engineering', entityType: 'eng_input', entityId: i.id, projectId: p.id,
+      before: { consumer, revision: row.revisionInUse, acknowledged: false }, after: { consumer, revision: row.revisionInUse, acknowledged: true },
     });
   });
 }
@@ -256,6 +257,7 @@ export async function closeEngCheck(projectCode: string, number: string, how: 'r
     await tx.update(engChecks).set({ status: how, resolutionNote: note, resolvedAt: new Date(), resolvedByName: who.who, updatedAt: new Date() }).where(eq(engChecks.id, c.id));
     await trace(tx, who, {
       objectRef: number, change: `status: ${checkStatus.label(c.status)} → ${checkStatus.label(how)} · ${note}`, area: 'Engineering', entityType: 'eng_check', entityId: c.id, projectId: p.id,
+      before: { status: c.status }, after: { status: how, resolutionNote: note },
       activity: { text: `${how === 'resolved' ? 'Resolved' : 'Sent back'} ${number} · ${c.title}`, kind: 'change' },
     });
   });

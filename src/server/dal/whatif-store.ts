@@ -22,6 +22,7 @@ export async function markScenarioApplied(code: string, name: string, actorName:
   const actor = await findPerson(q, actorName);
   const who = actor ? nameOf(actor) : actorName;
   await q.update(whatIfScenarios).set({ appliedAt: new Date(), appliedByName: who, updatedAt: new Date() }).where(eq(whatIfScenarios.id, s.id));
-  await writeAudit(q, { actorName: who, actorPersonId: actor?.id, objectRef: `${code} scenario ${name}`, change: 'applied · draft requests created', area: 'Resources', entityType: 'whatif_scenario', entityId: s.id, projectId });
+  await writeAudit(q, { actorName: who, actorPersonId: actor?.id, objectRef: `${code} scenario ${name}`, change: 'applied · draft requests created', area: 'Resources', entityType: 'whatif_scenario', entityId: s.id, projectId,
+    before: { applied: s.appliedAt != null }, after: { applied: true } });
   return s.id;
 }

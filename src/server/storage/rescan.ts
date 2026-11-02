@@ -70,8 +70,10 @@ export async function rescanStoredFiles(now = new Date()): Promise<RescanOutcome
       await tx.update(storedFiles).set({ scanStatus: verdict.scanStatus, scannedAt: new Date(), scanSignature: verdict.signature }).where(eq(storedFiles.id, f.id));
       const released = verdict.scanStatus === 'clean' && cur.scanStatus === 'infected';
       const newlyFlagged = verdict.scanStatus === 'infected' && cur.scanStatus !== 'infected';
-      if (released) await writeAudit(tx, { actorName: SYSTEM_ACTOR, objectRef: cur.name, change: `file released by the antivirus rescan: ${cur.name}`, area: 'Files', entityType: 'file', entityId: cur.id, projectId: cur.projectId });
-      if (newlyFlagged) await writeAudit(tx, { actorName: SYSTEM_ACTOR, objectRef: cur.name, change: `file blocked by the antivirus: ${cur.name}`, area: 'Files', entityType: 'file', entityId: cur.id, projectId: cur.projectId });
+      if (released) await writeAudit(tx, { actorName: SYSTEM_ACTOR, objectRef: cur.name, change: `file released by the antivirus rescan: ${cur.name}`, area: 'Files', entityType: 'file', entityId: cur.id, projectId: cur.projectId,
+        before: { scanStatus: cur.scanStatus, signature: cur.scanSignature }, after: { scanStatus: verdict.scanStatus, signature: null } });
+      if (newlyFlagged) await writeAudit(tx, { actorName: SYSTEM_ACTOR, objectRef: cur.name, change: `file blocked by the antivirus: ${cur.name}`, area: 'Files', entityType: 'file', entityId: cur.id, projectId: cur.projectId,
+        before: { scanStatus: cur.scanStatus }, after: { scanStatus: verdict.scanStatus, signature: verdict.signature } });
       return { cur, released, newlyFlagged };
     });
     if (!res) continue;

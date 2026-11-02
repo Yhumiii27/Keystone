@@ -137,6 +137,7 @@ async function transition(tx: Tx, projectCode: string, number: string, from: Int
     actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: number,
     change: `status: ${interfaceStatus.label(effective(i.status, i.neededBy, now))} → ${interfaceStatus.label(to)}${receivedOn ? ` · received ${shortDateYearOfIso(receivedOn, yearOfIso(today))}` : ''}`,
     area: 'Interfaces', entityType: 'interface', entityId: i.id, projectId: p.id,
+    before: { status: i.status, providedOn: i.providedOn }, after: { status: to, providedOn: receivedOn ?? i.providedOn },
   });
 }
 

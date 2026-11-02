@@ -336,7 +336,8 @@ export async function trashPlanRow(code: string, kind: 'wp' | 'act', key: string
       .returning({ id: planTrash.id });
     const what = kind === 'wp' ? `work package ${key} · ${root.name} removed · ${activityCount} activities` : `activity ${key} · ${root.name} removed`;
     const links = payload.tables.find((x) => x.table === 'activity_links')?.rows.length ?? 0;
-    await writeAudit(tx, { actorName: who, actorPersonId: actor?.id, objectRef: `${code} ${key}`, change: `${what} · ${links} links (restorable)`, area: 'Planning', entityType: kind === 'wp' ? 'wbs_node' : 'activity', entityId: root.id, projectId: p.id });
+    await writeAudit(tx, { actorName: who, actorPersonId: actor?.id, objectRef: `${code} ${key}`, change: `${what} · ${links} links (restorable)`, area: 'Planning', entityType: kind === 'wp' ? 'wbs_node' : 'activity', entityId: root.id, projectId: p.id,
+      before: { code: key, name: root.name, activities: activityCount, links }, after: { inTrash: true } });
     await recordActivity(tx, { actorName: who, actorPersonId: actor?.id, text: kind === 'wp' ? `Removed work package ${key} · ${root.name}` : `Removed activity ${key} · ${root.name}`, kind: 'change', projectId: p.id });
     return { id: t.id, files };
   });
@@ -506,6 +507,7 @@ export async function restorePlanTrash(code: string, trashId: string, actorName:
         actorName: who, actorPersonId: actor?.id, objectRef: `${code} ${entry.code}`,
         change: `${entry.kind === 'wp' ? 'work package' : 'activity'} ${entry.code} restored · ${entry.activityCount} activities · ${links} links`,
         area: 'Planning', entityType: entry.kind === 'wp' ? 'wbs_node' : 'activity', projectId: p.id,
+        before: { inTrash: true }, after: { code: entry.code, name: entry.name, activities: entry.activityCount, links },
       });
       await recordActivity(tx, { actorName: who, actorPersonId: actor?.id, text: `Restored ${entry.kind === 'wp' ? 'work package' : 'activity'} ${entry.code} · ${entry.name}`, kind: 'change', projectId: p.id });
       return { ok: true as const, kind: entry.kind, code: entry.code, name: entry.name, activityCount: entry.activityCount, links };

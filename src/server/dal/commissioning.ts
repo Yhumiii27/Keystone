@@ -153,6 +153,7 @@ export async function planSat(projectCode: string, input: PlanSatInput, actor: A
     await trace(tx, who, {
       objectRef: `SAT · ${input.system}`, change: `SAT planned ${on}${witnesses ? ` · witnesses ${witnesses}` : ''}`, area: 'Commissioning',
       entityType: sys ? 'commissioning_system' : undefined, entityId: sys?.id ?? null, projectId: p.id,
+      before: { satDate: cell?.dateOn ?? null }, after: { satDate: input.date, clientWitnesses: witnesses, prerequisites },
       activity: { text: `Planned the SAT of ${input.system} on ${on} · invitation to the client`, kind: 'client' },
     });
     return who.personId;

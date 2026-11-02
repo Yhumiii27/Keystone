@@ -5,6 +5,7 @@ import 'server-only';
 // Diagnosed → Intervention planned → Closed — and interventions are planned and closed (Planned → Done) here; a done
 // intervention that replaced or upgraded a part updates the machine's as-maintained configuration (R-144, E-8).
 import { and, asc, eq, sql } from 'drizzle-orm';
+import { changedValues } from '@/domain/audit-trail';
 import { savBadge } from '@/domain/aftersales';
 import { claimSteps, statusAfterPlanning, type ClaimStep } from '@/domain/claims';
 import { businessToday } from '@/server/clock';
@@ -272,6 +273,10 @@ export async function updateClaim(number: string, input: ClaimUpdateInput, actor
     ].filter(Boolean);
     await trace(tx, await whoIs(tx, actor), {
       objectRef: number, change: changes.join(' · ') || 'no change', area: 'After-sales', entityType: 'warranty_claim', entityId: c.id,
+      ...changedValues(
+        { coverage: c.coverage, ownerName: c.ownerName, costKeur: c.costKeur, nextStep: c.nextStep, diagnosis: c.diagnosis, ecoNumber: c.ecoNumber },
+        { coverage: input.coverage, ownerName: owner, costKeur: input.costKeur, nextStep, diagnosis, ecoNumber: eco },
+      ),
       activity: eco && eco !== c.ecoNumber ? { text: `Linked warranty claim ${number} to design change ${eco}`, kind: 'eco' } : undefined,
     });
   });
@@ -297,6 +302,7 @@ export async function advanceClaim(number: string, step: ClaimStep, actor: Actor
     await trace(tx, await whoIs(tx, actor), {
       objectRef: number, change: `status: ${claimStatus.label(c.status)} → ${claimStatus.label(to)}${step === 'diagnose' ? ` · ${diagnosis}` : ''}`, area: 'After-sales',
       entityType: 'warranty_claim', entityId: c.id,
+      ...changedValues({ status: c.status, diagnosis: c.diagnosis, closedOn: c.closedOn }, { status: to, diagnosis, closedOn: to === 'closed' ? on : null }),
       activity: { text: step === 'diagnose' ? `Diagnosed warranty claim ${number}` : `Closed warranty claim ${number} · ${c.issue}`, kind: 'quality' },
     });
     return to;
@@ -346,7 +352,8 @@ export async function planIntervention(input: PlanInterventionInput, actor: Acto
       const to = statusAfterPlanning(claim.status);
       if (to !== claim.status) {
         await tx.update(warrantyClaims).set({ status: to, updatedAt: new Date() }).where(eq(warrantyClaims.id, claim.id));
-        await trace(tx, who, { objectRef: claim.number, change: `status: ${claimStatus.label(claim.status)} → ${claimStatus.label(to)} · ${number}`, area: 'After-sales', entityType: 'warranty_claim', entityId: claim.id });
+        await trace(tx, who, { objectRef: claim.number, change: `status: ${claimStatus.label(claim.status)} → ${claimStatus.label(to)} · ${number}`, area: 'After-sales', entityType: 'warranty_claim', entityId: claim.id,
+          before: { status: claim.status }, after: { status: to, intervention: number } });
       }
     }
     await trace(tx, who, {
@@ -399,11 +406,13 @@ export async function completeIntervention(number: string, input: InterventionDo
       // The configuration is part of the machine record: its last change moves pub_parc_machines.maj_le (Arche K-07, R-193).
       await tx.update(machines).set({ updatedAt: new Date() }).where(eq(machines.id, i.machineId));
       configChange = ` · ${partRef} ${old?.revision ?? '—'} → ${revision}`;
-      await trace(tx, who, { objectRef: m.number, change: `configuration: ${partRef} ${old?.revision ?? '—'} → ${revision} · ${number}`, area: 'Installed base', entityType: 'machine', entityId: i.machineId });
+      await trace(tx, who, { objectRef: m.number, change: `configuration: ${partRef} ${old?.revision ?? '—'} → ${revision} · ${number}`, area: 'Installed base', entityType: 'machine', entityId: i.machineId,
+        before: { partRef, revision: old?.revision ?? null }, after: { partRef, revision } });
     }
     await tx.update(interventions).set({ status: 'done', doneOn: input.doneOn, report, partRef, partRevision: partRef ? revision : null }).where(eq(interventions.id, i.id));
     await trace(tx, who, {
       objectRef: number, change: `status: Planned → Done · ${input.doneOn}${report ? ` · ${report}` : ''}${configChange}`, area: 'After-sales', entityType: 'intervention', entityId: i.id,
+      before: { status: 'planned', doneOn: null }, after: { status: 'done', doneOn: input.doneOn, report, partRef, partRevision: partRef ? revision : null },
       activity: { text: `Completed intervention ${number} on ${m.number}`, kind: 'quality' },
     });
   });

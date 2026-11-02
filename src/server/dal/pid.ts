@@ -174,6 +174,7 @@ export async function mapPidTag(projectCode: string, tag: string, partRef: strin
       await tx.update(pidTags).set({ partRef, mappedAt: new Date(), mappedByName: who.who, updatedAt: new Date() }).where(eq(pidTags.id, t.id));
       await trace(tx, who, {
         objectRef: tag, change: partRef ? `mapped to ${partRef}${t.partRef ? ` (was ${t.partRef})` : ''}` : `unlinked from ${t.partRef}`, area: 'P&ID', entityType: 'pid_tag', entityId: t.id, projectId: p.id,
+        before: { partRef: t.partRef }, after: { partRef },
       });
     }
     if (addToBom && partRef) {

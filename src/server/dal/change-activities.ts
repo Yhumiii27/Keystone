@@ -127,6 +127,8 @@ export async function linkCrActivities(projectCode: string, number: string, item
     const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${changeRequestActivities.position}), -1)::int` }).from(changeRequestActivities)
       .where(eq(changeRequestActivities.changeRequestId, cr.id));
     const person = await findPerson(tx, actorName);
+    const linkedBefore = new Map((await tx.select({ code: changeRequestActivities.activityCode, days: changeRequestActivities.newDurationDays }).from(changeRequestActivities)
+      .where(eq(changeRequestActivities.changeRequestId, cr.id))).map((l) => [l.code, l.days]));
     let next = pos + 1;
     for (const i of items) {
       await tx.insert(changeRequestActivities)
@@ -135,7 +137,11 @@ export async function linkCrActivities(projectCode: string, number: string, item
     }
     const who = person ? nameOf(person) : actorName;
     const text = items.map((i) => (i.newDurationDays == null ? i.code : `${i.code} ${known.get(i.code)} d → ${i.newDurationDays} d`)).join(', ');
-    await writeAudit(tx, { actorName: who, actorPersonId: person?.id, objectRef: number, change: `activities touched: ${text}`, area: 'Change control', entityType: 'change_request', entityId: cr.id, projectId: pid });
+    await writeAudit(tx, { actorName: who, actorPersonId: person?.id, objectRef: number, change: `activities touched: ${text}`, area: 'Change control', entityType: 'change_request', entityId: cr.id, projectId: pid,
+      // R-168: the new duration of each activity touched (null: linked without a new duration; absent before: not linked).
+      before: { activities: Object.fromEntries(items.filter((i) => linkedBefore.has(i.code)).map((i) => [i.code, linkedBefore.get(i.code) ?? null])) },
+      after: { activities: Object.fromEntries(items.map((i) => [i.code, i.newDurationDays ?? null])) },
+    });
     return items.map((i) => i.code);
   };
   if (q) return run(q);
@@ -151,12 +157,13 @@ export async function unlinkCrActivity(projectCode: string, number: string, code
     await requireLinkEditor(tx, actor, pid);
     const cr = await openRequest(tx, pid, number);
     const gone = await tx.delete(changeRequestActivities)
-      .where(and(eq(changeRequestActivities.changeRequestId, cr.id), eq(changeRequestActivities.activityCode, code))).returning({ id: changeRequestActivities.id });
+      .where(and(eq(changeRequestActivities.changeRequestId, cr.id), eq(changeRequestActivities.activityCode, code)))
+      .returning({ id: changeRequestActivities.id, newDurationDays: changeRequestActivities.newDurationDays });
     if (!gone.length) throw new CrActivityError('This activity is not linked to the request');
     const person = await findPerson(tx, actorName);
     await writeAudit(tx, {
       actorName: person ? nameOf(person) : actorName, actorPersonId: person?.id, objectRef: number, change: `activity no longer touched: ${code}`, area: 'Change control',
-      entityType: 'change_request', entityId: cr.id, projectId: pid,
+      entityType: 'change_request', entityId: cr.id, projectId: pid, before: { activity: code, newDurationDays: gone[0].newDurationDays }, after: null,
     });
   });
 }
@@ -195,6 +202,7 @@ export async function applyApprovedChangeDurations(projectCode: string, actorNam
       await writeAudit(tx, {
         actorName: who, actorPersonId: actor?.id, objectRef: r.l.activityCode, change: `duration ${a.days} d → ${to} d · ${r.cr} ${changeStatus.label('approved').toLowerCase()}`,
         area: 'Planning', entityType: 'activity', entityId: a.id, projectId: pid, occurredAt: at,
+        before: { durationDays: a.days }, after: { durationDays: to, changeRequest: r.cr },
       });
       await recordActivity(tx, { actorName: who, actorPersonId: actor?.id, kind: 'change', projectId: pid, occurredAt: at, text: `${r.cr} applied to ${r.l.activityCode} · ${a.days} d → ${to} d` });
       applied.push({ cr: r.cr, code: r.l.activityCode, from: a.days, to });

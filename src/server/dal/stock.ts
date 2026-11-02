@@ -13,6 +13,7 @@ import 'server-only';
 // director being the storekeepers who act for any project (default, owner to confirm); "Release reservation" by the
 // reserving project's PMs and deputies or the director; the override of another project's reservation by the director.
 import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
+import { changedValues } from '@/domain/audit-trail';
 import { movementValueEur, planStockMovement, planX3Import, type MovementPlan } from '@/domain/stock';
 import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { businessToday } from '@/server/clock';
@@ -387,6 +388,7 @@ export async function applyStockMovement(positionId: string, input: StockMovemen
       actorName: who, actorPersonId: person?.id, objectRef: `${ref} · ${loc}`,
       change: `${stockOperation.label(plan.type)} × ${plan.qty} · on hand ${s.onHand} → ${plan.onHand}${reservedChange}${chargedText}${overrideText} · ${stockSource.label('local')}`,
       area: 'Stock', entityType: 'stock_position', entityId: s.id, projectId: project?.id ?? null,
+      ...changedValues({ onHand: s.onHand, reserved: s.reserved }, { onHand: plan.onHand, reserved: plan.reserved }),
     });
     await recordActivity(tx, { actorName: who, actorPersonId: person?.id, text: `${stockMovementType.label(plan.type)} ${ref} × ${plan.qty} · ${plan.whereText}`, kind: 'stock', projectId: project?.id ?? null });
     if (plan.overrideTaken && s.reservedForProjectId) {
@@ -394,6 +396,7 @@ export async function applyStockMovement(positionId: string, input: StockMovemen
       await writeAudit(tx, {
         actorName: who, actorPersonId: person?.id, objectRef: `${ref} · ${loc}`, area: 'Stock', entityType: 'stock_position', entityId: s.id, projectId: s.reservedForProjectId,
         change: `reservation ${s.reserved} → ${plan.reserved} · ${plan.overrideTaken} taken for ${project?.code ?? stockOperation.label(plan.type)} · director override`,
+        before: { reserved: s.reserved }, after: { reserved: plan.reserved, takenBy: project?.code ?? null },
       });
       await recordActivity(tx, {
         actorName: who, actorPersonId: person?.id, kind: 'stock', projectId: s.reservedForProjectId,

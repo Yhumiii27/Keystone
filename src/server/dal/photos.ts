@@ -165,6 +165,7 @@ export async function removePhoto(fileId: string, actorName: string): Promise<vo
     const actor = await findPerson(tx, actorName);
     await trace(tx, { personId: actor?.id ?? null, who: actor ? nameOf(actor) : actorName }, {
       objectRef: owner.ref, change: `photo removed: ${f?.name ?? fileId}`, area: owner.area, entityType: o.kind, entityId: owner.ownerId, projectId: owner.projectId,
+      before: { photo: f?.name ?? fileId }, after: null,
     });
   });
 }

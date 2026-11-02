@@ -160,7 +160,8 @@ export async function markImportJobApplied(id: string, result: { summary: Record
   const actor = await findPerson(q, result.actorName);
   const who = actor ? nameOf(actor) : result.actorName;
   await q.update(importJobs).set({ status: 'applied', projectId, summary: { ...j.summary, ...result.summary }, appliedAt: new Date(), appliedByName: who }).where(eq(importJobs.id, id));
-  await writeAudit(q, { actorName: who, actorPersonId: actor?.id, objectRef: `Import ${j.fileName}`, change: `${j.kind} imported (${j.mode})`, area: 'Integrations', entityType: 'import_job', entityId: id, projectId });
+  await writeAudit(q, { actorName: who, actorPersonId: actor?.id, objectRef: `Import ${j.fileName}`, change: `${j.kind} imported (${j.mode})`, area: 'Integrations', entityType: 'import_job', entityId: id, projectId,
+    before: { status: j.status }, after: { status: 'applied', summary: result.summary } });
   await recordActivity(q, { actorName: who, actorPersonId: actor?.id, text: result.activityText ?? `Imported ${j.fileName}`, kind: 'sync', projectId });
 }
 
@@ -175,5 +176,6 @@ export async function cancelImportJob(id: string, actorName: string, q?: Q): Pro
   const db = q ?? (await getDb());
   const j = await requireOpenJob(db, id);
   await db.update(importJobs).set({ status: 'cancelled' }).where(eq(importJobs.id, j.id));
-  await writeAudit(db, { actorName, objectRef: `Import ${j.fileName}`, change: 'cancelled', area: 'Integrations', entityType: 'import_job', entityId: id, projectId: j.projectId });
+  await writeAudit(db, { actorName, objectRef: `Import ${j.fileName}`, change: 'cancelled', area: 'Integrations', entityType: 'import_job', entityId: id, projectId: j.projectId,
+    before: { status: j.status }, after: { status: 'cancelled' } });
 }
