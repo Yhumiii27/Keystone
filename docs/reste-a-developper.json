@@ -262,6 +262,10 @@
   {
    "date": "2026-11-02",
    "text": "Demandes Matrix M-17 et M-18 traitées : vues pub_ définies par Matrix (garde-fou sur les nouvelles migrations), échanges par vues pub_ et API, règles dans CLAUDE.md."
+  },
+  {
+   "date": "2026-11-02",
+   "text": "Demande d’Arche K-14 traitée (points 1 à 4) : démonstration alignée — trois CAPEX et le besoin du four dans la simulation, projet APM-008 en garantie (machine MCH-045, réponse RB-006), SAT de RCF-019 planifiée ; renommage de RCF-019 (point 5) non fait."
   }
  ],
  "items": [
@@ -5601,7 +5605,7 @@
    "progress": {
     "state": "fait",
     "delivery": "9",
-    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-02 — connecteur capex (lire arche.pub_capex et arche.pub_besoins_machines, liens profonds <ARCHE_URL>/capex/<code>), corbeille « Besoins des filiales », pub_reponses_besoins ; K-10 — à la commande, créer le projet EPC2i ou ajouter des équipements à un projet existant, code publié dans pub_reponses_besoins.projet_code. 24 oct. 2026 : fait côté Keystone (docs/delivery-9/notes-r187-capex-needs.md) — connecteur capex (miroir de arche.pub_capex et arche.pub_besoins_machines : lecture directe sur le serveur commun, simulation en démonstration, tâche toutes les 15 min, liens profonds ARCHE_URL), carte « Besoins machines des filiales » sous le registre de Portefeuille › Projets (directeur ; chefs de projet en lecture), réponses chiffrées RB-nnn (qualification, indicatif, devis, offre ferme E10 ; fourchette par la classe), création du projet ou ajout d’une ligne d’équipement à la commande (action du directeur), vue pub_reponses_besoins (migrations 0049-0050). Reste : Arche publie ses deux vues (son lot L4) ; Matrix recopie la vue et vérifie les droits."
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. Demandes d’Arche (dépôt Arche, docs/DEMANDES-KEYSTONE.md et CONTRATS.md, 22 oct. 2026) : K-02 — connecteur capex (lire arche.pub_capex et arche.pub_besoins_machines, liens profonds <ARCHE_URL>/capex/<code>), corbeille « Besoins des filiales », pub_reponses_besoins ; K-10 — à la commande, créer le projet EPC2i ou ajouter des équipements à un projet existant, code publié dans pub_reponses_besoins.projet_code. 24 oct. 2026 : fait côté Keystone (docs/delivery-9/notes-r187-capex-needs.md) — connecteur capex (miroir de arche.pub_capex et arche.pub_besoins_machines : lecture directe sur le serveur commun, simulation en démonstration, tâche toutes les 15 min, liens profonds ARCHE_URL), carte « Besoins machines des filiales » sous le registre de Portefeuille › Projets (directeur ; chefs de projet en lecture), réponses chiffrées RB-nnn (qualification, indicatif, devis, offre ferme E10 ; fourchette par la classe), création du projet ou ajout d’une ligne d’équipement à la commande (action du directeur), vue pub_reponses_besoins (migrations 0049-0050). Reste : Arche publie ses deux vues (son lot L4) ; Matrix recopie la vue et vérifie les droits. 2 nov. 2026 (K-14) : démonstration alignée sur Arche — cinq CAPEX et six besoins simulés, projet APM-008 livré pour CPX-APM-2025-01/B01 (docs/delivery-9/notes-k14-demo.md)."
    }
   },
   {

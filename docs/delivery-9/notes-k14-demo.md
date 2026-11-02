@@ -110,5 +110,5 @@ tests dorés (nom, client, ville, pays, intitulés des livrables).
 ## 5. Ce qui reste côté Arche (pour information)
 
 Arche peut maintenant reprendre APM-008 dans `keystone-demo.ts` (ajouter `CPX-APM-2025-01/B01` à `KEYSTONE_DEMO_NEEDS`, exporter
-RB-006, APM-008, ses jalons et MCH-443) et la SAT de RCF-019 ; sans cela sa simulation continue de générer le projet `APM-25011`,
+RB-006, APM-008, ses jalons et la machine MCH-045 au lieu de MCH-443) et la SAT de RCF-019 ; sans cela sa simulation continue de générer le projet `APM-25011`,
 dont la machine porte le numéro MCH-443 (MCH-045 chez Keystone).
