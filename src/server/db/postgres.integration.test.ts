@@ -141,9 +141,9 @@ describe.skipIf(!ADMIN_URL)('PostgreSQL server (KEYSTONE_TEST_DATABASE_URL)', ()
         x->>'catalogue_code' as catalogue_code, (x->>'catalogue_version')::int as catalogue_version, (x->>'quantite')::int as quantite, x->'options' as options,
         (x->>'capacite_visee')::numeric as capacite_visee, x->>'unite_capacite' as unite_capacite, x->>'statut' as statut, (x->>'maj_le')::timestamptz as maj_le
         from jsonb_array_elements(${lit(SIMULATED_PUB_BESOINS_MACHINES)}) x;`, name);
-    expect(await refreshCapexMirror('job', { source: 'server', db: pg.db, checkEnabled: false })).toEqual({ state: 'done', source: 'server', capex: 2, needs: 5, skipped: 0 });
+    expect(await refreshCapexMirror('job', { source: 'server', db: pg.db, checkEnabled: false })).toEqual({ state: 'done', source: 'server', capex: 5, needs: 6, skipped: 0 }); // K-14: five CAPEX, the oven need
     const { rows } = await pg.pool.query<{ n: number; s: string }>(`select count(*)::int as n, string_agg(status, ',' order by need_ref) as s from capex_needs`);
-    expect(rows[0]).toEqual({ n: 5, s: 'submitted,submitted,ordered,withdrawn,ordered' });
+    expect(rows[0]).toEqual({ n: 6, s: 'ordered,submitted,submitted,ordered,withdrawn,ordered' });
     const mirror = await pg.pool.query<{ schema: string }>(`select table_schema as schema from information_schema.tables where table_name = 'capex_needs'`);
     expect(mirror.rows).toEqual([{ schema: 'keystone' }]);
     await admin('drop schema arche cascade', name);
