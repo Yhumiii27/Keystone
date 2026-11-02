@@ -266,6 +266,10 @@
   {
    "date": "2026-11-02",
    "text": "Demande d’Arche K-14 traitée (points 1 à 4) : démonstration alignée — trois CAPEX et le besoin du four dans la simulation, projet APM-008 en garantie (machine MCH-045, réponse RB-006), SAT de RCF-019 planifiée ; renommage de RCF-019 (point 5) non fait."
+  },
+  {
+   "date": "2026-11-02",
+   "text": "Livraison 9 : lots R-168 (avant / après et motif du journal d’audit) et R-171 (nettoyage du code) lancés."
   }
  ],
  "items": [
@@ -5066,7 +5070,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "Livraison 8",
-    "note": "Livraison 8, lot journal d’audit : table en ajout seul (déclencheurs), utilisateur, avant / après, motif, 4 colonnes de plus dans l’export CSV ISO. Reste : remplir avant / après / motif dans les autres écritures (balayage après la livraison) et REVOKE quand l’hébergement est choisi (I-1a)."
+    "note": "Livraison 8, lot journal d’audit : table en ajout seul (déclencheurs), utilisateur, avant / après, motif, 4 colonnes de plus dans l’export CSV ISO. Reste : remplir avant / après / motif dans les autres écritures (balayage après la livraison) et REVOKE quand l’hébergement est choisi (I-1a). 2 nov. 2026 : lot « audit » lancé (avant / après et motif dans les écritures restantes)."
    }
   },
   {
@@ -5163,7 +5167,9 @@
     "déjà supprimés : comingSoonT, activeStatusCodes, setDisplayedBaseline, listScenarioActions / replaceScenarioActions / saveScenarioResult (0 occurrence)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 9",
+    "note": "2 nov. 2026 : lot « nettoyage » lancé (code mort, doublons, commentaires périmés ; client_communications attend D-5)."
    }
   },
   {
