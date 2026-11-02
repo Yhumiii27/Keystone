@@ -21,7 +21,7 @@ import { withoutK14Demo } from '@/test/k14';
 import { PROTO } from '@/server/prototype';
 import { L9X3_FILED, withoutL9X3, withoutL9X3Type } from '@/test/l9-x3';
 import { getBudgetContract } from './budget';
-import { getCashFlow, getPortfolioCashForecast, listBillingPlans } from './cashflow';
+import { getCashFlow, listBillingPlans } from './cashflow';
 import { getContract, getContractHeader, lateBillingMilestonesByProject } from './contract';
 import {
   countDocumentsAwaitingApproval, getApproverDirectory, getCodexSyncState, getDocumentRecord, listDocumentTypes, listProjectDocuments,
@@ -31,7 +31,8 @@ import { getProjectsMap } from './geo';
 import { lateInterfacesByProject, listInterfaces } from './interfaces';
 import { listClientQuestions, listMeetings, meetingsToWriteByProject, type MeetingRow } from './meetings';
 import { getPortfolioSchedule, PG_MONTHS } from './pipeline';
-import { getCapacityWhatIf, getPrioritisation, priorityScore } from './prioritisation';
+import { priorityScore } from '@/domain/portfolio-finance';
+import { getCapacityWhatIf, getPrioritisation } from './prioritisation';
 import { getStakeholderRegister } from './stakeholders';
 import golden from './delivery3.golden.json';
 
@@ -326,7 +327,6 @@ describe('cash flow (03 §7) — billing plans from the contract or the legacy B
       expect([plans[code].modelLabel, plans[code].contractValueKeur, plans[code].milestones.map((m) => [m.label, m.amountKeur, m.statusLabel])]).toEqual([model, value, rows]);
     }
     expect(plans['ERP-202']).toMatchObject({ internal: true, contractValueKeur: 0, milestones: [] });
-    expect((await getPortfolioCashForecast()).map((m) => m.label)).toEqual(PROTO.CASH_M);
   });
 });
 

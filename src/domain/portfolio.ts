@@ -39,8 +39,6 @@ export interface EvmInput {
 
 /** CPI / SPI alert of the Settings thresholds — moved to ./health (delivery 8, R-080: the Budget reads it without this module). */
 export { indexAlert };
-/** @deprecated The default "At risk below" threshold (0.97); screens pass the Settings thresholds to `indexAlert`. */
-export const INDEX_ALERT = DEFAULT_HEALTH_THRESHOLDS.risk;
 
 // ── Portfolio overview (§4) ────────────────────────────────────────────────────────────────────────
 

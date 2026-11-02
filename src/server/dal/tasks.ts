@@ -392,26 +392,3 @@ export async function logTaskTime(number: string, input: LogTimeInput): Promise<
   });
 }
 
-export interface AttachmentInput {
-  name: string;
-  sizeText: string;
-  uploadedBy: string;
-  kind: AttachmentKind;
-  storageRef?: string;
-  uploadedOn?: string;
-}
-
-/** "Attach" (not wired in the prototype): registers a file on the task. */
-export async function addTaskAttachment(number: string, input: AttachmentInput): Promise<void> {
-  const db = await getDb();
-  const uploadedOn = input.uploadedOn ?? (await businessToday());
-  await db.transaction(async (tx) => {
-    const t = await loadTask(tx, number);
-    const by = await findPerson(tx, input.uploadedBy);
-    const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${taskAttachments.position}), -1)::int` }).from(taskAttachments).where(eq(taskAttachments.taskId, t.id));
-    await tx.insert(taskAttachments).values({
-      taskId: t.id, name: input.name, sizeText: input.sizeText, uploadedByPersonId: by?.id ?? null, uploadedOn,
-      kind: input.kind, storageRef: input.storageRef ?? null, position: pos + 1,
-    });
-  });
-}

@@ -134,19 +134,13 @@ export async function listStockMovements(opts: { limit?: number; ref?: string } 
 export interface StockPositionDetail extends StockRow {
   /** Latest movements of the reference (6, any location — as the drawer lists them). */
   movements: MovementRow[];
-  /** Locations a transfer may target (configured ones except this one), Settings order. */
-  transferTargets: { name: string; shortLabel: string }[];
 }
 
 export async function getStockPosition(id: string): Promise<StockPositionDetail | null> {
   const db = await getDb();
   const [row] = await loadStock(db, eq(stockPositions.id, id));
   if (!row) return null;
-  const [movements, locs] = await Promise.all([
-    loadMoves(db, { ref: row.ref, limit: 6 }),
-    db.select({ name: storageLocations.name }).from(storageLocations).where(eq(storageLocations.active, true)).orderBy(asc(storageLocations.position)),
-  ]);
-  return { ...row, movements, transferTargets: locs.filter((l) => l.name !== row.location).map((l) => ({ name: l.name, shortLabel: l.name.split(' — ')[0] })) };
+  return { ...row, movements: await loadMoves(db, { ref: row.ref, limit: 6 }) };
 }
 
 export interface X3StockSync {

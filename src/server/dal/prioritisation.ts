@@ -9,6 +9,7 @@ import { and, asc, eq } from 'drizzle-orm';
 import { canSee } from '@/config/role-screens';
 import type { RoleKey } from '@/config/screens';
 import { inExecution } from '@/domain/portfolio';
+import { priorityScore } from '@/domain/portfolio-finance';
 import { getDb } from '@/server/db/client';
 import { scoreAxis, type ScoreAxis, type StageCode } from '@/server/db/codes';
 import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
@@ -73,12 +74,6 @@ export async function listPortfolioScores(): Promise<Record<string, number[]>> {
   const out: Record<string, number[]> = {};
   for (const r of rows) (out[r.code] ??= axes.map(() => 0))[axes.findIndex((a) => a.code === r.axis)] = r.score;
   return out;
-}
-
-/** 100 × Σ (s_i / 5) × (w_i / Σw), unrounded; Σw = 0 counts as 1 (`wSum || 1`). */
-export function priorityScore(scores: number[], weights: number[]): number {
-  const sum = weights.reduce((a, b) => a + b, 0) || 1;
-  return scores.reduce((a, s, i) => a + (s / 5) * ((weights[i] ?? 0) / sum), 0) * 100;
 }
 
 export interface RankedProject {
