@@ -1,6 +1,6 @@
 # Keystone PM — reste à développer
 
-Inventaire initial du 2026-10-10, mis à jour le 2026-11-02 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
+Inventaire initial du 2026-10-10, mis à jour le 2026-11-03 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
 
 **Méthode.** Onze relectures indépendantes ont croisé les 195 décisions produit (`docs/DECISIONS.md`), les écarts et questions ouvertes de `DELIVERY-1.md` à `DELIVERY-6.md`, `docs/BACKLOG.md`, les marqueurs du code (TODO, simulations, constantes du prototype), la spécification fonctionnelle (`docs/spec/`) et la préparation à la production. Chaque point a ensuite été vérifié dans le code, catégorie par catégorie : ce qui existait déjà a été écarté (153 candidats), les doublons fusionnés, puis un contrôle de complétude a ajouté ce qui manquait. Le détail, avec les preuves relevées dans le code pour chaque point, est dans `docs/reste-a-developper.json` ; ce document et la page sont produits par `npm run remaining:page`.
 
@@ -8,7 +8,7 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-11-02 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 128 faits, 29 en cours, 53 à faire, sur 210 points.
+**Avancement** : 129 faits, 29 en cours, 53 à faire, sur 211 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
@@ -40,7 +40,7 @@ L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il
 | Ingénierie et PLM | 0 | 1 | 1 | 0 | 2 | 10 |
 | Qualité, chantier et mise en service | 0 | 1 | 2 | 0 | 3 | 10 |
 | Documents | 0 | 1 | 0 | 0 | 1 | 4 |
-| Portefeuille, pilotage et indicateurs | 0 | 1 | 0 | 0 | 1 | 9 |
+| Portefeuille, pilotage et indicateurs | 0 | 1 | 0 | 0 | 1 | 10 |
 | Portail client | 0 | 0 | 1 | 2 | 3 | 3 |
 | SAV et parc installé | 0 | 0 | 0 | 1 | 1 | 3 |
 | Ergonomie, langues et accessibilité | 0 | 1 | 0 | 1 | 2 | 13 |
@@ -773,7 +773,7 @@ Keystone ne reprend de Codex que la fiche, la révision en cours et le circuit e
 Dans le tiroir d’un document, seules les relations Article et CR sont des liens ; Livrable, Commande d’achat et Réserve restent inertes alors que ces écrans existent depuis les livraisons 4–5.  
 *Avancement : Livraison 8 : relations Livrable, Commande et Réserve cliquables ; les lignes de réserve ont leur ancre (R-117). · Sources : 10 OQ15, DELIVERY-3.md §5*
 
-### 2.12 Portefeuille, pilotage et indicateurs (1 restants, 9 faits)
+### 2.12 Portefeuille, pilotage et indicateurs (1 restants, 10 faits)
 
 **R-203 · Tableaux de bord configurables par l’utilisateur et connecteur Power BI / Dataverse** — *Prochaine étape · non commencé · effort L* · **en cours (Livraison 9)**  
 Laisser chaque utilisateur composer ses tableaux de bord (widgets, filtres, indicateurs, enregistrement et partage) et ouvrir les données à Power BI / Dataverse (vues pub_ ou flux OData / API) pour les analyses du groupe. Standard du marché (Wrike, Planner Premium). Aujourd’hui les écrans de pilotage sont fixes et seul l’export CSV / XLSX existe. Analyse comparative du 25 oct. 2026 : priorité P2, à valider par le responsable produit ; le connecteur Power BI peut s’appuyer sur les vues pub_ déjà publiées.  
@@ -802,6 +802,10 @@ C-10a demande que les décaissements restants suivent la courbe prévue du plann
 **~~R-208 · IA prédictive de dérive délai / coût et suggestions de mitigation~~** — *Prochaine étape · non commencé · effort XL* · **fait (Livraison 9)**  
 Prédire la dérive de délai et de coût d’un projet à partir de l’historique (référence, avancement, valeur acquise, REX) et proposer des mitigations (réaffectation, resserrement, alerte précoce). Fonction avancée du marché (Planview, Planisware). Aujourd’hui l’IA ne sert qu’à l’analyse des transcriptions de réunion (src/server/ai/transcripts/). Analyse comparative du 25 oct. 2026 : priorité P3, à décider ; suppose un historique réel de projets.  
 *Avancement : 01/11/2026 : « Dérive prévue » fondée sur des règles (valeur acquise, planning, P80 Monte-Carlo) avec 11 règles de mitigation et alerte portefeuille ; à enrichir quand un historique réel existera. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+
+**~~R-211 · Planning du portefeuille : catégorie « Sous garantie » à côté de « En cours » et « Pipeline »~~** — *Prochaine étape · non commencé · effort S* · **fait (Livraison 9)**  
+Le responsable produit (3 nov. 2026, PF-1) : dans le planning du portefeuille, les projets en garantie forment une catégorie à part, comme le pipeline. Trois catégories : en cours, dans le pipeline, en garantie (filtre d’étape, groupes du Gantt, vignettes).  
+*Avancement : 3 nov. 2026 : filtre « Sous garantie », groupe « Sous garantie » après « Pipeline » (projets à l’étape Garantie), vignette « Projets sous garantie » ; « Projets en cours » ne les compte plus ; aussi dans l’export du planning. Tests dorés adaptés (src/test/pf1.ts). · Sources : Demande du responsable produit, 3 nov. 2026 (PF-1)*
 
 **~~R-134 · Noter les propositions de projet sur les 5 axes du classement~~** — *Plus tard · non commencé · effort S* · **fait (Livraison 8)**  
 « Noter une proposition » doit saisir les 5 axes du classement, dont l’adéquation des ressources et la priorité client, au lieu de 3. Les 2 autres axes reçoivent aujourd’hui 1 par défaut.  
@@ -995,6 +999,7 @@ Module demandé mais à cadrer avec le responsable produit avant construction : 
 
 ## 3. Mises à jour
 
+- 2026-11-03 — R-211 fait : planning du portefeuille en trois catégories — en cours, pipeline, sous garantie (demande du responsable produit, PF-1).
 - 2026-11-02 — R-168 : avant / après et motif dans tout le journal d’audit, garde-fou de couverture. R-171 : nettoyage du code (reste client_communications, attend D-5).
 - 2026-11-02 — Livraison 9 : lots R-168 (avant / après et motif du journal d’audit) et R-171 (nettoyage du code) lancés.
 - 2026-11-02 — Demande d’Arche K-14 traitée (points 1 à 4) : démonstration alignée — trois CAPEX et le besoin du four dans la simulation, projet APM-008 en garantie (machine MCH-045, réponse RB-006), SAT de RCF-019 planifiée ; renommage de RCF-019 (point 5) non fait.

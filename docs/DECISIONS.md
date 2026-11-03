@@ -337,3 +337,7 @@ Questionnaire publié en artefact (https://claude.ai/artifact/CG1FQk6mMeoLD7MaPM
 ### Langues (R-209)
 
 - **K-209 · Ajouter d’autres langues que le français et l’anglais ?** : Plus tard
+
+## Planning du portefeuille (demande du 03/11/2026)
+
+- **PF-1 — Projets en garantie à part (R-211).** Le planning du portefeuille a trois catégories : en cours, dans le pipeline, sous garantie. Les projets à l’étape Garantie quittent « En cours » pour un groupe « Sous garantie » placé après « Pipeline », avec son filtre d’étape et sa vignette « Projets sous garantie » (nombre et budget) ; « Projets en cours » ne les compte plus. Écart voulu au prototype (deux catégories) : les tests dorés le reprennent par `src/test/pf1.ts`.

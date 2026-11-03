@@ -136,14 +136,16 @@ export interface PgInput {
 
 // ── View model ─────────────────────────────────────────────────────────────────────────────────────────
 
-export type PgFilter = 'all' | 'exec' | 'pipe';
+export type PgFilter = 'all' | 'exec' | 'pipe' | 'warr';
 /** Stage filter segment (`pgSegCtl`); EN labels. */
 export const PG_FILTERS: { value: PgFilter; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'exec', label: 'In progress' },
   { value: 'pipe', label: 'Pipeline' },
+  // Owner, 3 Nov 2026 (PF-1): projects in warranty are a category of their own, like the pipeline.
+  { value: 'warr', label: 'In warranty' },
 ];
-export const isPgFilter = (v: unknown): v is PgFilter => v === 'all' || v === 'exec' || v === 'pipe';
+export const isPgFilter = (v: unknown): v is PgFilter => v === 'all' || v === 'exec' || v === 'pipe' || v === 'warr';
 
 /** Group board state at now: ended (approved), running (decision pending) or ahead (planned). */
 export type PgBoardState = 'approved' | 'pending' | 'planned';
@@ -183,6 +185,8 @@ export interface PgRow {
   status: string;
   tone: PgTone;
   pipeline: boolean;
+  /** Stage Garantie (PF-1): shown in the "In warranty" group, not with the projects in progress. */
+  warranty: boolean;
   segments: PgSegment[];
   /** Execution bar; `ifApproved` = pipeline project (transparent, dashed accent-700, empty fill). */
   exec: { left: string; width: string; fill: string; ifApproved: boolean } | null;
@@ -203,7 +207,7 @@ export interface PgRow {
 
 export interface PgGroup {
   key: Exclude<PgFilter, 'all'>;
-  label: 'In progress' | 'Pipeline';
+  label: 'In progress' | 'Pipeline' | 'In warranty';
   count: number;
   rows: PgRow[];
 }
@@ -212,7 +216,7 @@ export interface PgGroup {
 export type PgKpiTint = 'ok' | 'n200' | 'lo';
 
 export interface PgKpi {
-  key: 'exec' | 'pipe' | 'pending' | 'wait';
+  key: 'exec' | 'pipe' | 'warr' | 'pending' | 'wait';
   label: string;
   value: string;
   sub: string;
@@ -331,6 +335,7 @@ export function pgRow(r: PgRowInput, from: number, now: number): PgRow {
     status: p.status,
     tone: toneOf(r),
     pipeline: pipe,
+    warranty: !pipe && p.stage === 'garantie',
     segments,
     exec: exec ? { left: exec.left, width: exec.width, fill: pipe ? '0%' : Math.round(p.progress * 100) + '%', ifApproved: pipe } : null,
     baseline: !pipe && execBase && slipM > 0 && finM !== null ? { left: execBase.left, width: execBase.width } : null,
@@ -345,12 +350,14 @@ export function pgRow(r: PgRowInput, from: number, now: number): PgRow {
 
 /** `pgKpis` (4555): counts and budgets over every live row of the zone (the stage filter does not apply). */
 export function pgKpis(rows: PgRow[], input: PgInput, lang: Lang): PgKpi[] {
-  const budget = (pipe: boolean) => input.rows.filter((r) => r.pipeline === pipe).reduce((a, r) => a + r.project.budget, 0);
+  const cat = (r: PgRowInput) => (r.pipeline ? 'pipe' : r.project.stage === 'garantie' ? 'warr' : 'exec');
+  const budget = (c: 'exec' | 'pipe' | 'warr') => input.rows.filter((r) => cat(r) === c).reduce((a, r) => a + r.project.budget, 0);
   const pending = rows.filter((r) => r.decisionPending);
   const wait = input.averageBoardWaitDays;
   return [
-    { key: 'exec', label: 'Projects in progress', value: String(rows.filter((r) => !r.pipeline).length), sub: money(budget(false), lang), tint: 'ok' },
-    { key: 'pipe', label: 'Projects in pipeline', value: String(rows.filter((r) => r.pipeline).length), sub: money(budget(true), lang), tint: 'n200' },
+    { key: 'exec', label: 'Projects in progress', value: String(rows.filter((r) => !r.pipeline && !r.warranty).length), sub: money(budget('exec'), lang), tint: 'ok' },
+    { key: 'pipe', label: 'Projects in pipeline', value: String(rows.filter((r) => r.pipeline).length), sub: money(budget('pipe'), lang), tint: 'n200' },
+    { key: 'warr', label: 'Projects in warranty', value: String(rows.filter((r) => r.warranty).length), sub: money(budget('warr'), lang), tint: 'n200' },
     { key: 'pending', label: 'Group decisions pending', value: String(pending.length), sub: pending.map((r) => r.code).join(' · ') || '—', tint: pending.length ? 'lo' : 'ok' },
     { key: 'wait', label: 'Average board wait', value: `${wait} d`, sub: 'target 3 weeks', tint: wait > BOARD_WAIT_TARGET_DAYS ? 'lo' : 'ok' },
   ];
@@ -366,8 +373,9 @@ export function portfolioScheduleModel(input: PgInput, opts: { filter: PgFilter;
   const rows = input.rows.map((r) => pgRow(r, from, input.now));
   const groups: PgGroup[] = (
     [
-      { key: 'exec', label: 'In progress', rows: rows.filter((r) => !r.pipeline) },
+      { key: 'exec', label: 'In progress', rows: rows.filter((r) => !r.pipeline && !r.warranty) },
       { key: 'pipe', label: 'Pipeline', rows: rows.filter((r) => r.pipeline) },
+      { key: 'warr', label: 'In warranty', rows: rows.filter((r) => r.warranty) },
     ] as const
   )
     .filter((g) => g.rows.length && (opts.filter === 'all' || opts.filter === g.key))

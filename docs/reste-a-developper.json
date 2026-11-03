@@ -1,6 +1,6 @@
 {
  "generated": "2026-10-10",
- "updated": "2026-11-02",
+ "updated": "2026-11-03",
  "branch": "main-2a2fep",
  "history": [
   {
@@ -274,6 +274,10 @@
   {
    "date": "2026-11-02",
    "text": "R-168 : avant / après et motif dans tout le journal d’audit, garde-fou de couverture. R-171 : nettoyage du code (reste client_communications, attend D-5)."
+  },
+  {
+   "date": "2026-11-03",
+   "text": "R-211 fait : planning du portefeuille en trois catégories — en cours, pipeline, sous garantie (demande du responsable produit, PF-1)."
   }
  ],
  "items": [
@@ -6170,6 +6174,29 @@
     "state": "en_cours",
     "delivery": "Livraison 9",
     "note": "31 oct. 2026 : application construite (C# Windows Forms + WebView2, .NET 10, Keystone.exe autonome win-x64, docs/delivery-9/notes-r210-windows-app.md) ; compilée sous Linux, fabrication à la demande (windows-app.yml). Reste : essai sur un PC Windows avec un serveur hébergé (I-1a), signature de code et mode de diffusion (DSI)."
+   }
+  },
+  {
+   "id": "R-211",
+   "verdict": "ajout_critique",
+   "title": "Planning du portefeuille : catégorie « Sous garantie » à côté de « En cours » et « Pipeline »",
+   "description": "Le responsable produit (3 nov. 2026, PF-1) : dans le planning du portefeuille, les projets en garantie forment une catégorie à part, comme le pipeline. Trois catégories : en cours, dans le pipeline, en garantie (filtre d’étape, groupes du Gantt, vignettes).",
+   "category": "portefeuille_pilotage_kpi",
+   "kind": "decision_a_appliquer",
+   "priority": "prochaine_etape",
+   "status": "non_commence",
+   "waiting_on": "",
+   "effort": "S",
+   "sources": [
+    "Demande du responsable produit, 3 nov. 2026 (PF-1)"
+   ],
+   "evidence": [
+    "src/domain/pfplan.ts (groupes exec / pipe)"
+   ],
+   "progress": {
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "3 nov. 2026 : filtre « Sous garantie », groupe « Sous garantie » après « Pipeline » (projets à l’étape Garantie), vignette « Projets sous garantie » ; « Projets en cours » ne les compte plus ; aussi dans l’export du planning. Tests dorés adaptés (src/test/pf1.ts)."
    }
   }
  ]
