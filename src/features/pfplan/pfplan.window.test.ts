@@ -93,6 +93,6 @@ describe('page', () => {
     for (const bad of ['2026-02', '2019-10', '2036-01', 'garbage', '2026-4'])
       expect((await page({ from: bad })).props.model.window, bad).toMatchObject({ from: -3, isDefault: true });
     // Rows are never filtered by the window.
-    expect((await page({ from: '2035-10' })).props.model.groups.map((g) => g.count)).toEqual([7, 5]);
+    expect((await page({ from: '2035-10' })).props.model.groups.map((g) => g.count)).toEqual([6, 5, 1]); // PF-1: ALP-021 in warranty
   });
 });

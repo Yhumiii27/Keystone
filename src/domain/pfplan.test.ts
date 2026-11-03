@@ -16,6 +16,7 @@ import {
   type PgInput, type PgKpiTint, type PgRow, type PgRowInput, type PgSegment, type PgTint,
 } from './pfplan';
 import golden from './pfplan.golden.json';
+import { pf1SegCtl, pf1Zone } from '@/test/pf1';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const G = golden as any;
@@ -138,8 +139,8 @@ describe('pfplan geometry helpers', () => {
   });
   it('board titles and filters', () => {
     expect(['approved', 'pending', 'planned'].map((s) => boardTitle(s as any))).toEqual(['Group board · Approved', 'Group board · Decision pending', 'Group board · Planned']);
-    expect(PG_FILTERS.map((f) => f.label)).toEqual(G.en.segCtl);
-    expect([isPgFilter('exec'), isPgFilter('pipe'), isPgFilter('all'), isPgFilter('x'), isPgFilter(undefined)]).toEqual([true, true, true, false, false]);
+    expect(PG_FILTERS.map((f) => f.label)).toEqual([...G.en.segCtl, 'In warranty']); // PF-1: third category
+    expect([isPgFilter('exec'), isPgFilter('pipe'), isPgFilter('all'), isPgFilter('warr'), isPgFilter('x'), isPgFilter(undefined)]).toEqual([true, true, true, true, false, false]);
   });
 });
 
@@ -149,7 +150,7 @@ describe.each(LANGS)('pfplan vs prototype (%s)', (lang) => {
 
   it('static labels: stage filter, month header, template keys', () => {
     expect(t('Stage')).toBe(g.stageLabel);
-    expect(PG_FILTERS.map((f) => t(f.label))).toEqual(g.segCtl);
+    expect(PG_FILTERS.map((f) => t(f.label))).toEqual(pf1SegCtl(g.segCtl, t)); // PF-1
     const m = portfolioScheduleModel({ rows: [], averageBoardWaitDays: 0, now: PG_NOW }, { filter: 'all', lang, from: 0 }).months;
     expect(m.map((x) => ({ label: t(x.label), year: x.year, bl: `1px solid var(--color-neutral-${x.yearStart ? 700 : 900})` }))).toEqual(g.months);
     expect(t('Portfolio schedule — projects in progress & pipeline')).toBe(g.title);
@@ -163,14 +164,15 @@ describe.each(LANGS)('pfplan vs prototype (%s)', (lang) => {
   });
 
   it.each(ZONES)('zone %s: KPI tiles, groups per filter and every row', (zone) => {
-    const gz = g.zones[zone];
     const input = zoneInput(zone);
+    // PF-1 (owner, 3 Nov 2026): projects in warranty in a group of their own (src/test/pf1.ts).
+    const gz = pf1Zone(g.zones[zone], input.rows.map((r) => ({ code: r.project.code, stage: r.project.stage, budget: r.project.budget, pipeline: r.pipeline })), lang, t);
     const all = portfolioScheduleModel(input, { filter: 'all', lang, from: 0 });
     expect(all.kpis.map((k) => ({ label: t(k.label), value: t(k.value), sub: t(k.sub), color: KPI_TINT[k.tint] }))).toEqual(
       gz.kpis.map((k: any) => ({ ...k, value: String(k.value) })),
     );
     expect(all.groups.map((x) => ({ key: x.key, label: t(x.label), count: x.count, codes: x.rows.map((r) => r.code) }))).toEqual(gz.groups);
-    for (const f of ['all', 'exec', 'pipe'] as const)
+    for (const f of ['all', 'exec', 'pipe', 'warr'] as const)
       expect(portfolioScheduleModel(input, { filter: f, lang, from: 0 }).groups.map((x) => x.key)).toEqual(gz.filters[f]);
     expect(all.empty).toBe(input.rows.length === 0);
     const rows = all.groups.flatMap((x) => x.rows);

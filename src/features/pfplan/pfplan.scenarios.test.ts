@@ -13,6 +13,7 @@ import { setDb } from '@/server/db/client';
 import { stage } from '@/server/db/codes';
 import { openDatabase } from '@/server/db/open';
 import { withoutK14Demo } from '@/test/k14';
+import { pf1Zone } from '@/test/pf1';
 import { recordStageChange } from '@/server/dal/lifecycle';
 import { getPortfolioSchedule } from '@/server/dal/pipeline';
 import { createProject } from '@/server/dal/projects';
@@ -65,7 +66,8 @@ describe('portfolio schedule after a stage change or a new project (prototype sc
     const data = await protoSchedule(null);
     for (const lang of ['en', 'fr'] as Lang[]) {
       const t = makeT(lang);
-      const want = sc[lang];
+      // PF-1 (owner, 3 Nov 2026): projects in warranty in a group of their own (src/test/pf1.ts).
+      const want = pf1Zone(sc[lang], data.rows.map((r) => ({ code: r.project.code, stage: r.project.stage, budget: r.project.budget, pipeline: r.pipeline })), lang, t);
       const model = portfolioScheduleModel(data, { filter: 'all', lang, from: 0 });
       expect(model.kpis.map((k) => ({ label: t(k.label), value: t(k.value), sub: t(k.sub), color: KPI_TINT[k.tint] }))).toEqual(
         want.kpis.map((k: any) => ({ ...k, value: String(k.value) })),

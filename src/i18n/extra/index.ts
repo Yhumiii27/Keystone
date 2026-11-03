@@ -77,6 +77,7 @@ import d9EstimateClass from './d9-estimate-class.json';
 import d9CapexMilestones from './d9-capex-milestones.json';
 import d9EngineeringPack from './d9-engineering-pack.json';
 import d9Volumes from './d9-volumes.json';
+import d9PortfolioWarranty from './d9-portfolio-warranty.json';
 import d9Gantt from './d9-gantt.json';
 import d9RiskAnalysis from './d9-risk-analysis.json';
 import d9Shipments from './d9-shipments.json';
@@ -175,6 +176,7 @@ export const EXTRA_FR: Record<string, string> = {
   ...d9CapexMilestones,
   ...d9EngineeringPack,
   ...d9Volumes,
+  ...d9PortfolioWarranty,
   ...d9Gantt,
   ...d9RiskAnalysis,
   ...d9Shipments,
