@@ -18,9 +18,16 @@ export async function loadMeeting(tx: Tx, number: string): Promise<MeetingRecord
 }
 
 /** Audit row of a meeting change, the viewer as the actor (full name when known). Returns the actor's person. */
-export async function auditMeeting(tx: Tx, actorName: string, objectRef: string, change: string, projectId: string, entityId: string) {
+export async function auditMeeting(
+  tx: Tx, actorName: string, objectRef: string, change: string, projectId: string, entityId: string,
+  /** R-168: the changed fields before and after. */
+  values: { before?: Record<string, unknown> | null; after?: Record<string, unknown> | null } = {},
+) {
   const actor = await findPerson(tx, actorName);
-  await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef, change, area: 'Meetings', entityType: 'meeting', entityId, projectId });
+  await writeAudit(tx, {
+    actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef, change, area: 'Meetings', entityType: 'meeting', entityId, projectId,
+    before: values.before, after: values.after,
+  });
   return actor;
 }
 

@@ -69,7 +69,6 @@
 .confTag { font-size: 10.5px; }
 .tagsCell { font-size: 11.5px; color: var(--color-neutral-400); max-width: 220px; }
 .dlCell { text-align: right; white-space: nowrap; }
-.dlBtn { color: var(--color-neutral-400); }
 
 /* ── Document types register (2380–2381) ── */
 .codeCell { font-variant-numeric: tabular-nums; font-weight: 500; }

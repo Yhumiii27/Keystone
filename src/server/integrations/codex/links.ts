@@ -2,7 +2,7 @@
 // built here, like the Cursus and Vigie links. Codex owns the documents and their files; Keystone opens them in Codex in a
 // new tab (render the links with CODEX_LINK_ATTRS: the Mac app hands target=_blank links to the browser).
 //
-// TODO(codex) — OPEN QUESTION D-1: Codex publishes no deep links yet. Until it does, every link opens Codex's home with
+// TODO(codex) — D-1 (D-1a/D-1b answered, R-033): Codex publishes no deep links yet. Until it does, every link opens Codex's home with
 // query parameters Codex ignores today (`project`, `document`, `revision`, `documents`, `view`): a proposal to agree with
 // Codex. Once the index read (R-033, mirror.ts `applyCodexIndex`) fills `documents.codex_url`, Codex's own link of a record
 // wins over the guess. In production without NEXT_PUBLIC_CODEX_URL the links point at Codex's local address (start-up

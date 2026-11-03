@@ -22,8 +22,6 @@ export const DOC_FAMILIES: readonly DocFamily[] = docFamily.codes;
 export const DOC_STATUSES: readonly DocumentStatus[] = documentStatus.codes;
 /** Types offered by the deposit hand-off (5051), DOC_TYPES order. */
 export const DEPOSIT_TYPE_CODES: readonly string[] = DEPOSIT_TYPES;
-/** Type preselected by the deposit dialog (`dv.dep.type`, 3774). */
-export const DEPOSIT_DEFAULT_TYPE = 'CER';
 
 /** What the vault logic needs from a record (a subset of the DAL's VaultDocument). */
 export interface VaultFacts {

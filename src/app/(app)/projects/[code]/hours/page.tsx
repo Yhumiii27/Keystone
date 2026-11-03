@@ -31,8 +31,9 @@ export default async function HoursPage({
   const canEdit = ctx.canEdit('hours');
 
   // "Import Lucca" shows on every project the viewer may edit, with or without an import (prototype `hasPrimary`).
-  // TODO(db): the Lucca connector is not modelled, so an import cannot create a project's first import — the action
-  // answers "No hours declared in Lucca for this period" there instead of the prototype's constant toast.
+  // No hours connector fetches lines yet (the source becomes Cursus, R-6a / C-2a, R-030), so an import cannot create a
+  // project's first import — the action answers "No hours declared in Lucca for this period" there instead of the
+  // prototype's constant toast.
   const primary = canEdit ? <ImportHoursButton code={projectCode} analytic={ctx.project.analytic} context={projectLabelText(ctx.project, i18n.lang)} /> : undefined;
 
   return (

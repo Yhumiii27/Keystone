@@ -17,4 +17,3 @@
 .col { display: flex; flex-direction: column; gap: 8px; }
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .w320 { width: 320px; max-width: 100%; }
-.mt { margin-top: 4px; }

@@ -9,6 +9,7 @@ import 'server-only';
 // `updateConnectorConfig` remains the validated writer behind the file (and the tests); no Server Function calls it while
 // CONNECTOR_SETTINGS_BY_IT is on.
 import { eq } from 'drizzle-orm';
+import { changedValues } from '@/domain/audit-trail';
 import { connectorChanges, connectorEnvState, type ConnectorFileEntry } from '@/domain/connector-config';
 import { getDb } from '@/server/db/client';
 import { connectorDirection, type ConnectorDirection } from '@/server/db/codes';
@@ -61,7 +62,8 @@ async function applyEntries(db: DB, entries: readonly ConnectorFileEntry[]): Pro
         const { set, changes } = connectorChanges(row, e);
         if (!changes.length) continue;
         await tx.update(connectors).set({ ...set, configuredAt: now, configuredByName: IT_FILE_ACTOR, updatedAt: now }).where(eq(connectors.id, row.id));
-        await writeAudit(tx, { actorName: IT_FILE_ACTOR, objectRef: `Connector ${row.name}`, change: changes.join(' · '), area: 'Integrations', entityType: 'connector', entityId: row.id });
+        await writeAudit(tx, { actorName: IT_FILE_ACTOR, objectRef: `Connector ${row.name}`, change: changes.join(' · '), area: 'Integrations', entityType: 'connector', entityId: row.id,
+          ...changedValues(row, set) });
       } else {
         const [c] = await tx.insert(connectors).values({
           name: e.name, kind: 'static', dataScope: e.dataScope ?? '', frequency: e.frequency ?? 'Manual', direction: e.direction ?? null, status: 'ready', lastSyncAt: null,
@@ -69,7 +71,8 @@ async function applyEntries(db: DB, entries: readonly ConnectorFileEntry[]): Pro
           lastVolume: '', ownerName: e.owner ?? null, addedInKeystone: true, enabled: e.enabled ?? true, position: position++,
           configuredAt: now, configuredByName: IT_FILE_ACTOR,
         }).returning({ id: connectors.id });
-        await writeAudit(tx, { actorName: IT_FILE_ACTOR, objectRef: `Connector ${e.name}`, change: `added${e.enabled === false ? ' · disabled' : ''}`, area: 'Integrations', entityType: 'connector', entityId: c.id });
+        await writeAudit(tx, { actorName: IT_FILE_ACTOR, objectRef: `Connector ${e.name}`, change: `added${e.enabled === false ? ' · disabled' : ''}`, area: 'Integrations', entityType: 'connector', entityId: c.id,
+          after: { enabled: e.enabled ?? true, frequency: e.frequency ?? 'Manual', direction: e.direction ?? null, dataScope: e.dataScope ?? '', ownerName: e.owner ?? null } });
         await recordActivity(tx, { actorName: IT_FILE_ACTOR, text: `Connector ${e.name} added by IT · not connected yet`, kind: 'sync', occurredAt: now });
       }
     }
@@ -163,7 +166,13 @@ export async function updateConnectorConfig(name: string, patch: ConnectorConfig
     const actor = await findPerson(tx, actorName);
     const who = actor ? nameOf(actor) : actorName;
     await tx.update(connectors).set({ ...set, configuredAt: new Date(), configuredByName: who, updatedAt: new Date() }).where(eq(connectors.id, c.id));
-    await writeAudit(tx, { actorName: who, actorPersonId: actor?.id, objectRef: `Connector ${name}`, change: changes.join(' · '), area: 'Integrations', entityType: 'connector', entityId: c.id });
+    // R-168: the connector's options (`config`) are not copied into the trail — only that they changed ("options changed").
+    const { config: _options, ...plain } = set;
+    void _options;
+    await writeAudit(tx, {
+      actorName: who, actorPersonId: actor?.id, objectRef: `Connector ${name}`, change: changes.join(' · '), area: 'Integrations', entityType: 'connector', entityId: c.id,
+      ...changedValues(c, plain),
+    });
   });
 }
 

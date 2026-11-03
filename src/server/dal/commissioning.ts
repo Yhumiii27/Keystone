@@ -1,6 +1,6 @@
 import 'server-only';
 // Commissioning & handover dossier DAL (docs/spec/07 §2.6). Keystone owns it. The grid (system × step) and the
-// dossier are read-only in the prototype (OPEN QUESTION Q-5); "Plan SAT" is recorded (sat_plans) and dates the
+// dossier are read-only, as in the prototype, until Q-5 "a" is built (R-113); "Plan SAT" is recorded (sat_plans) and dates the
 // system's SAT step. "Blocking A" per system = open category-A punch items whose location starts with the system's
 // first word (`cmRows` 4973) — R-117 (A-6 'a'): items of every origin (one punch list per project). R-185 part 2: a system
 // belongs to an equipment line of the project or is common (`equipment_id` null); "Blocking A" of a line's system leaves out
@@ -153,6 +153,7 @@ export async function planSat(projectCode: string, input: PlanSatInput, actor: A
     await trace(tx, who, {
       objectRef: `SAT · ${input.system}`, change: `SAT planned ${on}${witnesses ? ` · witnesses ${witnesses}` : ''}`, area: 'Commissioning',
       entityType: sys ? 'commissioning_system' : undefined, entityId: sys?.id ?? null, projectId: p.id,
+      before: { satDate: cell?.dateOn ?? null }, after: { satDate: input.date, clientWitnesses: witnesses, prerequisites },
       activity: { text: `Planned the SAT of ${input.system} on ${on} · invitation to the client`, kind: 'client' },
     });
     return who.personId;

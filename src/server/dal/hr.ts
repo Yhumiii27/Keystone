@@ -19,6 +19,7 @@ import {
   certifications, cursusEvents, hoursImports, hoursLines, leaveEntries, leaveTypes, personSkills, persons, publicHolidays,
   rateMultiplierRates, rateMultipliers, rateRoleRates, rateRoles, skills, unassignedHours, wbsNodes,
 } from '@/server/db/schema';
+import { changedValues } from '@/domain/audit-trail';
 import { absenceWeeks } from '@/domain/absences';
 import { loadWindow, workingDaysOf } from '@/domain/load-window';
 import { leaveWeekDays, type LeaveDayKind } from '@/domain/load-week';
@@ -121,8 +122,10 @@ function requireRateEditor(actor: Actor): void {
  * Audit + activity of a grid change (area Settings, object "Rate card" as before R-083). R-046: the values are in the audit
  * change only (masked on Activity & integrations for the roles that do not see rates); the activity text has none.
  */
-async function traceRate(tx: Tx, actor: Actor, change: string, activity: string): Promise<void> {
-  await trace(tx, await whoIs(tx, actor), { objectRef: RATE_CARD_OBJECT, change, area: 'Settings', activity: { text: `${RATE_CARD_OBJECT} · ${activity}`, kind: 'change' } });
+async function traceRate(tx: Tx, actor: Actor, change: string, activity: string, values: { before?: Record<string, unknown> | null; after?: Record<string, unknown> } = {}): Promise<void> {
+  await trace(tx, await whoIs(tx, actor), {
+    objectRef: RATE_CARD_OBJECT, change, area: 'Settings', before: values.before, after: values.after, activity: { text: `${RATE_CARD_OBJECT} · ${activity}`, kind: 'change' },
+  });
 }
 
 /**
@@ -164,7 +167,8 @@ export async function setBaseRate(role: string, rateEur: number, effectiveFrom: 
     if (!done) return;
     const on = displayOfIso(effectiveFrom);
     const backdated = effectiveFrom < today;
-    await traceRate(tx, actor, rateChangeText(`${role} base`, done.from, rateEur, '€/h', on, backdated), rateActivityText(`${role} base`, on, backdated));
+    await traceRate(tx, actor, rateChangeText(`${role} base`, done.from, rateEur, '€/h', on, backdated), rateActivityText(`${role} base`, on, backdated),
+      { before: { role, effectiveFrom, baseRateEur: done.from }, after: { role, effectiveFrom, baseRateEur: rateEur } });
   });
 }
 
@@ -188,7 +192,8 @@ export async function setMultiplier(key: RateMultiplierKey, factor: number, effe
     if (!done) return;
     const on = displayOfIso(effectiveFrom);
     const backdated = effectiveFrom < today;
-    await traceRate(tx, actor, rateChangeText(`${m.label} multiplier`, done.from, factor, '×', on, backdated), rateActivityText(`${m.label} multiplier`, on, backdated));
+    await traceRate(tx, actor, rateChangeText(`${m.label} multiplier`, done.from, factor, '×', on, backdated), rateActivityText(`${m.label} multiplier`, on, backdated),
+      { before: { multiplier: key, effectiveFrom, factor: done.from }, after: { multiplier: key, effectiveFrom, factor } });
   });
 }
 
@@ -215,7 +220,8 @@ export async function addRateRole(
       .returning({ id: rateRoles.id });
     const who = await whoIs(tx, actor);
     await tx.insert(rateRoleRates).values({ rateRoleId: r.id, effectiveFrom: input.effectiveFrom, baseRateEur: input.rateEur, createdByName: who.who, createdByPersonId: who.personId });
-    await traceRate(tx, actor, `role added: ${role} · ${input.rateEur} €/h from ${displayOfIso(input.effectiveFrom)}`, `role added: ${role} from ${displayOfIso(input.effectiveFrom)}`);
+    await traceRate(tx, actor, `role added: ${role} · ${input.rateEur} €/h from ${displayOfIso(input.effectiveFrom)}`, `role added: ${role} from ${displayOfIso(input.effectiveFrom)}`,
+      { after: { role, effectiveFrom: input.effectiveFrom, baseRateEur: input.rateEur } });
   });
 }
 
@@ -564,14 +570,16 @@ export async function markHoursImported(
       .set({ importedOn, analyticCode: input.analyticCode ?? imp.analyticCode, matchingMode: input.matchingMode ?? imp.matchingMode, updatedAt: new Date() })
       .where(eq(hoursImports.id, imp.id));
     const person = await findPerson(tx, actorName);
-    await writeAudit(tx, { actorName: person ? nameOf(person) : actorName, actorPersonId: person?.id, objectRef: `Hours ${imp.analyticCode}`, change: 'Lucca import', area: 'Hours', entityType: 'hours_import', entityId: imp.id, projectId: p.id });
+    await writeAudit(tx, { actorName: person ? nameOf(person) : actorName, actorPersonId: person?.id, objectRef: `Hours ${imp.analyticCode}`, change: 'Lucca import', area: 'Hours', entityType: 'hours_import', entityId: imp.id, projectId: p.id,
+      ...(changedValues({ importedOn: imp.importedOn, analyticCode: imp.analyticCode, matchingMode: imp.matchingMode }, { importedOn, analyticCode: input.analyticCode ?? imp.analyticCode, matchingMode: input.matchingMode ?? imp.matchingMode }) ?? {}),
+    });
   });
 }
 
 /** Refusal of an "Assign" on a line already assigned (EN source, shown by the Hours screen). */
 export const HOURS_ALREADY_ASSIGNED = 'These hours are already assigned';
 
-/** "Assign" of an unassigned line (by its position in the list) to a work package (OPEN QUESTION R-6). */
+/** "Assign" of an unassigned line (by its position in the list) to a work package (until Cursus sends hours per task, R-6a, R-030). */
 export async function assignUnassignedHours(projectCode: string, position: number, wbsCode: string, actor: Actor): Promise<void> {
   const actorName = actor.name;
   const db = await getDb();
@@ -589,6 +597,8 @@ export async function assignUnassignedHours(projectCode: string, position: numbe
     if (u.assignedWbsNodeId) throw new Error(HOURS_ALREADY_ASSIGNED);
     await tx.update(unassignedHours).set({ assignedWbsNodeId: node.id, assignedAt: new Date() }).where(eq(unassignedHours.id, u.id));
     const person = await findPerson(tx, actorName);
-    await writeAudit(tx, { actorName: person ? nameOf(person) : actorName, actorPersonId: person?.id, objectRef: `Hours ${imp.analyticCode}`, change: `${u.hours} h assigned to WBS ${wbsCode}`, area: 'Hours', entityType: 'unassigned_hours', entityId: u.id, projectId: p.id });
+    await writeAudit(tx, { actorName: person ? nameOf(person) : actorName, actorPersonId: person?.id, objectRef: `Hours ${imp.analyticCode}`, change: `${u.hours} h assigned to WBS ${wbsCode}`, area: 'Hours', entityType: 'unassigned_hours', entityId: u.id, projectId: p.id,
+      before: { line: position, hours: u.hours, wbs: null }, after: { line: position, hours: u.hours, wbs: wbsCode },
+    });
   });
 }

@@ -64,6 +64,3 @@ export function nextRevisionLetter(rev: string): string {
   }
   return `A${chars.join('')}`;
 }
-
-/** Variant of the export URL (`?variant=packing_list&id=EXP-01`) — the kind itself. */
-export const shippingDocVariant = (kind: ShippingDocKind) => kind;

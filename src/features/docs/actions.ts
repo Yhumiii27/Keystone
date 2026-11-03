@@ -18,7 +18,8 @@
 // - Delivery 8 (A-15, R-033, default to confirm): with Codex connected the deposit hand-off is refused with an "Open Codex"
 //   link — the document is deposited in Codex itself (no Keystone-numbered draft Codex never receives); mock unchanged.
 // - "Acknowledge receipt" (client portal, cpVaultDocs): the client of the project's organisation.
-// The Codex hand-off itself is simulated (OPEN QUESTION D-1): the index record is created / reset at once.
+// The Codex hand-off itself is simulated until Codex's deposit form exists (D-1a "a", R-125): the index record is created /
+// reset at once.
 import { revalidatePath } from 'next/cache';
 import { codexDecisionToast, parseRejectComment, type CodexDecision } from '@/domain/codex-approvals';
 import { canApproveDocument, parseDeposit } from '@/domain/documents';

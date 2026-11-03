@@ -239,6 +239,7 @@ export async function submitContingencyDraw(projectCode: string, input: DrawInpu
     await writeAudit(tx, {
       actorName: who, actorPersonId: person?.id, objectRef: 'Contingency', change: `draw-down submitted · ${amount} k€ · ${input.linkRef} · awaiting validation`,
       area: 'Contingency', entityType: 'contingency_draw', entityId: d.id, projectId: t.projectId,
+      after: { status: 'submitted', amountKeur: amount, linkRef: input.linkRef }, reason,
     });
     await recordActivity(tx, { actorName: who, actorPersonId: person?.id, text: `Submitted a ${amount} k€ contingency draw-down · ${input.linkRef}`, kind: 'change', projectId: t.projectId });
     const director = await personOfRole(tx, 'director');
@@ -286,6 +287,7 @@ export async function decideContingencyDraw(
     await writeAudit(tx, {
       actorName: who, actorPersonId: person?.id, objectRef: 'Contingency', change: `draw-down ${verb} · ${d.amountKeur} k€ · ${d.linkRef ?? '—'}${note ? ' · ' + note : ''}`,
       area: 'Contingency', entityType: 'contingency_draw', entityId: d.id, projectId: t.projectId,
+      before: { status: 'submitted', amountKeur: d.amountKeur }, after: { status: decision, amountKeur: d.amountKeur }, reason: note,
     });
     await recordActivity(tx, {
       actorName: who, actorPersonId: person?.id, text: `${decision === 'validated' ? 'Validated' : 'Rejected'} a ${d.amountKeur} k€ contingency draw-down · ${d.linkRef ?? '—'}`,

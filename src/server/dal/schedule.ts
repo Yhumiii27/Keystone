@@ -441,6 +441,8 @@ export async function rescheduleProject(code: string, actorName: string): Promis
     await writeAudit(tx, {
       actorName: who, actorPersonId: actor?.id, objectRef: code, change: `rescheduled at ${dataDate} · finish ${result.projectFinish} · ${changed.length} activities changed`,
       area: 'Planning', entityType: 'project', projectId: net.projectId,
+      // R-168: the project finish; each activity's dates are in the schedule run's details (schedule_runs).
+      before: { finishDate: previousFinishDate }, after: { finishDate: result.projectFinish, dataDate, changedActivities: changed.length },
     });
     await recordActivity(tx, {
       actorName: who, actorPersonId: actor?.id, text: `Rescheduled ${code} · finish ${longDateText(result.projectFinish)} · ${changed.length} activities changed`,
@@ -475,7 +477,7 @@ export async function showProjectBaseline(code: string, baselineCode: string, ac
     const actor = await findPerson(tx, actorName);
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: code, change: `displayed baseline: ${before ?? '—'} → ${baselineCode}`,
-      area: 'Planning', entityType: 'project', projectId: p.id,
+      area: 'Planning', entityType: 'project', projectId: p.id, before: { displayedBaseline: before ?? null }, after: { displayedBaseline: baselineCode },
     });
   });
 }

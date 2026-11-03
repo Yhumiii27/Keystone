@@ -103,12 +103,6 @@ export function projectRef(ctx: Pick<ExportContext, 'project' | 't' | 'lang'>): 
   return ctx.project ? { code: ctx.project.code, name: dataText(ctx.project.name, ctx.lang) } : null;
 }
 
-/** Sheets whose rows are empty are kept only when nothing else has rows (the screen's empty state). */
-export function nonEmpty(sheets: ExportSheet[]): ExportSheet[] {
-  const full = sheets.filter((s) => s.rows.length);
-  return full.length ? full : sheets.slice(0, 1);
-}
-
 /** A PDF table block of a sheet (optionally restricted to some columns). */
 export function tableBlock(s: ExportSheet, keys?: string[], totals?: Record<string, CellValue>) {
   const sheet_ = keys ? { ...s, columns: keys.map((k) => s.columns.find((c) => c.key === k)).filter((c): c is ExportColumn => !!c) } : s;

@@ -3,6 +3,7 @@ import 'server-only';
 // of Settings, the project calendar and the per-activity override. `loadWorkCalendars` builds the WorkCalendar objects the
 // CPM engine uses. Writers validate the codes and write audit + activity; Server Functions check the viewer first.
 import { and, asc, eq, isNull, or, sql } from 'drizzle-orm';
+import { changedValues } from '@/domain/audit-trail';
 import { WorkCalendar, isIsoDate, type CalendarDef } from '@/domain/calendar';
 import { DEFAULT_PROJECT_CALENDAR } from '@/domain/ch4-defaults';
 import { getDb, type DB, type Tx } from '@/server/db/client';
@@ -118,7 +119,8 @@ export async function setProjectCalendar(code: string, calendarCode: string, act
     await tx.update(projects).set({ calendar: calendarCode as CalendarCode, updatedAt: new Date() }).where(eq(projects.id, p.id));
     const actor = await findPerson(tx, actorName);
     const who = actor ? nameOf(actor) : actorName;
-    await writeAudit(tx, { actorName: who, actorPersonId: actor?.id, objectRef: code, change: `calendar: ${cur.calendar ?? DEFAULT_PROJECT_CALENDAR} → ${calendarCode}`, area: 'Planning', entityType: 'project', projectId: p.id });
+    await writeAudit(tx, { actorName: who, actorPersonId: actor?.id, objectRef: code, change: `calendar: ${cur.calendar ?? DEFAULT_PROJECT_CALENDAR} → ${calendarCode}`, area: 'Planning', entityType: 'project', projectId: p.id,
+      before: { calendar: cur.calendar ?? null }, after: { calendar: calendarCode } });
     await recordActivity(tx, { actorName: who, actorPersonId: actor?.id, text: `Set the project calendar to ${cal.name}`, kind: 'change', projectId: p.id });
   });
 }
@@ -136,7 +138,7 @@ export async function setActivityCalendar(code: string, activityCode: string, ca
     const actor = await findPerson(tx, actorName);
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: activityCode, change: `calendar: ${a.calendarCode ?? 'project'} → ${calendarCode ?? 'project'}`,
-      area: 'Planning', entityType: 'activity', entityId: a.id, projectId: p.id,
+      area: 'Planning', entityType: 'activity', entityId: a.id, projectId: p.id, before: { calendar: a.calendarCode ?? null }, after: { calendar: calendarCode },
     });
   });
 }
@@ -163,7 +165,10 @@ export async function upsertCalendar(input: CalendarInput, actorName: string, q?
     const workDays = [...new Set(input.workDays)].filter((d) => Number.isInteger(d) && d >= 1 && d <= 7).sort();
     if (!workDays.length) throw new Error(`Calendar ${code} has no working day`);
     if (!(input.hoursPerDay > 0 && input.hoursPerDay <= 24)) throw new Error(`Calendar ${code}: hours per day must be in ]0, 24]`);
-    const [existing] = await tx.select({ builtIn: calendars.builtIn }).from(calendars).where(eq(calendars.code, code));
+    const [existing] = await tx
+      .select({ builtIn: calendars.builtIn, name: calendars.name, workDays: calendars.workDays, hoursPerDay: calendars.hoursPerDay, holidaySet: calendars.holidaySet, useSettingsHolidays: calendars.useSettingsHolidays })
+      .from(calendars).where(eq(calendars.code, code));
+    const exceptionsBefore = existing ? (await tx.select({ n: sql<number>`count(*)::int` }).from(calendarExceptions).where(eq(calendarExceptions.calendarCode, code)))[0].n : 0;
     if (existing?.builtIn) throw new Error(`Calendar ${code} is built in`);
     const projectId = input.projectCode ? (await requireProject(tx, input.projectCode)).id : null;
     const values = {
@@ -180,30 +185,13 @@ export async function upsertCalendar(input: CalendarInput, actorName: string, q?
     const seen = new Set<string>();
     const rows = ex.filter((e) => !seen.has(e.date) && !!seen.add(e.date)).map((e) => ({ calendarCode: code, date: e.date, working: e.working, name: e.name ?? '' }));
     if (rows.length) await tx.insert(calendarExceptions).values(rows);
-    await writeAudit(tx, { actorName, objectRef: `Calendar ${code}`, change: existing ? 'updated' : 'created', area: 'Planning', entityType: 'calendar', projectId });
+    const shape = { name: values.name, workDays, hoursPerDay: values.hoursPerDay, holidaySet: values.holidaySet, useSettingsHolidays: values.useSettingsHolidays, exceptions: rows.length };
+    const diff = existing
+      ? changedValues({ name: existing.name, workDays: existing.workDays, hoursPerDay: existing.hoursPerDay, holidaySet: existing.holidaySet, useSettingsHolidays: existing.useSettingsHolidays, exceptions: exceptionsBefore }, shape)
+      : { before: null, after: shape };
+    await writeAudit(tx, { actorName, objectRef: `Calendar ${code}`, change: existing ? 'updated' : 'created', area: 'Planning', entityType: 'calendar', projectId, ...diff });
     return code;
   };
   if (q) return run(q);
   return (await getDb()).transaction(run);
-}
-
-/** Adds or replaces one exception of a calendar (closure or exceptional working day). */
-export async function setCalendarException(calendarCode: string, e: CalendarException, actorName: string): Promise<void> {
-  if (!isIsoDate(e.date)) throw new Error(`Invalid date "${e.date}"`);
-  const db = await getDb();
-  await db.transaction(async (tx) => {
-    const [c] = await tx.select({ code: calendars.code }).from(calendars).where(eq(calendars.code, calendarCode));
-    if (!c) throw new Error(`Unknown calendar "${calendarCode}"`);
-    await tx.delete(calendarExceptions).where(and(eq(calendarExceptions.calendarCode, calendarCode), eq(calendarExceptions.date, e.date)));
-    await tx.insert(calendarExceptions).values({ calendarCode, date: e.date, working: e.working, name: e.name ?? '' });
-    await writeAudit(tx, { actorName, objectRef: `Calendar ${calendarCode}`, change: `${e.date}: ${e.working ? 'working' : 'non-working'}`, area: 'Planning', entityType: 'calendar' });
-  });
-}
-
-export async function removeCalendarException(calendarCode: string, date: string, actorName: string): Promise<void> {
-  const db = await getDb();
-  await db.transaction(async (tx) => {
-    const del = await tx.delete(calendarExceptions).where(and(eq(calendarExceptions.calendarCode, calendarCode), eq(calendarExceptions.date, date))).returning({ id: calendarExceptions.id });
-    if (del.length) await writeAudit(tx, { actorName, objectRef: `Calendar ${calendarCode}`, change: `${date}: exception removed`, area: 'Planning', entityType: 'calendar' });
-  });
 }

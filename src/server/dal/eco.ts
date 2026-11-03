@@ -6,9 +6,9 @@ import 'server-only';
 import { installedBasePinsOf, syncLabelOf, type InstalledBasePin } from '@/domain/eco';
 import { getDb } from '@/server/db/client';
 import {
-  ECO_APPROVER_SHORT, ECO_STEP_ADVANCE, ecoApproverKey, ecoDecision, ecoDisposition, ecoKeyOfRole, ecoStatus, ecoStepIndex, ecoType, interchangeability,
+  ECO_APPROVER_SHORT, ecoApproverKey, ecoDecision, ecoDisposition, ecoKeyOfRole, ecoStatus, ecoStepIndex, ecoType, interchangeability,
   INTERCHANGEABILITY_NOT_ASSESSED,
-  type EcoApproverKey, type EcoDecision, type EcoStatus,
+  type EcoApproverKey, type EcoDecision,
 } from '@/server/db/codes';
 import { findPerson } from '@/server/db/helpers';
 import { projects } from '@/server/db/schema';
@@ -190,6 +190,3 @@ export async function ecoDecidedCount(viewer: EcoProgressActor): Promise<number>
   if (!key) return 0;
   return (await listEcos()).filter((e) => e.approvalsView.find((a) => a.key === key)?.decision === 'ok').length;
 }
-
-/** Step a viewer may request from this status ("Start impact analysis", "Submit for approval"); null when none. */
-export const ecoNextStep = (status: EcoStatus): EcoStatus | null => ECO_STEP_ADVANCE[status] ?? null;

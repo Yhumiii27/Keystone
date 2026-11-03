@@ -156,10 +156,14 @@ async function personRow(q: Q, personId: string) {
   return p;
 }
 
-async function trace(q: Q, actor: TeamActor, projectId: string, code: string, change: string, text: string, personId: string) {
+async function trace(
+  q: Q, actor: TeamActor, projectId: string, code: string, change: string, text: string, personId: string,
+  /** R-168: the member's team role before and after (null: not on the team). */
+  values: { before: Record<string, unknown> | null; after: Record<string, unknown> | null },
+) {
   // The actor's person: the signed-in user's, else the demo persona's (by name).
   const actorPersonId = actor.personId ?? (await findPerson(q, actor.name))?.id ?? null;
-  await writeAudit(q, { actorName: actor.name, actorPersonId, objectRef: `Team ${code}`, change, area: 'Project team', entityType: 'person', entityId: personId, projectId });
+  await writeAudit(q, { actorName: actor.name, actorPersonId, objectRef: `Team ${code}`, change, area: 'Project team', entityType: 'person', entityId: personId, projectId, before: values.before, after: values.after });
   await recordActivity(q, { actorName: actor.name, actorPersonId, text, kind: 'change', projectId });
 }
 
@@ -186,7 +190,8 @@ async function insertTeamMember(db: DB, code: string, personId: string, role: Pr
     const [{ max }] = await tx.select({ max: sql<number>`coalesce(max(${projectMembers.position}), -1)::int` }).from(projectMembers).where(eq(projectMembers.projectId, p.id));
     await tx.insert(projectMembers).values({ projectId: p.id, personId, projectRole: role, position: max + 1 });
     const who = nameOf(person);
-    await trace(tx, actor, p.id, p.code, `added ${who} · ${PROJECT_TEAM_ROLE_LABEL[role]}`, `Added ${who} to the team of ${p.code} · ${PROJECT_TEAM_ROLE_LABEL[role]}`, personId);
+    await trace(tx, actor, p.id, p.code, `added ${who} · ${PROJECT_TEAM_ROLE_LABEL[role]}`, `Added ${who} to the team of ${p.code} · ${PROJECT_TEAM_ROLE_LABEL[role]}`, personId,
+      { before: null, after: { member: who, projectRole: role } });
   });
 }
 
@@ -205,7 +210,8 @@ export async function setTeamMemberRole(code: string, personId: string, role: Pr
     await tx.update(projectMembers).set({ projectRole: role }).where(and(eq(projectMembers.projectId, p.id), eq(projectMembers.personId, personId)));
     const who = nameOf(await personRow(tx, personId));
     const from = isProjectTeamRole(m.role) ? PROJECT_TEAM_ROLE_LABEL[m.role] : m.role;
-    await trace(tx, actor, p.id, p.code, `${who} · ${from} → ${PROJECT_TEAM_ROLE_LABEL[role]}`, `Changed ${who}'s role on ${p.code} · ${PROJECT_TEAM_ROLE_LABEL[role]}`, personId);
+    await trace(tx, actor, p.id, p.code, `${who} · ${from} → ${PROJECT_TEAM_ROLE_LABEL[role]}`, `Changed ${who}'s role on ${p.code} · ${PROJECT_TEAM_ROLE_LABEL[role]}`, personId,
+      { before: { member: who, projectRole: m.role }, after: { member: who, projectRole: role } });
   });
 }
 
@@ -218,9 +224,10 @@ export async function removeTeamMember(code: string, personId: string, actor: Te
     const removed = await tx
       .delete(projectMembers)
       .where(and(eq(projectMembers.projectId, p.id), eq(projectMembers.personId, personId)))
-      .returning({ id: projectMembers.personId });
+      .returning({ id: projectMembers.personId, projectRole: projectMembers.projectRole });
     if (!removed.length) throw new TeamError('Not on the project team');
     const who = nameOf(await personRow(tx, personId));
-    await trace(tx, actor, p.id, p.code, `removed ${who}`, `Removed ${who} from the team of ${p.code}`, personId);
+    await trace(tx, actor, p.id, p.code, `removed ${who}`, `Removed ${who} from the team of ${p.code}`, personId,
+      { before: { member: who, projectRole: removed[0].projectRole }, after: null });
   });
 }

@@ -5,7 +5,7 @@ import type {
   NcrSeverity, NcrSource, NcrStatus, NcrVerificationDecision, VigieSyncStatus,
 } from '@/server/db/codes';
 
-/** An ECO as Vigie reports it (OPEN QUESTION V-2: Vigie's API payload; this is the shape the mirror needs). */
+/** An ECO as Vigie reports it (Vigie's API payload to confirm, R-023; this is the shape the mirror needs). */
 export interface VigieEcoRecord {
   number: string;
   title: string;
@@ -149,7 +149,7 @@ export interface VigieEcoConnector {
 
 // ── Non-conformities (NCR) and site HSE — Vigie owns them (user decision, Delivery 5) ──────────────────
 
-/** An NCR as Vigie reports it (OPEN QUESTION V-3: Vigie's NCR payload; this is the shape the mirror needs). */
+/** An NCR as Vigie reports it (Vigie's NCR payload to confirm, R-023; this is the shape the mirror needs). */
 export interface VigieNcrRecord {
   /** Keystone project code ("HLT-026"). */
   projectCode: string;

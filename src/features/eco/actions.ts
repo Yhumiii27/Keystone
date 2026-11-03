@@ -91,7 +91,7 @@ export async function requestEcoStepAction(input: { number: string; step: string
 
 /**
  * "Synchronise" (Sync vault, AF `drawings`): records a PDM vault sync (simulated connector: no drawing changes,
- * OPEN QUESTION E-7); "Current project" is the viewer's last project. Toast "Simulated vault sync (SolidWorks PDM not
+ * E-7 "a" waits on the PDM connector, R-035); "Current project" is the viewer's last project. Toast "Simulated vault sync (SolidWorks PDM not
  * connected) · 0 drawings updated" (R-021).
  */
 export async function syncVaultAction(values: Record<string, string>): Promise<FormDialogResult> {

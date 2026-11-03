@@ -3,8 +3,8 @@
 // setting (src/server/clock.ts) and passes `today` down; client components receive it from the layout (ClockProvider).
 //
 // - `real`: the wall clock in Europe/Paris (the data set's time zone).
-// - `fixed`: the date is pinned, the time of day stays real — the demo data set (frozen at Fri 25 Sep 2026), tests and
-//   reproducible screenshots. A pinned date keeps the demo coherent: its overdue items, weeks and periods were written for it.
+// - `fixed`: the date is pinned, the time of day stays real — demonstrations, tests (pinned to the demo data set's Fri 25 Sep
+//   2026) and reproducible screenshots. Unset, every database runs on the real date (owner, 17 Oct 2026; src/server/clock.ts).
 //
 // Technical timestamps (comments posted, audit rows, job runs, backups, sync times) are real instants (`new Date()`), not
 // this clock.

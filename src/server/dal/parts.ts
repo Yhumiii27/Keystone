@@ -5,6 +5,7 @@ import 'server-only';
 // Writers: "New part" (AF.plm) and "Register equivalent" (no handler in the prototype). HS code, quantities and values
 // stay first-class for the future "Expédition & transport" module (docs/BACKLOG.md §1).
 import { asc, eq, inArray, or, sql } from 'drizzle-orm';
+import { changedValues } from '@/domain/audit-trail';
 import { getDb } from '@/server/db/client';
 import {
   PART_FAMILY_TYPE, PART_STATUS_NOTE, PART_UNITS, exportControl, partFamily, partMakeBuy, partStatus, partType, stage as stageCodec, wearSpare,
@@ -86,13 +87,6 @@ export interface PartRow {
 }
 
 const uniq = <T,>(xs: T[]) => [...new Set(xs)];
-
-/** Last purchase price by reference (LAST_PRICE; parts without one fall back to their list price). */
-export async function lastPriceByRef(q?: Q): Promise<Record<string, number>> {
-  const db = q ?? (await getDb());
-  const rows = await db.select({ ref: parts.ref, list: parts.listPriceEur, last: partLastPrices.unitPriceEur }).from(parts).leftJoin(partLastPrices, eq(partLastPrices.partId, parts.id));
-  return Object.fromEntries(rows.map((r) => [r.ref, r.last ?? r.list]));
-}
 
 async function loadParts(q: Q, refs?: string[]): Promise<PartRow[]> {
   const where = refs ? inArray(parts.ref, refs.length ? refs : ['']) : undefined;
@@ -218,7 +212,7 @@ export interface NewPartInput {
 
 /**
  * "New part" (AF.plm): appended to the catalogue as Not validated (qualification pending), revision A. The Family
- * maps to a catalogue type (OPEN QUESTION E-1); make / buy follows the supplier (a Keystone workshop → Manufactured).
+ * maps to a catalogue type (the prototype's two lists, spec 00 §10 E-1); make / buy follows the supplier (a Keystone workshop → Manufactured).
  * Returns the reference.
  */
 export async function createPart(input: NewPartInput, actorName: string): Promise<string> {
@@ -318,6 +312,10 @@ export async function updatePartQualification(ref: string, input: PartQualificat
     await writeAudit(tx, {
       actorName: who ? nameOf(who) : actor.name, actorPersonId: who?.id, objectRef: ref, change: `record completed · ${changes.join(' · ')}`, area: 'PLM', entityType: 'part',
       entityId: p.id, occurredAt: at,
+      ...changedValues(p, {
+        hsCode: input.hsCode, hsNotApplicable: input.hsNotApplicable, exportRestriction: input.exportRestriction, exportControl: input.exportControl,
+        exportReviewed: input.exportReviewed, leadWeeks: input.leadWeeks, manufacturerRef: input.manufacturerRef,
+      }),
     });
     return { changed: true };
   });
@@ -341,6 +339,7 @@ export async function validatePart(ref: string, actor: PartActor): Promise<void>
     await tx.update(parts).set({ status: 'validated', validatedAt: at, validatedByPersonId: who?.id ?? null, updatedAt: at }).where(eq(parts.id, p.id));
     await writeAudit(tx, {
       actorName: who ? nameOf(who) : actor.name, actorPersonId: who?.id, objectRef: ref, change: 'status: Not validated → Validated', area: 'PLM', entityType: 'part', entityId: p.id, occurredAt: at,
+      before: { status: 'not_validated' }, after: { status: 'validated' },
     });
   });
 }

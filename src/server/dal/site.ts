@@ -351,7 +351,7 @@ export async function advancePrerequisite(
       .where(eq(sitePrerequisites.id, x.id));
     await trace(tx, await whoIs(tx, actor), {
       objectRef: `Prerequisite · ${x.title}`, change: `status: ${confirmStatus.label(x.status)} → ${confirmStatus.label(to)}`, area: 'Site', entityType: 'site_prerequisite', entityId: x.id,
-      projectId: p.id,
+      projectId: p.id, before: { status: x.status }, after: { status: to, [to === 'confirmed' ? 'confirmedOn' : 'signedOn']: day },
     });
   });
 }
@@ -369,7 +369,8 @@ export async function confirmEquipment(projectCode: string, position: number, st
     if (x.status !== 'pending') throw new Error(`"${x.name}" is already confirmed`);
     const who = await whoIs(tx, actor);
     await tx.update(siteEquipment).set({ status: 'confirmed', confirmedOn: day, confirmedByPersonId: who.personId, updatedAt: new Date() }).where(eq(siteEquipment.id, x.id));
-    await trace(tx, who, { objectRef: `Equipment · ${x.name}`, change: 'status: Pending → Confirmed', area: 'Site', entityType: 'site_equipment', entityId: x.id, projectId: p.id });
+    await trace(tx, who, { objectRef: `Equipment · ${x.name}`, change: 'status: Pending → Confirmed', area: 'Site', entityType: 'site_equipment', entityId: x.id, projectId: p.id,
+      before: { status: 'pending' }, after: { status: 'confirmed', confirmedOn: day } });
   });
 }
 

@@ -6,7 +6,7 @@
 //
 // The prototype synthesises part of the history (one revision every 21 days, approval dates counted back from the
 // document date, two fixed download entries per released document). The seed materialises that history as rows so
-// the screens read data, never formulas; a real Codex sync replaces them (OPEN QUESTION D-1, 10 OQ13).
+// the screens read data, never formulas; a real Codex sync replaces them (R-033, 10 OQ13).
 import { sql } from 'drizzle-orm';
 import { boolean, check, date, index, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { PackFamily } from '@/domain/engineering-pack';
@@ -94,7 +94,7 @@ export const documents = pgTable('documents', {
   lastWithdrawnOn: date('last_withdrawn_on', { mode: 'string' }),
   /** Created from Keystone (deposit hand-off, meeting minutes) — "New" tag. */
   isNew: boolean('is_new').notNull().default(false),
-  /** Codex's id and own link of the record, filled by the index read (R-033; OPEN QUESTION D-1); null until then. */
+  /** Codex's id and own link of the record, filled by the index read (R-033); null until then. */
   codexId: text('codex_id'),
   codexUrl: text('codex_url'),
   /** Vault order: DOCS order; Keystone-created records are prepended with a lower value. */

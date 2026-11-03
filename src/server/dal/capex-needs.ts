@@ -163,17 +163,9 @@ export async function getNeedsInbox(): Promise<NeedsInbox> {
   };
 }
 
-/** Answers published to Arche (tests, exports): every row, latest first. */
-export const listNeedAnswers = async (): Promise<NeedAnswerRow[]> => answersOf(await getDb());
-
 async function needOf(q: Q, needRef: string): Promise<NeedRecord | null> {
   const [n] = await q.select().from(capexNeeds).where(eq(capexNeeds.needRef, needRef));
   return n ? toNeed(n) : null;
-}
-
-/** One mirrored need with its catalogue version and CAPEX (the project creation's prefill). */
-export async function getInboxNeed(needRef: string): Promise<InboxNeed | null> {
-  return (await getNeedsInbox()).needs.find((n) => n.needRef === needRef) ?? null;
 }
 
 function requireDirector(actor: Actor): void {

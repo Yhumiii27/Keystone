@@ -98,6 +98,7 @@ export async function postApprovedChange(tx: Tx, changeRequestId: string, actorN
       await writeAudit(tx, {
         actorName: who, actorPersonId: actor?.id, objectRef: `${proj.code} · ${cat.code}`, area: 'Budget', entityType: 'cost_category', entityId: cat.id, projectId: cr.projectId,
         change: `budget: ${cat.budgetKeur} → ${after} k€ · from ${cr.number}`,
+        before: { budgetKeur: cat.budgetKeur }, after: { budgetKeur: after, changeRequest: cr.number },
       });
     }
   }
@@ -105,6 +106,7 @@ export async function postApprovedChange(tx: Tx, changeRequestId: string, actorN
     actorName: who, actorPersonId: actor?.id, objectRef: cr.number, area: 'Budget', entityType: 'change_request', entityId: cr.id, projectId: cr.projectId,
     change: `posted to the budget · BAC ${bacBefore} → ${bacAfter} k€${allocations.length ? ' · ' + allocations.map((a) => `${a.code} ${signed(a.amountKeur)}`).join(', ') : ''}`
       + (category ? ` · category ${category.code} ${category.before} → ${category.after} k€` : ''),
+    before: { bacKeur: bacBefore, posted: false }, after: { bacKeur: bacAfter, posted: true, allocations: allocations.map((a) => ({ wbs: a.code, amountKeur: a.amountKeur })) },
   });
   let amendmentLabel: string | null = null;
   if (outcome === 'prepared' && contract) {
@@ -125,6 +127,7 @@ export async function postApprovedChange(tx: Tx, changeRequestId: string, actorN
     await writeAudit(tx, {
       actorName: who, actorPersonId: actor?.id, objectRef: contract.reference, area: 'Contract', entityType: 'contract_amendment', entityId: a.id, projectId: cr.projectId,
       change: `amendment prepared from ${cr.number} · ${amendmentLabel} · ${amendmentAmount} ${thousandsUnit(currency)} · Draft`,
+      after: { subject, changeRequest: cr.number, amountKeur: amendmentAmount, currency, status: 'draft' },
     });
   }
   await recordActivity(tx, {

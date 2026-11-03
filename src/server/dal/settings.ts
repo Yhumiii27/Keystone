@@ -8,6 +8,7 @@ import 'server-only';
 // a value still in use (or a default) and deletes an unused custom one; the lists drive the modules through
 // src/server/dal/settings-lists.ts; the thresholds drive the one health rule (src/server/dal/health-thresholds.ts).
 import { and, asc, eq, inArray, notInArray, sql } from 'drizzle-orm';
+import { changedValues } from '@/domain/audit-trail';
 import { yearOfIso } from '@/domain/clock';
 import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
@@ -57,13 +58,6 @@ export interface SettingsData {
   ccbThresholdKeur?: number;
   /** R-206 (K-206b): the schedule quality thresholds (optional for callers building the data by hand: the standard). */
   dcma?: DcmaThresholds;
-}
-
-/** Active values of one list, in order. */
-export async function listReferenceValues(listKey: ReferenceListKey): Promise<ReferenceValueRow[]> {
-  const db = await getDb();
-  return db.select({ code: referenceValues.code, label: referenceValues.label }).from(referenceValues)
-    .where(and(eq(referenceValues.listKey, listKey), eq(referenceValues.active, true))).orderBy(asc(referenceValues.position));
 }
 
 /** Project health thresholds (On track ≥ risk, At risk below risk, Off track below off) — uncached, for writers and tests. */
@@ -163,7 +157,10 @@ export async function removeReferenceValue(listKey: ReferenceListKey, code: stri
     if (mode === 'deleted') await tx.delete(referenceValues).where(eq(referenceValues.id, r.id));
     else await tx.update(referenceValues).set({ active: false, updatedAt: new Date() }).where(eq(referenceValues.id, r.id));
     const change = mode === 'deleted' ? `removed "${r.label}"` : `deactivated "${r.label}"${inUse ? ` · still used by ${inUse}` : ''}`;
-    await trace(tx, await whoIs(tx, actor), { objectRef: listRef(listKey), change, area: 'Settings', entityType: 'reference_value', entityId: r.id });
+    await trace(tx, await whoIs(tx, actor), {
+      objectRef: listRef(listKey), change, area: 'Settings', entityType: 'reference_value', entityId: r.id,
+      before: { code: r.code, label: r.label, active: true }, after: mode === 'deleted' ? null : { code: r.code, label: r.label, active: false, inUse },
+    });
     return { label: r.label, mode, inUse };
   });
 }
@@ -193,7 +190,8 @@ export async function removeLocation(name: string, actor: Actor): Promise<void> 
     const [l] = await tx.select().from(storageLocations).where(and(eq(storageLocations.name, name), eq(storageLocations.active, true)));
     if (!l) throw new Error(`Unknown location ${name}`);
     await tx.update(storageLocations).set({ active: false, updatedAt: new Date() }).where(eq(storageLocations.id, l.id));
-    await trace(tx, await whoIs(tx, actor), { objectRef: listRef('locations'), change: `removed "${name}"`, area: 'Settings', entityType: 'storage_location', entityId: l.id });
+    await trace(tx, await whoIs(tx, actor), { objectRef: listRef('locations'), change: `removed "${name}"`, area: 'Settings', entityType: 'storage_location', entityId: l.id,
+      before: { name, active: true }, after: { name, active: false } });
   });
 }
 
@@ -209,7 +207,8 @@ export async function setHealthThresholds(input: Partial<HealthThresholds>, acto
     const who = await whoIs(tx, actor);
     await tx.insert(appSettings).values({ key: APP_SETTING_HEALTH, value: next, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
       .onConflictDoUpdate({ target: appSettings.key, set: { value: next, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
-    await trace(tx, who, { objectRef: 'Health rules', change: `at risk below ${cur.risk} → ${next.risk} · off track below ${cur.off} → ${next.off}`, area: 'Settings', entityType: 'app_setting' });
+    await trace(tx, who, { objectRef: 'Health rules', change: `at risk below ${cur.risk} → ${next.risk} · off track below ${cur.off} → ${next.off}`, area: 'Settings', entityType: 'app_setting',
+      before: { risk: cur.risk, off: cur.off }, after: next });
   });
   return next;
 }
@@ -234,7 +233,7 @@ export async function setCcbThreshold(keur: number, actor: Actor): Promise<numbe
       .onConflictDoUpdate({ target: appSettings.key, set: { value: { keur: value }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
     if (cur !== value) {
       await trace(tx, who, {
-        objectRef: 'Change control board', change: `threshold ${cur} → ${value} k€`, area: 'Settings', entityType: 'app_setting',
+        objectRef: 'Change control board', change: `threshold ${cur} → ${value} k€`, area: 'Settings', entityType: 'app_setting', before: { keur: cur }, after: { keur: value },
         activity: { text: `Change control board threshold · ${cur} → ${value} k€`, kind: 'change' },
       });
     }
@@ -260,7 +259,7 @@ export async function setHoursVariance(pct: unknown, actor: Actor): Promise<numb
       .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
     const change = `±${cur} % → ±${pct} %`;
     await trace(tx, who, {
-      objectRef: 'Hours variance threshold', change, area: 'Settings', entityType: 'app_setting',
+      objectRef: 'Hours variance threshold', change, area: 'Settings', entityType: 'app_setting', before: { pct: cur }, after: { pct },
       activity: { text: `Hours variance threshold ${change}`, kind: 'change' },
     });
     return pct;
@@ -341,6 +340,9 @@ export async function resetSettings(actor: Actor): Promise<void> {
       }
     }
     const who = await whoIs(tx, actor);
+    // R-168: the stored thresholds before the reset (the lists' entries are not copied: their reset is the list of defaults).
+    const keys = [APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, APP_SETTING_DCMA, APP_SETTING_CCB];
+    const settingsBefore = Object.fromEntries((await tx.select({ key: appSettings.key, value: appSettings.value }).from(appSettings).where(inArray(appSettings.key, keys))).map((r) => [r.key, r.value]));
     const health = { ...defaults.health };
     await tx.insert(appSettings).values({ key: APP_SETTING_HEALTH, value: health, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
       .onConflictDoUpdate({ target: appSettings.key, set: { value: health, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
@@ -354,13 +356,9 @@ export async function resetSettings(actor: Actor): Promise<void> {
       .onConflictDoUpdate({ target: appSettings.key, set: { value: dcma, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
     await tx.insert(appSettings).values({ key: APP_SETTING_CCB, value: { keur: ccb }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
       .onConflictDoUpdate({ target: appSettings.key, set: { value: { keur: ccb }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
-    await trace(tx, who, { objectRef: 'Settings', change: 'reset to defaults', area: 'Settings', activity: { text: 'Reset the settings lists to their defaults', kind: 'change' } });
+    await trace(tx, who, {
+      objectRef: 'Settings', change: 'reset to defaults', area: 'Settings', activity: { text: 'Reset the settings lists to their defaults', kind: 'change' },
+      ...changedValues(settingsBefore, { [APP_SETTING_HEALTH]: health, [APP_SETTING_HOURS_VARIANCE]: hours, [APP_SETTING_DCMA]: dcma, [APP_SETTING_CCB]: { keur: ccb } }),
+    });
   });
-}
-
-/** Labels of several lists at once (forms: risk categories, deliverable types, cost categories). */
-export async function referenceLists(keys: ReferenceListKey[]): Promise<Record<string, ReferenceValueRow[]>> {
-  const db = await getDb();
-  const rows = await db.select().from(referenceValues).where(and(inArray(referenceValues.listKey, keys), eq(referenceValues.active, true))).orderBy(asc(referenceValues.position));
-  return Object.fromEntries(keys.map((k) => [k, rows.filter((r) => r.listKey === k).map((r) => ({ code: r.code, label: r.label }))]));
 }

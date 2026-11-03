@@ -1,6 +1,6 @@
 // Change control and baselines (docs/spec/11 §3.3 Baseline, §3.5 ChangeRequest, §7 #2).
 //
-// The prototype holds two conflicting change-request datasets (11 §7 #2, OPEN QUESTION A-4):
+// The prototype holds two conflicting change-request datasets (11 §7 #2; A-4: one register):
 //  - `change_requests` — the change-control register (HLT_CRS_X 3498, with the approval chain and WBS
 //    allocations) plus CR-005 from HCRS, which only exists there;
 //  - `budget_change_lines` — the Budget screen's own list (projectData().CRS = HCRS 3193), kept verbatim

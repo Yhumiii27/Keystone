@@ -125,6 +125,7 @@ export async function advanceLesson(projectCode: string, number: string, actor: 
     await tx.update(lessonsLearned).set({ status: next, updatedAt: new Date() }).where(eq(lessonsLearned.id, l.id));
     await trace(tx, await whoIs(tx, actor), {
       objectRef: number, change: `status: ${lessonStatus.label(l.status)} → ${lessonStatus.label(next)}`, area: 'REX', entityType: 'lesson_learned', entityId: l.id, projectId: p.id,
+      before: { status: l.status }, after: { status: next },
     });
     return next;
   });
@@ -143,7 +144,7 @@ export async function cycleClosureItem(projectCode: string, position: number, ac
     await tx.update(closureItems).set({ status: next, updatedAt: new Date() }).where(eq(closureItems.id, c.id));
     await trace(tx, await whoIs(tx, actor), {
       objectRef: `Closure · ${c.item}`, change: `status: ${closureItemStatus.label(c.status)} → ${closureItemStatus.label(next)}`, area: 'REX', entityType: 'closure_item', entityId: c.id,
-      projectId: p.id,
+      projectId: p.id, before: { status: c.status }, after: { status: next },
     });
     return next;
   });

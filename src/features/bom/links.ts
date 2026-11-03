@@ -89,8 +89,5 @@ export function bomHref(code: string, s: Partial<BomState> = {}): string {
   return qs ? `${base}?${qs}` : base;
 }
 
-/** The PU/PR list of a system (part drawer "Open PU/PR list": `{bomView:'spares', spareSys:ref, part:null}`). */
-export const bomSparesHref = (code: string, systemRef: string) => bomHref(code, { view: 'spares', sys: systemRef });
-
 /** The part record drawer over a project's BOM (part drawer "Projects equipped", other screens' part links). */
 export const bomPartHref = (code: string, partRef: string) => bomHref(code, { part: partRef });

@@ -1,9 +1,9 @@
 import 'server-only';
 // Documents — Codex index DAL (docs/spec/10 §4 Documents, §5 Document types register; 11 §3.10). Keystone mirrors
 // the Codex records (number, revision, status, confidentiality, tags, links), shows the approval proof, distribution
-// and acknowledgements, and hands deposits over to Codex (simulated: the index record is created at once, OPEN QUESTION
-// D-1). Writers follow the vault's state machine (10 §9): Draft → Frozen → Release proposed → (approvals) → Released;
-// client acknowledgement of released client deliverables.
+// and acknowledgements, and hands deposits over to Codex (simulated: the index record is created at once until Codex's
+// prefilled deposit form exists — D-1a "a", R-125). Writers follow the vault's state machine (10 §9): Draft → Frozen →
+// Release proposed → (approvals) → Released; client acknowledgement of released client deliverables.
 // Delivery 8 (D-2 = a, A-15 = a; R-127): Keystone keeps the record, its current revision and its current circuit — the
 // earlier revisions and the download log stay in Codex (the drawer links there); no Keystone download log is written.
 // R-128: the drawer's relations (deliverable, order, punch item) resolve in the record's own project.
@@ -726,6 +726,7 @@ export async function depositInCodex(input: DepositInput, actorName: string, onD
       await writeAudit(tx, {
         actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: doc.number,
         change: `new revision deposited in Codex · status: ${documentStatus.label(doc.status)} → Draft`, area: 'Documents', entityType: 'document', entityId: doc.id, projectId: doc.projectId,
+        before: { status: doc.status }, after: { status: 'draft' },
       });
       return { number: doc.number, created: false };
     }
@@ -874,7 +875,7 @@ async function setStatus(number: string, from: DocumentStatus, to: DocumentStatu
     await tx.update(documents).set({ status: to, updatedAt: new Date() }).where(eq(documents.id, d.id));
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: number, change: `status: ${documentStatus.label(from)} → ${documentStatus.label(to)}`,
-      area: 'Documents', entityType: 'document', entityId: d.id, projectId: d.projectId,
+      area: 'Documents', entityType: 'document', entityId: d.id, projectId: d.projectId, before: { status: from }, after: { status: to },
     });
   });
 }
@@ -964,6 +965,8 @@ export async function recordDocumentDecision(
     await writeAudit(tx, {
       actorName: who, actorPersonId: person?.id, objectRef: number, occurredAt: at, area: 'Documents', entityType: 'codex_document_outbox', entityId: entry.id, projectId: d.projectId,
       change: `${input.decision} · ${role}${releaseRequested ? ' · release requested' : ''} · ${sync}`,
+      before: { revision: d.currentRevision, step: step.position, decision: null }, after: { revision: d.currentRevision, step: step.position, decision: input.decision, releaseRequested },
+      reason: comment,
     });
     await recordActivity(tx, {
       actorName: who, actorPersonId: person?.id, kind: 'change', projectId: d.projectId, occurredAt: at,
@@ -993,6 +996,7 @@ export async function recordCircuitStart(tx: Tx, number: string, actor: { name: 
   await writeAudit(tx, {
     actorName: who, actorPersonId: person?.id, objectRef: number, occurredAt: at, area: 'Documents', entityType: 'codex_document_outbox', entityId: entry.id, projectId: d.projectId,
     change: `release validated by the PM · approval circuit started · ${sync}`,
+    before: { revision: d.currentRevision, circuitStarted: false }, after: { revision: d.currentRevision, circuitStarted: true },
   });
   await recordActivity(tx, {
     actorName: who, actorPersonId: person?.id, kind: 'change', projectId: d.projectId, occurredAt: at,
@@ -1014,7 +1018,7 @@ export async function acknowledgeDocument(number: string, actorName: string, onD
       .onConflictDoNothing();
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: number, change: `rev ${d.currentRevision} acknowledged by the client`,
-      area: 'Documents', entityType: 'document', entityId: d.id, projectId: d.projectId,
+      area: 'Documents', entityType: 'document', entityId: d.id, projectId: d.projectId, after: { revision: d.currentRevision, acknowledgedOn: on },
     });
   });
 }

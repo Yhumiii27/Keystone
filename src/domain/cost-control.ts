@@ -215,9 +215,6 @@ export function computeEvm(inp: EvmInput): ComputedEvm | null {
   };
 }
 
-/** Rounded progress share (0–1, two decimals) as stored and displayed for a project. */
-export const roundProgress = (p: number) => Math.round(p * 100) / 100;
-
 // ── Commitments (R-073: "l'engagé depuis les commandes Keystone") ─────────────────────────────────────
 
 /** Purchase order statuses whose open quantity is committed (ordered, not yet received). */

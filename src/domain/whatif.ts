@@ -718,6 +718,3 @@ export function leverLabel(l: WhatIfLever): string {
 
 /** Levers that become a resource request when a scenario is applied (a shift is a plan change: no request). */
 export const createsRequest = (l: Pick<WhatIfLever, 'kind'>) => l.kind !== 'shift';
-
-/** Most people above 100 % in any one week. */
-export const maxOverPeople = (overByWeek: number[]) => (overByWeek.length ? Math.max(...overByWeek) : 0);

@@ -56,6 +56,7 @@ export async function setPurchaseOrderCurrency(number: string, currency: string,
     await writeAudit(tx, {
       actorName: who, actorPersonId: person?.id, objectRef: number, change: `currency: ${from} → ${to} · line prices converted at the budget rate`,
       area: 'Orders', entityType: 'purchase_order', entityId: row.o.id, projectId: row.o.projectId,
+      before: { currency: from, unitPrices: lines.map((l) => l.unitPriceEur) }, after: { currency: to, unitPrices: lines.map((l) => convertUnitPrice(l.unitPriceEur, fromRate, toRate)) },
     });
     await recordActivity(tx, { actorName: who, actorPersonId: person?.id, text: `${number} now in ${to}`, kind: 'change', projectId: row.o.projectId });
     return true;

@@ -5,6 +5,7 @@ import 'server-only';
 // budget can be edited. The budget baseline (BAC) is not touched: it changes only through an approved change request.
 // Numbering C01, C02… per project. Writers record audit + activity; the Server Functions check the viewer first.
 import { and, asc, eq } from 'drizzle-orm';
+import { changedValues } from '@/domain/audit-trail';
 import { CATEGORY_FROZEN_MESSAGE, categoryAmountFrozen } from '@/domain/baseline-policy';
 import { getDb } from '@/server/db/client';
 import { costType, type CostType } from '@/server/db/codes';
@@ -136,7 +137,9 @@ export async function updateProjectCostCategory(
     if (!changes.length) return;
     await tx.update(costCategories).set({ ...set, updatedAt: new Date() }).where(eq(costCategories.id, c.id));
     const who = await actorOf(tx, actorName);
-    await writeAudit(tx, { ...who, objectRef: `${p.code} · ${c.code}`, change: changes.join(' · '), area: 'Budget', entityType: 'cost_category', entityId: c.id, projectId: p.id });
+    await writeAudit(tx, { ...who, objectRef: `${p.code} · ${c.code}`, change: changes.join(' · '), area: 'Budget', entityType: 'cost_category', entityId: c.id, projectId: p.id,
+      ...changedValues({ name: c.name, costType: c.costType, budgetKeur: c.budgetKeur, forecastKeur: c.forecastKeur }, { name: set.name, costType: set.costType, budgetKeur: set.budgetKeur, forecastKeur: set.forecastKeur }),
+    });
     await recordActivity(tx, { ...who, text: `${p.code} · cost category ${c.code} edited`, kind: 'change', projectId: p.id });
   });
 }

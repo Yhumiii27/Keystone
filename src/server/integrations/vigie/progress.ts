@@ -70,7 +70,14 @@ export async function recordProgressEntry(
       recordedAt: at, syncStatus: 'pending',
     })
     .returning();
-  await writeAudit(tx, { actorName: who, actorPersonId: person?.id, objectRef: eco.number, change, area: 'ECO', entityType: 'vigie_eco_progress', entityId: entry.id, occurredAt: at });
+  await writeAudit(tx, {
+    actorName: who, actorPersonId: person?.id, objectRef: eco.number, change, area: 'ECO', entityType: 'vigie_eco_progress', entityId: entry.id, occurredAt: at,
+    // R-168: the decision or step requested of Vigie (pending sync) — Vigie owns the ECO and applies it.
+    ...(values.kind === 'approval'
+      ? { before: { approval: values.approvalKey, decision: 'pending' }, after: { approval: values.approvalKey, decision: values.decision } }
+      : { before: { status: eco.status }, after: { requestedStatus: values.targetStatus } }),
+    reason: comment,
+  });
   await recordActivity(tx, { actorName: who, actorPersonId: person?.id, text, kind: 'eco', occurredAt: at });
   return entryOf(entry);
 }

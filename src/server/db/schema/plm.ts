@@ -81,7 +81,7 @@ export const revisionDiffLines = pgTable('revision_diff_lines', {
 
 /**
  * Drawings of the SolidWorks PDM vault linked to catalogue parts (DRAWINGS 3439, 13 rows) — a read-only mirror:
- * revisions and states change in the vault (OPEN QUESTION E-7 for the sync contract).
+ * revisions and states change in the vault (sync contract: E-7 "a", R-035).
  */
 export const drawings = pgTable('drawings', {
   id: id(),

@@ -115,6 +115,7 @@ export async function removeTaskFile(number: string, attachmentId: string, actor
     await tx.delete(taskAttachments).where(eq(taskAttachments.id, a.id));
     if (a.fileId) await deleteStoredFile(a.fileId, tx);
     const actor = await findPerson(tx, actorName);
-    await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: t.number, change: `file removed: ${a.name}`, area: 'Tasks', entityType: 'task', entityId: t.id, projectId: t.projectId });
+    await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: t.number, change: `file removed: ${a.name}`, area: 'Tasks', entityType: 'task', entityId: t.id, projectId: t.projectId,
+      before: { file: a.name }, after: null });
   });
 }

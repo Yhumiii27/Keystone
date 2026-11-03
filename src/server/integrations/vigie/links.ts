@@ -22,7 +22,7 @@ const qs = (params: Record<string, string | null | undefined>) => {
 
 /**
  * The project as Vigie's lists and forms receive it (`projet`, V-3b "a"; `project` on the ECO routes, NEW-D4-1 "a").
- * OPEN QUESTION V-3 / NEW-SYS-1: Vigie's events carry its own project ids ("K-2025-042"); until NEW-SYS-1 / R-022 settle
+ * NEW-SYS-1: Vigie's events carry its own project ids ("K-2025-042"); until NEW-SYS-1 / R-022 settle
  * the shared project id, Keystone sends its own code ("HLT-026"). Every Vigie link names the project through this one
  * helper, so the later mapping changes one place.
  */
@@ -74,7 +74,7 @@ export const VIGIE_COACTIVITY_PATH = '/prevention/carte';
 
 /**
  * An NCR in Vigie. With Vigie's event id: the event record (`/evenements?etat=tous&sel=EV-2026-130`). Without it — the
- * prototype NCR numbers are not Vigie ids — OPEN QUESTION V-3: Vigie has no field for Keystone's NCR number, so the link
+ * prototype NCR numbers are not Vigie ids (V-3a: the Vigie number only, R-023) — Vigie has no field for Keystone's NCR number, so the link
  * opens the NC events searched by that number (`/evenements?etat=tous&type=NC&q=NCR-029`).
  */
 export function vigieNcrUrl(ncr: { number: string; vigieRef?: string | null }): string {
@@ -84,7 +84,7 @@ export function vigieNcrUrl(ncr: { number: string; vigieRef?: string | null }): 
 }
 
 /**
- * Vigie's non-conformities ("Manage in Vigie"), filtered on the project when one is given (R-025). OPEN QUESTION V-3:
+ * Vigie's non-conformities ("Manage in Vigie"), filtered on the project when one is given (R-025).
  * Vigie's events carry its own project ids ("K-2025-042"); `projet` is the Keystone code until NEW-SYS-1 / R-022.
  */
 export function vigieNcrListUrl(filter: VigieProjectFilter = {}): string {
@@ -92,7 +92,7 @@ export function vigieNcrListUrl(filter: VigieProjectFilter = {}): string {
 }
 
 /**
- * "Report in Vigie" — Vigie's report form, prefilled with what Keystone knows. OPEN QUESTION V-3: /signaler reads only
+ * "Report in Vigie" — Vigie's report form, prefilled with what Keystone knows. Vigie's /signaler reads only
  * `lieu` today; `type`, `projet`, `article`, `activite`, `titre`, `inspection` and `source=keystone` are proposals
  * (V-3b, owner's answer "a": project, part, activity, title and place; Q-6b adds the ITP inspection, which Vigie should
  * echo on the NCR so Keystone shows its number on the inspection — `inspectionNumber` of the NCR mirror). A supplier NCR
@@ -113,7 +113,7 @@ export function vigieReportNcrUrl(
   })}`;
 }
 
-/** "Declare incident" (site HSE register) — Vigie's report form (OPEN QUESTION V-3 for the prefill parameters). */
+/** "Declare incident" (site HSE register) — Vigie's report form (prefill parameters: V-3b, R-025). */
 export function vigieReportIncidentUrl(ctx: { projectCode?: string | null; location?: string | null } = {}): string {
   return `${vigiePublicUrl()}${VIGIE_REPORT_PATH}${qs({ projet: vigieProjectParam(ctx.projectCode), lieu: ctx.location, source: 'keystone' })}`;
 }

@@ -13,6 +13,7 @@ import 'server-only';
 // director being the storekeepers who act for any project (default, owner to confirm); "Release reservation" by the
 // reserving project's PMs and deputies or the director; the override of another project's reservation by the director.
 import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
+import { changedValues } from '@/domain/audit-trail';
 import { movementValueEur, planStockMovement, planX3Import, type MovementPlan } from '@/domain/stock';
 import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { businessToday } from '@/server/clock';
@@ -134,19 +135,13 @@ export async function listStockMovements(opts: { limit?: number; ref?: string } 
 export interface StockPositionDetail extends StockRow {
   /** Latest movements of the reference (6, any location — as the drawer lists them). */
   movements: MovementRow[];
-  /** Locations a transfer may target (configured ones except this one), Settings order. */
-  transferTargets: { name: string; shortLabel: string }[];
 }
 
 export async function getStockPosition(id: string): Promise<StockPositionDetail | null> {
   const db = await getDb();
   const [row] = await loadStock(db, eq(stockPositions.id, id));
   if (!row) return null;
-  const [movements, locs] = await Promise.all([
-    loadMoves(db, { ref: row.ref, limit: 6 }),
-    db.select({ name: storageLocations.name }).from(storageLocations).where(eq(storageLocations.active, true)).orderBy(asc(storageLocations.position)),
-  ]);
-  return { ...row, movements, transferTargets: locs.filter((l) => l.name !== row.location).map((l) => ({ name: l.name, shortLabel: l.name.split(' — ')[0] })) };
+  return { ...row, movements: await loadMoves(db, { ref: row.ref, limit: 6 }) };
 }
 
 export interface X3StockSync {
@@ -387,6 +382,7 @@ export async function applyStockMovement(positionId: string, input: StockMovemen
       actorName: who, actorPersonId: person?.id, objectRef: `${ref} · ${loc}`,
       change: `${stockOperation.label(plan.type)} × ${plan.qty} · on hand ${s.onHand} → ${plan.onHand}${reservedChange}${chargedText}${overrideText} · ${stockSource.label('local')}`,
       area: 'Stock', entityType: 'stock_position', entityId: s.id, projectId: project?.id ?? null,
+      ...changedValues({ onHand: s.onHand, reserved: s.reserved }, { onHand: plan.onHand, reserved: plan.reserved }),
     });
     await recordActivity(tx, { actorName: who, actorPersonId: person?.id, text: `${stockMovementType.label(plan.type)} ${ref} × ${plan.qty} · ${plan.whereText}`, kind: 'stock', projectId: project?.id ?? null });
     if (plan.overrideTaken && s.reservedForProjectId) {
@@ -394,6 +390,7 @@ export async function applyStockMovement(positionId: string, input: StockMovemen
       await writeAudit(tx, {
         actorName: who, actorPersonId: person?.id, objectRef: `${ref} · ${loc}`, area: 'Stock', entityType: 'stock_position', entityId: s.id, projectId: s.reservedForProjectId,
         change: `reservation ${s.reserved} → ${plan.reserved} · ${plan.overrideTaken} taken for ${project?.code ?? stockOperation.label(plan.type)} · director override`,
+        before: { reserved: s.reserved }, after: { reserved: plan.reserved, takenBy: project?.code ?? null },
       });
       await recordActivity(tx, {
         actorName: who, actorPersonId: person?.id, kind: 'stock', projectId: s.reservedForProjectId,

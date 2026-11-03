@@ -92,7 +92,7 @@ export interface DrawingDrawerView {
   partHref: string | null;
   /** The linked ECO in Keystone's view of Vigie's ECOs. */
   ecoHref: string | null;
-  /** The drawing in SolidWorks PDM (OPEN QUESTION E-7: no deep link yet → null). */
+  /** The drawing in SolidWorks PDM (no deep link until the PDM connector, R-035 → null). */
   pdmUrl: string | null;
 }
 

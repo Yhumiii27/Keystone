@@ -8,6 +8,7 @@ import 'server-only';
 //   rejection goes back to In progress at the next revision ("Start next revision", R-114 / Q-3a); every client decision
 //   is kept in `deliverable_reviews`. The project manager creates deliverables ("New deliverable", R-115 / Q-3b).
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { changedValues } from '@/domain/audit-trail';
 import { yearOfIso } from '@/domain/clock';
 import { DELIVERABLE_CREATOR_ROLES, nextRevision } from '@/domain/quality';
 import { businessToday } from '@/server/clock';
@@ -336,6 +337,7 @@ export async function moveDeliverable(
       objectRef: number,
       change: `status: ${deliverableStatus.label(d.status)} → ${deliverableStatus.label(to)}${revision ? ` · revision ${d.revision ?? '—'} → ${revision}` : ''}`,
       area: 'Deliverables', entityType: 'deliverable', entityId: d.id, projectId: p.id,
+      ...changedValues({ status: d.status, revision: d.revision }, { status: to, revision: revision ?? undefined }),
       activity:
         to === 'submitted'
           ? { text: `Submitted deliverable ${number} ${d.title} to the client`, kind: 'client' }
@@ -379,6 +381,7 @@ export async function decideDeliverable(
     await trace(tx, who, {
       objectRef: number, change: `status: Submitted → ${decision === 'accepted' ? 'Accepted (PV)' : 'Rejected'}${note ? ` · ${note}` : ''}`, area: 'Deliverables',
       entityType: 'deliverable', entityId: d.id, projectId: p.id,
+      before: { status: 'submitted', revision: d.revision }, after: { status: decision, revision: d.revision, decidedOn: day }, reason: decision === 'rejected' ? note : null,
       activity: { text: decision === 'accepted' ? `Accepted deliverable ${number} ${d.title} (PV signed)` : `Rejected deliverable ${number} ${d.title} · comments issued`, kind: 'client' },
     });
     return { title: d.title, actorPersonId: who.personId };
@@ -450,7 +453,7 @@ export async function deliverableWbsOptions(projectCode: string): Promise<{ code
   return db.select({ code: wbsNodes.code, name: wbsNodes.name }).from(wbsNodes).where(eq(wbsNodes.projectId, p.id)).orderBy(asc(wbsNodes.position));
 }
 
-/** Links the issued document (a Codex index record) to a deliverable (the drawer's drop slot; OPEN QUESTION D-1). */
+/** Links the issued document (a Codex index record) to a deliverable (the drawer's drop slot; Codex index, R-033). */
 export async function linkDeliverableDocument(projectCode: string, number: string, documentNumber: string, actor: Actor): Promise<void> {
   requireWorkspace('quality', actor, 'Quality');
   const db = await getDb();
@@ -459,8 +462,12 @@ export async function linkDeliverableDocument(projectCode: string, number: strin
     const [doc] = await tx.select({ id: documents.id, projectId: documents.projectId }).from(documents).where(eq(documents.number, documentNumber.trim()));
     if (!doc) throw new Error(`Unknown document ${documentNumber}`);
     if (doc.projectId && doc.projectId !== p.id) throw new Error(`${documentNumber} belongs to another project`);
+    const [old] = d.documentId ? await tx.select({ number: documents.number }).from(documents).where(eq(documents.id, d.documentId)) : [];
     await tx.update(deliverables).set({ documentId: doc.id, updatedAt: new Date() }).where(eq(deliverables.id, d.id));
-    await trace(tx, await whoIs(tx, actor), { objectRef: number, change: `document: ${documentNumber.trim()}`, area: 'Deliverables', entityType: 'deliverable', entityId: d.id, projectId: p.id });
+    await trace(tx, await whoIs(tx, actor), {
+      objectRef: number, change: `document: ${documentNumber.trim()}`, area: 'Deliverables', entityType: 'deliverable', entityId: d.id, projectId: p.id,
+      before: { document: old?.number ?? null }, after: { document: documentNumber.trim() },
+    });
   });
 }
 
@@ -479,13 +486,4 @@ export async function deliverableDecidedCount(actor: Actor): Promise<number> {
   const rows = await db.select({ change: auditEntries.change }).from(auditEntries)
     .where(and(eq(auditEntries.area, 'Deliverables'), eq(auditEntries.actorName, who), eq(auditEntries.entityType, 'deliverable')));
   return rows.filter((r) => r.change.startsWith('status: Submitted → ')).length;
-}
-
-/** Submitted deliverables per project (client portal "Awaiting your decision", client Home). */
-export async function submittedDeliverablesByProject(): Promise<Record<string, number>> {
-  const db = await getDb();
-  const rows = await db.select({ code: projects.code }).from(deliverables).innerJoin(projects, eq(projects.id, deliverables.projectId)).where(eq(deliverables.status, 'submitted'));
-  const out: Record<string, number> = {};
-  for (const r of rows) out[r.code] = (out[r.code] ?? 0) + 1;
-  return out;
 }

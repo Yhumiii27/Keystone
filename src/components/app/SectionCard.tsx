@@ -183,6 +183,3 @@ export function FlexRow({ gap = 14, align = 'flex-start', className, style, chil
     </div>
   );
 }
-
-/** Alias of `Stack` for screen bodies (`display:flex;flex-direction:column;gap:14px`). */
-export const PageSection = Stack;

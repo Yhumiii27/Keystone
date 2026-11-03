@@ -11,7 +11,6 @@
 export type CodeTypeKind = 'equipment' | 'purchase_package' | 'site' | 'custom';
 export const DERIVED_CODE_TYPES = ['equipment', 'purchase_package'] as const;
 export type DerivedCodeType = (typeof DERIVED_CODE_TYPES)[number];
-export const isDerivedCodeType = (v: unknown): v is DerivedCodeType => typeof v === 'string' && (DERIVED_CODE_TYPES as readonly string[]).includes(v);
 
 /** English source names of the derived types and of the "no value" group (translated by the screens). */
 export const DERIVED_CODE_TYPE_NAMES: Record<DerivedCodeType, string> = { equipment: 'Equipment', purchase_package: 'Purchasing package' };

@@ -8,6 +8,7 @@ import 'server-only';
 // Tasks still come from "Send minutes" (actions of the minutes). The analysis runs outside any transaction (a Claude call may
 // take a minute); its result is written only if the transcript did not change meanwhile.
 import { and, asc, eq, sql } from 'drizzle-orm';
+import { changedValues } from '@/domain/audit-trail';
 import { yearOfIso } from '@/domain/clock';
 import { MAX, normaliseDue, TRANSCRIPT_IMPORT } from '@/domain/meetings';
 import { analyseTranscriptText, type AnalysisEngine } from '@/server/ai/transcripts';
@@ -216,7 +217,8 @@ export async function setTranscriptProposalStatus(meetingNumber: string, positio
     if (p.status === status) return;
     await tx.update(meetingTranscriptProposals).set({ status, ...(await reviewer(tx, actorName)) })
       .where(and(eq(meetingTranscriptProposals.meetingId, m.id), eq(meetingTranscriptProposals.position, position)));
-    await auditMeeting(tx, actorName, meetingNumber, `transcript ${p.type} ${status === 'rejected' ? 'discarded' : 'restored'} · ${p.text}`, m.projectId, m.id);
+    await auditMeeting(tx, actorName, meetingNumber, `transcript ${p.type} ${status === 'rejected' ? 'discarded' : 'restored'} · ${p.text}`, m.projectId, m.id,
+      { before: { proposal: position, status: p.status }, after: { proposal: position, status } });
   });
 }
 
@@ -249,7 +251,12 @@ export async function updateTranscriptProposal(meetingNumber: string, position: 
         status: p.status === 'rejected' ? 'proposed' : p.status, ...(await reviewer(tx, actorName)),
       })
       .where(and(eq(meetingTranscriptProposals.meetingId, m.id), eq(meetingTranscriptProposals.position, position)));
-    await auditMeeting(tx, actorName, meetingNumber, `transcript ${p.type} edited · ${p.text} → ${text}`, m.projectId, m.id);
+    const diff = changedValues(
+      { text: p.text, ownerName: p.ownerName, dueText: p.dueText, status: p.status },
+      { text, ownerName: owner, dueText: due, status: p.status === 'rejected' ? 'proposed' : p.status },
+    );
+    await auditMeeting(tx, actorName, meetingNumber, `transcript ${p.type} edited · ${p.text} → ${text}`, m.projectId, m.id,
+      diff ? { before: { proposal: position, ...diff.before }, after: { proposal: position, ...diff.after } } : {});
   });
 }
 
@@ -294,7 +301,8 @@ export async function markTranscriptProposalApplied(meetingNumber: string, posit
     const applied = typeof ref === 'string' ? ref : await ref(tx);
     await tx.update(meetingTranscriptProposals).set({ status: 'applied', appliedRef: applied, ...(await reviewer(tx, actorName)) })
       .where(and(eq(meetingTranscriptProposals.meetingId, m.id), eq(meetingTranscriptProposals.position, position)));
-    await auditMeeting(tx, actorName, meetingNumber, `transcript ${p.type} added · ${applied} · ${p.text}`, m.projectId, m.id);
+    await auditMeeting(tx, actorName, meetingNumber, `transcript ${p.type} added · ${applied} · ${p.text}`, m.projectId, m.id,
+      { before: { proposal: position, status: p.status }, after: { proposal: position, status: 'applied', appliedRef: applied } });
     return applied;
   });
 }

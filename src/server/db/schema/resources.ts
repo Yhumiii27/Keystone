@@ -215,7 +215,7 @@ export const unassignedHours = pgTable('unassigned_hours', {
   hours: num('hours').notNull(),
   /** "Declared on HAV004 · no planned task this month". */
   reason: text('reason').notNull(),
-  /** "Assign" target (OPEN QUESTION R-6; no handler in the prototype). */
+  /** "Assign" target (`assignUnassignedHours`; R-6a moves the split to Cursus, R-030). */
   assignedWbsNodeId: uuid('assigned_wbs_node_id').references(() => wbsNodes.id, { onDelete: 'set null' }),
   assignedAt: timestamp('assigned_at', { withTimezone: true }),
   position: integer('position').notNull(),
@@ -223,7 +223,7 @@ export const unassignedHours = pgTable('unassigned_hours', {
 
 // ── What-if levelling ──────────────────────────────────────────────────────────────────────────────────
 
-/** Levelling levers with their static effects (LEVERS 3462; OPEN QUESTION S-7). */
+/** Levelling levers with their static effects (LEVERS 3462; S-7, rules to refine in R-091). */
 export const whatIfLevers = pgTable('whatif_levers', {
   code: text('code').$type<WhatIfLeverCode>().primaryKey(),
   /** EN source string. */

@@ -387,6 +387,8 @@ export async function recordItpResult(projectCode: string, number: string, input
     await trace(tx, who, {
       objectRef: number, change: `result: ${itpResult.label(i.result)} → ${label} · ${input.resultOn} · ${inspector}${comment ? ` · ${comment}` : ''}`, area: 'ITP',
       entityType: 'itp_inspection', entityId: i.id, projectId: p.id,
+      before: { result: i.result, resultOn: i.resultOn, inspector: i.inspectorName }, after: { result: input.result, resultOn: input.resultOn, inspector: person ? nameOf(person) : inspector },
+      reason: comment,
       activity: { text: `Recorded result ${label} for inspection ${number} ${i.name}`, kind: 'quality' },
     });
     return { name: i.name, actorPersonId: who.personId };

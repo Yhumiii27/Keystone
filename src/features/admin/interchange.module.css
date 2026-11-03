@@ -38,10 +38,6 @@
 .msgs { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; min-width: 180px; }
 .msgWarn { color: var(--color-accent-300); }
 .more { font-size: 11.5px; color: var(--color-neutral-500); }
-.nowrap { white-space: nowrap; }
-
-/* Export dialog */
-.downloadRow { display: flex; justify-content: flex-end; }
 
 /* Connector configure */
 .meta { font-size: 11.5px; color: var(--color-neutral-500); }

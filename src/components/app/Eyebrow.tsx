@@ -49,6 +49,3 @@ export function GroupDivider({ label, count, fullRow, className, style }: GroupD
     </div>
   );
 }
-
-/** Alias of `Eyebrow` (docs/spec/02 C-06 "SectionLabel"). */
-export const SectionLabel = Eyebrow;

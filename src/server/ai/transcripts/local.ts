@@ -17,7 +17,7 @@
 import { yearOfIso } from '@/domain/clock';
 import { normaliseDue } from '@/domain/meetings';
 import { fold, parseTranscript } from './parse';
-import type { AnalysisInput, AnalysisResult, ProposalDraft, TranscriptAnalyzerImpl, TranscriptLanguage } from './types';
+import type { AnalysisInput, AnalysisResult, ProposalDraft, TranscriptLanguage } from './types';
 
 /** Word-bounded, case-insensitive pattern (JS `\b` ignores accented letters). */
 const W = (src: string) => new RegExp(`(?<![\\p{L}\\p{N}])(?:${src})(?![\\p{L}\\p{N}])`, 'iu');
@@ -337,9 +337,3 @@ export function analyseLocally(input: AnalysisInput, maxProposals = 60): Analysi
   const kept = proposals.slice(0, maxProposals);
   return { summary: localSummary(kept, parsed.language), language: parsed.language, proposals: kept };
 }
-
-export const localAnalyzer: TranscriptAnalyzerImpl = {
-  id: 'local',
-  model: null,
-  analyse: async (input) => analyseLocally(input),
-};

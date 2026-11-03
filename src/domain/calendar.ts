@@ -334,7 +334,5 @@ export function builtinCalendars(opts: WorkCalendarOptions = {}): Record<string,
   return Object.fromEntries(BUILTIN_CALENDARS.map((d) => [d.code, new WorkCalendar(d, opts)]));
 }
 
-/** Hours of work in `days` working days on a calendar (what-if levers convert durations ↔ hours). */
-export const hoursOfDays = (cal: Pick<CalendarDef, 'hoursPerDay'>, days: number) => days * cal.hoursPerDay;
 /** Working days needed for `hours` of work at `hoursPerDay` (rounded up). */
 export const daysForHours = (hours: number, hoursPerDay: number) => (hoursPerDay > 0 ? Math.ceil(hours / hoursPerDay - 1e-9) : 0);

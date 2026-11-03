@@ -8,6 +8,7 @@ import 'server-only';
 // from the project's Stakeholders & RACI screen; the client is notified of the answer and of the closure (Keystone
 // notifications, and the e-mail each person chose, R-036). The client sees the answer and the status, never the internal handling.
 import { and, asc, eq, inArray, or } from 'drizzle-orm';
+import { changedValues } from '@/domain/audit-trail';
 import { currentStep } from '@/domain/change-control';
 import { registerReconciliation } from '@/domain/cost-control';
 import { CLIENT_ISSUE_HANDLER_ROLES, ISSUE_ACKNOWLEDGEMENT, ISSUE_NOTICE, hasRealAnswer, issueSteps, type IssueStep } from '@/domain/client-issues';
@@ -270,6 +271,10 @@ export async function handleClientIssue(projectCode: string, number: string, h: 
       objectRef: number,
       change: `${h.step === 'take' ? 'taken in charge' : h.step === 'answer' ? 'answered' : 'closed'} · status: ${label(i.status)} → ${label(to)}${answer ? ` · ${answer}` : ''}`,
       area: 'Client portal', entityType: 'client_issue', entityId: i.id, projectId: p.id,
+      ...changedValues(
+        { status: i.status, response: i.response, closedOn: i.closedOn },
+        { status: to, response: patch.response, closedOn: patch.closedOn },
+      ),
       activity: h.step === 'take' ? undefined : { text: `${h.step === 'answer' ? 'Answered' : 'Closed'} client issue ${number} · ${i.title}`, kind: 'client' },
     });
     return { to, notify: h.step !== 'take', clientId: p.clientId, raisedBy: i.raisedByPersonId, actorPersonId: who.personId, title: i.title };
@@ -282,12 +287,4 @@ export async function handleClientIssue(projectCode: string, number: string, h: 
     });
   }
   return done.to;
-}
-
-/** Open (not closed) issues of a project ("Open issues · Raised by you"). */
-export async function countOpenClientIssues(projectCode: string): Promise<number> {
-  const db = await getDb();
-  const p = await projectOf(db, projectCode);
-  const rows = await db.select({ s: clientIssues.status }).from(clientIssues).where(and(eq(clientIssues.projectId, p.id)));
-  return rows.filter((r) => r.s !== 'closed').length;
 }

@@ -1,6 +1,6 @@
 import 'server-only';
 // Contract & Billing DAL (docs/spec/04 §3 Contract, §4 Billing, §1.6 Budget › Cash & recovery; 11 §3.5, §7 #3).
-// The contract is the billing source of truth (OPEN QUESTION A-5): its value is the base amount plus the signed
+// The contract is the billing source of truth (A-5): its value is the base amount plus the signed
 // amendments. Payment milestones of the base contract are priced on the base amount, an amendment's own milestones on the
 // amendment's amount and become billable when it is signed (NEW-D3-3, R-079); an invoiced milestone keeps its invoice's
 // amount. Customer invoices are 1:1 with the invoiced milestones and fall due by the contract's payment rule (C-6, R-076).
@@ -14,6 +14,7 @@ import {
   INVOICE_BLOCKED_MESSAGE, canSendAmendment, canSignAmendment, contractFigures, invoiceBlocked, isSignedAmendment, plannedMilestoneAmount, termsOfSheet,
   type ContractFigures, type ContractInput,
 } from '@/domain/contract';
+import { changedValues } from '@/domain/audit-trail';
 import { yearOfIso } from '@/domain/clock';
 import { BASE_CURRENCY, currencyOf, documentCurrencyError, eurRate, projectFxOf, type CurrencyCode, type ProjectFx } from '@/domain/currency';
 import { isPaymentRule, paymentDueOn, paymentTermsText, termsOfText, type PaymentRule } from '@/domain/payment-terms';
@@ -406,17 +407,21 @@ async function loadContract(tx: Tx, projectCode: string) {
   return { p, c };
 }
 
-async function audit(tx: Tx, actorName: string, objectRef: string, change: string, projectId: string, area = 'Contract', entity?: { type: string; id: string }) {
+/** R-168: the before / after (changed fields only) and the reason of a contract audit row. */
+type AuditValues = { before?: Record<string, unknown> | null; after?: Record<string, unknown> | null; reason?: string | null };
+
+async function audit(tx: Tx, actorName: string, objectRef: string, change: string, projectId: string, area = 'Contract', entity?: { type: string; id: string }, values: AuditValues = {}) {
   const actor = await findPerson(tx, actorName);
   await writeAudit(tx, {
     actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef, change, area, entityType: entity?.type ?? null, entityId: entity?.id ?? null, projectId,
+    before: values.before, after: values.after, reason: values.reason,
   });
   return actor;
 }
 
 /** Audit row + activity event of a contract writer (R-079 transitions, rate and currency changes). */
-async function trace(tx: Tx, actorName: string, objectRef: string, change: string, activity: string, projectId: string, entity?: { type: string; id: string }) {
-  const actor = await audit(tx, actorName, objectRef, change, projectId, 'Contract', entity);
+async function trace(tx: Tx, actorName: string, objectRef: string, change: string, activity: string, projectId: string, entity?: { type: string; id: string }, values: AuditValues = {}) {
+  const actor = await audit(tx, actorName, objectRef, change, projectId, 'Contract', entity, values);
   await recordActivity(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, text: activity, kind: 'change', projectId });
 }
 
@@ -469,6 +474,8 @@ export async function updateContractSheet(projectCode: string, patch: ContractSh
     }
     const set: Partial<typeof contracts.$inferInsert> = {};
     const changes: string[] = [];
+    const before: Record<string, unknown> = {};
+    const after: Record<string, unknown> = {};
     for (const [k, col] of Object.entries(SHEET_COLUMN) as [keyof ContractSheetPatch, keyof typeof contracts.$inferSelect][]) {
       if (!(k in input) || k === 'paymentTerms') continue;
       let v = input[k];
@@ -495,6 +502,8 @@ export async function updateContractSheet(projectCode: string, patch: ContractSh
       if (old === v) continue;
       (set as Record<string, unknown>)[col] = v;
       changes.push(`${k}: ${old ?? '—'} → ${v ?? '—'}`);
+      before[k] = old ?? null;
+      after[k] = v ?? null;
     }
     if (!changes.length) return;
     if ('paymentRule' in set || 'paymentDays' in set) {
@@ -503,7 +512,7 @@ export async function updateContractSheet(projectCode: string, patch: ContractSh
     if (set.clientName) set.clientId = (await tx.select({ id: clients.id }).from(clients).where(eq(clients.name, set.clientName)))[0]?.id ?? null;
     if (set.reference) set.documentId = (await tx.select({ id: documents.id }).from(documents).where(eq(documents.number, set.reference)))[0]?.id ?? null;
     await tx.update(contracts).set({ ...set, updatedAt: new Date() }).where(eq(contracts.id, c.id));
-    await audit(tx, actorName, c.reference, changes.join(' · '), p.id, 'Contract', { type: 'contract', id: c.id });
+    await audit(tx, actorName, c.reference, changes.join(' · '), p.id, 'Contract', { type: 'contract', id: c.id }, { before, after });
   });
 }
 
@@ -573,7 +582,8 @@ export async function sendAmendmentForSignature(projectCode: string, position: n
       .where(and(eq(contractAmendments.id, a.id), eq(contractAmendments.status, 'draft'))).returning({ id: contractAmendments.id });
     if (!done) throw new Error('Only a draft amendment can be sent for signature');
     const label = a.subject + (a.changeRequestRef ? ` (${a.changeRequestRef})` : '');
-    await trace(tx, actorName, c.reference, `amendment ${label} · status: Draft → Sent for signature`, `Sent ${label} for signature`, p.id, { type: 'contract_amendment', id: a.id });
+    await trace(tx, actorName, c.reference, `amendment ${label} · status: Draft → Sent for signature`, `Sent ${label} for signature`, p.id, { type: 'contract_amendment', id: a.id },
+      { before: { status: a.status, sentOn: a.sentOn }, after: { status: 'sent_for_signature', sentOn: on } });
     return label;
   });
 }
@@ -606,7 +616,8 @@ export async function signAmendment(projectCode: string, position: number, input
     const label = a.subject + (a.changeRequestRef ? ` (${a.changeRequestRef})` : '');
     const unit = c.currency === BASE_CURRENCY ? 'k€' : `k ${c.currency}`;
     await trace(tx, actorName, c.reference, `amendment ${label} · status: ${amendmentStatus.label(a.status)} → Signed · ${input.signedOn}${docRef ? ` · ${docRef}` : ''}`,
-      `Signed ${label} · ${a.amountKeur >= 0 ? '+' : '−'}${Math.abs(a.amountKeur)} ${unit}`, p.id, { type: 'contract_amendment', id: a.id });
+      `Signed ${label} · ${a.amountKeur >= 0 ? '+' : '−'}${Math.abs(a.amountKeur)} ${unit}`, p.id, { type: 'contract_amendment', id: a.id },
+      { before: { status: a.status, signedOn: a.signedOn, documentRef: a.documentRef }, after: { status: 'signed', signedOn: input.signedOn, documentRef: docRef } });
     return label;
   });
 }
@@ -624,7 +635,8 @@ export async function releaseBond(projectCode: string, position: number, release
       .where(and(eq(contractBonds.id, b.id), sql`${contractBonds.releasedOn} is null`)).returning({ id: contractBonds.id });
     if (!done) throw new Error('This guarantee is already released');
     const label = bondType.label(b.type) + (b.issuer ? ` · ${b.issuer}` : '');
-    await trace(tx, actorName, c.reference, `guarantee released · ${label} · ${releasedOn}`, `Released ${label}`, p.id, { type: 'contract_bond', id: b.id });
+    await trace(tx, actorName, c.reference, `guarantee released · ${label} · ${releasedOn}`, `Released ${label}`, p.id, { type: 'contract_bond', id: b.id },
+      { before: { releasedOn: null }, after: { releasedOn } });
     return label;
   });
 }
@@ -770,7 +782,8 @@ export async function updatePaymentMilestone(projectCode: string, number: string
       .where(and(eq(paymentMilestones.id, m.id), eq(paymentMilestones.status, 'planned')))
       .returning({ id: paymentMilestones.id });
     if (!done) throw new MilestoneEditError('not_planned', 'Only a planned milestone can be changed');
-    await audit(tx, actor.name, c.reference, `payment milestone ${number} changed · ${changes.join(' · ')}`, p.id, 'Contract', { type: 'payment_milestone', id: m.id });
+    await audit(tx, actor.name, c.reference, `payment milestone ${number} changed · ${changes.join(' · ')}`, p.id, 'Contract', { type: 'payment_milestone', id: m.id },
+      changedValues({ label: m.label, sharePct: m.sharePct ?? 0, contractualDue: m.contractualDue, condition: m.condition ?? null }, { label, sharePct: patch.sharePct, contractualDue: patch.contractualDue, condition }) ?? {});
     return number;
   });
 }
@@ -791,7 +804,8 @@ export async function removePaymentMilestone(projectCode: string, number: string
       .where(and(eq(paymentMilestones.id, m.id), eq(paymentMilestones.status, 'planned')))
       .returning({ id: paymentMilestones.id });
     if (!gone) throw new MilestoneEditError('not_planned', 'Only a planned milestone can be removed');
-    await audit(tx, actor.name, c.reference, `payment milestone ${number} removed · ${m.label} · ${m.sharePct ?? 0} %`, p.id, 'Contract', { type: 'payment_milestone', id: m.id });
+    await audit(tx, actor.name, c.reference, `payment milestone ${number} removed · ${m.label} · ${m.sharePct ?? 0} %`, p.id, 'Contract', { type: 'payment_milestone', id: m.id },
+      { before: { number, label: m.label, sharePct: m.sharePct, contractualDue: m.contractualDue, status: m.status } });
   });
 }
 
@@ -843,7 +857,8 @@ export async function issueInvoice(projectCode: string, input: IssueInvoiceInput
     const [inv] = await tx.insert(customerInvoices).values({ paymentMilestoneId: m.id, number, issuedOn, amountKeur: amount, currency: currencyOf(c.currency), note: input.note?.trim() || null })
       .returning({ id: customerInvoices.id });
     const unit = c.currency === BASE_CURRENCY ? 'k€' : `k ${c.currency}`;
-    const actor = await audit(tx, actorName, number, `issued · ${input.milestone} · ${amount} ${unit} · milestone: Planned → Invoiced`, p.id, 'Billing', { type: 'customer_invoice', id: inv.id });
+    const actor = await audit(tx, actorName, number, `issued · ${input.milestone} · ${amount} ${unit} · milestone: Planned → Invoiced`, p.id, 'Billing', { type: 'customer_invoice', id: inv.id },
+      { before: { milestone: input.milestone, status: 'planned' }, after: { milestone: input.milestone, status: 'invoiced', number, issuedOn, amountKeur: amount, currency: currencyOf(c.currency) } });
     await recordActivity(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, text: `Issued invoice ${number} · ${input.milestone} ${m.label} · ${amount} ${unit}`, kind: 'invoice', projectId: p.id });
     return number;
   });
@@ -864,7 +879,8 @@ export async function markInvoicePaid(projectCode: string, milestone: string, ac
     if (!moved) throw new Error(`${milestone} is not awaiting payment`);
     if (inv) await tx.update(customerInvoices).set({ paidOn: on }).where(eq(customerInvoices.id, inv.id));
     const ref = inv?.number ?? `${c.reference} ${milestone}`;
-    const actor = await audit(tx, actorName, ref, `paid · ${milestone} · milestone: Invoiced → Paid`, p.id, 'Billing', inv ? { type: 'customer_invoice', id: inv.id } : undefined);
+    const actor = await audit(tx, actorName, ref, `paid · ${milestone} · milestone: Invoiced → Paid`, p.id, 'Billing', inv ? { type: 'customer_invoice', id: inv.id } : undefined,
+      { before: { milestone, status: 'invoiced', paidOn: inv?.paidOn ?? null }, after: { milestone, status: 'paid', paidOn: inv ? on : null } });
     await recordActivity(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, text: `Payment received · ${ref} · ${milestone} ${m.label}`, kind: 'invoice', projectId: p.id });
   });
 }
