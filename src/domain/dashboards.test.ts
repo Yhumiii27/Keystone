@@ -58,6 +58,10 @@ describe('widget rights per persona', () => {
     expect(availableMetrics('member', 'project-kpi')).toEqual(['progress', 'cpi', 'spi']);
     expect(availableMetrics('member', 'my-kpi')).toEqual(['openTasks', 'overdueTasks']);
     expect(availableKinds('director').map((k) => k.kind)).toEqual(WIDGET_KINDS.map((k) => k.kind));
+    // S-19: the capacity chart follows the Resources screen (department heads, procurement, director; not the team member).
+    expect(availableKinds('depthead').map((k) => k.kind)).toContain('resources-capacity');
+    expect(canSeeWidget('pm', { kind: 'resources-capacity' })).toBe(canSee('pm', 'resources'));
+    expect(defaultWidget('resources-capacity', { role: 'director', project: null })).toEqual({ kind: 'resources-capacity', size: 'm' });
     expect(forbiddenWidget('member', layoutOf(kpi('a')))?.id).toBe('a');
     expect(forbiddenWidget('director', layoutOf(kpi('a')))).toBeNull();
   });

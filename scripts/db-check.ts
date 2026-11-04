@@ -82,7 +82,6 @@ import { schedule } from '@/domain/cpm';
 import { createBaselineSnapshot, getBaselineActivities, listProjectBaselines } from '@/server/dal/baselines';
 import { listCalendars, loadWorkCalendars, setProjectCalendar } from '@/server/dal/calendars';
 import { getBaselineRegister } from '@/server/dal/changes-baselines';
-import { addClientCommunication } from '@/server/dal/client-comms';
 import { createImportJob, getImportJob, saveImportPreview } from '@/server/dal/import-jobs';
 import { loadScheduleNetwork } from '@/server/dal/schedule-network';
 
@@ -167,7 +166,7 @@ const D5_COUNTS: Record<string, number> = {
  */
 const CH4_COUNTS: Record<string, number> = {
   calendars: 4, calendar_exceptions: 0, baselines: 8, baseline_activities: 145, schedule_runs: 0, stored_files: 3 /* L9-X3: the filed PDFs */, import_jobs: 0, import_job_rows: 0, export_log: 0,
-  client_communications: 0, whatif_scenario_actions: 0,
+  whatif_scenario_actions: 0,
 };
 
 /**
@@ -965,7 +964,6 @@ async function chapter4Writes() {
   check('"Set baseline" → BL3 with 21 activities', bl.code === 'BL3' && bl.activityCount === 21, bl);
   await setProjectCalendar('NDC-031', 'site_6x10', 'Romain Aubert');
   check('project calendar set', (await loadScheduleNetwork('NDC-031'))?.projectCalendar === 'site_6x10');
-  check('client exchange COM-001', (await addClientCommunication('HLT-026', { occurredOn: '2026-09-25', channel: 'phone', contactName: 'N. Bensaïd', subject: 'db-check' }, 'Romain Aubert')) === 'COM-001');
   const job = await createImportJob({ kind: 'parts', mode: 'update', fileName: 'parts.csv', actorName: 'Antoine Girard' });
   await saveImportPreview(job, [{ status: 'ok', action: 'update', key: 'EL-PLC-S7', data: {} }], { rows: 1 });
   check('import job previewed (nothing written)', (await getImportJob(job))?.status === 'previewed');

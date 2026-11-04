@@ -93,5 +93,7 @@
   "Dashboard no longer shared": "Tableau de bord plus partagé",
   "Dashboard copied": "Tableau de bord copié",
   "Dashboard copied — the widgets outside your workspace were left out": "Tableau de bord copié — les vignettes hors de votre espace de travail ont été écartées",
-  "Dashboard deleted": "Tableau de bord supprimé"
+  "Dashboard deleted": "Tableau de bord supprimé",
+  "Hours by department over the next 8 weeks (Resources)": "Heures par service sur les 8 prochaines semaines (Ressources)",
+  "Open Resources": "Ouvrir les Ressources"
 }

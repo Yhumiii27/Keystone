@@ -20,6 +20,7 @@ import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { auditEntries, dashboards, users } from '@/server/db/schema';
 import { resolveWidgets } from '@/server/dal/dashboard-data';
+import { currentLoadWeeks, getCapacityDemand } from '@/server/dal/resources';
 import { getDashboardFor, listDashboardsOf } from '@/server/dal/dashboards';
 import { COOKIE } from '@/server/session';
 import {
@@ -144,6 +145,18 @@ describe('R-203 — user dashboards', () => {
   it.each(PERSONAS.map((p) => p.role).filter((r) => r !== 'client'))('%s: every widget of a shared dashboard is filled exactly when the role may see it', async (role) => {
     const r = await resolveWidgets(PERSONA_BY_ROLE[role], everyWidget().widgets, 'fr');
     for (const x of r) expect(x.data.state === 'denied', `${role} · ${x.widget.kind}`).toBe(!canSeeWidget(role, x.widget));
+  });
+
+  it('S-19: the capacity widget shows the Resources screen’s capacity vs demand, to the roles that have Resources only', async () => {
+    const w: Widget = { id: 'c', kind: 'resources-capacity', size: 'm' };
+    const [dir] = await resolveWidgets(PERSONA_BY_ROLE.director, [w], 'en');
+    // Same rows as the Resources card over its default window (no computation of its own).
+    expect(dir.data).toEqual({ state: 'ok', projectLabel: null, view: { type: 'capacity', rows: await getCapacityDemand(await currentLoadWeeks()), href: '/resources' } });
+    expect(dir.data.state === 'ok' && dir.data.view.type === 'capacity' && dir.data.view.rows.length).toBeGreaterThan(0);
+    const [dh] = await resolveWidgets(PERSONA_BY_ROLE.depthead, [w], 'en');
+    expect(dh.data.state).toBe('ok');
+    const [member] = await resolveWidgets(PERSONA_BY_ROLE.member, [w], 'en');
+    expect(member.data).toEqual({ state: 'denied' });
   });
 
   it('a project widget on an unknown project is unavailable, never an error', async () => {

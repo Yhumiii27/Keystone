@@ -6,15 +6,18 @@ import Link from 'next/link';
 import { IconTile } from '@/components/app/Badges';
 import { EmptyState } from '@/components/app/EmptyState';
 import { KpiTile } from '@/components/app/Kpi';
+import { CapacityBar } from '@/components/app/Progress';
 import { LO, OK } from '@/components/app/tones';
 import { EvmSCurve } from '@/components/charts/evm-s-curve';
 import { ButtonLink } from '@/components/ds/Button';
 import { Tag } from '@/components/ds/Tag';
 import { screenHref } from '@/config/screens';
 import { ALERT_ICON, KPI_ICON } from '@/features/portfolio/view';
+import { capacityRoleBars } from '@/features/resources/model';
 import { dataText } from '@/i18n/data-text';
 import type { Lang, T } from '@/i18n/translate';
 import type { WidgetData } from '@/server/dal/dashboard-data';
+import type { CSSProperties } from 'react';
 import s from './dashboards.module.css';
 
 export function WidgetBody({ data, t, lang }: { data: WidgetData; t: T; lang: Lang }) {
@@ -93,6 +96,35 @@ export function WidgetBody({ data, t, lang }: { data: WidgetData; t: T; lang: La
           )}
         </>
       );
+    case 'capacity': {
+      // S-19: the Resources screen's "Capacity vs demand" card, same rows and bars.
+      const bars = capacityRoleBars(v.rows, t, lang);
+      return (
+        <div className={s.capacity}>
+          <span className={s.footnote}>{t('Hours by role, next 8 weeks')}</span>
+          {bars.roles.length ? (
+            bars.roles.map((r) => (
+              <div key={r.name} className={s.capRow}>
+                <div className={s.capHead}>
+                  <span className={s.capName}>{r.name}</span>
+                  <span className={s.capText} style={{ '--cap-color': r.color } as CSSProperties}>
+                    {r.text}
+                  </span>
+                </div>
+                <CapacityBar demand={r.demandH} capacity={r.capacityH} />
+              </div>
+            ))
+          ) : (
+            <EmptyState pad={4}>{t('No department to compare yet')}</EmptyState>
+          )}
+          {bars.note && <span className={s.footnote}>{bars.note}</span>}
+          {bars.roles.length > 0 && <span className={s.footnote}>{t('Tick marks available capacity')}</span>}
+          <ButtonLink variant="ghost" size="inline" iconRight={ArrowRight} href={v.href}>
+            {t('Open Resources')}
+          </ButtonLink>
+        </div>
+      );
+    }
     case 'evm':
       return (
         <div className={s.chart}>

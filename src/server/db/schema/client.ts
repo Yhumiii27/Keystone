@@ -1,8 +1,8 @@
 // Client portal (docs/spec/11 §3.2 ClientIssue; screen 03 §8). Issues are scoped to the project (they were global in
 // the prototype, 11 §7 #22). Decisions read the change requests (change.ts) and deliverables (quality.ts); invoices the
 // contract billing plan (contract.ts); documents the Codex index (documents.ts).
-import { date, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
-import type { ClientCommChannel, ClientCommDirection, ClientIssueStatus } from '../codes';
+import { date, integer, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core';
+import type { ClientIssueStatus } from '../codes';
 import { id, timestamps } from './_common';
 import { persons } from './organisation';
 import { projects } from './portfolio';
@@ -39,32 +39,5 @@ export const clientIssues = pgTable(
 // The prototype's typed document categories (CLIENT_DOCS 3543, table `client_document_categories`) were dropped in
 // Delivery 8 (L-9 = a, R-138): the client portal computes them from the Codex index (src/domain/rexclient.ts).
 
-/**
- * Client communication log (chapter 4, Site › "Client communication log"; Keystone-owned, per project): every exchange with
- * the client — date, channel, contact, subject, summary — and its follow-up (owner, due date, done). Numbered COM-001… per project.
- */
-export const clientCommunications = pgTable(
-  'client_communications',
-  {
-    id: id(),
-    projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
-    /** "COM-001" (per project). */
-    number: text('number').notNull(),
-    occurredOn: date('occurred_on', { mode: 'string' }).notNull(),
-    channel: text('channel').$type<ClientCommChannel>().notNull(),
-    direction: text('direction').$type<ClientCommDirection>().notNull().default('outbound'),
-    /** Client-side contact as typed, and the person when known. */
-    contactName: text('contact_name').notNull(),
-    contactPersonId: uuid('contact_person_id').references(() => persons.id),
-    subject: text('subject').notNull(),
-    summary: text('summary').notNull().default(''),
-    followUpOwnerName: text('follow_up_owner_name'),
-    followUpOwnerPersonId: uuid('follow_up_owner_person_id').references(() => persons.id),
-    followUpDueOn: date('follow_up_due_on', { mode: 'string' }),
-    followUpDoneAt: timestamp('follow_up_done_at', { withTimezone: true }),
-    createdByPersonId: uuid('created_by_person_id').references(() => persons.id),
-    createdByName: text('created_by_name').notNull(),
-    ...timestamps,
-  },
-  (t) => [unique().on(t.projectId, t.number)],
-);
+// The client communication log (chapter 4, table `client_communications`) was dropped in delivery 9 (D-5, S-03, R-171):
+// the Site screen opens the client decisions of the project meetings instead.

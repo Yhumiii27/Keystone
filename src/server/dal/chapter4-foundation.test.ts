@@ -17,7 +17,6 @@ import { addActivityTodo, listActivityTodos, removeActivityTodo, setActivityTodo
 import { createBaselineSnapshot, getBaselineActivities, getDisplayedBaselineCode, listProjectBaselines, snapshotIntoBaseline } from './baselines';
 import { getProjectCalendarCode, listCalendars, loadWorkCalendars, setActivityCalendar, setProjectCalendar, upsertCalendar } from './calendars';
 import { getBaselineRegister } from './changes-baselines';
-import { addClientCommunication, listClientCommunications, openClientFollowUps, setClientCommunicationFollowUpDone } from './client-comms';
 import { getConnectorConfig, updateConnectorConfig } from './connector-config';
 import { cancelImportJob, createImportJob, getImportJob, getImportJobRows, listImportJobs, markImportJobApplied, saveImportPreview, setImportJobMapping } from './import-jobs';
 import { createResourceRequest, discardDraftRequest, getDepartmentApprovals, sendDraftRequest } from './requests';
@@ -177,22 +176,6 @@ describe('import jobs', () => {
     expect((await getImportJob(id))!).toMatchObject({ status: 'applied', appliedByName: PM, summary: { rows: 3, updated: 1 } });
     await expect(cancelImportJob(id, PM)).rejects.toThrow('already imported');
     expect((await listImportJobs({ projectCode: 'HLT-026' })).map((x) => x.id)).toContain(id);
-  });
-});
-
-describe('client communication log', () => {
-  it('logs exchanges per project with follow-ups', async () => {
-    const n1 = await addClientCommunication('HLT-026', { occurredOn: '2026-09-24', channel: 'phone', contactName: 'N. Bensaïd', subject: 'Crane delivery date', followUpOwner: 'R. Aubert', followUpDueOn: '2026-09-30' }, PM);
-    const n2 = await addClientCommunication('HLT-026', { occurredOn: '2026-09-25', channel: 'email', direction: 'inbound', contactName: 'N. Bensaïd', subject: 'Paving access' }, PM);
-    expect([n1, n2]).toEqual(['COM-001', 'COM-002']);
-    const list = await listClientCommunications('HLT-026');
-    expect(list.map((c) => [c.number, c.channelLabel, c.directionLabel, c.followUpOwner])).toEqual([['COM-002', 'E-mail', 'From the client', null], ['COM-001', 'Phone', 'To the client', 'Romain Aubert']]);
-    expect((await openClientFollowUps('HLT-026')).map((c) => c.number)).toEqual(['COM-001']);
-    await setClientCommunicationFollowUpDone('HLT-026', 'COM-001', true, PM);
-    expect(await openClientFollowUps('HLT-026')).toEqual([]);
-    await expect(addClientCommunication('HLT-026', { occurredOn: '2026-09-25', channel: 'pigeon' as never, contactName: 'x', subject: 'y' }, PM)).rejects.toThrow('Unknown channel');
-    await expect(addClientCommunication('HLT-026', { occurredOn: '', channel: 'email', contactName: 'x', subject: 'y' }, PM)).rejects.toThrow('date');
-    expect(await listClientCommunications('NDC-031')).toEqual([]);
   });
 });
 

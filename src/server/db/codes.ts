@@ -1181,14 +1181,6 @@ export const transcriptProposalType = codec<TranscriptProposalType, string>([
 /** proposed → accepted / rejected by a human; applied once it reached the minutes, a task, the risk register or the Q&A bridge. */
 export type TranscriptProposalStatus = 'proposed' | 'accepted' | 'rejected' | 'applied';
 
-/** Client communication log (Site › "Client communication log", Keystone-owned). */
-export type ClientCommChannel = 'email' | 'phone' | 'meeting' | 'video' | 'letter' | 'site_visit' | 'other';
-export const clientCommChannel = codec<ClientCommChannel, string>([
-  ['email', 'E-mail'], ['phone', 'Phone'], ['meeting', 'Meeting'], ['video', 'Video call'], ['letter', 'Letter'], ['site_visit', 'Site visit'], ['other', 'Other'],
-]);
-export type ClientCommDirection = 'inbound' | 'outbound';
-export const clientCommDirection = codec<ClientCommDirection, string>([['inbound', 'From the client'], ['outbound', 'To the client']]);
-
 /** What-if scenario actions derived from real allocations (S-7). */
 export type WhatIfActionKind = 'overtime' | 'extra_resource' | 'shift';
 export const whatIfActionKind = codec<WhatIfActionKind, string>([['overtime', 'Overtime'], ['extra_resource', 'Extra resource'], ['shift', 'Shift start']]);
