@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { BUILTIN_CALENDARS } from './calendar';
 import {
   applyGanttEdit, applyGanttEdits, barBox, buildCalendars, dayDelta, dragEdit, draggedDuration, draggedStart, ganttRange, ganttScale, isoWeekNumber, linkLabel,
-  linkPath, lockOf, movedConstraint, offDays, parseDurationDays, parseLag, previewSchedule, storedDates, xOf, type GanttActivity, type GanttNetwork,
+  earliestStart, ganttEquipmentFilter, linkPath, lockOf, movedConstraint, offDays, parseDurationDays, parseLag, previewSchedule, storedDates, xOf, type GanttActivity, type GanttNetwork,
 } from './gantt-edit';
 
 const specs = BUILTIN_CALENDARS.map((def) => ({ def, settingsHolidays: [], exceptions: [] }));
@@ -148,9 +148,11 @@ describe('preview (= Reschedule)', () => {
     const moved = applyGanttEdit(net(), { kind: 'move', id: 'A1010', start: '2026-10-12' }, cals);
     const after = moved.ok ? previewSchedule(moved.net, cals) : null;
     expect(after?.ok && [after.dates.A1010.start, after.dates.A1020.start, after.dates.A1040.start]).toEqual(['2026-10-12', '2026-10-19', '2026-10-22']);
-    // Moving earlier than the data date: the engine still starts the remaining work at the data date.
-    const early = applyGanttEdit(net(), { kind: 'move', id: 'A1030', start: '2026-09-01' }, cals);
-    expect(early.ok && previewSchedule(early.net, cals)).toMatchObject({ ok: true, dates: { A1030: { start: '2026-10-05' } } });
+    // S-06 (owner, follow-up questionnaire of delivery 9): moving earlier than the data date is now refused (it used to set a
+    // "Start no earlier than" with no effect); the data date is what holds the activity.
+    expect(applyGanttEdit(net(), { kind: 'move', id: 'A1030', start: '2026-09-01' }, cals)).toEqual({
+      ok: false, error: 'held', hold: { activity: 'A1030', earliest: '2026-10-05', by: [], floor: 'dataDate' },
+    });
     const looped = { ...net(), links: [...net().links, { pred: 'A1040', succ: 'A1010', type: 'FS' as const, lag: 0 }] };
     expect(previewSchedule(looped, cals)).toEqual({ ok: false, cycle: ['A1010', 'A1020', 'A1040', 'A1010'] });
   });
@@ -234,5 +236,62 @@ describe('R-204 supplier activities (read-only on the Gantt)', () => {
     if (!p.ok) throw new Error('preview failed');
     // Supplier 4 d from Mon 5 Oct → Thu 8 Oct; A1030 starts Fri 9 Oct (was 5 Oct without the tie).
     expect([p.dates['PO-1/F10'].start, p.dates['PO-1/F10'].finish, p.dates.A1030.start]).toEqual(['2026-10-05', '2026-10-08', '2026-10-09']);
+  });
+});
+
+describe('S-06 — a move earlier than the logic allows is refused', () => {
+  it('names the driving predecessor (with its relationship) and the earliest possible start', () => {
+    // A1020 follows A1010 (5 d from Mon 5 Oct → Fri 9 Oct): it cannot start before Mon 12 Oct.
+    expect(earliestStart(net(), cals, 'A1020')).toEqual({ activity: 'A1020', earliest: '2026-10-12', by: [{ id: 'A1010', link: 'FS' }], floor: 'predecessor' });
+    expect(applyGanttEdit(net(), { kind: 'move', id: 'A1020', start: '2026-10-08' }, cals)).toEqual({
+      ok: false, error: 'held', hold: { activity: 'A1020', earliest: '2026-10-12', by: [{ id: 'A1010', link: 'FS' }], floor: 'predecessor' },
+    });
+    // On the earliest date, or later: accepted. Dropped on Sat 10 Oct → snapped to Mon 12 Oct, accepted.
+    expect(applyGanttEdit(net(), { kind: 'move', id: 'A1020', start: '2026-10-12' }, cals).ok).toBe(true);
+    expect(applyGanttEdit(net(), { kind: 'move', id: 'A1020', start: '2026-10-10' }, cals).ok).toBe(true);
+    expect(applyGanttEdit(net(), { kind: 'move', id: 'A1020', start: '2026-10-20' }, cals).ok).toBe(true);
+  });
+
+  it('the activity’s own constraint does not count; a lag and several predecessors are named', () => {
+    const n = net();
+    n.activities[3] = { ...n.activities[3], constraint: { type: 'SNET', date: '2026-10-26' } };
+    n.links = [{ pred: 'A1010', succ: 'A1020', type: 'FS', lag: 2 }, { pred: 'A1030', succ: 'A1020', type: 'FS', lag: 5 }, n.links[1]];
+    // A1010 ends Fri 9 Oct + 2 d → Wed 14; A1030 ends Tue 6 + 5 d → Wed 14: both drive.
+    const hold = earliestStart(n, cals, 'A1020');
+    expect(hold).toEqual({ activity: 'A1020', earliest: '2026-10-14', by: [{ id: 'A1010', link: 'FS+2' }, { id: 'A1030', link: 'FS+5' }], floor: 'predecessor' });
+    expect(applyGanttEdit(n, { kind: 'move', id: 'A1020', start: '2026-10-13' }, cals)).toMatchObject({ ok: false, error: 'held' });
+    // Moving the constrained activity earlier than its constraint, but not earlier than its predecessors: accepted.
+    expect(applyGanttEdit(n, { kind: 'move', id: 'A1020', start: '2026-10-14' }, cals)).toMatchObject({ ok: true, activity: { constraint: { type: 'SNET', date: '2026-10-14' } } });
+  });
+
+  it('the project start holds an activity without predecessor; a "Must start on" forces its date (not refused)', () => {
+    const n = { ...net(), projectStart: '2026-10-19' };
+    expect(applyGanttEdit(n, { kind: 'move', id: 'A1030', start: '2026-10-12' }, cals)).toMatchObject({ ok: false, error: 'held', hold: { earliest: '2026-10-19', floor: 'projectStart' } });
+    const m = net();
+    m.activities[3] = { ...m.activities[3], constraint: { type: 'MSO', date: '2026-10-12' } };
+    expect(applyGanttEdit(m, { kind: 'move', id: 'A1020', start: '2026-10-07' }, cals)).toMatchObject({ ok: true, activity: { constraint: { type: 'MSO', date: '2026-10-07' } } });
+  });
+
+  it('a finish-anchored predecessor sees the new duration when the duration changes first (the order of the dialog and the server)', () => {
+    const n = net();
+    n.links = [{ pred: 'A1010', succ: 'A1020', type: 'FF', lag: 0 }, n.links[1]];
+    // A1020 (3 d) must finish with A1010 (Fri 9 Oct): earliest start Wed 7 Oct; with 5 days, Mon 5 Oct.
+    expect(earliestStart(n, cals, 'A1020')).toMatchObject({ earliest: '2026-10-07', by: [{ id: 'A1010', link: 'FF' }] });
+    expect(applyGanttEdits(n, [{ kind: 'move', id: 'A1020', start: '2026-10-05' }], cals)).toMatchObject({ ok: false, error: 'held' });
+    expect(applyGanttEdits(n, [{ kind: 'duration', id: 'A1020', days: 5 }, { kind: 'move', id: 'A1020', start: '2026-10-05' }], cals).ok).toBe(true);
+  });
+
+  it('no check when the network cannot be dated (a loop: Reschedule reports it)', () => {
+    const looped = { ...net(), links: [...net().links, { pred: 'A1040', succ: 'A1010', type: 'FS' as const, lag: 0 }] };
+    expect(earliestStart(looped, cals, 'A1020')).toBeNull();
+    expect(applyGanttEdit(looped, { kind: 'move', id: 'A1020', start: '2026-10-05' }, cals).ok).toBe(true);
+  });
+});
+
+describe('S-08 — equipment line filter of the rows', () => {
+  it('all, one line, or the common activities (supplier activities included)', () => {
+    const acts = [act('A1', { equipment: 'EQ-01' }), act('A2', { equipment: 'EQ-02' }), act('A3', { equipment: null }), act('PO-1/F10', { source: 'PO-1' })];
+    const ids = (f: string) => ganttEquipmentFilter(acts, f).map((a) => a.id);
+    expect([ids('all'), ids('EQ-02'), ids('common')]).toEqual([['A1', 'A2', 'A3', 'PO-1/F10'], ['A2'], ['A3', 'PO-1/F10']]);
   });
 });

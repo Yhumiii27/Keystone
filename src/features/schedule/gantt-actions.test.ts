@@ -94,6 +94,17 @@ describe('Gantt Server Functions (R-198)', () => {
     expect((await listAudit({ projectCode: 'HLT-026', limit: 5 })).some((x) => x.change.startsWith('rescheduled at 2026-09-25'))).toBe(true);
   });
 
+  it('S-06: a move earlier than the predecessors allow is refused on the server — who holds it, from when; nothing written', async () => {
+    const before = await act('A1330');
+    const auditCount = (await listAudit({ projectCode: 'HLT-026', limit: 50 })).length;
+    const r = await ganttEditActivityAction('HLT-026', 'A1330', { start: '2026-09-01' });
+    expect(r).toEqual({ error: 'A1330 cannot start before 2 Nov 2026: its predecessor A1320 (FS) holds it' });
+    viewer.lang = 'fr';
+    expect(await ganttEditActivityAction('HLT-026', 'A1330', { start: '2026-09-01' })).toEqual({ error: 'A1330 ne peut pas commencer avant le 2 nov. 2026 : son prédécesseur A1320 (FS) la retient' });
+    expect(await act('A1330')).toEqual(before);
+    expect((await listAudit({ projectCode: 'HLT-026', limit: 50 })).length).toBe(auditCount);
+  });
+
   it('duration and removal of the constraint', async () => {
     expect(await ganttEditActivityAction('HLT-026', 'A1520', { duration: '30' })).toMatchObject({ ok: true });
     expect((await act('A1520')).duration).toBe(30);

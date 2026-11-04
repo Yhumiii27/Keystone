@@ -16,6 +16,7 @@ import {
 } from './calendar';
 import { DEFAULT_CPM_OPTIONS, CpmCycleError, CpmInputError, detectCycle, linkKey, schedule, type CpmActivityInput, type CpmLinkType, type CpmOptions } from './cpm';
 import type { CodeType } from './activity-codes';
+import { filterByEquipment, type EquipmentFilter } from './equipment-scope';
 import { actualsFromProgress } from './schedule-rollup';
 
 // ── Network ────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -73,6 +74,11 @@ export interface GanttActivity {
   source?: string;
   /** R-204: the activity's codes (type key → value keys), for the Gantt's filter and grouping. */
   codes?: Record<string, string[]>;
+  /**
+   * R-185 / S-08: reference of the activity's equipment line ("EQ-02", activities.equipment_id); null or absent = common to the
+   * project (and every supplier activity).
+   */
+  equipment?: string | null;
 }
 
 export interface GanttLink {
@@ -147,14 +153,19 @@ function cpmActivity(a: GanttActivity, dataDate: IsoDate): CpmActivityInput {
   };
 }
 
+/** The CPM of the network, as "Reschedule" runs it. Throws CpmCycleError / CpmInputError. */
+function runSchedule(net: GanttNetwork, cals: GanttCalendars) {
+  return schedule({
+    dataDate: net.dataDate, projectStart: net.projectStart, projectCalendar: net.projectCalendar, calendars: cals,
+    activities: net.activities.map((a) => cpmActivity(a, net.dataDate)), links: net.links, options: { ...DEFAULT_CPM_OPTIONS, ...(net.options ?? {}) },
+  });
+}
+
 /** The dates "Reschedule" would give this network (the optimistic preview of an edit). */
 export function previewSchedule(net: GanttNetwork, cals: GanttCalendars): GanttPreview {
   if (!net.activities.length) return { ok: true, dates: {}, finish: net.dataDate };
   try {
-    const r = schedule({
-      dataDate: net.dataDate, projectStart: net.projectStart, projectCalendar: net.projectCalendar, calendars: cals,
-      activities: net.activities.map((a) => cpmActivity(a, net.dataDate)), links: net.links, options: { ...DEFAULT_CPM_OPTIONS, ...(net.options ?? {}) },
-    });
+    const r = runSchedule(net, cals);
     const dates: Record<string, GanttDates> = {};
     for (const [id, x] of Object.entries(r.activities)) dates[id] = { start: x.start, finish: x.finish, critical: x.state !== 'complete' && x.critical, totalFloat: x.totalFloat };
     return { ok: true, dates, finish: r.projectFinish };
@@ -183,12 +194,28 @@ export type GanttEdit =
   | { kind: 'editLink'; link: GanttLink }
   | { kind: 'removeLink'; pred: string; succ: string };
 
-export type GanttEditError = 'unknown' | 'complete' | 'started' | 'milestone' | 'date' | 'duration' | 'type' | 'lag' | 'self' | 'duplicate' | 'missing' | 'supplier' | 'cycle';
+export type GanttEditError =
+  | 'unknown' | 'complete' | 'started' | 'milestone' | 'date' | 'duration' | 'type' | 'lag' | 'self' | 'duplicate' | 'missing' | 'supplier' | 'cycle' | 'held';
 
-export type GanttEditResult = { ok: true; net: GanttNetwork; activity?: GanttActivity; link?: GanttLink } | { ok: false; error: GanttEditError; cycle?: string[] };
+/**
+ * S-06 — what holds an activity at its earliest start: its driving predecessors (with the relationship's label, "FS+2"), or,
+ * without one, the data date or the project start.
+ */
+export interface GanttHold {
+  activity: string;
+  /** Earliest start the logic allows (a working day of the activity's calendar). */
+  earliest: IsoDate;
+  by: { id: string; link: string }[];
+  /** What holds it when no predecessor does. */
+  floor: 'predecessor' | 'dataDate' | 'projectStart';
+}
 
-/** EN source sentence of a refusal (rendered through t()). The cycle text is built by the caller. */
-export const GANTT_EDIT_ERRORS: Record<Exclude<GanttEditError, 'cycle'>, string> = {
+export type GanttEditResult =
+  | { ok: true; net: GanttNetwork; activity?: GanttActivity; link?: GanttLink }
+  | { ok: false; error: GanttEditError; cycle?: string[]; hold?: GanttHold };
+
+/** EN source sentence of a refusal (rendered through t()). The cycle and hold texts are built by the caller. */
+export const GANTT_EDIT_ERRORS: Record<Exclude<GanttEditError, 'cycle' | 'held'>, string> = {
   unknown: 'Invalid request',
   complete: 'This activity is complete: its dates are actual',
   started: 'This activity has started: its start is actual',
@@ -212,6 +239,31 @@ const DATE_MAX = '2100-12-31';
  */
 export function movedConstraint(current: GanttConstraint | null, start: IsoDate): GanttConstraint {
   return current?.type === 'MSO' ? { type: 'MSO', date: start } : { type: 'SNET', date: start };
+}
+
+/**
+ * S-06 (owner, follow-up questionnaire of delivery 9): the earliest start the logic allows an activity — the CPM of the network
+ * with the activity's own date constraint removed — and what holds it there. Null when the network cannot be dated (a loop or
+ * invalid input: Reschedule reports it) or the activity is unknown.
+ */
+export function earliestStart(net: GanttNetwork, cals: GanttCalendars, id: string): GanttHold | null {
+  if (!net.activities.some((a) => a.id === id)) return null;
+  const free: GanttNetwork = { ...net, activities: net.activities.map((a) => (a.id === id ? { ...a, constraint: null } : a)) };
+  let r: ReturnType<typeof runSchedule>;
+  try {
+    r = runSchedule(free, cals);
+  } catch (e) {
+    if (e instanceof CpmCycleError || e instanceof CpmInputError) return null;
+    throw e;
+  }
+  const x = r.activities[id];
+  if (!x) return null;
+  const by = x.drivingPredecessors.map((p) => {
+    const l = net.links.find((k) => k.pred === p && k.succ === id);
+    return { id: p, link: l ? linkLabel(l) : 'FS' };
+  });
+  const floor = by.length ? 'predecessor' : net.projectStart && net.projectStart > net.dataDate ? 'projectStart' : 'dataDate';
+  return { activity: id, earliest: x.earlyStart, by, floor };
 }
 
 /** A lag typed or dragged: whole working days within ±999 (null when not). */
@@ -251,7 +303,14 @@ export function applyGanttEdit(net: GanttNetwork, edit: GanttEdit, cals: GanttCa
       if (lock) return { ok: false, error: lock };
       if (!isIsoDate(edit.start) || edit.start < CALENDAR_EPOCH || edit.start > DATE_MAX) return { ok: false, error: 'date' };
       const start = calendarOf(net, cals, a).nextWorkDay(edit.start);
-      return replace({ ...a, constraint: movedConstraint(a.constraint, start) });
+      const constraint = movedConstraint(a.constraint, start);
+      // S-06: a "Start no earlier than" before what the logic allows would have no effect — refused, saying what holds the
+      // activity and from when it can start. A "Must start on" forces its date (the CPM reports the conflict, as P6).
+      if (constraint.type === 'SNET') {
+        const hold = earliestStart(net, cals, a.id);
+        if (hold && start < hold.earliest) return { ok: false, error: 'held', hold };
+      }
+      return replace({ ...a, constraint });
     }
     case 'duration': {
       const a = find(edit.id);
@@ -300,6 +359,16 @@ export function applyGanttEdits(net: GanttNetwork, edits: readonly GanttEdit[], 
     cur = applyGanttEdit(cur.net, e, cals);
   }
   return cur;
+}
+
+/**
+ * S-08 — the activities an equipment filter keeps (`?equipment=` of the Gantt, R-185 rules of src/domain/equipment-scope.ts):
+ * 'all', a line ("EQ-02") or 'common' (the activities of no line, supplier activities included). The CPM preview always runs on
+ * the whole network; only the rows are filtered.
+ */
+export function ganttEquipmentFilter<A extends Pick<GanttActivity, 'equipment'>>(acts: readonly A[], f: EquipmentFilter): A[] {
+  const rows = acts.map((a) => ({ a, equipmentRef: a.equipment ?? null }));
+  return filterByEquipment(rows, f).map((r) => r.a);
 }
 
 /** Relationship label as the Plan writes it: "FS", "FS+5", "SS−3". */

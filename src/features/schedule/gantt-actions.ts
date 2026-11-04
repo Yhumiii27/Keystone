@@ -21,6 +21,7 @@ import { getProjectContext, type ProjectContext } from '@/server/project-context
 import { getI18n } from '@/server/session';
 import { cycleText, linkCycleText, rescheduledText } from '@/features/plan/i18n';
 import { canEditGantt, ganttEditable } from './gantt-rights';
+import { heldText } from './i18n';
 
 export type GanttActionResult = { ok: true; toast: string } | { error: string; conflict?: true };
 
@@ -45,6 +46,8 @@ async function allowed(code: unknown): Promise<Allowed | { error: string }> {
 async function refusal(r: Extract<GanttEditResult, { ok: false }>): Promise<{ error: string }> {
   const { t, lang } = await getI18n();
   if (r.error === 'cycle') return { error: linkCycleText(r.cycle ?? [], lang) };
+  // S-06: a move earlier than the predecessors (or the data date) allow — refused, with what holds it and the earliest date.
+  if (r.error === 'held') return { error: r.hold ? heldText(r.hold, t(longDateText(r.hold.earliest)), lang) : t('Invalid request') };
   return { error: t(GANTT_EDIT_ERRORS[r.error]) };
 }
 
@@ -88,16 +91,15 @@ export async function ganttEditActivityAction(code: string, activity: string, va
   const edits: GanttEdit[] = [];
   if (values?.clearConstraint === true) edits.push({ kind: 'clearConstraint', id: act });
   const start = str(values?.start).trim();
-  if (start) {
-    if (!isIsoDate(start)) return { error: t(GANTT_EDIT_ERRORS.date) };
-    edits.push({ kind: 'move', id: act, start });
-  }
+  if (start && !isIsoDate(start)) return { error: t(GANTT_EDIT_ERRORS.date) };
   const durText = str(values?.duration).trim();
   if (durText) {
     const days = parseDurationDays(durText);
     if (days == null) return { error: t(GANTT_EDIT_ERRORS.duration) };
     if (days !== a.duration) edits.push({ kind: 'duration', id: act, days });
   }
+  // The move last: its S-06 check (earliest start allowed by the logic) sees the new duration (finish-anchored links).
+  if (start) edits.push({ kind: 'move', id: act, start });
   if (!edits.length) return { ok: true, toast: `${act} · ${t('No change')}` };
   const res = applyGanttEdits(r.net, edits, buildCalendars(r.net.calendars));
   if (!res.ok) return refusal(res);

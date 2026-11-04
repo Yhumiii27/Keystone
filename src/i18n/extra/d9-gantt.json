@@ -29,6 +29,6 @@
   "No predecessor": "Aucun prédécesseur",
   "Relationship type": "Type de lien",
   "Remove the date constraint (as soon as possible)": "Retirer la contrainte de date (dès que possible)",
-  "Sets a “Start no earlier than” constraint · the logic can still push the activity later": "Pose une contrainte « Début au plus tôt le » · la logique peut encore repousser l’activité",
+  "Sets a “Start no earlier than” constraint · never earlier than its predecessors allow; the logic can still push it later": "Pose une contrainte « Début au plus tôt le » · jamais plus tôt que ne le permettent ses prédécesseurs ; la logique peut encore la repousser",
   "Drag onto another activity to link them (finish-to-start)": "Glissez sur une autre activité pour les lier (fin à début)"
 }

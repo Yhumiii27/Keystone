@@ -133,6 +133,7 @@
   border: 1px dashed var(--color-accent-300);
   pointer-events: none;
 }
+.ghostRefused { border-color: var(--color-neutral-500); background: repeating-linear-gradient(135deg, transparent 0 4px, color-mix(in srgb, var(--color-neutral-500) 35%, transparent) 4px 6px); }
 .milestone {
   width: 11px;
   height: 11px;
