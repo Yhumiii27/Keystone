@@ -1,6 +1,6 @@
 {
  "generated": "2026-10-10",
- "updated": "2026-11-03",
+ "updated": "2026-11-04",
  "branch": "main-2a2fep",
  "history": [
   {
@@ -278,6 +278,10 @@
   {
    "date": "2026-11-03",
    "text": "R-211 fait : planning du portefeuille en trois catégories — en cours, pipeline, sous garantie (demande du responsable produit, PF-1)."
+  },
+  {
+   "date": "2026-11-04",
+   "text": "Questionnaire de suivi de la livraison 9 (28 questions, « recommandé ») appliqué : Gantt (refus avant la logique, filtre équipement), qualité du planning au portefeuille, seuils de dérive dans Paramètres, alerte de glissement fournisseur, ancien journal client supprimé (R-171 fait), vignette capacité, notification des tâches récurrentes ; demande déposée chez Arche (démo K-14)."
   }
  ],
  "items": [
@@ -5155,7 +5159,7 @@
    "kind": "dette_technique",
    "priority": "plus_tard",
    "status": "non_commence",
-   "waiting_on": "Confirmation D-5 pour supprimer client_communications (DELIVERY-6 §8)",
+   "waiting_on": "",
    "effort": "S",
    "sources": [
     "DELIVERY-2.md §5",
@@ -5175,9 +5179,9 @@
     "déjà supprimés : comingSoonT, activeStatusCodes, setDisplayedBaseline, listScenarioActions / replaceScenarioActions / saveScenarioResult (0 occurrence)"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 9",
-    "note": "2 nov. 2026 (docs/delivery-9/notes-r171-cleanup.md) : code mort nommé retiré (addTaskAttachment, INDEX_ALERT, disponibilités de resources.ts, getPortfolioCashForecast, transferTargets, copie de priorityScore), ~45 exports et 2 fichiers sans référence, 11 classes CSS, commentaires « OPEN QUESTION » rattachés aux décisions et commentaires périmés corrigés. Reste : client_communications et son DAL (attend D-5)."
+    "note": "2 nov. 2026 (docs/delivery-9/notes-r171-cleanup.md) : code mort nommé retiré (addTaskAttachment, INDEX_ALERT, disponibilités de resources.ts, getPortfolioCashForecast, transferTargets, copie de priorityScore), ~45 exports et 2 fichiers sans référence, 11 classes CSS, commentaires « OPEN QUESTION » rattachés aux décisions et commentaires périmés corrigés.  4 nov. 2026 (S-03, D-5) : table client_communications et son code supprimés (migration 0075)."
    }
   },
   {
@@ -5886,7 +5890,7 @@
    "progress": {
     "state": "fait",
     "delivery": "Livraison 9",
-    "note": "Gantt des activités interactif (zoom jour/semaine/mois, glisser-déposer, liens, recalcul CPM immédiat, saisie au clavier) ; questions ouvertes dans notes-r198-gantt.md § 5."
+    "note": "Gantt des activités interactif (zoom jour/semaine/mois, glisser-déposer, liens, recalcul CPM immédiat, saisie au clavier) ; questions ouvertes dans notes-r198-gantt.md § 5. 4 nov. 2026 (questionnaire de suivi S-05 à S-09) : glisser avant la logique refusé avec message (S-06), filtre par ligne d’équipement (S-08) — docs/delivery-9/notes-s-gantt.md."
    }
   },
   {
@@ -5958,7 +5962,7 @@
    "progress": {
     "state": "fait",
     "delivery": "Livraison 9",
-    "note": "01/11/2026 : tâches récurrentes (toutes les n semaines / n mois, ou à chaque jalon), occurrence suivante créée à la clôture, jours ouvrés du projet, marque ↻ dans les vues (migration 0070)."
+    "note": "01/11/2026 : tâches récurrentes (toutes les n semaines / n mois, ou à chaque jalon), occurrence suivante créée à la clôture, jours ouvrés du projet, marque ↻ dans les vues (migration 0070). 4 nov. 2026 (S-15) : l’assigné est prévenu quand un autre crée l’occurrence suivante."
    }
   },
   {
@@ -6006,7 +6010,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "Livraison 9",
-    "note": "01/11/2026 : écran « Mes tableaux de bord » (62e écran) : vignettes sur les indicateurs existants, filtres, partage en lecture avec droits du lecteur (migration 0072). Reste Power BI par les vues pub_ (demande Matrix #54 et DSI)."
+    "note": "01/11/2026 : écran « Mes tableaux de bord » (62e écran) : vignettes sur les indicateurs existants, filtres, partage en lecture avec droits du lecteur (migration 0072). Reste Power BI par les vues pub_ (demande Matrix #54 et DSI). 4 nov. 2026 (S-17 à S-19) : vignette « Capacité vs demande » (S-19)."
    }
   },
   {
@@ -6030,7 +6034,7 @@
    "progress": {
     "state": "fait",
     "delivery": "Livraison 9",
-    "note": "01/11/2026 : codes d’activité (équipement et lot d’achat déduits, site et types libres) avec filtre et regroupement sur le Plan et le Gantt ; plannings fournisseurs par commande consolidés dans le CPM (rattachements fin-début), suivi de l’avancement et du glissement fournisseur (migration 0074). Options non faites : filtre par code sur la qualité du planning, alerte de glissement fournisseur."
+    "note": "01/11/2026 : codes d’activité (équipement et lot d’achat déduits, site et types libres) avec filtre et regroupement sur le Plan et le Gantt ; plannings fournisseurs par commande consolidés dans le CPM (rattachements fin-début), suivi de l’avancement et du glissement fournisseur (migration 0074). Options non faites : filtre par code sur la qualité du planning, alerte de glissement fournisseur. 4 nov. 2026 (S-26 à S-28) : alerte de glissement fournisseur (≥ 5 j.o., acheteur et chef de projet, S-27) ; lot d’achat et plannings types : plus tard."
    }
   },
   {
@@ -6055,7 +6059,7 @@
    "progress": {
     "state": "fait",
     "delivery": "Livraison 9",
-    "note": "01/11/2026 : analyse Monte-Carlo délai et coût sous le registre des risques (fourchettes du CP, −10 % / +25 % par défaut, risques liés, P10-P90, courbes, criticité, tornado ; migration 0073)."
+    "note": "01/11/2026 : analyse Monte-Carlo délai et coût sous le registre des risques (fourchettes du CP, −10 % / +25 % par défaut, risques liés, P10-P90, courbes, criticité, tornado ; migration 0073). 4 nov. 2026 (S-24, S-25) : seuils de la dérive prévue et de l’alerte de portefeuille dans Paramètres."
    }
   },
   {
@@ -6079,7 +6083,7 @@
    "progress": {
     "state": "fait",
     "delivery": "Livraison 9",
-    "note": "01/11/2026 : carte « Qualité du planning » (14 contrôles DCMA, seuils du standard modifiables dans Paramètres) et « Analyse des retards » (référence / actuel ou deux références, glissement du chemin critique) sur l’écran Planning ; lecture seule."
+    "note": "01/11/2026 : carte « Qualité du planning » (14 contrôles DCMA, seuils du standard modifiables dans Paramètres) et « Analyse des retards » (référence / actuel ou deux références, glissement du chemin critique) sur l’écran Planning ; lecture seule. 4 nov. 2026 (S-20 à S-23) : une fin de chaîne par ligne d’équipement (S-21), colonne « Qualité du planning » au portefeuille (S-23) — notes-s-quality.md."
    }
   },
   {
@@ -6126,7 +6130,7 @@
    "progress": {
     "state": "fait",
     "delivery": "Livraison 9",
-    "note": "01/11/2026 : « Dérive prévue » fondée sur des règles (valeur acquise, planning, P80 Monte-Carlo) avec 11 règles de mitigation et alerte portefeuille ; à enrichir quand un historique réel existera."
+    "note": "01/11/2026 : « Dérive prévue » fondée sur des règles (valeur acquise, planning, P80 Monte-Carlo) avec 11 règles de mitigation et alerte portefeuille ; à enrichir quand un historique réel existera. 4 nov. 2026 (S-25) : seuils dans Paramètres."
    }
   },
   {
