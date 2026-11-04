@@ -341,3 +341,62 @@ Questionnaire publié en artefact (https://claude.ai/artifact/CG1FQk6mMeoLD7MaPM
 ## Planning du portefeuille (demande du 03/11/2026)
 
 - **PF-1 — Projets en garantie à part (R-211).** Le planning du portefeuille a trois catégories : en cours, dans le pipeline, sous garantie. Les projets à l’étape Garantie quittent « En cours » pour un groupe « Sous garantie » placé après « Pipeline », avec son filtre d’étape et sa vignette « Projets sous garantie » (nombre et budget) ; « Projets en cours » ne les compte plus. Écart voulu au prototype (deux catégories) : les tests dorés le reprennent par `src/test/pf1.ts`.
+
+## Questions de suivi de la livraison 9 (réponses du 04/11/2026)
+
+Questionnaire https://claude.ai/artifact/4AAS3t3L6t8soKaQCNxRBh (`docs/decisions/questions-suivi-l9.json`). Réponse du responsable produit : « recommandé » pour les 28 questions.
+
+### Démo alignée avec Arche (K-14)
+
+- **S-01 · RCF-019 : garder le projet « Clinique Pasteur Lyon » ou le remplacer par un projet de l’unité mobile MEMU-16 d’une usine de tomates au Sénégal ?** : Garder RCF-019 tel quel ★
+- **S-02 · Déposer chez Arche la demande de reprendre APM-008, MCH-045, RB-006, le besoin B01 et la SAT de RCF-019 dans sa démo ?** : Oui, déposer la demande ★
+
+### Décisions déjà prises à appliquer (R-171 · R-030)
+
+- **S-03 · Supprimer l’ancien journal des échanges client (table client_communications) ?** : Oui, supprimer ★
+- **S-04 · Quand retirer la saisie d’heures de Keystone (votre réponse C-2b) ?** : Avec R-030, quand les heures de Cursus arrivent ★
+
+### Gantt interactif (R-198)
+
+- **S-05 · Recalcul immédiat du planning : pour le Gantt seulement, ou aussi pour les saisies du tableau du Plan ?** : Gantt seulement ★
+- **S-06 · Glisser une activité vers la gauche au-delà de ce que permettent ses prédécesseurs ?** : Refuser le glissement avec un message ★
+- **S-07 · Vue par défaut du Planning ?** : Lots de travaux (actuel) ★
+- **S-08 · Filtre par équipement sur le Gantt pour les projets à plusieurs lignes d’équipement ?** : Oui ★
+- **S-09 · Glisser un lot entier (toutes ses activités) ?** : Plus tard ★
+
+### Notifications par e-mail (R-036)
+
+- **S-10 · Les quatre familles de notifications et leurs réglages par défaut conviennent-elles ?** : Oui, un réglage par famille ★
+- **S-11 · Heure du résumé quotidien ?** : 07:00, avec les rappels ★
+- **S-12 · Alertes d’indicateur (dépassement de coût, facturation) : à qui ?** : Responsables du projet et directeurs ★
+- **S-13 · Invitation à la SAT : aussi aux témoins nommés sans compte (adresse saisie) ?** : Non, comptes seulement ★
+
+### Catégorie de projet et tâches récurrentes (R-196 · R-201)
+
+- **S-14 · Un projet R&D peut-il avoir un client externe (R&D financée par un client) ?** : Oui ★
+- **S-15 · Prévenir l’assigné quand une occurrence suivante d’une tâche récurrente est créée par quelqu’un d’autre ?** : Oui, par la cloche ★
+- **S-16 · La règle « à chaque jalon » d’une tâche récurrente vise :** : Tous les jalons du projet ★
+
+### Tableaux de bord (R-203)
+
+- **S-17 · Partage d’un tableau de bord ?** : Lecture seule avec copie ★
+- **S-18 · Le tableau de bord par défaut d’une personne remplace-t-il son Accueil ?** : Non ★
+- **S-19 · Graphiques à ajouter en priorité au catalogue ?** : Capacité / charge ★
+
+### Qualité du planning (R-206)
+
+- **S-20 · Contrôle « activités sans ressource » : que compte-t-on comme ressource ?** : Une ressource affectée ou un budget (actuel) ★
+- **S-21 · Contrôle « une seule fin de chaîne » : tolérer une fin par équipement sur un projet multi-équipements ?** : Oui ★
+- **S-22 · Seuils des contrôles propres à un projet ?** : Non, seuils de l’entreprise ★
+- **S-23 · Indicateur de qualité du planning au portefeuille (contrôles non conformes par projet) ?** : Oui ★
+
+### Analyse des risques et dérive prévue (R-205 · R-208)
+
+- **S-24 · Retard d’un risque dans la simulation : « impact × 5 jours ouvrés » ?** : Oui ★
+- **S-25 · Seuils de la dérive prévue et de l’alerte de portefeuille (20 %) dans Paramètres ?** : Oui, dans Paramètres ★
+
+### Planning multi-niveaux (R-204)
+
+- **S-26 · Un objet « lot d’achat » regroupant plusieurs commandes (un planning fournisseur par lot) ?** : Plus tard ★
+- **S-27 · Alerter quand un planning fournisseur glisse ?** : Oui : acheteur et chef de projet, à partir de 5 jours ouvrés ★
+- **S-28 · Planning fournisseur type par type de machine ou catégorie d’achat ?** : Plus tard, avec les standards par type de machine (R-053) ★
