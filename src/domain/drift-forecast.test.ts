@@ -1,7 +1,10 @@
 // R-208 (K-208 alt1): rule-based drift forecast — value tests.
 import { describe, expect, it } from 'vitest';
 import { DEMO_TODAY_ISO } from './clock';
-import { driftAlert, evmFinish, forecastDrift, monteCarloCurrent, tcpiOf, type DriftActivity, type DriftInput } from './drift-forecast';
+import {
+  DRIFT_RULES, DRIFT_STANDARD, driftAlert, driftOrderBroken, driftRules, evmFinish, forecastDrift, monteCarloCurrent, parseDriftThreshold, tcpiOf, usableDriftThresholds,
+  type DriftActivity, type DriftInput,
+} from './drift-forecast';
 
 const today = DEMO_TODAY_ISO; // Fri 25 Sep 2026
 const act = (code: string, extra: Partial<DriftActivity> = {}): DriftActivity => ({
@@ -20,6 +23,25 @@ const base: DriftInput = {
   contingencyLeftKeur: 50,
   monteCarlo: null,
 };
+
+describe('thresholds (S-25)', () => {
+  it('the defaults are R-208’s rules', () => {
+    expect(driftRules()).toEqual(DRIFT_RULES);
+    expect(DRIFT_RULES).toMatchObject({ spiCritical: 0.9, cpiReview: 0.95, cpiHigh: 0.9, tcpiHigh: 1.1, floatErosion: 5, probabilityLow: 0.5, probabilityVeryLow: 0.2, monteCarloMaxAgeDays: 30, spreadDays: 30, spreadCostShare: 0.1, progressEarly: 0.15, progressReliable: 0.5, named: 3 });
+  });
+  it('parse, stored values over the defaults, ordered pairs', () => {
+    expect(parseDriftThreshold('spiCritical', '0,85')).toBe(0.85);
+    expect(parseDriftThreshold('spiCritical', '0')).toBeNull();
+    expect(parseDriftThreshold('floatErosionDays', '2.5')).toBeNull();
+    expect(parseDriftThreshold('portfolioOnTimePct', 101)).toBeNull();
+    expect(usableDriftThresholds(null)).toEqual(DRIFT_STANDARD);
+    expect(usableDriftThresholds({ tcpiHigh: 1.3, spiCritical: 'x' })).toEqual({ ...DRIFT_STANDARD, tcpiHigh: 1.3 });
+    // A broken pair falls back to both defaults.
+    expect(usableDriftThresholds({ probabilityVeryLowPct: 70 })).toEqual(DRIFT_STANDARD);
+    expect(driftOrderBroken({ ...DRIFT_STANDARD, progressEarlyPct: 60 })).toEqual(['progressEarlyPct', 'progressReliablePct']);
+    expect(driftOrderBroken(DRIFT_STANDARD)).toBeNull();
+  });
+});
 
 describe('helpers', () => {
   it('earned-value finish: the time left stretched by 1 / SPI (never shortened)', () => {
@@ -71,6 +93,16 @@ describe('forecastDrift (R-208)', () => {
     expect(f.suggestions.at(-1)!.severity).toBe('low');
     expect(f.reasons.map((r) => r.code)).toEqual(['spi_low', 'cpi_low', 'tcpi_high', 'eac_over_bac', 'mc_missing']);
     expect(driftAlert(f)).toBe(true);
+  });
+
+  it('S-25: the Settings thresholds replace the defaults', () => {
+    const cpi = { ...base, evm: { ...base.evm!, cpi: 0.93 } };
+    expect(forecastDrift({ ...cpi, thresholds: { ...DRIFT_STANDARD, cpiReview: 0.92, cpiHigh: 0.9 } }).suggestions.some((s) => s.rule === 'cpi_review')).toBe(false);
+    expect(forecastDrift({ ...cpi, thresholds: { ...DRIFT_STANDARD, cpiHigh: 0.95, cpiReview: 0.97 } }).suggestions.find((s) => s.rule === 'cpi_review')).toMatchObject({ severity: 'high' });
+    // A Monte-Carlo run 20 days old stops being current at 15 days.
+    const mc = { dataDate: '2026-09-05', stale: false, p80Finish: '2026-12-24', p80Cost: 1020, probOnTarget: 0.7, probWithinBudget: 0.6, drivers: [] };
+    expect(forecastDrift({ ...base, monteCarlo: mc }).finish.estimates.monte_carlo).toBe('2026-12-24');
+    expect(forecastDrift({ ...base, monteCarlo: mc, thresholds: { ...DRIFT_STANDARD, monteCarloMaxAgeDays: 15 } }).finish.estimates.monte_carlo).toBeUndefined();
   });
 
   it('CPI between 0.9 and 0.95: medium review', () => {

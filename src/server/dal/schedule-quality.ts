@@ -5,14 +5,14 @@ import 'server-only';
 // displayed baseline's snapshot, the resource assignments and budgets, and the Settings thresholds; the CPM engine runs in
 // memory (as "Reschedule" would, progress → actual dates first) for the critical path test, the driving path to the finish
 // and the "not rescheduled since" count.
-import { inArray, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { CpmCycleError, CpmInputError, changedActivities, schedule, type CpmResult } from '@/domain/cpm';
 import { CRITICAL_FLOAT_DAYS, actualsFromProgress } from '@/domain/schedule-rollup';
 import { compareSchedules, slipAttribution, type DatedActivity, type ScheduleComparison, type SlipAttribution } from '@/domain/schedule-forensics';
 import { dcmaAssessment, type DcmaReport, type DcmaThresholds, type QualityActivity } from '@/domain/schedule-quality';
 import { criticalPathTest, drivingPathToFinish } from '@/domain/schedule-quality-cpm';
 import { getDb } from '@/server/db/client';
-import { activities, activityAssignments } from '@/server/db/schema';
+import { activities, activityAssignments, projectEquipments } from '@/server/db/schema';
 import { getBaselineActivities, listProjectBaselines } from './baselines';
 import { dcmaThresholds } from './dcma-thresholds';
 import { loadScheduleNetwork, toCpmActivity } from './schedule-network';
@@ -55,20 +55,24 @@ export interface ScheduleQualityData {
 }
 
 /** The project's schedule quality; null for an unknown project or one without activities. `from` / `to` pick the forensic pair. */
-export async function getScheduleQuality(code: string, pick: { from?: string | null; to?: string | null } = {}): Promise<ScheduleQualityData | null> {
+export async function getScheduleQuality(
+  code: string, pick: { from?: string | null; to?: string | null } = {}, opts: { forensic?: boolean; thresholds?: DcmaThresholds } = {},
+): Promise<ScheduleQualityData | null> {
+  const forensic = opts.forensic ?? true;
   const net = await loadScheduleNetwork(code);
   if (!net || !net.activities.length) return null;
   const db = await getDb();
   const ids = net.activities.map((a) => a.dbId);
-  const [baselineRows, thresholds, budgets, assigned] = await Promise.all([
+  const [baselineRows, thresholds, budgets, assigned, [lines]] = await Promise.all([
     listProjectBaselines(code),
-    dcmaThresholds(),
-    db.select({ id: activities.id, budget: activities.budgetKeur }).from(activities).where(inArray(activities.id, ids)),
+    opts.thresholds ?? dcmaThresholds(),
+    db.select({ id: activities.id, budget: activities.budgetKeur, equipmentId: activities.equipmentId }).from(activities).where(inArray(activities.id, ids)),
     db
       .select({ id: activityAssignments.activityId, n: sql<number>`count(*)::int` })
       .from(activityAssignments)
       .where(inArray(activityAssignments.activityId, ids))
       .groupBy(activityAssignments.activityId),
+    db.select({ n: sql<number>`count(*)::int` }).from(projectEquipments).where(eq(projectEquipments.projectId, net.projectId)),
   ]);
   const options: QualityBaselineOption[] = baselineRows.map((b) => ({ code: b.code, name: b.name, activityCount: b.activityCount, displayed: b.displayed }));
   const reference = options.find((b) => b.displayed) ?? null;
@@ -76,7 +80,7 @@ export async function getScheduleQuality(code: string, pick: { from?: string | n
   const from = pick.from && comparable.some((b) => b.code === pick.from) ? pick.from : reference && reference.activityCount > 0 ? reference.code : comparable[0]?.code ?? null;
   const to = pick.to && pick.to !== from && comparable.some((b) => b.code === pick.to) ? pick.to : CURRENT_SCHEDULE;
 
-  const snapshotCodes = [...new Set([reference?.code, from, to === CURRENT_SCHEDULE ? null : to].filter((c): c is string => !!c))];
+  const snapshotCodes = [...new Set([reference?.code, ...(forensic ? [from, to === CURRENT_SCHEDULE ? null : to] : [])].filter((c): c is string => !!c))];
   const snapshots = new Map(await Promise.all(snapshotCodes.map(async (c) => [c, await getBaselineActivities(code, c)] as const)));
   const refSnapshot = reference ? (snapshots.get(reference.code) ?? []) : [];
   const refFinishOf = new Map(refSnapshot.map((r) => [r.activityCode, r.finishDate]));
@@ -84,6 +88,7 @@ export async function getScheduleQuality(code: string, pick: { from?: string | n
     ?? (reference ? baselineRows.find((b) => b.code === reference.code)?.finishDate ?? null : null);
 
   const budgetOf = new Map(budgets.map((b) => [b.id, Number(b.budget) || 0]));
+  const equipmentOf = new Map(budgets.map((b) => [b.id, b.equipmentId]));
   const assignedIds = new Set(assigned.filter((a) => a.n > 0).map((a) => a.id));
   const projectCal = net.calendars[net.projectCalendar];
 
@@ -117,17 +122,18 @@ export async function getScheduleQuality(code: string, pick: { from?: string | n
   const qualityActivities: QualityActivity[] = net.activities.map((a) => ({
     id: a.code, duration: a.durationDays, pct: a.percentComplete, startActual: a.startActual, finishActual: a.finishActual, startDate: a.startDate, finishDate: a.finishDate,
     constraintType: a.constraintType, totalFloat: a.totalFloatDays, resourced: assignedIds.has(a.dbId) || (budgetOf.get(a.dbId) ?? 0) > 0,
-    baselineFinish: refFinishOf.get(a.code) ?? null,
+    baselineFinish: refFinishOf.get(a.code) ?? null, equipmentId: equipmentOf.get(a.dbId) ?? null,
   }));
   const report = dcmaAssessment({
     dataDate: net.dataDate, activities: qualityActivities, links: net.links.map((l) => ({ pred: l.pred, succ: l.succ, type: l.type, lag: l.lag })), thresholds,
     baseline: reference ? { code: reference.code, finish: baselineFinish, hasActivities: refSnapshot.length > 0 } : null, calendar: projectCal, cpt,
+    multiEquipment: (lines?.n ?? 0) > 1,
   });
 
   // Forensic pair.
   let comparison: ScheduleComparison | null = null;
   let attribution: SlipAttribution | null = null;
-  if (from) {
+  if (from && forensic) {
     const snap = (c: string): DatedActivity[] => (snapshots.get(c) ?? []).map((r) => ({ id: r.activityCode, start: r.startDate, finish: r.finishDate }));
     const later: DatedActivity[] = to === CURRENT_SCHEDULE ? net.activities.map((a) => ({ id: a.code, start: a.startDate, finish: a.finishDate })) : snap(to);
     comparison = compareSchedules(snap(from), later, projectCal);
@@ -140,4 +146,29 @@ export async function getScheduleQuality(code: string, pick: { from?: string | n
     dataDate: net.dataDate, thresholds, report, reference, outdated, cycle, invalid, names,
     forensic: { baselines: comparable, from, to, comparison, attribution },
   };
+}
+
+/** S-23: a project's schedule quality at portfolio level — the DCMA checks that fail, out of the applicable ones. */
+export interface ScheduleQualitySummary {
+  failed: number;
+  /** Checks that are not "not applicable" (passed + failed). */
+  applicable: number;
+  /** Numbers (1–14) of the failed checks. */
+  failedChecks: number[];
+}
+
+/**
+ * S-23 — the schedule quality summary of each project (the same 14 checks as the Schedule card, without the forensic
+ * analysis); a project without activities is absent. Read only.
+ */
+export async function scheduleQualitySummaries(codes: readonly string[]): Promise<Record<string, ScheduleQualitySummary>> {
+  if (!codes.length) return {};
+  const thresholds = await dcmaThresholds();
+  const out: Record<string, ScheduleQualitySummary> = {};
+  for (const code of codes) {
+    // One project after the other: each assessment runs the CPM twice in memory (critical path test).
+    const q = await getScheduleQuality(code, {}, { forensic: false, thresholds });
+    if (q) out[code] = { failed: q.report.failed, applicable: q.report.passed + q.report.failed, failedChecks: q.report.checks.filter((c) => c.status === 'fail').map((c) => c.number) };
+  }
+  return out;
 }

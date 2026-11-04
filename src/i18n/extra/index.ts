@@ -94,6 +94,7 @@ import d9Multilevel from './d9-multilevel.json';
 import d9NotificationMail from './d9-notification-mail.json';
 import d9Concurrency from './d9-concurrency.json';
 import d9ScheduleQuality from './d9-schedule-quality.json';
+import d9SQuality from './d9-s-quality.json';
 import d9RdRecurring from './d9-rd-recurring.json';
 
 export const EXTRA_FR: Record<string, string> = {
@@ -187,6 +188,7 @@ export const EXTRA_FR: Record<string, string> = {
   ...d9NotificationMail,
   ...d9Concurrency,
   ...d9ScheduleQuality,
+  ...d9SQuality,
   ...d9RdRecurring,
   ...d9Dashboards,
   ...d9Multilevel,

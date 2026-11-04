@@ -24,7 +24,7 @@ import { forcedMoveToastText } from './toasts';
 import { PROJECTS_RESET_EVENT } from './events';
 import { ForceDialog, MoveDialog, type ForceRequest, type MoveRequest } from './force-dialog';
 import { registerTitleText } from './i18n';
-import { DeliverablesCell, ProjectCell, StatusCell } from './register-cells';
+import { DeliverablesCell, ProjectCell, QualityCell, StatusCell } from './register-cells';
 import type { RegisterRow, StageView } from './register-model';
 import { StageSlider } from './stage-slider';
 import s from './register.module.css';
@@ -231,6 +231,7 @@ export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, editableCod
                   <Th>{t('SPI')}</Th>
                   <Th>{t('CPI')}</Th>
                   <Th>{t('Next milestone')}</Th>
+                  <Th>{t('Schedule quality')}</Th>
                   <Th>{t('Attention')}</Th>
                 </tr>
               </thead>
@@ -259,6 +260,9 @@ export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, editableCod
                           </span>
                         )}
                       </div>
+                    </td>
+                    <td className={s.quality}>
+                      <QualityCell row={r} />
                     </td>
                     <td className={s.attention}>
                       <span className={s.attentionText}>{r.attention}</span>

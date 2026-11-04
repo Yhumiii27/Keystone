@@ -12,33 +12,150 @@
 //   current Monte-Carlo run, one level lower when the estimates disagree widely.
 import { addCalendarDays, calendarDaysBetween, type IsoDate } from './calendar';
 
-/** Thresholds of the rules (decision taken without asking: the item's own examples, notes §4). */
-export const DRIFT_RULES = {
-  /** SPI under this on the critical path → resequence / add resources. */
-  spiCritical: 0.9,
+/**
+ * S-25 (owner, follow-up questionnaire of delivery 9): the thresholds of the rules, edited in Settings (app_settings
+ * "forecast.drift", the portfolio director) — the defaults are the item's own examples (notes §4). Indices as indices,
+ * shares and probabilities in %, durations in days. `portfolioOnTimePct` is the portfolio alert of R-208 (risk_forecast).
+ */
+export interface DriftThresholds {
+  /** SPI under this on the critical path → resequence / add resources; also the switch to the composite EAC. */
+  spiCritical: number;
   /** CPI under this → review the open commitments. */
-  cpiReview: 0.95,
+  cpiReview: number;
   /** CPI under this → high severity. */
-  cpiHigh: 0.9,
+  cpiHigh: number;
   /** TCPI above this → the remaining work must be done more efficiently than planned: re-estimate. */
-  tcpiHigh: 1.1,
+  tcpiHigh: number;
   /** Float lost since the previous weekly snapshot, working days → early warning. */
-  floatErosion: 5,
-  /** Monte-Carlo probability under this → treat the drivers. */
-  probabilityLow: 0.5,
-  /** Monte-Carlo probability under this → high severity. */
-  probabilityVeryLow: 0.2,
+  floatErosionDays: number;
+  /** Monte-Carlo probability under this (%) → treat the drivers. */
+  probabilityLowPct: number;
+  /** Monte-Carlo probability under this (%) → high severity. */
+  probabilityVeryLowPct: number;
   /** A Monte-Carlo run older than this (days before the data date) is not current any more. */
+  monteCarloMaxAgeDays: number;
+  /** Estimates disagree when their spread exceeds this many calendar days, or this share of the BAC (%). */
+  spreadDays: number;
+  spreadCostPct: number;
+  /** Progress (%) where earned value starts to be meaningful, and where it is reliable. */
+  progressEarlyPct: number;
+  progressReliablePct: number;
+  /** Portfolio alert (R-208): the latest Monte-Carlo chance of meeting the end date under this (%). */
+  portfolioOnTimePct: number;
+}
+
+/** The defaults (unchanged by S-25). */
+export const DRIFT_STANDARD: Readonly<DriftThresholds> = Object.freeze({
+  spiCritical: 0.9,
+  cpiReview: 0.95,
+  cpiHigh: 0.9,
+  tcpiHigh: 1.1,
+  floatErosionDays: 5,
+  probabilityLowPct: 50,
+  probabilityVeryLowPct: 20,
   monteCarloMaxAgeDays: 30,
-  /** Estimates disagree when their spread exceeds this many calendar days, or this share of the BAC. */
   spreadDays: 30,
-  spreadCostShare: 0.1,
-  /** Progress where earned value starts to be meaningful, and where it is reliable. */
-  progressEarly: 0.15,
-  progressReliable: 0.5,
-  /** Activities named in a suggestion at most. */
-  named: 3,
-} as const;
+  spreadCostPct: 10,
+  progressEarlyPct: 15,
+  progressReliablePct: 50,
+  portfolioOnTimePct: 20,
+});
+
+export type DriftThresholdKey = keyof DriftThresholds;
+
+export interface DriftThresholdField {
+  key: DriftThresholdKey;
+  /** EN source label (Settings). */
+  label: string;
+  unit: 'index' | 'pct' | 'days';
+  min: number;
+  max: number;
+  /** Whole numbers only (days). */
+  integer: boolean;
+}
+
+/** The editable thresholds, in rule order (Settings card). */
+export const DRIFT_THRESHOLD_FIELDS: readonly DriftThresholdField[] = [
+  { key: 'spiCritical', label: 'SPI under which the critical path is resequenced', unit: 'index', min: 0.01, max: 2, integer: false },
+  { key: 'cpiReview', label: 'CPI under which the commitments are reviewed', unit: 'index', min: 0.01, max: 2, integer: false },
+  { key: 'cpiHigh', label: 'CPI under which the review is urgent', unit: 'index', min: 0.01, max: 2, integer: false },
+  { key: 'tcpiHigh', label: 'TCPI above which the EAC is re-estimated', unit: 'index', min: 0.5, max: 5, integer: false },
+  { key: 'floatErosionDays', label: 'Float lost in a week (working days)', unit: 'days', min: 1, max: 999, integer: true },
+  { key: 'probabilityLowPct', label: 'Monte-Carlo chance under which the drivers are treated (%)', unit: 'pct', min: 0, max: 100, integer: false },
+  { key: 'probabilityVeryLowPct', label: 'Monte-Carlo chance under which it is urgent (%)', unit: 'pct', min: 0, max: 100, integer: false },
+  { key: 'monteCarloMaxAgeDays', label: 'Monte-Carlo analysis current for (days)', unit: 'days', min: 1, max: 999, integer: true },
+  { key: 'spreadDays', label: 'Estimates disagree beyond (calendar days)', unit: 'days', min: 1, max: 999, integer: true },
+  { key: 'spreadCostPct', label: 'Estimates disagree beyond (% of the budget)', unit: 'pct', min: 0, max: 100, integer: false },
+  { key: 'progressEarlyPct', label: 'Earned value meaningful from (% progress)', unit: 'pct', min: 0, max: 100, integer: false },
+  { key: 'progressReliablePct', label: 'Earned value reliable from (% progress)', unit: 'pct', min: 0, max: 100, integer: false },
+  { key: 'portfolioOnTimePct', label: 'Portfolio alert: chance of meeting the end date under (%)', unit: 'pct', min: 0, max: 100, integer: false },
+];
+
+/** Pairs that must stay ordered (lower ≤ higher). */
+export const DRIFT_THRESHOLD_ORDER: readonly (readonly [DriftThresholdKey, DriftThresholdKey])[] = [
+  ['cpiHigh', 'cpiReview'],
+  ['probabilityVeryLowPct', 'probabilityLowPct'],
+  ['progressEarlyPct', 'progressReliablePct'],
+];
+
+/** Refusals (EN source; FR in src/i18n/extra/d9-s-quality.json). */
+export const DRIFT_THRESHOLD_RANGE = 'Enter a number within the range of this threshold';
+export const DRIFT_THRESHOLD_ORDER_ERROR = 'This threshold must stay consistent with its pair (the urgent level beyond the first one)';
+
+export const isDriftThresholdKey = (k: unknown): k is DriftThresholdKey => typeof k === 'string' && DRIFT_THRESHOLD_FIELDS.some((f) => f.key === k);
+
+/** A valid value for one threshold (its range; days whole), else null. Accepts "0,9", "0.9", 0.9. */
+export function parseDriftThreshold(key: DriftThresholdKey, raw: unknown): number | null {
+  const f = DRIFT_THRESHOLD_FIELDS.find((x) => x.key === key);
+  if (!f) return null;
+  let v: number;
+  if (typeof raw === 'number') v = raw;
+  else if (typeof raw === 'string' && /^\s*\d+(?:[.,]\d+)?\s*$/.test(raw)) v = Number(raw.trim().replace(',', '.'));
+  else return null;
+  if (!Number.isFinite(v) || v < f.min || v > f.max) return null;
+  if (f.integer && !Number.isInteger(v)) return null;
+  return Math.round(v * 1000) / 1000;
+}
+
+/** The first ordered pair `t` breaks, else null. */
+export function driftOrderBroken(t: DriftThresholds): readonly [DriftThresholdKey, DriftThresholdKey] | null {
+  return DRIFT_THRESHOLD_ORDER.find(([lo, hi]) => t[lo] > t[hi]) ?? null;
+}
+
+/** Stored thresholds (app_settings "forecast.drift") over the defaults: an invalid value, or a broken pair, keeps the default. */
+export function usableDriftThresholds(stored: unknown): DriftThresholds {
+  const out: DriftThresholds = { ...DRIFT_STANDARD };
+  if (!stored || typeof stored !== 'object') return out;
+  for (const f of DRIFT_THRESHOLD_FIELDS) {
+    const v = parseDriftThreshold(f.key, (stored as Record<string, unknown>)[f.key]);
+    if (v !== null) out[f.key] = v;
+  }
+  for (const [lo, hi] of DRIFT_THRESHOLD_ORDER) if (out[lo] > out[hi]) [out[lo], out[hi]] = [DRIFT_STANDARD[lo], DRIFT_STANDARD[hi]];
+  return out;
+}
+
+/** The thresholds as the rules use them (shares and probabilities 0–1). */
+export function driftRules(t: DriftThresholds = DRIFT_STANDARD) {
+  return {
+    spiCritical: t.spiCritical,
+    cpiReview: t.cpiReview,
+    cpiHigh: t.cpiHigh,
+    tcpiHigh: t.tcpiHigh,
+    floatErosion: t.floatErosionDays,
+    probabilityLow: t.probabilityLowPct / 100,
+    probabilityVeryLow: t.probabilityVeryLowPct / 100,
+    monteCarloMaxAgeDays: t.monteCarloMaxAgeDays,
+    spreadDays: t.spreadDays,
+    spreadCostShare: t.spreadCostPct / 100,
+    progressEarly: t.progressEarlyPct / 100,
+    progressReliable: t.progressReliablePct / 100,
+    /** Activities named in a suggestion at most (not a threshold). */
+    named: 3,
+  };
+}
+
+/** The default rules (S-25: the Settings values replace them through `DriftInput.thresholds`). */
+export const DRIFT_RULES = Object.freeze(driftRules());
 
 export type Confidence = 'low' | 'medium' | 'high';
 export type Severity = 'high' | 'medium' | 'low';
@@ -103,6 +220,8 @@ export interface DriftInput {
   /** Contingency left (provision − validated draw-downs), k€; null when unknown. */
   contingencyLeftKeur: number | null;
   monteCarlo: DriftMonteCarlo | null;
+  /** S-25: the Settings thresholds; absent = the defaults. */
+  thresholds?: DriftThresholds;
 }
 
 export type FinishMethod = 'schedule' | 'evm' | 'monte_carlo';
@@ -160,9 +279,9 @@ const round1 = (v: number) => Math.round(v * 10) / 10;
 const round3 = (v: number) => Math.round(v * 1000) / 1000;
 const lower = (c: Confidence): Confidence => (c === 'high' ? 'medium' : 'low');
 
-/** A Monte-Carlo run is current when its inputs did not change and it is at most 30 days older than the data date. */
-export function monteCarloCurrent(mc: DriftMonteCarlo | null, dataDate: IsoDate): boolean {
-  return !!mc && !mc.stale && calendarDaysBetween(mc.dataDate, dataDate) <= DRIFT_RULES.monteCarloMaxAgeDays;
+/** A Monte-Carlo run is current when its inputs did not change and it is at most N days (30 by default) older than the data date. */
+export function monteCarloCurrent(mc: DriftMonteCarlo | null, dataDate: IsoDate, maxAgeDays: number = DRIFT_RULES.monteCarloMaxAgeDays): boolean {
+  return !!mc && !mc.stale && calendarDaysBetween(mc.dataDate, dataDate) <= maxAgeDays;
 }
 
 /** Finish at the earned-value pace: the planned time left (to the target, else the current finish) stretched by 1 / SPI. */
@@ -180,9 +299,9 @@ export function tcpiOf(e: Pick<DriftEvm, 'bac' | 'ev' | 'ac'>): number | null {
 
 /** The rule-based forecast of a project (see the file header). */
 export function forecastDrift(input: DriftInput): DriftForecast {
-  const R = DRIFT_RULES;
+  const R = input.thresholds ? driftRules(input.thresholds) : DRIFT_RULES;
   const { evm, dataDate } = input;
-  const mcCurrent = monteCarloCurrent(input.monteCarlo, dataDate);
+  const mcCurrent = monteCarloCurrent(input.monteCarlo, dataDate, R.monteCarloMaxAgeDays);
   const mc = mcCurrent ? input.monteCarlo : null;
 
   // ── Finish ──

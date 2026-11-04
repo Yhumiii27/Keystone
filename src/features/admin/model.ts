@@ -12,6 +12,7 @@ import {
 import { IMPORTS_ENABLED } from '@/domain/ch4-defaults';
 import { DEFAULT_CCB_THRESHOLD_KEUR } from '@/domain/change-control';
 import { DCMA_STANDARD, DCMA_THRESHOLD_FIELDS, type DcmaThresholdKey } from '@/domain/schedule-quality';
+import { DRIFT_STANDARD, DRIFT_THRESHOLD_FIELDS, type DriftThresholdKey } from '@/domain/drift-forecast';
 import { HOURS_VARIANCE_RULE, ratesMaskedActivity, ratesMaskedAudit } from '@/domain/hr';
 import { connectorStateTone } from '@/domain/connectors';
 import { PACK_FAMILY_LABELS, type PackFamily } from '@/domain/engineering-pack';
@@ -65,6 +66,8 @@ export interface SettingsView {
   ccb: { text: string };
   /** R-206 (K-206b): the schedule quality thresholds (DCMA 14 points), one field per threshold, values as the fields show them. */
   dcma: { key: DcmaThresholdKey; label: string; value: string; standard: string; min: number; max: number; step: string }[];
+  /** S-25: the drift forecast and portfolio Monte-Carlo alert thresholds, as the fields show them. */
+  drift: { key: DriftThresholdKey; label: string; value: string; standard: string; min: number; max: number; step: string }[];
   cards: SettingsCardView[];
   /** Location type options of the Locations card (shortened labels). */
   locTypes: { value: LocationType; label: string }[];
@@ -90,6 +93,10 @@ export function settingsView(data: SettingsData, t: T, lang: Lang): SettingsView
     ccb: { text: String(data.ccbThresholdKeur ?? DEFAULT_CCB_THRESHOLD_KEUR) },
     dcma: DCMA_THRESHOLD_FIELDS.map((f) => ({
       key: f.key, label: t(f.label), value: String((data.dcma ?? DCMA_STANDARD)[f.key]), standard: String(DCMA_STANDARD[f.key]), min: f.min, max: f.max,
+      step: f.integer ? '1' : 'any',
+    })),
+    drift: DRIFT_THRESHOLD_FIELDS.map((f) => ({
+      key: f.key, label: t(f.label), value: String((data.drift ?? DRIFT_STANDARD)[f.key]), standard: String(DRIFT_STANDARD[f.key]), min: f.min, max: f.max,
       step: f.integer ? '1' : 'any',
     })),
     cards: SETTINGS_CARDS.map((c) => ({ key: c.key, title: t(c.title), sub: t(c.sub), icon: c.icon, count: String(items[c.key].length), isLoc: c.key === 'locations', items: items[c.key] })),

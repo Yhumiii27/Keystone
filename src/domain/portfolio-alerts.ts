@@ -45,7 +45,7 @@ export const ALERT_RULE_DEFAULTS = {
   overAllocatedPct: OVER_ALLOCATED_PCT,
   /** At most this many alerts are listed (worst first). */
   maxAlerts: 8,
-  /** R-208: a Monte-Carlo chance of meeting the end date below this is an alert (DRIFT_RULES.probabilityVeryLow). */
+  /** R-208: a Monte-Carlo chance of meeting the end date below this is an alert — S-25: the default; Settings may change it. */
   onTimeChance: 0.2,
 } as const;
 

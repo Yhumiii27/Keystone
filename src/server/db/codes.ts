@@ -1096,6 +1096,8 @@ export const APP_SETTING_HEALTH = 'health.thresholds';
 export const APP_SETTING_HOURS_VARIANCE = 'hours.variance';
 /** R-206 (K-206b): the thresholds of the schedule quality checks (DCMA 14 points), src/domain/schedule-quality.ts DcmaThresholds. */
 export const APP_SETTING_DCMA = 'schedule.dcma';
+/** S-25: the drift forecast and portfolio Monte-Carlo alert thresholds (DriftThresholds, src/domain/drift-forecast.ts). */
+export const APP_SETTING_DRIFT = 'forecast.drift';
 
 /** Slug of a free label (custom Settings entries, custom machine types): "Permits & fees" → "permits_fees". */
 export const slugOf = (label: string) =>

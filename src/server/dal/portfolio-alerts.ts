@@ -16,6 +16,7 @@ import { makeT, type Lang } from '@/i18n/translate';
 import { APPROVAL_PROVIDERS, safeCandidates } from '@/server/approvals';
 import type { ApprovalContext } from '@/server/approvals/types';
 import { getContract } from './contract';
+import { driftThresholds } from './drift-thresholds';
 import { healthThresholds } from './health-thresholds';
 import { getApproverIdentity } from './myapprovals-identity';
 import { listScheduleSummaries } from './planning';
@@ -98,7 +99,7 @@ function runOf(runs: Awaited<ReturnType<typeof latestRiskAnalysisRunsByCode>>, c
 }
 
 async function computePortfolioAlerts(lang: Lang, asOf: string): Promise<PortfolioAlert[]> {
-  const [all, sched, health, runs] = await Promise.all([listProjects(), listScheduleSummaries(), healthThresholds(), latestRiskAnalysisRunsByCode()]);
+  const [all, sched, health, runs, drift] = await Promise.all([listProjects(), listScheduleSummaries(), healthThresholds(), latestRiskAnalysisRunsByCode(), driftThresholds()]);
   const t = makeT(lang);
   const rows = all.filter(inExecution);
   const projects: AlertProject[] = await Promise.all(rows.map(async (p) => {
@@ -115,5 +116,6 @@ async function computePortfolioAlerts(lang: Lang, asOf: string): Promise<Portfol
     };
   }));
   const [people, approvals] = await Promise.all([overAllocated(asOf, ALERT_RULE_DEFAULTS.overAllocatedPct), directorQueue(rows, lang, asOf)]);
-  return portfolioAlertRules({ projects, people, approvals, asOf }, lang, t, { health, ...ALERT_RULE_DEFAULTS });
+  // S-25: the Monte-Carlo alert threshold comes from Settings (default 20 %).
+  return portfolioAlertRules({ projects, people, approvals, asOf }, lang, t, { health, ...ALERT_RULE_DEFAULTS, onTimeChance: drift.portfolioOnTimePct / 100 });
 }

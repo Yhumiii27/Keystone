@@ -102,6 +102,19 @@ describe('logic, leads, lags and relationship types', () => {
     expect(check(r2, 'leads')).toMatchObject({ status: 'pass', value: 0, total: 14 });
     expect(check(r2, 'relationshipTypes')).toMatchObject({ status: 'pass', value: 100 });
   });
+  it('S-21: one open end per equipment line is tolerated on a multi-equipment project', () => {
+    // A18 ends the line EQ-01, A20 the line EQ-02; A19 (dangling, common) still lacks a predecessor and a successor.
+    const lines = all.map((a) => (a.id === 'A18' ? { ...a, equipmentId: 'eq1' } : a.id === 'A20' ? { ...a, equipmentId: 'eq2' } : a));
+    const multi = check(dcmaAssessment(input(lines, rels, { multiEquipment: true })), 'logic');
+    // A19 is the only common open end, so its missing successor is tolerated; its missing predecessor is not.
+    expect(offenderIds(multi)).toEqual(['A1', 'A19']);
+    expect(multi.offenders.find((o) => o.kind === 'activity' && o.id === 'A19')).toMatchObject({ note: DCMA_NOTES.noPredecessor });
+    // Without the flag (one equipment line, or none), the rule stays a single end for the whole network.
+    expect(offenderIds(check(dcmaAssessment(input(lines, rels)), 'logic'))).toEqual(['A1', 'A18', 'A19', 'A20']);
+    // Two open ends on the same line: both listed.
+    const same = all.map((a) => (['A18', 'A20'].includes(a.id) ? { ...a, equipmentId: 'eq1' } : a));
+    expect(offenderIds(check(dcmaAssessment(input(same, rels, { multiEquipment: true })), 'logic'))).toEqual(['A1', 'A18', 'A19', 'A20']);
+  });
   it('an edited threshold changes the verdict', () => {
     const r3 = dcmaAssessment(input(all, rels, { thresholds: { ...DCMA_STANDARD, lagsPct: 6, leadsCount: 2, fsMinPct: 80, logicPct: 20 } }));
     expect(['logic', 'leads', 'lags', 'relationshipTypes'].map((id) => check(r3, id as DcmaCheck['id']).status)).toEqual(['pass', 'pass', 'pass', 'pass']);
