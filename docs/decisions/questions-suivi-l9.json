@@ -1,0 +1,50 @@
+{"title": "Questions de suivi de la livraison 9", "updated": "2026-11-04",
+ "intro": "Questions laissées ouvertes par les lots de la livraison 9 déjà construits (Gantt, notifications, catégorie de projet, tableaux de bord, qualité du planning, risques, planning multi-niveaux), la démo alignée avec Arche (K-14) et deux points de nettoyage. Le choix « recommandé » est le fonctionnement actuel ou ma proposition : y répondre « recommandé » ne change rien au code.",
+ "sections": [
+  {"id": "k14", "title": "Démo alignée avec Arche", "item": "K-14", "questions": [
+   {"id": "S-01", "q": "RCF-019 : garder le projet « Clinique Pasteur Lyon » ou le remplacer par un projet de l’unité mobile MEMU-16 d’une usine de tomates au Sénégal ?", "context": "Arche le demande (point 5 de K-14) pour une démo plus vraisemblable. RCF-019 est l’un des six projets détaillés du prototype : une quarantaine de tests le comparent au prototype. Arche n’affiche que le code et les jalons.", "default": "Garder RCF-019 tel quel", "alts": ["Le renommer dans un lot à part (tests mis à jour)"]},
+   {"id": "S-02", "q": "Déposer chez Arche la demande de reprendre APM-008, MCH-045, RB-006, le besoin B01 et la SAT de RCF-019 dans sa démo ?", "context": "Arche génère aujourd’hui APM-25011 et MCH-443 ; Keystone publie APM-008 et MCH-045. Sans cette reprise, les deux démos ne montrent pas les mêmes numéros. Une réponse « recommandé » vaut « validé » pour écrire l’entrée dans le REQUESTS.md d’Arche.", "default": "Oui, déposer la demande", "alts": ["Non, Arche s’en charge seul"]}
+  ]},
+  {"id": "nettoyage", "title": "Décisions déjà prises à appliquer", "item": "R-171 · R-030", "questions": [
+   {"id": "S-03", "q": "Supprimer l’ancien journal des échanges client (table client_communications) ?", "context": "Votre réponse D-5 : utiliser les réunions et décisions du projet. La table et son code ne servent plus à l’écran ; les lignes existantes seraient perdues (une sauvegarde les garde).", "default": "Oui, supprimer", "alts": ["La garder en lecture seule"]},
+   {"id": "S-04", "q": "Quand retirer la saisie d’heures de Keystone (votre réponse C-2b) ?", "context": "Les heures doivent venir de Cursus (R-030), qui n’envoie pas encore les heures validées. Retirer la saisie maintenant laisse le coût réel sans heures jusque-là.", "default": "Avec R-030, quand les heures de Cursus arrivent", "alts": ["Tout de suite"]}
+  ]},
+  {"id": "gantt", "title": "Gantt interactif", "item": "R-198", "questions": [
+   {"id": "S-05", "q": "Recalcul immédiat du planning : pour le Gantt seulement, ou aussi pour les saisies du tableau du Plan ?", "context": "Glisser une barre recalcule tout de suite. Les saisies du tableau attendent « Recalculer ».", "default": "Gantt seulement", "alts": ["Aussi le tableau du Plan"]},
+   {"id": "S-06", "q": "Glisser une activité vers la gauche au-delà de ce que permettent ses prédécesseurs ?", "context": "Aujourd’hui une contrainte « Pas avant le » est posée mais sans effet : l’activité reste tenue par ses prédécesseurs.", "default": "Refuser le glissement avec un message", "alts": ["Poser une contrainte « Doit commencer le » qui force la date et signale le conflit (comme P6)", "Garder le fonctionnement actuel"]},
+   {"id": "S-07", "q": "Vue par défaut du Planning ?", "context": "", "default": "Lots de travaux (actuel)", "alts": ["Activités"]},
+   {"id": "S-08", "q": "Filtre par équipement sur le Gantt pour les projets à plusieurs lignes d’équipement ?", "context": "Projets multi-équipements (R-185).", "default": "Oui", "alts": ["Non"]},
+   {"id": "S-09", "q": "Glisser un lot entier (toutes ses activités) ?", "context": "Non construit.", "default": "Plus tard", "alts": ["Oui"]}
+  ]},
+  {"id": "notif", "title": "Notifications par e-mail", "item": "R-036", "questions": [
+   {"id": "S-10", "q": "Les quatre familles de notifications et leurs réglages par défaut conviennent-elles ?", "context": "Approbations, échéances, alertes d’indicateur, rapports.", "default": "Oui, un réglage par famille", "alts": ["Un réglage par type de notification"]},
+   {"id": "S-11", "q": "Heure du résumé quotidien ?", "context": "", "default": "07:00, avec les rappels", "alts": ["En fin de journée"]},
+   {"id": "S-12", "q": "Alertes d’indicateur (dépassement de coût, facturation) : à qui ?", "context": "", "default": "Responsables du projet et directeurs", "alts": ["Aussi la Finance"]},
+   {"id": "S-13", "q": "Invitation à la SAT : aussi aux témoins nommés sans compte (adresse saisie) ?", "context": "Aujourd’hui seuls les comptes clients la reçoivent.", "default": "Non, comptes seulement", "alts": ["Oui"]}
+  ]},
+  {"id": "projets", "title": "Catégorie de projet et tâches récurrentes", "item": "R-196 · R-201", "questions": [
+   {"id": "S-14", "q": "Un projet R&D peut-il avoir un client externe (R&D financée par un client) ?", "context": "Aujourd’hui oui : la catégorie ne dépend pas du client.", "default": "Oui", "alts": ["Non, client interne seulement"]},
+   {"id": "S-15", "q": "Prévenir l’assigné quand une occurrence suivante d’une tâche récurrente est créée par quelqu’un d’autre ?", "context": "", "default": "Oui, par la cloche", "alts": ["Non"]},
+   {"id": "S-16", "q": "La règle « à chaque jalon » d’une tâche récurrente vise :", "context": "Aujourd’hui : tous les jalons non terminés du planning du projet.", "default": "Tous les jalons du projet", "alts": ["Les jalons CAPEX seulement", "Une liste de jalons choisie"]}
+  ]},
+  {"id": "tdb", "title": "Tableaux de bord", "item": "R-203", "questions": [
+   {"id": "S-17", "q": "Partage d’un tableau de bord ?", "context": "Aujourd’hui : en lecture seule, le lecteur peut en faire une copie.", "default": "Lecture seule avec copie", "alts": ["Modifiable à plusieurs"]},
+   {"id": "S-18", "q": "Le tableau de bord par défaut d’une personne remplace-t-il son Accueil ?", "context": "", "default": "Non", "alts": ["Oui"]},
+   {"id": "S-19", "q": "Graphiques à ajouter en priorité au catalogue ?", "context": "Préciser dans la note si besoin.", "default": "Capacité / charge", "alts": ["Trésorerie", "Tendances des indicateurs"]}
+  ]},
+  {"id": "qualite", "title": "Qualité du planning", "item": "R-206", "questions": [
+   {"id": "S-20", "q": "Contrôle « activités sans ressource » : que compte-t-on comme ressource ?", "context": "", "default": "Une ressource affectée ou un budget (actuel)", "alts": ["Une ressource affectée seulement"]},
+   {"id": "S-21", "q": "Contrôle « une seule fin de chaîne » : tolérer une fin par équipement sur un projet multi-équipements ?", "context": "", "default": "Oui", "alts": ["Non"]},
+   {"id": "S-22", "q": "Seuils des contrôles propres à un projet ?", "context": "Aujourd’hui : seuils de l’entreprise (Paramètres).", "default": "Non, seuils de l’entreprise", "alts": ["Oui, réglables par projet"]},
+   {"id": "S-23", "q": "Indicateur de qualité du planning au portefeuille (contrôles non conformes par projet) ?", "context": "", "default": "Oui", "alts": ["Non"]}
+  ]},
+  {"id": "risques", "title": "Analyse des risques et dérive prévue", "item": "R-205 · R-208", "questions": [
+   {"id": "S-24", "q": "Retard d’un risque dans la simulation : « impact × 5 jours ouvrés » ?", "context": "", "default": "Oui", "alts": ["Une échelle d’impact en jours réglable dans Paramètres"]},
+   {"id": "S-25", "q": "Seuils de la dérive prévue et de l’alerte de portefeuille (20 %) dans Paramètres ?", "context": "", "default": "Oui, dans Paramètres", "alts": ["Non, fixes"]}
+  ]},
+  {"id": "multi", "title": "Planning multi-niveaux", "item": "R-204", "questions": [
+   {"id": "S-26", "q": "Un objet « lot d’achat » regroupant plusieurs commandes (un planning fournisseur par lot) ?", "context": "Aujourd’hui un planning fournisseur par commande.", "default": "Plus tard", "alts": ["Oui"]},
+   {"id": "S-27", "q": "Alerter quand un planning fournisseur glisse ?", "context": "Préciser le seuil dans la note si besoin.", "default": "Oui : acheteur et chef de projet, à partir de 5 jours ouvrés", "alts": ["Non"]},
+   {"id": "S-28", "q": "Planning fournisseur type par type de machine ou catégorie d’achat ?", "context": "Aujourd’hui cinq étapes génériques.", "default": "Plus tard, avec les standards par type de machine (R-053)", "alts": ["Oui"]}
+  ]}
+ ]}
