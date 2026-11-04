@@ -526,6 +526,13 @@
       "when": 1793549892096,
       "tag": "0074_multilevel_planning",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1793795986724,
+      "tag": "0075_drop_client_communications",
+      "breakpoints": true
     }
   ]
 }

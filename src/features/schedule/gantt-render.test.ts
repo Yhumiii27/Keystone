@@ -28,9 +28,9 @@ const network: GanttNetwork = {
   links: [{ pred: 'A1010', succ: 'A1020', type: 'FS', lag: 0 }],
 };
 
-const render = async (editable: boolean) => {
+const render = async (editable: boolean, over: Partial<Parameters<typeof ActivityGanttCard>[0]> = {}) => {
   const card = await ActivityGanttCard({
-    code: 'HLT-026', network, zoom: 'week', zoomHref: (z) => `/projects/HLT-026/schedule?gantt=activities&zoom=${z}`, levelSwitch: null, editable, showBaseline: true,
+    code: 'HLT-026', network, zoom: 'week', zoomHref: (z) => `/projects/HLT-026/schedule?gantt=activities&zoom=${z}`, levelSwitch: null, editable, showBaseline: true, ...over,
   });
   return renderToStaticMarkup(createElement(I18nProvider, { lang: 'fr' } as ComponentProps<typeof I18nProvider>, createElement(ClockProvider, { today: '2026-09-25' } as ComponentProps<typeof ClockProvider>, card)));
 };
@@ -54,5 +54,22 @@ describe('Activity Gantt card render (FR)', () => {
     expect(html.match(/role="button"/g)?.length).toBe(2);
     expect(html).toContain('Lecture seule · un clic ou Entrée ouvre l’activité');
     expect(html).not.toContain('Glissez sur une autre activité');
+  });
+
+  it('S-08: the equipment line filter (links) keeps one line’s rows; no arrow to a hidden row', async () => {
+    const eqNet: GanttNetwork = { ...network, activities: [{ ...network.activities[0], equipment: 'EQ-01' }, { ...network.activities[1], equipment: 'EQ-02' }] };
+    const options = [
+      { value: 'all', label: 'Toutes', href: '/projects/HLT-026/schedule?gantt=activities' },
+      { value: 'EQ-02', label: 'EQ-02 · 3 × MEMU', href: '/projects/HLT-026/schedule?gantt=activities&equipment=EQ-02' },
+    ];
+    const html = await render(true, { network: eqNet, equipment: { value: 'EQ-02', options } });
+    expect(html).toContain('href="/projects/HLT-026/schedule?gantt=activities&amp;equipment=EQ-02"');
+    expect(html).toContain('aria-label="Équipement"');
+    expect(html).toContain('Activité A1020');
+    expect(html).not.toContain('aria-label="A1010');
+    expect(html.match(/role="button"/g)?.length).toBe(1);
+    expect(html.match(/d="M[-\d.]+,[-\d.]+ H/g)).toBeNull();
+    // Without the filter (one line): no equipment switch.
+    expect(await render(true, { network: eqNet })).not.toContain('aria-label="Équipement"');
   });
 });

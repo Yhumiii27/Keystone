@@ -21,7 +21,7 @@ import { and, eq } from 'drizzle-orm';
 import { addCalendarDays } from '@/domain/calendar';
 import { makeT } from '@/i18n/translate';
 import { getDb, setDb } from '@/server/db/client';
-import { auditEntries, projects, taskChecklistItems, tasks } from '@/server/db/schema';
+import { auditEntries, notificationRecipients, notifications, projects, taskChecklistItems, tasks, users } from '@/server/db/schema';
 import { openDatabase } from '@/server/db/open';
 import { getTask, listTasks } from '@/server/dal/tasks';
 import { projectMilestoneDates } from '@/server/dal/task-recurrence';
@@ -37,6 +37,17 @@ const changes = async (ref: string) =>
   (await (await getDb()).select().from(auditEntries).where(and(eq(auditEntries.objectRef, ref), eq(auditEntries.area, 'Tasks'))))
     .sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime())
     .map((e) => e.change);
+/** S-15: bell notifications whose title names `ref`, with the person ids of their recipients. */
+async function bellFor(ref: string) {
+  const db = await getDb();
+  const rows = await db
+    .select({ title: notifications.title, body: notifications.body, screen: notifications.targetScreen, params: notifications.targetParams, person: users.personId })
+    .from(notifications)
+    .innerJoin(notificationRecipients, eq(notificationRecipients.notificationId, notifications.id))
+    .innerJoin(users, eq(users.id, notificationRecipients.userId))
+    .where(eq(notifications.title, `Task assigned · ${ref}`));
+  return rows;
+}
 /** The occurrence created when `id` was closed (rows of tasks whose previous is `id`). */
 async function nextOf(id: string) {
   const db = await getDb();
@@ -88,6 +99,8 @@ describe('setTaskRecurrenceAction (R-201)', () => {
     const copied = await db.select().from(taskChecklistItems).where(eq(taskChecklistItems.taskId, next.id));
     expect(copied.map((c) => [c.text, c.done])).toEqual(items.sort((a, b) => a.position - b.position).map((c) => [c.text, false]));
     expect(await changes(next.number)).toEqual([`Next occurrence ${next.number} created from T-2320 · due 2026-10-06`]);
+    // S-15: the assignee closed it themselves — nobody is told.
+    expect(await bellFor(next.number)).toEqual([]);
     // In the assignee's list, linked both ways on the sheets.
     expect((await listTasks({ person: 'Julien Wagner' })).some((r) => r.id === next.number && r.recurrence?.kind === 'weekly')).toBe(true);
     expect((await getTask('T-2320'))!.series).toEqual({ previous: null, next: next.number });
@@ -133,5 +146,8 @@ describe('setTaskRecurrenceAction (R-201)', () => {
     // The milestone date, moved onto a working day when it falls on a weekend or a holiday.
     expect(created[0].dueDate >= miles[0] && created[0].dueDate <= addCalendarDays(miles[0], 4)).toBe(true);
     expect(created[0].recurrenceKind).toBe('milestone');
+    // S-15: closed by the director, not by the assignee — the assignee alone is told by the bell, opening the new occurrence.
+    const bell = await bellFor(created[0].number);
+    expect(bell).toEqual([{ title: `Task assigned · ${created[0].number}`, body: created[0].title, screen: 'task', params: { taskId: created[0].number }, person: created[0].assigneePersonId }]);
   });
 });

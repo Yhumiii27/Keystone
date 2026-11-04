@@ -12,6 +12,7 @@ import { money } from '@/lib/format';
 import type { StageHistoryRow, StageInfo } from '@/server/dal/lifecycle';
 import type { ProjectRow } from '@/server/dal/projects';
 import type { ScheduleSummaries, StageChecklists } from '@/server/dal/projects-register';
+import type { ScheduleQualitySummary } from '@/server/dal/schedule-quality';
 import type { ZoneKey } from '@/server/session';
 import { dataText } from '@/i18n/data-text';
 
@@ -55,6 +56,11 @@ export interface RegisterRow {
   msLine: string;
   msColor: string;
   attention: string;
+  /**
+   * S-23: schedule quality — the DCMA checks that fail (same counter as the Schedule card), with its hint and the link to the
+   * Schedule screen (null when the viewer does not see it); null for a project without indicators or without activities.
+   */
+  quality: { text: string; title: string; tone: Tone; href: string | null } | null;
   /**
    * Deliverables of the current stage (STAGE_DELIVS) and their ticks. `lock` (delivery 8, R-054): « Planning BL1 posé » follows
    * BL1 — read-only, with the reason (translated).
@@ -107,6 +113,22 @@ export interface RegisterInput {
   today: string;
   /** Delivery 8 (R-054): BL1 per project (set, ISO date) — « Planning BL1 posé » follows it. */
   bl1?: Record<string, { set: boolean; setOn: string | null }>;
+  /** S-23: schedule quality per project (live projects with activities); absent = not shown. */
+  scheduleQuality?: Record<string, ScheduleQualitySummary>;
+  /** S-23: the viewer sees the Schedule screen (the quality cell links to it). */
+  scheduleLinks?: boolean;
+}
+
+/** S-23: the register's schedule quality cell. */
+function qualityCell(q: ScheduleQualitySummary | undefined, code: string, link: boolean, t: T): RegisterRow['quality'] {
+  if (!q) return null;
+  const which = q.failedChecks.length ? ` · ${q.failedChecks.map((n) => `#${n}`).join(', ')}` : '';
+  return {
+    text: `${t('Fail')} · ${q.failed}`,
+    title: `${t('Non-compliant DCMA checks')} · ${q.failed} / ${q.applicable} ${t('applicable')}${which}`,
+    tone: q.failed ? 'accent' : 'neutral',
+    href: link ? screenHref('schedule', { code }) : null,
+  };
 }
 
 /** R-054 (L-2 "a"): the hint of the read-only « Planning BL1 posé » tick. */
@@ -164,6 +186,7 @@ export function buildRegisterModel(data: RegisterInput, zone: ZoneKey | null, t:
       msLine: ind.msLine ? t(ind.msLine) : '',
       msColor: TINT[ind.msTint],
       attention: ind.attention.length ? ind.attention.map((a) => t(a)).join(' · ') : '—',
+      quality: live ? qualityCell(data.scheduleQuality?.[p.code], p.code, data.scheduleLinks ?? false, t) : null,
       delivs: (st?.deliverables ?? []).map((label, i) => ({
         label: t(label), done: !!ticks[i],
         ...(p.stage === BL1_STAGE_DELIVERABLE.stage && i === BL1_STAGE_DELIVERABLE.position ? { lock: bl1Lock(data.bl1?.[p.code], t) } : {}),

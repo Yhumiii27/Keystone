@@ -3,7 +3,7 @@
 // milestones), schedule progression and milestone list. Primary action "Re-baseline" (AF `schedule`).
 // `?baseline=0` hides the baseline geometry (prototype app prop `showBaseline`, default true).
 // R-198: `?gantt=activities` shows the interactive activity Gantt instead of the package Gantt, `?zoom=day|week|month` its zoom
-// (default week). Its edits (project's PMs and the director) go through src/features/schedule/gantt-actions.ts.
+// (default week), `?equipment=EQ-02|common` its equipment line filter on a project with several lines (S-08, R-185). Its edits (project's PMs and the director) go through src/features/schedule/gantt-actions.ts.
 // R-206: the Schedule quality card (DCMA 14 points) and the Delay analysis (`?from=BL1&to=current|BL2`), read-only, for whoever
 // sees the schedule.
 import { SectionCard } from '@/components/app/SectionCard';
@@ -17,6 +17,9 @@ import { RebaselineButton } from '@/features/schedule/rebaseline-button';
 import { Segmented } from '@/components/ds/Segmented';
 import { screenHref } from '@/config/screens';
 import { isGanttZoom, type GanttZoom } from '@/domain/gantt-edit';
+import { COMMON_EQUIPMENT, equipmentFilterOf, showsEquipment } from '@/domain/equipment-scope';
+import { equipmentLotLabel } from '@/domain/project-equipment';
+import { listProjectEquipments } from '@/server/dal/project-equipment';
 import { ActivityGanttCard } from '@/features/schedule/activity-gantt-card';
 import { canEditGantt } from '@/features/schedule/gantt-rights';
 import { getGanttNetwork } from '@/server/dal/gantt';
@@ -45,6 +48,11 @@ export default async function SchedulePage({
   const level = first(sp.gantt) === 'activities' ? 'activities' : 'packages';
   const zoomParam = first(sp.zoom);
   const zoom: GanttZoom = isGanttZoom(zoomParam) ? zoomParam : 'week';
+  // S-08 (R-185): on a project with several equipment lines, `?equipment=EQ-02|common` filters the activity Gantt's rows
+  // ('all' default, omitted); hidden with one line.
+  const lines = level === 'activities' ? (await listProjectEquipments(ctx.project.code)).map((l) => ({ ...l, label: equipmentLotLabel(l) })) : [];
+  const multiEquipment = showsEquipment(lines);
+  const equipment = multiEquipment ? equipmentFilterOf(sp.equipment, lines.map((l) => l.ref)) : 'all';
   const base = screenHref('schedule', { code: ctx.project.code });
   const href = (q: Record<string, string | undefined>) => {
     const u = new URLSearchParams();
@@ -95,7 +103,19 @@ export default async function SchedulePage({
                 code={ctx.project.code}
                 network={network}
                 zoom={zoom}
-                zoomHref={(z) => href({ gantt: 'activities', zoom: z })}
+                zoomHref={(z) => href({ gantt: 'activities', zoom: z, equipment: equipment === 'all' ? undefined : equipment })}
+                equipment={
+                  multiEquipment
+                    ? {
+                        value: equipment,
+                        options: [
+                          { value: 'all', label: t('All'), href: href({ gantt: 'activities', zoom: zoomParam && isGanttZoom(zoomParam) ? zoomParam : undefined }) },
+                          ...lines.map((l) => ({ value: l.ref, label: l.label, href: href({ gantt: 'activities', zoom: zoomParam && isGanttZoom(zoomParam) ? zoomParam : undefined, equipment: l.ref }) })),
+                          { value: COMMON_EQUIPMENT, label: t('Common to the project'), href: href({ gantt: 'activities', zoom: zoomParam && isGanttZoom(zoomParam) ? zoomParam : undefined, equipment: COMMON_EQUIPMENT }) },
+                        ],
+                      }
+                    : undefined
+                }
                 levelSwitch={levelSwitch}
                 editable={canEditGantt(ctx)}
                 showBaseline={showBaseline}

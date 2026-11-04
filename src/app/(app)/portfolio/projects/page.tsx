@@ -4,8 +4,10 @@
 // stage-deliverable checklists with auto-advance, the Force stage change dialog and the New project wizard.
 // R-196: category filter (?cat=client|rd), shown when an R&D project exists.
 // R-187 (Arche K-02, K-10): under the register, the "Subsidiaries' machine needs" card (director and project managers).
+// S-23: the health view's "Schedule quality" column — DCMA checks that fail per live project (R-206 checks, read only).
 import { PageHeader } from '@/components/app/shell/page-header';
-import { isRegisterView } from '@/domain/lifecycle';
+import { canSee } from '@/config/role-screens';
+import { isLiveRow, isRegisterView } from '@/domain/lifecycle';
 import { isProjectCategory, type ProjectCategory } from '@/domain/project-category';
 import { NeedsCard } from '@/features/capex-needs/needs-card';
 import { NewProjectButton } from '@/features/projects/new-project-button';
@@ -13,6 +15,7 @@ import { ProjectsRegister } from '@/features/projects/register';
 import { buildRegisterModel } from '@/features/projects/register-model';
 import { stage } from '@/server/db/codes';
 import { getRegisterData } from '@/server/dal/projects-register';
+import { scheduleQualitySummaries } from '@/server/dal/schedule-quality';
 import { getScreenAccess, projectAccessResolver } from '@/server/project-context';
 import { getI18n, getZone } from '@/server/session';
 
@@ -20,7 +23,9 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 export default async function ProjectsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const [sp, { t, lang }, zone, access, data] = await Promise.all([searchParams, getI18n(), getZone(), getScreenAccess('projects'), getRegisterData()]);
-  const model = buildRegisterModel(data, zone, t, lang);
+  const liveCodes = data.projects.filter((p) => (!zone || p.zone === zone) && isLiveRow(p.stage, p.health)).map((p) => p.code);
+  const scheduleQuality = await scheduleQualitySummaries(liveCodes);
+  const model = buildRegisterModel({ ...data, scheduleQuality, scheduleLinks: canSee(access.viewer.role, 'schedule') }, zone, t, lang);
   // Lifecycle controls only on the projects the viewer leads (L-4b: the director, the project's PMs and deputies).
   const rights = await projectAccessResolver(access.viewer);
   const editableCodes = access.canEdit ? data.projects.filter((p) => rights(p).lead).map((p) => p.code) : [];

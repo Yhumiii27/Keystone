@@ -109,7 +109,7 @@ export async function setActivityTodoDone(code: string, number: string, done: bo
   const t = await todoOf(code, number);
   if ((t.status === 'done') === done) return;
   const db = await getDb();
-  await db.transaction(async (tx) => {
+  const created = await db.transaction(async (tx) => {
     await tx.update(tasks).set({ status: done ? 'done' : 'doing', percentComplete: done ? 100 : 75, updatedAt: new Date() }).where(eq(tasks.id, t.id));
     const actor = await findPerson(tx, actorName);
     await writeAudit(tx, {
@@ -118,8 +118,10 @@ export async function setActivityTodoDone(code: string, number: string, done: bo
       before: { status: t.status, percentComplete: t.percentComplete }, after: { status: done ? 'done' : 'doing', percentComplete: done ? 100 : 75 },
     });
     // R-201: closing a recurring task creates its next occurrence.
-    if (done) await createNextOccurrence(tx, t, actorName, await businessToday());
+    return done ? createNextOccurrence(tx, t, actorName, await businessToday()) : null;
   });
+  // S-15: the assignee is told by the bell when someone else closed the to-do and created its next occurrence.
+  if (created) await notifyTasksAssigned([created], actorName);
 }
 
 /** Removes a to-do created by the composer that has no logged time (other tasks are managed in My work). */

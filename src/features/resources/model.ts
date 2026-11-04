@@ -220,6 +220,24 @@ function absenceHours(p: Pick<ResourcePerson, 'hours' | 'capacityH'>): { hoursH?
   return { hoursH: p.hours.reduce((a, h) => a + h, 0), capacityH: p.capacityH.reduce((a, c) => a + c, 0) };
 }
 
+/**
+ * The "Capacity vs demand" bars (Resources and Project resources; S-19: the dashboards' widget of the same name): one bar per
+ * department or trade, and the note on the hours no named person carries (R-084); null when none.
+ */
+export function capacityRoleBars(rows: readonly CapacityRow[], t: T, lang: Lang): { roles: RoleBarView[]; note: string | null } {
+  const unnamed = unnamedDemand(rows);
+  const roleName = (r: CapacityRow) => (r.kind === 'resource' ? dataText(r.name, lang) : t(r.name));
+  return {
+    roles: rows.map((r) => {
+      const bar = capacityBar(r);
+      return { name: roleName(r), text: `${r.demandH} / ${r.capacityH} h`, color: bar.over ? LO : 'var(--color-neutral-300)', demandH: r.demandH, capacityH: r.capacityH };
+    }),
+    note: unnamed > 0
+      ? (lang === 'fr' ? `Dont ${unnamed} h non affectées à une personne, comptées par métier` : `Of which ${unnamed} h not assigned to a person, counted by trade`)
+      : null,
+  };
+}
+
 export function resourcesView(input: ResourcesInput, t: T, lang: Lang): ResourcesView {
   const isProject = input.scope === 'project';
   const isWeek = input.view === 'week';
@@ -227,8 +245,7 @@ export function resourcesView(input: ResourcesInput, t: T, lang: Lang): Resource
   const roles: CapacityRow[] = isProject
     ? projectDepartmentDemand(people.map((p) => ({ department: p.department, avgPct: p.load.avgPct, ...absenceHours(p) })), isWeek ? HOURS_PER_PERSON_WEEK : undefined, input.projectTrades ?? [])
     : input.departments;
-  const unnamed = unnamedDemand(roles);
-  const roleName = (r: CapacityRow) => (r.kind === 'resource' ? dataText(r.name, lang) : t(r.name));
+  const bars = capacityRoleBars(roles, t, lang);
   const hrefOf = (name: string) => (!input.canOpenWork || input.canOpenWork(name) ? myWorkHref(name) : null);
   const n = people.length;
   const over = overAllocatedCount(people.map((p) => p.load));
@@ -283,9 +300,7 @@ export function resourcesView(input: ResourcesInput, t: T, lang: Lang): Resource
     weekHasSplit: !!weekRows && weekRows.some((r) => r.projectsText !== ''),
     // R-084: the bars follow the weeks shown on both screens (the portfolio's were the stored 8-week department totals).
     rolesSub: t(isWeek ? 'Hours by role, week shown' : input.windowIsCurrent === false ? 'Hours by role, 8 weeks' : 'Hours by role, next 8 weeks'),
-    rolesNote: unnamed > 0
-      ? (lang === 'fr' ? `Dont ${unnamed} h non affectées à une personne, comptées par métier` : `Of which ${unnamed} h not assigned to a person, counted by trade`)
-      : null,
+    rolesNote: bars.note,
     undeclared: (input.undeclared ?? []).map((a) => ({ code: a.code, name: dataText(a.name, lang), href: planActHref(input.projectCode, a.code) })),
     unassigned: (input.unassigned ?? []).map((a) => ({
       code: a.code, name: dataText(a.name, lang), start: a.start ? shortDateText(a.start, lang) : '', href: planActHref(input.projectCode, a.code),
@@ -299,10 +314,7 @@ export function resourcesView(input: ResourcesInput, t: T, lang: Lang): Resource
       avgText: `${p.load.avgPct}%`,
       avgColor: p.load.avgAlert ? LO : OK,
     })),
-    roles: roles.map((r) => {
-      const bar = capacityBar(r);
-      return { name: roleName(r), text: `${r.demandH} / ${r.capacityH} h`, color: bar.over ? LO : 'var(--color-neutral-300)', demandH: r.demandH, capacityH: r.capacityH };
-    }),
+    roles: bars.roles,
     suggestions: suggestionViews(input.suggestions, t, lang),
   };
 }

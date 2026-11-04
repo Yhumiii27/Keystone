@@ -1,6 +1,6 @@
 # Keystone PM — reste à développer
 
-Inventaire initial du 2026-10-10, mis à jour le 2026-11-03 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
+Inventaire initial du 2026-10-10, mis à jour le 2026-11-04 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
 
 **Méthode.** Onze relectures indépendantes ont croisé les 195 décisions produit (`docs/DECISIONS.md`), les écarts et questions ouvertes de `DELIVERY-1.md` à `DELIVERY-6.md`, `docs/BACKLOG.md`, les marqueurs du code (TODO, simulations, constantes du prototype), la spécification fonctionnelle (`docs/spec/`) et la préparation à la production. Chaque point a ensuite été vérifié dans le code, catégorie par catégorie : ce qui existait déjà a été écarté (153 candidats), les doublons fusionnés, puis un contrôle de complétude a ajouté ce qui manquait. Le détail, avec les preuves relevées dans le code pour chaque point, est dans `docs/reste-a-developper.json` ; ce document et la page sont produits par `npm run remaining:page`.
 
@@ -8,21 +8,21 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-11-03 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 129 faits, 29 en cours, 53 à faire, sur 211 points.
+**Avancement** : 130 faits, 28 en cours, 53 à faire, sur 211 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
 | Bloquant production | 15 | ≈ 102 |
 | Prochaine étape | 22 | ≈ 184 |
 | À décider | 26 | ≈ 191 |
-| Plus tard | 19 | ≈ 122 |
-| **Total** | **82** | **≈ 599** |
+| Plus tard | 18 | ≈ 121 |
+| **Total** | **81** | **≈ 597** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
-| Non commencé | 33 |
+| Non commencé | 32 |
 | Partiel | 9 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
@@ -44,7 +44,7 @@ L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il
 | Portail client | 0 | 0 | 1 | 2 | 3 | 3 |
 | SAV et parc installé | 0 | 0 | 0 | 1 | 1 | 3 |
 | Ergonomie, langues et accessibilité | 0 | 1 | 0 | 1 | 2 | 13 |
-| Dette technique | 0 | 1 | 0 | 3 | 4 | 3 |
+| Dette technique | 0 | 1 | 0 | 2 | 3 | 4 |
 | Nouveaux modules demandés ou proposés (à valider) | 0 | 0 | 8 | 1 | 9 | 1 |
 
 ### 1.1 Chemin critique vers la production
@@ -445,7 +445,7 @@ E-9 veut que la modification d’un type de machine ne touche que les nouveaux p
 
 **~~R-201 · Tâches récurrentes et automatisation des tâches répétitives dans « Mon travail »~~** — *Plus tard · non commencé · effort M* · **fait (Livraison 9)**  
 Permettre de créer des tâches récurrentes (hebdomadaire, mensuelle, à chaque jalon) et d’automatiser les tâches répétitives dans « Mon travail » : règle de récurrence sur la tâche, génération de l’occurrence suivante à la clôture, affichage dans les vues liste, tableau et calendrier. Standard du marché (Wrike, Asana). Aujourd’hui les vues existent (src/app/(app)/my/tasks/page.tsx) mais le modèle ne porte aucune récurrence (src/server/db/schema/work.ts). Analyse comparative du 25 oct. 2026 : priorité P2.  
-*Avancement : 01/11/2026 : tâches récurrentes (toutes les n semaines / n mois, ou à chaque jalon), occurrence suivante créée à la clôture, jours ouvrés du projet, marque ↻ dans les vues (migration 0070). · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+*Avancement : 01/11/2026 : tâches récurrentes (toutes les n semaines / n mois, ou à chaque jalon), occurrence suivante créée à la clôture, jours ouvrés du projet, marque ↻ dans les vues (migration 0070). 4 nov. 2026 (S-15) : l’assigné est prévenu quand un autre crée l’occurrence suivante. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 ### 2.5 Planning (5 restants, 7 faits)
 
@@ -479,15 +479,15 @@ En plus du lot, une CR peut citer, en option, les activités touchées et leur n
 
 **~~R-198 · Gantt interactif : glisser-déposer, zoom jour/semaine, édition des liens et des durées~~** — *Prochaine étape · non commencé · effort L* · **fait (Livraison 9)**  
 Rendre le Gantt du planning interactif : déplacer et redimensionner les activités par glisser-déposer, zoom jour / semaine / mois, création et édition des liens et des durées directement dans le diagramme, avec recalcul CPM immédiat. Standard du marché (Smartsheet, MS Project, Wrike). Aujourd’hui le Gantt est un rendu serveur en lecture seule à l’échelle mensuelle sur 13 mois (src/components/charts/project-gantt.tsx). Analyse comparative du 25 oct. 2026 : priorité P1, condition du remplacement de MS Project.  
-*Avancement : Gantt des activités interactif (zoom jour/semaine/mois, glisser-déposer, liens, recalcul CPM immédiat, saisie au clavier) ; questions ouvertes dans notes-r198-gantt.md § 5. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+*Avancement : Gantt des activités interactif (zoom jour/semaine/mois, glisser-déposer, liens, recalcul CPM immédiat, saisie au clavier) ; questions ouvertes dans notes-r198-gantt.md § 5. 4 nov. 2026 (questionnaire de suivi S-05 à S-09) : glisser avant la logique refusé avec message (S-06), filtre par ligne d’équipement (S-08) — docs/delivery-9/notes-s-gantt.md. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **~~R-204 · Planning multi-niveaux : consolidation des plannings fournisseurs et codes d’activité~~** — *Prochaine étape · non commencé · effort L* · **fait (Livraison 9)**  
 Modéliser les plannings fournisseurs (lots d’achat) dans le CPM et les consolider dans le planning projet (sous-réseaux, liens vers les activités de réception), avec des codes d’activité (lot d’achat, site, équipement) pour filtrer et regrouper. Fonction avancée du marché (Planisware, Primavera P6). Aujourd’hui les plannings fournisseurs ne sont pas modélisés dans le CPM. Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
-*Avancement : 01/11/2026 : codes d’activité (équipement et lot d’achat déduits, site et types libres) avec filtre et regroupement sur le Plan et le Gantt ; plannings fournisseurs par commande consolidés dans le CPM (rattachements fin-début), suivi de l’avancement et du glissement fournisseur (migration 0074). Options non faites : filtre par code sur la qualité du planning, alerte de glissement fournisseur. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+*Avancement : 01/11/2026 : codes d’activité (équipement et lot d’achat déduits, site et types libres) avec filtre et regroupement sur le Plan et le Gantt ; plannings fournisseurs par commande consolidés dans le CPM (rattachements fin-début), suivi de l’avancement et du glissement fournisseur (migration 0074). Options non faites : filtre par code sur la qualité du planning, alerte de glissement fournisseur. 4 nov. 2026 (S-26 à S-28) : alerte de glissement fournisseur (≥ 5 j.o., acheteur et chef de projet, S-27) ; lot d’achat et plannings types : plus tard. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **~~R-206 · Diagnostic de la qualité du planning (métriques DCMA 14 points, analyse forensique des retards)~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 9)**  
 Évaluer la qualité d’un planning avec les 14 contrôles DCMA (liens manquants, contraintes dures, marges négatives, durées longues, retards, liens début-fin…) et fournir une analyse forensique des retards (comparaison référence / actuel par activité, glissement du chemin critique). Fonction différenciante du marché (Deltek Acumen). Absent aujourd’hui. Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
-*Avancement : 01/11/2026 : carte « Qualité du planning » (14 contrôles DCMA, seuils du standard modifiables dans Paramètres) et « Analyse des retards » (référence / actuel ou deux références, glissement du chemin critique) sur l’écran Planning ; lecture seule. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+*Avancement : 01/11/2026 : carte « Qualité du planning » (14 contrôles DCMA, seuils du standard modifiables dans Paramètres) et « Analyse des retards » (référence / actuel ou deux références, glissement du chemin critique) sur l’écran Planning ; lecture seule. 4 nov. 2026 (S-20 à S-23) : une fin de chaîne par ligne d’équipement (S-21), colonne « Qualité du planning » au portefeuille (S-23) — notes-s-quality.md. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **~~R-064 · Corbeille du Plan : confirmer rétention et droits, purge planifiée~~** — *Plus tard · partiel · effort S* · **fait (Livraison 9)**  
 La confirmation et l’annulation demandées en S-5 sont livrées. Reste à faire confirmer les limites (30 jours, 20 entrées par projet) et la règle qui réserve suppression et restauration au CP et au directeur. Côté technique, à faire sans attendre la réponse : purger par tâche planifiée plutôt qu’à la suppression suivante, et renuméroter les positions en double après une restauration.  
@@ -553,7 +553,7 @@ Un avenant signé doit porter ses propres échéances au lieu de re-chiffrer tou
 
 **~~R-205 · Analyse de risques Monte-Carlo sur coût et délai~~** — *Prochaine étape · non commencé · effort L* · **fait (Livraison 9)**  
 Simuler l’incertitude des durées et des coûts (lois triangulaires sur les activités et les risques liés) pour produire des distributions de fin de projet et de coût à terminaison avec niveaux de confiance (P50 / P80). Fonction avancée du marché (Primavera Cloud). Aujourd’hui le registre des risques est en probabilité × impact seulement ; le lien risque ↔ activité existe déjà dans le modèle (risks.activity_id). Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
-*Avancement : 01/11/2026 : analyse Monte-Carlo délai et coût sous le registre des risques (fourchettes du CP, −10 % / +25 % par défaut, risques liés, P10-P90, courbes, criticité, tornado ; migration 0073). · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+*Avancement : 01/11/2026 : analyse Monte-Carlo délai et coût sous le registre des risques (fourchettes du CP, −10 % / +25 % par défaut, risques liés, P10-P90, courbes, criticité, tornado ; migration 0073). 4 nov. 2026 (S-24, S-25) : seuils de la dérive prévue et de l’alerte de portefeuille dans Paramètres. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **~~R-188 · Classe d’estimation des budgets et des offres (±50 % / ±30 % / +10 −5 %)~~** — *À décider · non commencé · effort M* · **fait (Livraison 9)**  
 Chaque version de budget et chaque offre porte une classe d’estimation, la fourchette est affichée, un indicateur « écart d’incertitude » est au tableau de bord ; une offre ferme exige la classe +10/−5 %.  
@@ -777,7 +777,7 @@ Dans le tiroir d’un document, seules les relations Article et CR sont des lien
 
 **R-203 · Tableaux de bord configurables par l’utilisateur et connecteur Power BI / Dataverse** — *Prochaine étape · non commencé · effort L* · **en cours (Livraison 9)**  
 Laisser chaque utilisateur composer ses tableaux de bord (widgets, filtres, indicateurs, enregistrement et partage) et ouvrir les données à Power BI / Dataverse (vues pub_ ou flux OData / API) pour les analyses du groupe. Standard du marché (Wrike, Planner Premium). Aujourd’hui les écrans de pilotage sont fixes et seul l’export CSV / XLSX existe. Analyse comparative du 25 oct. 2026 : priorité P2, à valider par le responsable produit ; le connecteur Power BI peut s’appuyer sur les vues pub_ déjà publiées.  
-*Avancement : 01/11/2026 : écran « Mes tableaux de bord » (62e écran) : vignettes sur les indicateurs existants, filtres, partage en lecture avec droits du lecteur (migration 0072). Reste Power BI par les vues pub_ (demande Matrix #54 et DSI). · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+*Avancement : 01/11/2026 : écran « Mes tableaux de bord » (62e écran) : vignettes sur les indicateurs existants, filtres, partage en lecture avec droits du lecteur (migration 0072). Reste Power BI par les vues pub_ (demande Matrix #54 et DSI). 4 nov. 2026 (S-17 à S-19) : vignette « Capacité vs demande » (S-19). · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **~~R-129 · Vue d’ensemble : ne compter que les projets en exécution~~** — *Prochaine étape · non commencé · effort S* · **fait (Livraison 7)**  
 Appliquer A-3 : la Vue d’ensemble, l’accueil directeur (tuiles et demandes de modification) et Mes projets doivent suivre le registre en direct et retenir les projets dont l’étape appartient au groupe « execution » (Études → Mise en service), et non plus ceux qui ont des données de contrôle (hasData). Les libellés « FY2026 », figés dans l’indice de carte et dans le fil d’Ariane, doivent venir de la date de données. Les tests golden doivent être mis à jour avec un commentaire citant A-3. La règle de santé unique (A-13) est déjà appliquée.  
@@ -801,7 +801,7 @@ C-10a demande que les décaissements restants suivent la courbe prévue du plann
 
 **~~R-208 · IA prédictive de dérive délai / coût et suggestions de mitigation~~** — *Prochaine étape · non commencé · effort XL* · **fait (Livraison 9)**  
 Prédire la dérive de délai et de coût d’un projet à partir de l’historique (référence, avancement, valeur acquise, REX) et proposer des mitigations (réaffectation, resserrement, alerte précoce). Fonction avancée du marché (Planview, Planisware). Aujourd’hui l’IA ne sert qu’à l’analyse des transcriptions de réunion (src/server/ai/transcripts/). Analyse comparative du 25 oct. 2026 : priorité P3, à décider ; suppose un historique réel de projets.  
-*Avancement : 01/11/2026 : « Dérive prévue » fondée sur des règles (valeur acquise, planning, P80 Monte-Carlo) avec 11 règles de mitigation et alerte portefeuille ; à enrichir quand un historique réel existera. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+*Avancement : 01/11/2026 : « Dérive prévue » fondée sur des règles (valeur acquise, planning, P80 Monte-Carlo) avec 11 règles de mitigation et alerte portefeuille ; à enrichir quand un historique réel existera. 4 nov. 2026 (S-25) : seuils dans Paramètres. · Sources : Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **~~R-211 · Planning du portefeuille : catégorie « Sous garantie » à côté de « En cours » et « Pipeline »~~** — *Prochaine étape · non commencé · effort S* · **fait (Livraison 9)**  
 Le responsable produit (3 nov. 2026, PF-1) : dans le planning du portefeuille, les projets en garantie forment une catégorie à part, comme le pipeline. Trois catégories : en cours, dans le pipeline, en garantie (filtre d’étape, groupes du Gantt, vignettes).  
@@ -925,15 +925,11 @@ La spécification vise WCAG 2.1 AA avec des contrôles automatiques (axe) et des
 L'interface passe par le moteur de traduction du prototype (dictionnaire exact puis règles regex) sans aucun test qui vérifie que chaque libellé affiché a sa traduction ; des textes écrits par le DAL restent en anglais en français. Ajouter un contrôle de complétude dans les tests et stocker les textes système (journal, synchronisations) sous forme de code et paramètres plutôt qu'en phrases anglaises.  
 *Avancement : Livraison 8 : garde de complétude du français (src/i18n/completeness.test.ts), une seule traduction par clé, messages système à clé, fil d’activité et journal d’audit dans la langue de l’utilisateur. · Sources : 00 §7.2, 00 §8.7, 00 §8.14 (i18n completeness), 12 §6.3, DELIVERY-5.md §6 (Administration : textes du DAL en anglais)*
 
-### 2.16 Dette technique (4 restants, 3 faits)
+### 2.16 Dette technique (3 restants, 4 faits)
 
 **R-168 · Renforcer le journal d’audit (avant / après, motif, utilisateur, immuabilité)** — *Prochaine étape · partiel · effort M* · **en cours (Livraison 8)**  
 Enrichir audit_entries avec un avant / après structuré (jsonb), le motif et l’utilisateur authentifié, et rendre la table non modifiable (trigger ou droits SQL), comme le prévoit le modèle de données pour l’export ISO 9001.  
 *Avancement : Livraison 8, lot journal d’audit : table en ajout seul (déclencheurs), utilisateur, avant / après, motif, 4 colonnes de plus dans l’export CSV ISO. Reste : remplir avant / après / motif dans les autres écritures (balayage après la livraison) et REVOKE quand l’hébergement est choisi (I-1a). 2 nov. 2026 : lot « audit » lancé (avant / après et motif dans les écritures restantes). Fait le 2 nov. 2026 (docs/delivery-9/notes-r168-audit.md) : ~120 écritures portent avant / après (champs modifiés seulement, changedValues) et motif ; garde-fou src/server/audit-coverage.test.ts (exceptions listées : créations, événements, système). Reste : REVOKE quand l’hébergement est choisi (I-1a). · Attend : Vrais utilisateurs (R-039) · Sources : 11 §3.12 AuditEntry*
-
-**R-171 · Supprimer le code mort, les doublons et les commentaires périmés** — *Plus tard · non commencé · effort S* · **en cours (Livraison 9)**  
-À retirer : addTaskAttachment, INDEX_ALERT, les fonctions de disponibilité de resources.ts (seulement testées, hr.ts a sa copie), transferTargets, getPortfolioCashForecast, listDeliverableTypes et les doublons priorityScore / marginPct. Il faut aussi unifier les deux règles de décision d’une étape de CR (par rôle ou par approbateur nommé) et supprimer client_communications, son DAL et openClientFollowUps si D-5 le confirme. Enfin, mettre à jour les 81 commentaires « OPEN QUESTION », dont la plupart sont tranchés. Les routes catch-all restent (404, redirection /projects/<code>) : seule la branche ComingSoon, gardée volontairement pour un futur écran, est inatteignible.  
-*Avancement : 2 nov. 2026 (docs/delivery-9/notes-r171-cleanup.md) : code mort nommé retiré (addTaskAttachment, INDEX_ALERT, disponibilités de resources.ts, getPortfolioCashForecast, transferTargets, copie de priorityScore), ~45 exports et 2 fichiers sans référence, 11 classes CSS, commentaires « OPEN QUESTION » rattachés aux décisions et commentaires périmés corrigés. Reste : client_communications et son DAL (attend D-5). · Attend : Confirmation D-5 pour supprimer client_communications (DELIVERY-6 §8) · Sources : DELIVERY-2.md §5, DELIVERY-4.md §5 (l.320), DELIVERY-6-PLAN.md (settings cleanup), DELIVERY-6.md §8 D-5*
 
 **R-172 · Solder les TODO(db) restants (import P&ID, lien CR ↔ activité, nom du responsable)** — *Plus tard · non commencé · effort S* · **en cours (Livraison 8)**  
 La table import_jobs existe désormais : faire passer l’import P&ID par une ImportJob (nouveau type « pid ») au lieu de recalculer le staging depuis le fichier soumis, et mettre à jour le commentaire périmé. Modéliser le lien CR ↔ activité pour retirer la note figée A1250 / CR-008 du tiroir du plan. Afficher partout le nom du responsable au lieu de son code (« SP » sur un projet créé par l’assistant), dans l’export du plan comme à l’écran : la DAL fournit déjà ownerName.  
@@ -954,6 +950,10 @@ Remplacer par des données ou des paramètres : la prime chantier « ×1,5 / ×2
 **~~R-167 · Corriger isoOfDayOffset pour les décalages négatifs~~** — *Plus tard · non commencé · effort S* · **fait (Livraison 8)**  
 isoOfDayOffset calcule une date fausse pour un décalage négatif : −1 jour ouvré donne le dimanche 13 sept. au lieu du vendredi 18. Le même bug a déjà été corrigé dans dayDate (src/lib/format.ts:74). Le bug est aujourd’hui latent, car tous les appelants passent un décalage ≥ 0 (semaines 5/10/15, TODAY = 4, valeur par défaut 5, seed à partir du 21 sept.). Il faut corriger la formule et ajouter un test sur les décalages négatifs avant qu’un appelant n’en passe un. Il faut aussi mettre à jour DELIVERY-2 §5, qui dit à tort que seuls les seeders l’utilisent.  
 *Avancement : Livraison 8 : isoOfDayOffset correct pour les décalages négatifs. · Sources : DELIVERY-2.md §5 (l.361, l.399)*
+
+**~~R-171 · Supprimer le code mort, les doublons et les commentaires périmés~~** — *Plus tard · non commencé · effort S* · **fait (Livraison 9)**  
+À retirer : addTaskAttachment, INDEX_ALERT, les fonctions de disponibilité de resources.ts (seulement testées, hr.ts a sa copie), transferTargets, getPortfolioCashForecast, listDeliverableTypes et les doublons priorityScore / marginPct. Il faut aussi unifier les deux règles de décision d’une étape de CR (par rôle ou par approbateur nommé) et supprimer client_communications, son DAL et openClientFollowUps si D-5 le confirme. Enfin, mettre à jour les 81 commentaires « OPEN QUESTION », dont la plupart sont tranchés. Les routes catch-all restent (404, redirection /projects/<code>) : seule la branche ComingSoon, gardée volontairement pour un futur écran, est inatteignible.  
+*Avancement : 2 nov. 2026 (docs/delivery-9/notes-r171-cleanup.md) : code mort nommé retiré (addTaskAttachment, INDEX_ALERT, disponibilités de resources.ts, getPortfolioCashForecast, transferTargets, copie de priorityScore), ~45 exports et 2 fichiers sans référence, 11 classes CSS, commentaires « OPEN QUESTION » rattachés aux décisions et commentaires périmés corrigés.  4 nov. 2026 (S-03, D-5) : table client_communications et son code supprimés (migration 0075). · Sources : DELIVERY-2.md §5, DELIVERY-4.md §5 (l.320), DELIVERY-6-PLAN.md (settings cleanup), DELIVERY-6.md §8 D-5*
 
 ### 2.17 Nouveaux modules demandés ou proposés (à valider) (9 restants, 1 faits)
 
@@ -999,6 +999,7 @@ Module demandé mais à cadrer avec le responsable produit avant construction : 
 
 ## 3. Mises à jour
 
+- 2026-11-04 — Questionnaire de suivi de la livraison 9 (28 questions, « recommandé ») appliqué : Gantt (refus avant la logique, filtre équipement), qualité du planning au portefeuille, seuils de dérive dans Paramètres, alerte de glissement fournisseur, ancien journal client supprimé (R-171 fait), vignette capacité, notification des tâches récurrentes ; demande déposée chez Arche (démo K-14).
 - 2026-11-03 — R-211 fait : planning du portefeuille en trois catégories — en cours, pipeline, sous garantie (demande du responsable produit, PF-1).
 - 2026-11-02 — R-168 : avant / après et motif dans tout le journal d’audit, garde-fou de couverture. R-171 : nettoyage du code (reste client_communications, attend D-5).
 - 2026-11-02 — Livraison 9 : lots R-168 (avant / après et motif du journal d’audit) et R-171 (nettoyage du code) lancés.

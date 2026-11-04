@@ -42,7 +42,6 @@ const ALLOWED: Record<string, readonly [Why, number?]> = {
   'src/server/dal/bom.ts › insertBomLine': ['creation'],
   'src/server/dal/claims.ts › openClaim': ['creation'],
   'src/server/dal/claims.ts › planIntervention': ['creation'],
-  'src/server/dal/client-comms.ts › addClientCommunication': ['creation'],
   'src/server/dal/client.ts › raiseClientIssue': ['creation'],
   'src/server/dal/contract.ts › addAmendment': ['creation'],
   'src/server/dal/contract.ts › addBond': ['creation'],

@@ -6,8 +6,10 @@ import 'server-only';
 // someone never shows them what their own rights would not.
 // Every figure is an existing Keystone indicator, read through the DAL of the screen that shows it: the Portfolio overview's
 // KPI tiles and alerts (src/server/dal/portfolio.ts, R-130), the My projects card metrics (`overviewMetrics`), My work's tasks,
-// My approvals' queue, the risk register, the punch list, the Schedule's milestones and the Budget's S-curve.
+// My approvals' queue, the risk register, the punch list, the Schedule's milestones and the Budget's S-curve; S-19: the
+// Resources screen's capacity vs demand by department over the current 8-week window (`getCapacityDemand`).
 import type { Persona } from '@/config/personas';
+import { screenHref } from '@/config/screens';
 import { canSeeWidget, inPeriod, type DashboardZone, type Scope, type Widget } from '@/domain/dashboards';
 import { uncertaintyTotals } from '@/domain/estimate-class';
 import { evmCore, offerPoints, type DisbursementPoint, type EvmCore } from '@/domain/evm';
@@ -29,7 +31,9 @@ import { getMilestones, getScheduleControl } from './planning';
 import { getPortfolioOverview } from './portfolio';
 import { listProjects, type ProjectRow } from './projects';
 import { getOpenRiskExposure, listRisks } from './risks';
+import { getCapacityDemand, currentLoadWeeks } from './resources';
 import { listTasks, type TaskRow } from './tasks';
+import type { CapacityRow } from '@/domain/resources';
 
 /** A list row: texts are typed data (`text`, shown with dataText) or EN source strings (`label`, through t()). */
 export interface WidgetRow {
@@ -54,6 +58,8 @@ export type WidgetView =
   | { type: 'kpi'; kpi: KpiView }
   | { type: 'alerts'; alerts: PortfolioAlert[] }
   | { type: 'list'; rows: WidgetRow[]; total: number; href: string }
+  /** S-19: the Resources screen's rows (departments, then the trades outside them), drawn by its bars. */
+  | { type: 'capacity'; rows: CapacityRow[]; href: string }
   | { type: 'evm'; series: { pv: number[]; ev: number[]; ac: number[]; bac: number }; eac: number; points: DisbursementPoint[]; chartMonths: string[]; href: string };
 
 export type WidgetData =
@@ -175,6 +181,9 @@ export async function resolveWidgets(viewer: Persona, widgets: readonly Widget[]
         const p = w.project ? readable(w.project) : null;
         return { state: 'ok', view: { type: 'list', rows: open.slice(0, w.limit).map(taskRow), total: open.length, href: '/my/tasks' }, projectLabel: p ? projectLabelText(p, lang) : null };
       }
+      case 'resources-capacity':
+        // The Resources screen's own figures over its default window (the 8 weeks from the business date's week, R-085).
+        return { state: 'ok', view: { type: 'capacity', rows: await getCapacityDemand(await currentLoadWeeks()), href: screenHref('resources') }, projectLabel: null };
     }
     // Project widgets.
     const p = readable(w.project);

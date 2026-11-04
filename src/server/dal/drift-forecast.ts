@@ -12,6 +12,7 @@ import { businessToday } from '@/server/clock';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import { activities, milestones, projects, statusSnapshots } from '@/server/db/schema';
 import { getContingencyTotals } from './contingency';
+import { readDriftThresholds } from './drift-thresholds';
 import { getOpenCommitment, getProjectEvm } from './evm';
 import { getRiskAnalysis } from './risk-analysis';
 
@@ -37,7 +38,7 @@ export async function getDriftForecast(code: string, q?: Q): Promise<ProjectDrif
     .where(eq(projects.code, code));
   if (!p) return null;
   const dataDate = projectDataDate(p, await businessToday(db));
-  const [evm, acts, ms, prevSnap, commitment, contingency, analysis] = await Promise.all([
+  const [evm, acts, ms, prevSnap, commitment, contingency, analysis, thresholds] = await Promise.all([
     getProjectEvm(p.code, q),
     db
       .select({
@@ -58,6 +59,8 @@ export async function getDriftForecast(code: string, q?: Q): Promise<ProjectDrif
     getOpenCommitment(p.code, q),
     getContingencyTotals(p.code),
     getRiskAnalysis(p.code, q),
+    // S-25: the Settings thresholds (read in the caller's transaction when there is one).
+    readDriftThresholds(q),
   ]);
   const facts: DriftActivity[] = acts.map((a) => {
     const complete = a.finishActual && a.startActual;
@@ -93,6 +96,7 @@ export async function getDriftForecast(code: string, q?: Q): Promise<ProjectDrif
           probOnTarget: run.result.finish.probOnTarget, probWithinBudget: run.result.cost.probWithinTarget, drivers: run.result.tornado.map((d) => d.id),
         }
       : null,
+    thresholds,
   };
   return {
     projectCode: p.code, dataDate, targetSource: analysis?.target.source ?? 'none', names: Object.fromEntries(acts.map((a) => [a.code, a.name])),

@@ -1,0 +1,20 @@
+{
+  "Non-compliant DCMA checks": "Contrôles DCMA non conformes",
+  "applicable": "applicables",
+  "SPI under which the critical path is resequenced": "SPI sous lequel le chemin critique est réordonnancé",
+  "CPI under which the commitments are reviewed": "CPI sous lequel les engagements sont revus",
+  "CPI under which the review is urgent": "CPI sous lequel la revue est urgente",
+  "TCPI above which the EAC is re-estimated": "TCPI au-delà duquel l’EAC est réestimé",
+  "Float lost in a week (working days)": "Marge perdue en une semaine (jours ouvrés)",
+  "Monte-Carlo chance under which the drivers are treated (%)": "Probabilité Monte-Carlo sous laquelle on traite ce qui pilote (%)",
+  "Monte-Carlo chance under which it is urgent (%)": "Probabilité Monte-Carlo sous laquelle c’est urgent (%)",
+  "Monte-Carlo analysis current for (days)": "Analyse Monte-Carlo à jour pendant (jours)",
+  "Estimates disagree beyond (calendar days)": "Estimations divergentes au-delà de (jours calendaires)",
+  "Estimates disagree beyond (% of the budget)": "Estimations divergentes au-delà de (% du budget)",
+  "Earned value meaningful from (% progress)": "Valeur acquise significative à partir de (% d’avancement)",
+  "Earned value reliable from (% progress)": "Valeur acquise fiable à partir de (% d’avancement)",
+  "Portfolio alert: chance of meeting the end date under (%)": "Alerte du portefeuille : probabilité de tenir la date de fin sous (%)",
+  "This threshold must stay consistent with its pair (the urgent level beyond the first one)": "Ce seuil doit rester cohérent avec son pendant (le niveau urgent au-delà du premier)",
+  "Thresholds of the rule-based drift forecast (Trends & report) and of the portfolio alert · R-208 defaults": "Seuils de la dérive prévue par règles (Tendances & rapport) et de l’alerte du portefeuille · valeurs par défaut de R-208",
+  "Supplier schedule slipping": "Planning fournisseur en glissement"
+}

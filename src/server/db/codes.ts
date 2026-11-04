@@ -1096,6 +1096,8 @@ export const APP_SETTING_HEALTH = 'health.thresholds';
 export const APP_SETTING_HOURS_VARIANCE = 'hours.variance';
 /** R-206 (K-206b): the thresholds of the schedule quality checks (DCMA 14 points), src/domain/schedule-quality.ts DcmaThresholds. */
 export const APP_SETTING_DCMA = 'schedule.dcma';
+/** S-25: the drift forecast and portfolio Monte-Carlo alert thresholds (DriftThresholds, src/domain/drift-forecast.ts). */
+export const APP_SETTING_DRIFT = 'forecast.drift';
 
 /** Slug of a free label (custom Settings entries, custom machine types): "Permits & fees" → "permits_fees". */
 export const slugOf = (label: string) =>
@@ -1180,14 +1182,6 @@ export const transcriptProposalType = codec<TranscriptProposalType, string>([
 ]);
 /** proposed → accepted / rejected by a human; applied once it reached the minutes, a task, the risk register or the Q&A bridge. */
 export type TranscriptProposalStatus = 'proposed' | 'accepted' | 'rejected' | 'applied';
-
-/** Client communication log (Site › "Client communication log", Keystone-owned). */
-export type ClientCommChannel = 'email' | 'phone' | 'meeting' | 'video' | 'letter' | 'site_visit' | 'other';
-export const clientCommChannel = codec<ClientCommChannel, string>([
-  ['email', 'E-mail'], ['phone', 'Phone'], ['meeting', 'Meeting'], ['video', 'Video call'], ['letter', 'Letter'], ['site_visit', 'Site visit'], ['other', 'Other'],
-]);
-export type ClientCommDirection = 'inbound' | 'outbound';
-export const clientCommDirection = codec<ClientCommDirection, string>([['inbound', 'From the client'], ['outbound', 'To the client']]);
 
 /** What-if scenario actions derived from real allocations (S-7). */
 export type WhatIfActionKind = 'overtime' | 'extra_resource' | 'shift';
