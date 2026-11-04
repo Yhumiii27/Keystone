@@ -2,6 +2,7 @@
 // dashboard shown (`?d=`, else the default one), each with its figure or row count as resolved for the viewer — the same rights
 // as the screen (a widget outside the viewer's workspace exports "Not available for your role", nothing of its data).
 import { widgetTitleParts } from '@/domain/dashboards';
+import { unmetDemand } from '@/domain/resources';
 import { dataText } from '@/i18n/data-text';
 import { getDb } from '@/server/db/client';
 import { resolveWidgets, type WidgetData } from '@/server/dal/dashboard-data';
@@ -25,6 +26,9 @@ function valueOf(ctx: ExportContext, d: WidgetData): string {
       return String(v.total);
     case 'evm':
       return t('Budget vs cost');
+    case 'capacity':
+      // S-19: the Resources screen's "Unmet demand" over the same rows.
+      return t(`${unmetDemand(v.rows)} h`);
   }
 }
 

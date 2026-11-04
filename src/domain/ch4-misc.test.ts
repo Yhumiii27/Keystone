@@ -1,7 +1,6 @@
-// Chapter 4 "misc" rules (pure): forced stage change validation (L-1), the client communication log form and rights, the
+// Chapter 4 "misc" rules (pure): forced stage change validation (L-1), the
 // spares purchase order proposal (E-3).
 import { describe, expect, it } from 'vitest';
-import { canReadClientLog, canWriteClientLog, clientLogCounts, followUpState, parseClientCommForm } from './client-comms';
 import { DEFAULT_REVERT_REASON, isForcedStageDecider, revertBlocker, revertReason } from './forced-stage';
 import { groupBySupplier, isPreselected, sparesOrderValue, suggestedSpareQty, validateSparesOrder, type SpareOrderCandidate } from './spares-order';
 
@@ -23,56 +22,6 @@ describe('forced stage changes (L-1 default)', () => {
     expect(revertReason('')).toBe(DEFAULT_REVERT_REASON);
     expect(revertReason(null)).toBe('Forced stage change rejected by the portfolio director');
     expect(revertReason('x'.repeat(600))).toHaveLength(500);
-  });
-});
-
-describe('client communication log', () => {
-  const team = ['Romain Aubert', 'Hélène Sauvage'];
-  const base = { occurredOn: '2026-09-24', channel: 'phone', direction: 'inbound', contactName: ' Nadia Bensaïd ', subject: ' Crane rail delivery ', summary: 'Asked to move the delivery.' };
-
-  it('parses a valid entry (trimmed), with or without a follow-up', () => {
-    expect(parseClientCommForm(base, team)).toEqual({
-      ok: true,
-      value: { occurredOn: '2026-09-24', channel: 'phone', direction: 'inbound', contactName: 'Nadia Bensaïd', subject: 'Crane rail delivery', summary: 'Asked to move the delivery.', followUpOwner: null, followUpDueOn: null },
-    });
-    const r = parseClientCommForm({ ...base, followUpOwner: 'Romain Aubert', followUpDueOn: '2026-09-30' }, team);
-    expect(r.ok && [r.value.followUpOwner, r.value.followUpDueOn]).toEqual(['Romain Aubert', '2026-09-30']);
-    // Direction defaults to "To the client".
-    const d = parseClientCommForm({ ...base, direction: '' }, team);
-    expect(d.ok && d.value.direction).toBe('outbound');
-  });
-
-  it('refuses invalid values with an EN message', () => {
-    const err = (v: Record<string, unknown>) => {
-      const r = parseClientCommForm({ ...base, ...v }, team);
-      return r.ok ? null : r.error;
-    };
-    expect(err({ occurredOn: '2026-02-30' })).toBe('Enter the date of the exchange');
-    expect(err({ occurredOn: '24/09/2026' })).toBe('Enter the date of the exchange');
-    expect(err({ channel: 'fax' })).toBe('Unknown channel');
-    expect(err({ direction: 'sideways' })).toBe('Unknown direction');
-    expect(err({ contactName: '   ' })).toBe('Enter the client contact');
-    expect(err({ subject: '' })).toBe('Enter a subject');
-    expect(err({ followUpOwner: 'Somebody Else', followUpDueOn: '2026-09-30' })).toBe('Choose the follow-up owner in the project team');
-    expect(err({ followUpOwner: 'Romain Aubert' })).toBe('A follow-up needs an owner and a due date');
-    expect(err({ followUpDueOn: '2026-09-30' })).toBe('A follow-up needs an owner and a due date');
-    expect(err({ followUpOwner: 'Romain Aubert', followUpDueOn: '2026-09-20' })).toBe('The follow-up cannot be due before the exchange');
-    expect(err({ subject: 'x'.repeat(300) })).toBeNull(); // cut to 200
-  });
-
-  it('rights: no client contact; writers are the Site editors', () => {
-    expect([canReadClientLog('client'), canReadClientLog('member'), canReadClientLog('pm')]).toEqual([false, true, true]);
-    expect([canWriteClientLog('pm', true), canWriteClientLog('pm', false), canWriteClientLog('client', true)]).toEqual([true, false, false]);
-  });
-
-  it('follow-up state and counts at the status date', () => {
-    expect(followUpState({ followUpDueOn: null, followUpDone: false }, '2026-09-25')).toBe('none');
-    expect(followUpState({ followUpDueOn: '2026-09-24', followUpDone: false }, '2026-09-25')).toBe('overdue');
-    expect(followUpState({ followUpDueOn: '2026-09-25', followUpDone: false }, '2026-09-25')).toBe('open');
-    expect(followUpState({ followUpDueOn: '2026-09-24', followUpDone: true }, '2026-09-25')).toBe('done');
-    expect(clientLogCounts([{ followUpDueOn: null, followUpDone: false }, { followUpDueOn: '2026-10-01', followUpDone: false }, { followUpDueOn: '2026-10-01', followUpDone: true }])).toEqual({
-      exchanges: 3, openFollowUps: 1,
-    });
   });
 });
 

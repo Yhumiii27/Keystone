@@ -21,7 +21,7 @@ import {
 } from '@/server/db/schema';
 import { getRateGrid } from './hr';
 import { createNextOccurrence, recurrenceLinks, recurrenceOf } from './task-recurrence';
-import { listMentionablePersons } from './task-notices';
+import { listMentionablePersons, notifyTasksAssigned } from './task-notices';
 
 export interface TaskRow {
   /** "T-2314". */
@@ -266,16 +266,18 @@ async function auditTask(
 /** Status segment / "Mark done": done ⇒ 100 %; leaving done from 100 % ⇒ 75 % (10 §7.4, domain applyStatus). */
 export async function setTaskStatus(number: string, status: TaskStatus, actorName: string): Promise<void> {
   const db = await getDb();
-  await db.transaction(async (tx) => {
+  const created = await db.transaction(async (tx) => {
     const t = await loadTask(tx, number);
-    if (t.status === status) return;
+    if (t.status === status) return null;
     const next = applyStatus({ status: t.status, pct: t.percentComplete }, status);
     await tx.update(tasks).set({ status: next.status, percentComplete: next.pct, updatedAt: new Date() }).where(eq(tasks.id, t.id));
     await auditTask(tx, t, actorName, `status: ${taskStatus.label(t.status)} → ${taskStatus.label(next.status)}`,
       changedValues({ status: t.status, percentComplete: t.percentComplete }, { status: next.status, percentComplete: next.pct }) ?? {});
     // R-201: closing a recurring task creates its next occurrence.
-    if (next.status === 'done') await createNextOccurrence(tx, t, actorName, await businessToday());
+    return next.status === 'done' ? createNextOccurrence(tx, t, actorName, await businessToday()) : null;
   });
+  // S-15: the assignee is told by the bell when someone else (the director) closed the task and created its next occurrence.
+  if (created) await notifyTasksAssigned([created], actorName);
 }
 
 /** List done toggle: done ↔ in progress (100 % ↔ 75 %). */
@@ -294,15 +296,17 @@ export async function toggleTaskDone(number: string, actorName: string): Promise
  */
 export async function setTaskProgress(number: string, pct: number, actorName: string): Promise<void> {
   const db = await getDb();
-  await db.transaction(async (tx) => {
+  const created = await db.transaction(async (tx) => {
     const t = await loadTask(tx, number);
     const { status, pct: v } = applyProgress({ status: t.status, pct: t.percentComplete }, pct);
     await tx.update(tasks).set({ percentComplete: v, status, updatedAt: new Date() }).where(eq(tasks.id, t.id));
     await auditTask(tx, t, actorName, `progress: ${t.percentComplete} % → ${v} %` + (status !== t.status ? ` · status: ${taskStatus.label(t.status)} → ${taskStatus.label(status)}` : ''),
       changedValues({ status: t.status, percentComplete: t.percentComplete }, { status, percentComplete: v }) ?? {});
     // R-201: closing a recurring task creates its next occurrence.
-    if (status === 'done' && t.status !== 'done') await createNextOccurrence(tx, t, actorName, await businessToday());
+    return status === 'done' && t.status !== 'done' ? createNextOccurrence(tx, t, actorName, await businessToday()) : null;
   });
+  // S-15: as setTaskStatus.
+  if (created) await notifyTasksAssigned([created], actorName);
 }
 
 /**

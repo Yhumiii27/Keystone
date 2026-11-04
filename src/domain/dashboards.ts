@@ -1,7 +1,8 @@
 // R-203 (K-203, owner 1 Nov 2026: « Lancer »): user-configurable dashboards. Each user composes their own dashboards from a
 // catalogue of widgets built on Keystone's EXISTING indicators and lists — no new indicator here: the portfolio KPI tiles and
 // the "Needs attention" alerts of the Portfolio overview (R-130), the My projects indicators (progress, CPI, SPI), the risk
-// register, the punch list, the milestones of the Schedule, the Budget's S-curve, My work's tasks and My approvals' queue.
+// register, the punch list, the milestones of the Schedule, the Budget's S-curve, My work's tasks and My approvals' queue —
+// and (S-19, owner 4 Nov 2026) the Resources screen's "Capacity vs demand" bars.
 // This module is pure (no I/O): the widget catalogue, the layout schema (zod), the rights gate of a widget, the layout edits
 // (add, remove, move, resize) and the period filter. Data are resolved on the server for the VIEWER (src/server/dal/
 // dashboard-data.ts): a dashboard shared with someone never shows them what their own role and rights would not.
@@ -59,6 +60,8 @@ export const widgetSchema = z.discriminatedUnion('kind', [
   z.object({ ...base, kind: z.literal('project-risks'), project: projectCode, limit }).strict(),
   z.object({ ...base, kind: z.literal('project-punch'), project: projectCode, period: z.enum(PERIODS), limit }).strict(),
   z.object({ ...base, kind: z.literal('project-evm'), project: projectCode }).strict(),
+  // S-19: capacity vs demand by department over the next 8 weeks (the Resources screen's card; the whole pool).
+  z.object({ ...base, kind: z.literal('resources-capacity') }).strict(),
 ]);
 
 export type Widget = z.infer<typeof widgetSchema>;
@@ -113,6 +116,7 @@ export const WIDGET_KINDS: readonly WidgetKindDef[] = [
   { kind: 'project-risks', label: 'Top risks', hint: 'The open risks of a project, highest score first', project: true, defaultSize: 'm' },
   { kind: 'project-punch', label: 'Open punch items', hint: 'The open items of a project’s punch list', project: true, defaultSize: 'm' },
   { kind: 'project-evm', label: 'Budget vs cost (S-curve)', hint: 'The earned-value chart of the Budget screen', project: true, defaultSize: 'l' },
+  { kind: 'resources-capacity', label: 'Capacity vs demand', hint: 'Hours by department over the next 8 weeks (Resources)', project: false, defaultSize: 'm' },
 ];
 export const WIDGET_KIND_DEF = Object.fromEntries(WIDGET_KINDS.map((d) => [d.kind, d])) as Record<WidgetKind, WidgetKindDef>;
 
@@ -156,6 +160,8 @@ export function widgetScreen(w: Pick<Widget, 'kind'> & { metric?: string }): Scr
       return 'itp';
     case 'project-evm':
       return 'budget';
+    case 'resources-capacity':
+      return 'resources';
   }
 }
 
@@ -260,6 +266,8 @@ export function defaultWidget(kind: WidgetKind, opts: { role: RoleKey; project: 
       return { kind, size, project: p, limit: LIST_LIMIT_DEFAULT };
     case 'project-punch':
       return { kind, size, project: p, period: 'all', limit: LIST_LIMIT_DEFAULT };
+    case 'resources-capacity':
+      return { kind, size };
   }
 }
 
