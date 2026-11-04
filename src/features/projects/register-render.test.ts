@@ -11,12 +11,15 @@ import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { withoutK14Demo } from '@/test/k14';
 import { getRegisterData } from '@/server/dal/projects-register';
+import { scheduleQualitySummaries, type ScheduleQualitySummary } from '@/server/dal/schedule-quality';
 import type { RegisterView, StageCode } from '@/domain/lifecycle';
 import { ProjectsRegister } from './register';
 import { buildRegisterModel } from './register-model';
 
-async function render(lang: Lang, view: RegisterView, opts: { status?: StageCode | null; q?: string; canEdit?: boolean } = {}) {
-  const m = buildRegisterModel(await getRegisterData(), null, makeT(lang), lang);
+async function render(
+  lang: Lang, view: RegisterView, opts: { status?: StageCode | null; q?: string; canEdit?: boolean; quality?: Record<string, ScheduleQualitySummary>; links?: boolean } = {},
+) {
+  const m = buildRegisterModel({ ...(await getRegisterData()), scheduleQuality: opts.quality, scheduleLinks: opts.links }, null, makeT(lang), lang);
   const el = h(ProjectsRegister, {
     rows: m.rows, stages: m.stages, zoneEmpty: m.zoneEmpty, canEdit: opts.canEdit ?? true, initialView: view,
     initialStatus: opts.status ?? null, initialQuery: opts.q ?? '',
@@ -33,7 +36,8 @@ describe('ProjectsRegister render', () => {
 
   it('health view (EN)', async () => {
     const html = await render('en', 'health');
-    expect(headers(html)).toEqual(['Project', 'Status', 'Health', 'SPI', 'CPI', 'Next milestone', 'Attention']);
+    // S-23: the "Schedule quality" column (DCMA checks that fail; "—" without the page's summaries).
+    expect(headers(html)).toEqual(['Project', 'Status', 'Health', 'SPI', 'CPI', 'Next milestone', 'Schedule quality', 'Attention']);
     expect(html).toContain('All projects · 17');
     expect(html).toContain('Click a status to move it');
     expect(html).toContain('#026 · Harbor Line Terminal Expansion');
@@ -47,6 +51,24 @@ describe('ProjectsRegister render', () => {
     expect(html).toContain('Drag the cursor to filter by stage');
     expect(html).toContain('placeholder="Search projects"');
   });
+
+  it('S-23: the schedule quality of each live project (DCMA checks that fail), linked to its Schedule', async () => {
+    const quality = await scheduleQualitySummaries(['HLT-026', 'NOPE-000']);
+    expect(Object.keys(quality)).toEqual(['HLT-026']);
+    const q = quality['HLT-026'];
+    expect(q.failed).toBe(q.failedChecks.length);
+    expect(q.failed).toBeGreaterThan(0);
+    expect(q.applicable).toBeGreaterThanOrEqual(q.failed);
+    const fr = await render('fr', 'health', { quality, links: true });
+    expect(headers(fr)).toContain('Qualité du planning');
+    expect(fr).toContain(`Non conforme · ${q.failed}`);
+    expect(fr).toContain('href="/projects/HLT-026/schedule"');
+    expect(fr).toContain(`Contrôles DCMA non conformes · ${q.failed} / ${q.applicable} applicables · ${q.failedChecks.map((n) => `#${n}`).join(', ')}`);
+    // Without the Schedule screen: the counter without the link.
+    const noLink = await render('en', 'health', { quality, links: false });
+    expect(noLink).toContain(`Fail · ${q.failed}`);
+    expect(noLink).not.toContain('href="/projects/HLT-026/schedule"');
+  }, 60_000);
 
   it('progress view (FR) with the Fabrication filter', async () => {
     const html = await render('fr', 'progress', { status: 'fabrication_assemblage' });

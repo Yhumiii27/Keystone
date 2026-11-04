@@ -146,6 +146,8 @@ export interface QualityActivity {
   resourced: boolean;
   /** Finish date in the reference baseline; null when the activity is not in it. */
   baselineFinish: IsoDate | null;
+  /** R-185 equipment line of the activity (S-21: one chain end tolerated per line); null / absent = common to the project. */
+  equipmentId?: string | null;
 }
 
 export interface QualityLink {
@@ -182,6 +184,11 @@ export interface QualityInput {
   calendar: WorkCalendar;
   /** Critical path test; null = not run. */
   cpt: CriticalPathTestOutcome | null;
+  /**
+   * S-21: the project supplies several equipment lines (R-185) — check 1 then tolerates one open end per line (and one for the
+   * activities common to the project) instead of a single end for the whole network. Absent = false.
+   */
+  multiEquipment?: boolean;
 }
 
 // ── Output ────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -304,6 +311,22 @@ function countCheck(id: DcmaCheckId, number: number, offenders: DcmaOffender[], 
 const naIndex = (id: DcmaCheckId, number: number, limit: number, naReason: DcmaNaReason): DcmaCheck =>
   ({ id, number, status: 'na', value: null, unit: 'index', count: null, total: null, op: '≥', limit, naReason, offenders: [] });
 
+/**
+ * The tolerated finish ends of check 1: the only activity without successor; on a multi-equipment project (S-21), the only one
+ * of each equipment line, and the only one among the activities common to the project. A line (or the common part) with several
+ * open ends has them all listed.
+ */
+export function networkFinishEnds(noSuccessor: readonly Pick<QualityActivity, 'id' | 'equipmentId'>[], multiEquipment: boolean): Set<string> {
+  if (noSuccessor.length === 1) return new Set([noSuccessor[0].id]);
+  if (!multiEquipment) return new Set();
+  const byLine = new Map<string, string[]>();
+  for (const a of noSuccessor) {
+    const key = a.equipmentId ?? '';
+    byLine.set(key, [...(byLine.get(key) ?? []), a.id]);
+  }
+  return new Set([...byLine.values()].filter((ids) => ids.length === 1).map((ids) => ids[0]));
+}
+
 /** Runs the 14 checks. */
 export function dcmaAssessment(input: QualityInput): DcmaReport {
   const th = input.thresholds;
@@ -317,16 +340,16 @@ export function dcmaAssessment(input: QualityInput): DcmaReport {
   const hasSucc = new Set(known.map((l) => l.pred));
   const linkOf = (l: QualityLink): DcmaOffender => ({ kind: 'link', pred: l.pred, succ: l.succ, type: l.type, lag: l.lag });
 
-  // 1 · Logic. The project's start (the only activity without predecessor) and finish (the only one without successor) are
-  // the network's ends, not gaps.
+  // 1 · Logic. The project's start (the only activity without predecessor) and finish (the only one without successor — one per
+  // equipment line on a multi-equipment project, S-21) are the network's ends, not gaps.
   const noPred = input.activities.filter((a) => !hasPred.has(a.id));
   const noSucc = input.activities.filter((a) => !hasSucc.has(a.id));
   const startEnd = noPred.length === 1 ? noPred[0].id : null;
-  const finishEnd = noSucc.length === 1 ? noSucc[0].id : null;
+  const finishEnds = networkFinishEnds(noSucc, input.multiEquipment ?? false);
   const logicOff: DcmaOffender[] = [];
   for (const a of open) {
     const p = !hasPred.has(a.id) && a.id !== startEnd;
-    const s = !hasSucc.has(a.id) && a.id !== finishEnd;
+    const s = !hasSucc.has(a.id) && !finishEnds.has(a.id);
     if (p || s) logicOff.push({ kind: 'activity', id: a.id, note: p && s ? DCMA_NOTES.noLinks : p ? DCMA_NOTES.noPredecessor : DCMA_NOTES.noSuccessor });
   }
 

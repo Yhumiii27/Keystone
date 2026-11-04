@@ -9,7 +9,7 @@
 // note. "Remove" toasts whether the value was deleted or deactivated (still in use / a default). The health card states
 // the one rule every screen applies.
 import {
-  CalendarX, Certificate, ChartLineUp, ClockCountdown, Coins, CurrencyEur, Files, Flag, Gavel, Heartbeat, LockSimple, Plus, Warehouse, Warning, X,
+  CalendarX, Certificate, ChartLineUp, ClockCountdown, Coins, CurrencyEur, Files, Flag, Gavel, Heartbeat, LockSimple, Plus, TrendUp, Warehouse, Warning, X,
 } from '@phosphor-icons/react/dist/ssr';
 import type { Icon } from '@phosphor-icons/react';
 import Link from 'next/link';
@@ -25,7 +25,7 @@ import { REQUIRED_STAGES } from '@/domain/settings-rules';
 import { useI18n } from '@/i18n/client';
 import type { LocationType } from '@/server/db/codes';
 import {
-  addSettingsEntryAction, removeSettingsEntryAction, setCcbThresholdAction, setDcmaThresholdAction, setHealthThresholdAction, setHoursVarianceAction, type AdminActionResult,
+  addSettingsEntryAction, removeSettingsEntryAction, setCcbThresholdAction, setDcmaThresholdAction, setDriftThresholdAction, setHealthThresholdAction, setHoursVarianceAction, type AdminActionResult,
 } from './actions';
 import type { SettingsCardView, SettingsView } from './model';
 import s from './admin.module.css';
@@ -124,7 +124,22 @@ export function SettingsBody({ view, canEdit, directorOnlyNote = false }: { view
         </div>
         <div className={st.dcmaGrid}>
           {view.dcma.map((f) => (
-            <DcmaField key={`${f.key}-${f.value}`} field={f} canEdit={canEdit} standardLabel={t('DCMA standard')} />
+            <DcmaField key={`${f.key}-${f.value}`} field={f} canEdit={canEdit} standardLabel={t('DCMA standard')} save={setDcmaThresholdAction} idPrefix="dcma" />
+          ))}
+        </div>
+      </div>
+      {/* S-25: the drift forecast (Trends) and the portfolio's Monte-Carlo alert thresholds, R-208's defaults. */}
+      <div className={cx('card', 'elev-sm', s.healthCard)}>
+        <div className={s.healthHead}>
+          <TrendUp className={s.accent} aria-hidden />
+          <div className={s.healthTitle}>
+            <div className="card-title">{t('Forecast drift')}</div>
+            <span className={s.muted12}>{t('Thresholds of the rule-based drift forecast (Trends & report) and of the portfolio alert · R-208 defaults')}</span>
+          </div>
+        </div>
+        <div className={st.dcmaGrid}>
+          {view.drift.map((f) => (
+            <DcmaField key={`${f.key}-${f.value}`} field={f} canEdit={canEdit} standardLabel={t('Default')} save={setDriftThresholdAction} idPrefix="drift" />
           ))}
         </div>
       </div>
@@ -234,15 +249,24 @@ function CcbField({ initial, label, canEdit }: { initial: string; label: string;
   );
 }
 
-/** R-206: one schedule quality threshold, saved on blur / Enter when changed; read-only for non-directors. */
-function DcmaField({ field, canEdit, standardLabel }: { field: SettingsView['dcma'][number]; canEdit: boolean; standardLabel: string }) {
+/**
+ * R-206: one schedule quality threshold (S-25: also a drift forecast threshold), saved on blur / Enter when changed; read-only for
+ * non-directors.
+ */
+function DcmaField({ field, canEdit, standardLabel, save, idPrefix }: {
+  field: SettingsView['dcma'][number] | SettingsView['drift'][number];
+  canEdit: boolean;
+  standardLabel: string;
+  save: (key: string, raw: unknown) => Promise<AdminActionResult>;
+  idPrefix: string;
+}) {
   const [value, setValue] = useState(field.value);
   const [pending, start] = useTransition();
-  const id = `dcma-${field.key}`;
+  const id = `${idPrefix}-${field.key}`;
   const commit = () => {
     if (!canEdit || pending || value.trim() === field.value) return;
     start(async () => {
-      if (!(await attempt(setDcmaThresholdAction(field.key, value)))) setValue(field.value);
+      if (!(await attempt(save(field.key, value)))) setValue(field.value);
     });
   };
   return (

@@ -112,6 +112,11 @@ div.staticAnchor { position: static; }
 .msLine { font-variant-numeric: tabular-nums; }
 .attention { font-size: 12px; max-width: 260px; }
 .attentionText { display: block; color: var(--color-neutral-300); text-wrap: pretty; }
+/* S-23: schedule quality cell (the Schedule card's counter, linked). */
+.quality { white-space: nowrap; }
+.qualityLink { display: inline-flex; border-radius: var(--radius-sm, 4px); text-decoration: none; }
+.qualityLink:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.qualityNone { color: var(--color-neutral-500); }
 .num { font-variant-numeric: tabular-nums; }
 .numNowrap { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .numRight { font-variant-numeric: tabular-nums; text-align: right; }

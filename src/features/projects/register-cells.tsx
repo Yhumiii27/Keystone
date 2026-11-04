@@ -4,7 +4,7 @@
 import { ArrowRight, ArrowSquareOut, CaretDown, CheckSquare, Square } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
 import { useOptimistic, useRef, useTransition } from 'react';
-import { statusTagButtonClass } from '@/components/app/StatusTag';
+import { StatusTag, statusTagButtonClass } from '@/components/app/StatusTag';
 import { lifecycleTone } from '@/components/app/tones';
 import { MenuHeader, MenuItem } from '@/components/ds/Menu';
 import { Popover } from '@/components/ds/Popover';
@@ -16,6 +16,20 @@ import { useI18n } from '@/i18n/client';
 import { setDeliverableAction } from './actions';
 import type { RegisterRow, StageView } from './register-model';
 import s from './register.module.css';
+
+/** S-23: schedule quality cell — the Schedule card's "Fail · n" counter, linked to the Schedule screen; "—" without data. */
+export function QualityCell({ row }: { row: RegisterRow }) {
+  const q = row.quality;
+  if (!q) return <span className={s.qualityNone}>—</span>;
+  const tag = <StatusTag tone={q.tone}>{q.text}</StatusTag>;
+  return q.href ? (
+    <Link href={q.href} title={q.title} aria-label={q.title} className={s.qualityLink}>
+      {tag}
+    </Link>
+  ) : (
+    <span title={q.title}>{tag}</span>
+  );
+}
 
 /** Project cell: "#026 · name" (link to Plan — WBS when the project has data), "New" tag, ids line, meta line. */
 export function ProjectCell({ row }: { row: RegisterRow }) {
