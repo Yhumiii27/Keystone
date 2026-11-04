@@ -66,6 +66,31 @@ describe('Schedule page', () => {
     expect(html).not.toContain('Harbor');
   });
 
+  it('S-08: the activity Gantt of a multi-equipment project filters by equipment line (`?equipment=`); hidden with one line', async () => {
+    type Card = ReactElement<{ equipment?: { value: string; options: { value: string; label: string; href: string }[] }; network: { activities: { id: string; wbs: string; equipment?: string | null }[] } | null; zoomHref: (z: string) => string }>;
+    const card = async (code: string, sp: Record<string, string>) => (await page(code, sp)).body.props as unknown as { activityGantt: Card };
+    const { activityGantt: c } = await card('HLT-026', { gantt: 'activities', zoom: 'day', equipment: 'EQ-02' });
+    expect(c.props.equipment?.value).toBe('EQ-02');
+    expect(c.props.equipment?.options.map((o) => [o.value, o.href])).toEqual([
+      ['all', '/projects/HLT-026/schedule?gantt=activities&zoom=day'],
+      ['EQ-01', '/projects/HLT-026/schedule?gantt=activities&zoom=day&equipment=EQ-01'],
+      ['EQ-02', '/projects/HLT-026/schedule?gantt=activities&zoom=day&equipment=EQ-02'],
+      ['common', '/projects/HLT-026/schedule?gantt=activities&zoom=day&equipment=common'],
+    ]);
+    expect(c.props.equipment?.options[2].label).toBe('EQ-02 · 3 × MEMU');
+    // The zoom keeps the filter.
+    expect(c.props.zoomHref('week')).toBe('/projects/HLT-026/schedule?gantt=activities&zoom=week&equipment=EQ-02');
+    // The activities of lot 1.6 (EQ-02's) take their lot's line; lot 1.5's EQ-01; the others are common.
+    const acts = c.props.network!.activities.filter((a) => !a.id.includes('/'));
+    expect(new Set(acts.filter((a) => a.wbs === '1.6').map((a) => a.equipment))).toEqual(new Set(['EQ-02']));
+    expect(new Set(acts.filter((a) => a.wbs === '1.5').map((a) => a.equipment))).toEqual(new Set(['EQ-01']));
+    expect(acts.some((a) => a.equipment == null)).toBe(true);
+    // Unknown value → all.
+    expect((await card('HLT-026', { gantt: 'activities', equipment: 'EQ-99' })).activityGantt.props.equipment?.value).toBe('all');
+    // A project with one line: no filter.
+    expect((await card('NDC-031', { gantt: 'activities' })).activityGantt.props.equipment).toBeUndefined();
+  });
+
   it('unknown project → notFound', async () => {
     await expect(page('NOPE-1')).rejects.toThrow('NOT_FOUND');
   });

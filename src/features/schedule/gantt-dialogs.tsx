@@ -70,15 +70,16 @@ export function GanttActivityDialog({ activity: a, network, dates, editable, pen
       values.clearConstraint = true;
       edits.push({ kind: 'clearConstraint', id: a.id });
     }
-    if (canMove && !clear && start && start !== dates?.start) {
-      values.start = start;
-      edits.push({ kind: 'move', id: a.id, start });
-    }
     if (canResize && duration.trim() !== String(a.duration)) {
       const days = parseDurationDays(duration);
       if (days == null) return setError(t(GANTT_EDIT_ERRORS.duration));
       values.duration = String(days);
       edits.push({ kind: 'duration', id: a.id, days });
+    }
+    // The move last, as on the server (S-06: its check sees the new duration).
+    if (canMove && !clear && start && start !== dates?.start) {
+      values.start = start;
+      edits.push({ kind: 'move', id: a.id, start });
     }
     if (!edits.length) return onClose();
     onApply(edits, values);
@@ -107,7 +108,7 @@ export function GanttActivityDialog({ activity: a, network, dates, editable, pen
             apply();
           }}
         >
-          <Field label={t('Start date')} htmlFor={`${id}-start`} hint={t('Sets a “Start no earlier than” constraint · the logic can still push the activity later')}>
+          <Field label={t('Start date')} htmlFor={`${id}-start`} hint={t('Sets a “Start no earlier than” constraint · never earlier than its predecessors allow; the logic can still push it later')}>
             <Input id={`${id}-start`} type="date" value={start} disabled={!canMove || clear || pending} onChange={(e) => setStart(e.target.value)} />
           </Field>
           <Field label={t('Duration (working days)')} htmlFor={`${id}-dur`}>

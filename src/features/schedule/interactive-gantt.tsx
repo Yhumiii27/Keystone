@@ -2,13 +2,15 @@
 // R-198 — interactive activity Gantt of the Schedule screen. One row per activity, grouped by work package; zoom day / week /
 // month (URL `?zoom=`, links built by the page); baseline bars; relationships drawn as elbow arrows.
 // Edits (project's PMs and the director, src/features/schedule/gantt-rights.ts):
-// - drag a bar → new start (a "Start no earlier than" constraint); drag its right edge → new duration (working days);
+// - drag a bar → new start (a "Start no earlier than" constraint; S-06: refused, with the predecessor that holds it and the
+//   earliest possible date, when earlier than the logic allows — the bar snaps back); drag its right edge → new duration (working days);
 // - drag the dot at its end onto another bar → finish-to-start relationship; click a relationship → change its type / lag or
 //   remove it;
 // - keyboard: every bar is a button — Enter opens the activity dialog (start, duration, constraint, predecessors), which does
 //   everything a drag does.
 // R-204: the supplier schedules tied to the project appear under a « Suppliers » band (one collapsible group per purchase order,
 // read-only: they are edited on the purchase order); every group folds; the rows can be filtered and grouped by activity code.
+// S-08: on a project with several equipment lines, the page's `?equipment=` filter keeps one line's rows (or the common ones).
 // While a drag runs, and until the server answers, the bars show the optimistic preview: the same CPM as "Reschedule"
 // (src/domain/gantt-edit.ts `previewSchedule`). The Server Functions re-validate, write, reschedule and revalidate the page.
 import { useEffect, useId, useMemo, useOptimistic, useRef, useState, useTransition, type PointerEvent as ReactPointerEvent } from 'react';
@@ -21,9 +23,11 @@ import { useI18n } from '@/i18n/client';
 import { dataText } from '@/i18n/data-text';
 import { intlLocale } from '@/i18n/translate';
 import { linkCycleText } from '@/features/plan/i18n';
+import { heldText } from './i18n';
+import type { EquipmentFilter } from '@/domain/equipment-scope';
 import { NO_CODE_VALUE, NO_CODE_VALUE_LABEL, groupByCode, matchesCodeFilter, parseCodeFilter, type ActivityCodeMap, type CodeType } from '@/domain/activity-codes';
 import {
-  GANTT_EDIT_ERRORS, applyGanttEdits, barBox, buildCalendars, calendarOf, dragEdit, ganttRange, ganttScale, isoWeekNumber, linkKey, linkLabel, linkPath, lockOf,
+  GANTT_EDIT_ERRORS, applyGanttEdits, barBox, buildCalendars, calendarOf, dragEdit, ganttEquipmentFilter, ganttRange, ganttScale, isoWeekNumber, linkKey, linkLabel, linkPath, lockOf,
   offDays, previewSchedule, storedDates, xOf, type BarBox, type GanttActivity, type GanttDates, type GanttEdit, type GanttEditResult, type GanttLink, type GanttNetwork,
   type GanttZoom,
 } from '@/domain/gantt-edit';
@@ -44,6 +48,8 @@ export interface InteractiveGanttProps {
   /** Moves, durations and relationships allowed (the page checked the rights; the Server Functions check again). */
   editable: boolean;
   showBaseline?: boolean;
+  /** S-08: equipment line filter of the rows (`?equipment=`, read by the page; 'all' when the project has one line). */
+  equipment?: EquipmentFilter;
 }
 
 type Drag = {
@@ -65,7 +71,7 @@ type Row =
 
 type DialogState = { kind: 'activity'; id: string } | { kind: 'link'; pred: string; succ: string } | null;
 
-export function InteractiveGantt({ code, network, zoom, editable, showBaseline = true }: InteractiveGanttProps) {
+export function InteractiveGantt({ code, network, zoom, editable, showBaseline = true, equipment = 'all' }: InteractiveGanttProps) {
   const { t, lang } = useI18n();
   const today = useToday();
   const cals = useMemo(() => buildCalendars(network.calendars), [network.calendars]);
@@ -124,7 +130,7 @@ export function InteractiveGantt({ code, network, zoom, editable, showBaseline =
   // (R-204) — or, grouped by a code, one group per value.
   const rows = useMemo(() => {
     const out: Row[] = [];
-    const visible = optimistic.activities.filter((a) => matchesCodeFilter(codeMap, a.id, filter));
+    const visible = ganttEquipmentFilter(optimistic.activities, equipment).filter((a) => matchesCodeFilter(codeMap, a.id, filter));
     const pushGroup = (key: string, code: string, name: string, acts: GanttActivity[], supplier?: boolean) => {
       if (!acts.length) return;
       out.push({ kind: 'package', key, code, name, ids: acts.map((a) => a.id), supplier });
@@ -149,7 +155,7 @@ export function InteractiveGantt({ code, network, zoom, editable, showBaseline =
       for (const p of supplierPkgs) pushGroup(`po:${p.code}`, p.code, dataText(p.name, lang), visible.filter((a) => a.source === p.code), true);
     }
     return out;
-  }, [optimistic, codeMap, filter, group, folded, t, lang]);
+  }, [optimistic, equipment, codeMap, filter, group, folded, t, lang]);
   const rowOf = useMemo(() => new Map(rows.flatMap((r, i) => (r.kind === 'activity' ? [[r.a.id, i] as const] : []))), [rows]);
   const toggleGroup = (key: string) => setFolded((f) => ({ ...f, [key]: !f[key] }));
 
@@ -182,7 +188,14 @@ export function InteractiveGantt({ code, network, zoom, editable, showBaseline =
   const versionOf = (id: string) => network.activities.find((a) => a.id === id)?.version ?? '';
   const stale = useStaleRecordToast();
 
-  const errorText = (r: Extract<GanttEditResult, { ok: false }>) => (r.error === 'cycle' ? linkCycleText(r.cycle ?? [], lang) : t(GANTT_EDIT_ERRORS[r.error]));
+  const errorText = (r: Extract<GanttEditResult, { ok: false }>) =>
+    r.error === 'cycle'
+      ? linkCycleText(r.cycle ?? [], lang)
+      : r.error === 'held'
+        ? r.hold
+          ? heldText(r.hold, dayText(r.hold.earliest), lang)
+          : t('Invalid request')
+        : t(GANTT_EDIT_ERRORS[r.error]);
 
   /** Checks the edits on the optimistic network, shows them at once, then lets the Server Function decide. */
   function commit(edits: GanttEdit[], call: () => Promise<GanttActionResult>, onDone?: (ok: boolean) => void) {
@@ -424,9 +437,11 @@ export function InteractiveGantt({ code, network, zoom, editable, showBaseline =
                         const canMove = editable && !lock && !r.a.source;
                         const canResize = editable && lock !== 'complete' && r.a.duration > 0 && !r.a.source;
                         const ghost = drag && drag.id === r.a.id && drag.mode !== 'link' && Math.abs(drag.dx) > CLICK_SLOP ? ghostBox(stored[r.a.id], drag) : null;
+                        // S-06: dropped here, the move would be refused (earlier than the logic allows) — the outline says it at once.
+                        const refused = ghost && dragged.result && !dragged.result.ok ? errorText(dragged.result) : null;
                         return (
                           <>
-                          {ghost && <div className={s.ghost} style={barStyle(ghost)} aria-hidden />}
+                          {ghost && <div className={cx(s.ghost, refused && s.ghostRefused)} style={barStyle(ghost)} title={refused ?? undefined} aria-hidden />}
                           <div
                             role="button"
                             tabIndex={0}
