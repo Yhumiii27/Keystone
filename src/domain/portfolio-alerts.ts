@@ -10,6 +10,8 @@
 //   8. supplier slip (S-30) — a supplier schedule (R-204) whose forecast slips at or above the Settings threshold (S-31, default 5
 //      working days; the S-27 bell alerts use the same threshold);
 //   9. risk forecast (R-208) — the latest Monte-Carlo run gives a low chance of meeting the end date.
+// S-33 (owner, 5 Nov 2026): the list is ordered by urgency and importance (src/domain/alert-priority.ts: a class, then a magnitude),
+// no longer by rule; the rule order above is only the tie-break between equal scores. The cap (8) is kept.
 // Project alerts follow the zone filter; the pool and approval alerts are portfolio-wide. Thresholds: the health thresholds of
 // Settings (A-13); the others have no Settings entry yet (`ALERT_RULE_DEFAULTS`, to confirm with the owner). Pure; texts are
 // returned in the render language (data texts — names, dates — come translated by the caller's `t`).
@@ -21,7 +23,8 @@ import { daysBetweenIso, displayOfIso } from '@/server/db/codes';
 import { BASE_CURRENCY, moneyIn, type CurrencyCode } from './currency';
 import { DEFAULT_HEALTH_THRESHOLDS, clampHealthCpi, type Health, type HealthThresholds } from './health';
 import { OVER_ALLOCATED_PCT, weekRangesText } from './resources';
-import { SUPPLIER_SLIP_ALERT_DAYS } from './supplier-slip-alerts';
+import { ALERT_MAGNITUDE_SCALES as SCALE, alertClass, alertScore, compareAlerts, magnitude } from './alert-priority';
+import { SUPPLIER_SLIP_ALERT_DAYS, SUPPLIER_SLIP_ESCALATION_STANDARD } from './supplier-slip-alerts';
 
 export type AlertKind =
   | 'off_track' | 'critical_slip' | 'cost_overrun' | 'billing_late' | 'over_allocation' | 'approvals_waiting' | 'milestone_late' | 'supplier_slip' | 'risk_forecast';
@@ -72,6 +75,11 @@ export interface AlertThresholds {
   onTimeChance?: number;
   /** S-30 / S-31 (optional; default 5): supplier schedule slip, working days, from which a project is listed. */
   supplierSlipDays?: number;
+  /**
+   * S-33 / S-34 (optional; default 5): a supplier slip pushing the project's forecast finish by at least this many working days
+   * ranks with the alerts that hit the end date (class 1).
+   */
+  supplierImpactDays?: number;
 }
 
 export const DEFAULT_ALERT_THRESHOLDS: AlertThresholds = { health: DEFAULT_HEALTH_THRESHOLDS, ...ALERT_RULE_DEFAULTS };
@@ -104,7 +112,7 @@ export interface AlertProject {
    * S-30: the project's watched supplier schedules (R-204: order not cancelled, not all complete) and their slip in working days;
    * names as typed. Absent without a supplier schedule.
    */
-  supplierSlips?: { po: string; supplier: string; slipDays: number; activity: string | null }[];
+  supplierSlips?: { po: string; supplier: string; slipDays: number; activity: string | null; finishImpactDays?: number | null }[];
 }
 
 export interface AlertPeople {
@@ -131,18 +139,16 @@ export interface AlertInput {
   asOf: string;
 }
 
-const RANK: Record<AlertKind, number> = {
-  off_track: 0, critical_slip: 1, cost_overrun: 2, billing_late: 3, over_allocation: 4, approvals_waiting: 5, milestone_late: 6, supplier_slip: 7, risk_forecast: 8,
-};
-
 const dec = (v: number, lang: Lang) => (lang === 'fr' ? v.toFixed(2).replace('.', ',') : v.toFixed(2));
 const dayDate = (iso: string, t: T) => t(displayOfIso(iso));
 
 /** The alerts of the portfolio, worst first, at most `th.maxAlerts`. `t` translates data texts (dates). */
 export function portfolioAlertRules(input: AlertInput, lang: Lang, t: T, th: AlertThresholds = DEFAULT_ALERT_THRESHOLDS): PortfolioAlert[] {
   const fr = lang === 'fr';
-  const out: { alert: PortfolioAlert; weight: number; order: number }[] = [];
-  const push = (alert: PortfolioAlert, weight: number, order: number) => out.push({ alert, weight, order });
+  // S-33: each alert carries its score (class, then magnitude); `order` = the project's register order (tie-break).
+  const out: { alert: PortfolioAlert; score: number; order: number }[] = [];
+  const push = (alert: PortfolioAlert, score: number, order: number) => out.push({ alert, score, order });
+  const lateDays = (iso: string) => Math.max(0, daysBetweenIso(iso, input.asOf));
 
   input.projects.forEach((p, order) => {
     const cpi = p.actual ? clampHealthCpi((p.budget * p.progress) / p.actual) : null;
@@ -157,7 +163,7 @@ export function portfolioAlertRules(input: AlertInput, lang: Lang, t: T, th: Ale
         detail: fr ? `${parts} — sous le seuil « hors trajectoire » ${dec(th.health.off, lang)}.` : `${parts} — below the off-track threshold ${dec(th.health.off, lang)}.`,
         action: scheduleSide ? 'Open schedule' : 'Open budget',
         target: { screen: scheduleSide ? 'schedule' : 'budget', code: p.code },
-      }, Math.min(spi ?? 9, cpi ?? 9), order);
+      }, alertScore(1, magnitude(th.health.off - Math.min(spi ?? 9, cpi ?? 9), SCALE.offTrackIndexGap)), order);
     }
     // 2 / 7. Schedule: critical-path slip (negative float), else late milestones.
     const s = p.schedule;
@@ -176,7 +182,9 @@ export function portfolioAlertRules(input: AlertInput, lang: Lang, t: T, th: Ale
           ? fr ? `Chemin critique ${float} · fin prévue ${s.finishText} (référence ${s.baselineText})` : `Critical path ${float} · forecast finish ${s.finishText} (baseline ${s.baselineText})`
           : fr ? `Fin prévue ${s.finishText} (référence ${s.baselineText})` : `Forecast finish ${s.finishText} (baseline ${s.baselineText})`) + late + '.',
         action: 'Open schedule', target: { screen: 'schedule', code: p.code },
-      }, s.floatDays, order);
+      }, slip
+        ? alertScore(1, magnitude(-s.floatDays, SCALE.criticalSlipDays))
+        : alertScore(2, magnitude(s.lateMilestones.length, SCALE.lateMilestones)), order);
     }
     // 3. Cost overrun (CPI below "At risk below"); an off-track project already shows its CPI.
     if (cpi != null && cpi < th.health.risk && p.health !== 'off_track') {
@@ -189,7 +197,7 @@ export function portfolioAlertRules(input: AlertInput, lang: Lang, t: T, th: Ale
           ? `Prévision ${money(eac, lang)} pour un budget de ${money(p.budget, lang)} (${money(over, lang, { signed: true })}) · CPI ${dec(cpi, lang)}.`
           : `Forecast ${money(eac, lang)} vs budget ${money(p.budget, lang)} (${money(over, lang, { signed: true })}) · CPI ${dec(cpi, lang)}.`,
         action: 'Open budget', target: { screen: 'budget', code: p.code },
-      }, -over, order);
+      }, alertScore(2, magnitude(p.budget ? over / p.budget : 0, SCALE.costOverrunShare)), order);
     }
     // 4. Billing late: overdue invoices first, else payment milestones not invoiced on time.
     const b = p.billing;
@@ -209,24 +217,32 @@ export function portfolioAlertRules(input: AlertInput, lang: Lang, t: T, th: Ale
             ? `${ms.number} ${ms.label} · date contractuelle ${dayDate(ms.dueOn, t)}, non facturé${more(b.late.length)}.`
             : `${ms.number} ${ms.label} · contractual date ${dayDate(ms.dueOn, t)}, not invoiced${more(b.late.length)}.`,
         action: 'Open billing', target: { screen: 'billing', code: p.code },
-      }, 0, order);
+      }, alertScore(2, magnitude(Math.max(0, ...b.overdue.map((x) => lateDays(x.dueOn)), ...b.late.map((x) => lateDays(x.dueOn))), SCALE.billingLateDays)), order);
     }
     // 8. S-30: the supplier schedules slipping at or above the Settings threshold (S-31) — the worst one named, the others counted.
+    // S-33: the schedule pushing the project's finish most is named first, then the bigger slip.
     const slipFrom = th.supplierSlipDays ?? SUPPLIER_SLIP_ALERT_DAYS;
-    const slipping = (p.supplierSlips ?? []).filter((x) => x.slipDays >= slipFrom).sort((a, b) => b.slipDays - a.slipDays || a.po.localeCompare(b.po));
+    const impactFrom = th.supplierImpactDays ?? SUPPLIER_SLIP_ESCALATION_STANDARD.impactDays;
+    const slipping = (p.supplierSlips ?? []).filter((x) => x.slipDays >= slipFrom)
+      .sort((a, b) => (b.finishImpactDays ?? 0) - (a.finishImpactDays ?? 0) || b.slipDays - a.slipDays || a.po.localeCompare(b.po));
     if (slipping.length) {
       const w = slipping[0];
       const n = slipping.length;
       const more = n > 1 ? (fr ? ` · ${n - 1} de plus` : ` · ${n - 1} more`) : '';
       const act = w.activity ? ` · ${w.activity}` : '';
+      const impact = w.finishImpactDays ?? 0;
+      const pushes = impact > 0 ? (fr ? ` · fin du projet +${impact} jours ouvrés` : ` · project finish +${impact} working days`) : '';
+      const hits = impact >= impactFrom;
       push({
         key: `supplier-${p.code}`, kind: 'supplier_slip', icon: 'truck', code: p.code,
         title: fr ? `${p.name} — planning fournisseur en glissement` : `${p.name} — supplier schedule slipping`,
         detail: fr
-          ? `${w.po} · ${w.supplier} · +${w.slipDays} jours ouvrés (seuil ${slipFrom})${act}${more}.`
-          : `${w.po} · ${w.supplier} · +${w.slipDays} working days (threshold ${slipFrom})${act}${more}.`,
+          ? `${w.po} · ${w.supplier} · +${w.slipDays} jours ouvrés (seuil ${slipFrom})${pushes}${act}${more}.`
+          : `${w.po} · ${w.supplier} · +${w.slipDays} working days (threshold ${slipFrom})${pushes}${act}${more}.`,
         action: 'Open the order', target: { screen: 'orders', code: p.code, params: { po: w.po } },
-      }, -w.slipDays, order);
+      }, hits
+        ? alertScore(alertClass('supplier_slip', { finishImpact: true }), magnitude(impact, SCALE.supplierFinishImpactDays))
+        : alertScore(alertClass('supplier_slip'), magnitude(w.slipDays, SCALE.supplierSlipDays)), order);
     }
     // 9. R-208: the latest Monte-Carlo risk analysis gives a low chance of meeting the end date.
     const ra = p.riskAnalysis;
@@ -241,7 +257,7 @@ export function portfolioAlertRules(input: AlertInput, lang: Lang, t: T, th: Ale
           ? `Analyse de risques Monte-Carlo : ${pc} · fin P80 ${dayDate(ra.p80Finish, t)}${target}.`
           : `Monte-Carlo risk analysis: ${pc} · P80 finish ${dayDate(ra.p80Finish, t)}${target}.`,
         action: 'Open risk register', target: { screen: 'risks', code: p.code },
-      }, ra.probOnTarget, order);
+      }, alertScore(2, magnitude(chance > 0 ? (chance - ra.probOnTarget) / chance : 0, SCALE.chanceGapShare)), order);
     }
   });
 
@@ -256,7 +272,7 @@ export function portfolioAlertRules(input: AlertInput, lang: Lang, t: T, th: Ale
       title: fr ? `${n} ${n > 1 ? 'personnes' : 'personne'} au-delà de ${th.overAllocatedPct} %` : `${n} ${n > 1 ? 'people' : 'person'} over ${th.overAllocatedPct}%`,
       detail: (weeks ? (fr ? `${pp.peakWeeks.length > 1 ? 'Semaines' : 'Semaine'} ${weeks} · ` : `${pp.peakWeeks.length > 1 ? 'Weeks' : 'Week'} ${weeks} · `) : '') + `${names}.`,
       action: 'Rebalance', target: { screen: 'resources' },
-    }, -n, 0);
+    }, alertScore(3, magnitude(n, SCALE.overAllocatedPeople)), 0);
   }
 
   // 6. Approvals waiting more than N days (the portfolio director's queue).
@@ -276,11 +292,11 @@ export function portfolioAlertRules(input: AlertInput, lang: Lang, t: T, th: Ale
         ? `La plus ancienne : ${o.id} · ${o.title} · depuis le ${dayDate(o.since, t)} (${o.age} j).`
         : `Oldest: ${o.id} · ${o.title} · since ${dayDate(o.since, t)} (${o.age} d).`,
       action: 'Open my approvals', target: { screen: 'myapprovals' },
-    }, -o.age, 0);
+    }, alertScore(3, magnitude(o.age, SCALE.approvalDays)), 0);
   }
 
   return out
-    .sort((a, b) => RANK[a.alert.kind] - RANK[b.alert.kind] || a.weight - b.weight || a.order - b.order)
+    .sort((a, b) => compareAlerts({ ...a.alert, score: a.score, order: a.order }, { ...b.alert, score: b.score, order: b.order }))
     .slice(0, th.maxAlerts)
     .map((x) => x.alert);
 }

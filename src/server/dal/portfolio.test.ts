@@ -32,14 +32,16 @@ describe('portfolio DAL', () => {
     // the critical-path slips (worst float first), the RCF-019 cost overrun (HLT-026, off track, shows its CPI in its own alert),
     // the over-allocated pool, an approval waiting more than 5 days (the prototype's four fixed texts). On the prototype's
     // figures it was RCF-019 off track and an HLT-026 cost overrun.
+    // S-33 (owner, 5 Nov 2026): ordered by urgency and importance — the −29 d and −27 d slips before HLT-026 off track (0.08 under
+    // the threshold), which was first.
     expect(ov.alerts.map((a) => [a.key, a.target])).toEqual([
-      ['off-HLT-026', { screen: 'schedule', code: 'HLT-026' }], ['slip-RCF-019', { screen: 'schedule', code: 'RCF-019' }],
-      ['slip-HLT-026', { screen: 'schedule', code: 'HLT-026' }], ['slip-MSR-012', { screen: 'schedule', code: 'MSR-012' }],
+      ['slip-RCF-019', { screen: 'schedule', code: 'RCF-019' }], ['slip-HLT-026', { screen: 'schedule', code: 'HLT-026' }],
+      ['off-HLT-026', { screen: 'schedule', code: 'HLT-026' }], ['slip-MSR-012', { screen: 'schedule', code: 'MSR-012' }],
       ['slip-NDC-031', { screen: 'schedule', code: 'NDC-031' }], ['cost-RCF-019', { screen: 'budget', code: 'RCF-019' }],
       // R-084 + named demo assignments (owner answer 18 Oct 2026): the over-allocated pool as on the seeded rows.
       ['people', { screen: 'resources' }], ['approvals', { screen: 'myapprovals' }],
     ]);
-    expect(ov.alerts[2]).toMatchObject({
+    expect(ov.alerts[1]).toMatchObject({
       title: 'Harbor Line Terminal Expansion — critical path slip',
       detail: 'Critical path −27 d · forecast finish 14 Jan 2027 (baseline 18 Dec 2026) · 2 milestones late: Structure topped out, Cranes operational.',
     });
@@ -48,7 +50,7 @@ describe('portfolio DAL', () => {
     expect(ov.alerts[6]).toMatchObject({ title: '3 people over 110%', detail: 'Weeks 42–44 · Amélie Ollivier, Julien Wagner, Pauline Noguès.' });
     expect(ov.alerts[7]).toMatchObject({ title: '1 approval waiting more than 5 days', detail: 'Oldest: INV-HC-7781 · Halvorsen Cranes · €1,286,400 · since 10 Sep 2026 (15 d).' });
     const fr = await getPortfolioOverview(null, 'fr');
-    expect([fr.alerts[0].title, fr.alerts[0].detail]).toEqual([
+    expect([fr.alerts[2].title, fr.alerts[2].detail]).toEqual([
       'Extension du terminal Harbor Line — hors trajectoire', 'SPI 0,82 · CPI 0,89 — sous le seuil « hors trajectoire » 0,90.',
     ]);
     expect(ov.rows[0]).toMatchObject({ displayId: '#026', pm: 'R. Aubert', finish: 'Dec 2026' });
@@ -60,7 +62,7 @@ describe('portfolio DAL', () => {
     expect(afr.alerts.map((a) => a.key)).toEqual(['slip-NDC-031', 'people', 'approvals']); // R-084 + named demo assignments: the over-allocation alert (portfolio-wide)
     const euna = await getPortfolioOverview('euna', 'en');
     expect(euna.rows.map((r) => r.code)).toEqual(['HLT-026', 'RCF-019', 'ERP-202', 'MSR-012', 'PRS-038']);
-    expect(euna.alerts.map((a) => a.key)).toEqual(['off-HLT-026', 'slip-RCF-019', 'slip-HLT-026', 'slip-MSR-012', 'cost-RCF-019', 'people', 'approvals']);
+    expect(euna.alerts.map((a) => a.key)).toEqual(['slip-RCF-019', 'slip-HLT-026', 'off-HLT-026', 'slip-MSR-012', 'cost-RCF-019', 'people', 'approvals']); // S-33
     // WSA-044 (APD) is in the pipeline, not in the overview (A-3).
     expect((await getPortfolioOverview('apac', 'en')).rows).toEqual([]);
   });

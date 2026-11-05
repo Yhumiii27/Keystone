@@ -13,7 +13,7 @@ import { yearOfIso } from '@/domain/clock';
 import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import {
-  APP_SETTING_CCB, APP_SETTING_DCMA, APP_SETTING_DRIFT, APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, APP_SETTING_SUPPLIER_SLIP, REFERENCE_LIST_KEYS, locationType, slugOf,
+  APP_SETTING_CCB, APP_SETTING_DCMA, APP_SETTING_DRIFT, APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, APP_SETTING_SUPPLIER_SLIP, APP_SETTING_SUPPLIER_SLIP_ESCALATION, REFERENCE_LIST_KEYS, locationType, slugOf,
   type LocationType, type ReferenceListKey,
 } from '@/server/db/codes';
 import { SETTINGS_CARDS } from '@/domain/admin';
@@ -23,7 +23,10 @@ import { DCMA_STANDARD, DCMA_THRESHOLD_FIELDS, DCMA_THRESHOLD_RANGE, parseDcmaTh
 import {
   DRIFT_STANDARD, DRIFT_THRESHOLD_FIELDS, DRIFT_THRESHOLD_ORDER_ERROR, DRIFT_THRESHOLD_RANGE, driftOrderBroken, parseDriftThreshold, type DriftThresholdKey, type DriftThresholds,
 } from '@/domain/drift-forecast';
-import { SUPPLIER_SLIP_ALERT_DAYS, SUPPLIER_SLIP_DAYS_RANGE, isSupplierSlipDays } from '@/domain/supplier-slip-alerts';
+import {
+  SUPPLIER_SLIP_ALERT_DAYS, SUPPLIER_SLIP_DAYS_RANGE, SUPPLIER_SLIP_ESCALATION_FIELDS, SUPPLIER_SLIP_ESCALATION_RANGE, SUPPLIER_SLIP_ESCALATION_STANDARD, isSupplierSlipDays,
+  parseSupplierSlipEscalation, type SupplierSlipEscalation, type SupplierSlipEscalationKey,
+} from '@/domain/supplier-slip-alerts';
 import {
   APP_SETTING_DEFAULTS, defaultHoursVariance, defaultsOfList, fallbackSettingsDefaults, holidayCode, parseSettingsDefaults, type SettingsDefaults,
 } from '@/domain/settings-defaults';
@@ -38,7 +41,7 @@ import { readHealthThresholds } from './health-thresholds';
 import { readDcmaThresholds } from './dcma-thresholds';
 import { readDriftThresholds } from './drift-thresholds';
 import { readHoursVariance } from './hours-variance';
-import { readSupplierSlipDays } from './supplier-slip-threshold';
+import { readSupplierSlipDays, readSupplierSlipEscalation } from './supplier-slip-threshold';
 import { requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
 import { referenceUsage } from './settings-lists';
 
@@ -68,6 +71,8 @@ export interface SettingsData {
   drift?: DriftThresholds;
   /** S-31: the supplier schedule slip threshold, working days (optional for callers building the data by hand: 5). */
   supplierSlipDays?: number;
+  /** S-34: the escalation thresholds to the directors (optional for callers building the data by hand: the defaults). */
+  supplierSlipEscalation?: SupplierSlipEscalation;
 }
 
 /** Project health thresholds (On track ≥ risk, At risk below risk, Off track below off) — uncached, for writers and tests. */
@@ -78,7 +83,7 @@ export async function getHealthThresholds(): Promise<HealthThresholds> {
 /** Everything the Settings screen shows. */
 export async function getSettings(): Promise<SettingsData> {
   const db = await getDb();
-  const [values, locs, health, hoursVariance, ccbThresholdKeur, dcma, drift, supplierSlipDays] = await Promise.all([
+  const [values, locs, health, hoursVariance, ccbThresholdKeur, dcma, drift, supplierSlipDays, supplierSlipEscalation] = await Promise.all([
     db.select().from(referenceValues).where(eq(referenceValues.active, true)).orderBy(asc(referenceValues.position)),
     db.select().from(storageLocations).where(eq(storageLocations.active, true)).orderBy(asc(storageLocations.position)),
     getHealthThresholds(),
@@ -87,9 +92,10 @@ export async function getSettings(): Promise<SettingsData> {
     readDcmaThresholds(),
     readDriftThresholds(),
     readSupplierSlipDays(),
+    readSupplierSlipEscalation(),
   ]);
   const lists = Object.fromEntries(REFERENCE_LIST_KEYS.map((k) => [k, values.filter((v) => v.listKey === k).map((v) => ({ code: v.code, label: v.label }))])) as Record<ReferenceListKey, ReferenceValueRow[]>;
-  return { lists, locations: locs.map((l) => ({ name: l.name, type: l.type, typeLabel: locationType.label(l.type) })), health, hoursVariance, ccbThresholdKeur, dcma, drift, supplierSlipDays };
+  return { lists, locations: locs.map((l) => ({ name: l.name, type: l.type, typeLabel: locationType.label(l.type) })), health, hoursVariance, ccbThresholdKeur, dcma, drift, supplierSlipDays, supplierSlipEscalation };
 }
 
 /** Writers: the Settings workspace, and only the roles that edit Settings (A-14: the portfolio director). */
@@ -358,6 +364,34 @@ export async function setSupplierSlipDays(days: unknown, actor: Actor): Promise<
 }
 
 /**
+ * S-34: one escalation threshold of the supplier slips to the directors — whole working days in the field's range (A-14: the
+ * portfolio director). Audit (before / after) and activity "Supplier slip escalation · Directors told after (working days of
+ * slip): 10 → 15". Returns the stored value.
+ */
+export async function setSupplierSlipEscalation(key: SupplierSlipEscalationKey, raw: unknown, actor: Actor): Promise<number> {
+  ST(actor);
+  const field = SUPPLIER_SLIP_ESCALATION_FIELDS.find((f) => f.key === key);
+  if (!field) throw new Error('Unknown threshold');
+  const v = parseSupplierSlipEscalation(key, raw);
+  if (v === null) throw new Error(SUPPLIER_SLIP_ESCALATION_RANGE);
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const cur = await readSupplierSlipEscalation(tx);
+    if (cur[key] === v) return v;
+    const who = await whoIs(tx, actor);
+    const value = { ...cur, [key]: v };
+    await tx.insert(appSettings).values({ key: APP_SETTING_SUPPLIER_SLIP_ESCALATION, value, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
+    const change = `${field.label}: ${cur[key]} → ${v}`;
+    await trace(tx, who, {
+      objectRef: 'Supplier slip escalation thresholds', change, area: 'Settings', entityType: 'app_setting', before: { [key]: cur[key] }, after: { [key]: v },
+      activity: { text: `Supplier slip escalation · ${change}`, kind: 'change' },
+    });
+    return v;
+  });
+}
+
+/**
  * The stored "Reset to defaults" document (R-170: app_settings "settings.defaults", written with the reference data);
  * null when none is stored or it does not validate.
  */
@@ -405,7 +439,7 @@ export async function resetSettings(actor: Actor): Promise<void> {
     }
     const who = await whoIs(tx, actor);
     // R-168: the stored thresholds before the reset (the lists' entries are not copied: their reset is the list of defaults).
-    const keys = [APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, APP_SETTING_DCMA, APP_SETTING_DRIFT, APP_SETTING_SUPPLIER_SLIP, APP_SETTING_CCB];
+    const keys = [APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, APP_SETTING_DCMA, APP_SETTING_DRIFT, APP_SETTING_SUPPLIER_SLIP, APP_SETTING_SUPPLIER_SLIP_ESCALATION, APP_SETTING_CCB];
     const settingsBefore = Object.fromEntries((await tx.select({ key: appSettings.key, value: appSettings.value }).from(appSettings).where(inArray(appSettings.key, keys))).map((r) => [r.key, r.value]));
     const health = { ...defaults.health };
     await tx.insert(appSettings).values({ key: APP_SETTING_HEALTH, value: health, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
@@ -426,11 +460,15 @@ export async function resetSettings(actor: Actor): Promise<void> {
     const supplierSlip = { days: SUPPLIER_SLIP_ALERT_DAYS };
     await tx.insert(appSettings).values({ key: APP_SETTING_SUPPLIER_SLIP, value: supplierSlip, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
       .onConflictDoUpdate({ target: appSettings.key, set: { value: supplierSlip, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
+    // S-34: the escalation thresholds go back to 10 and 5 working days.
+    const escalation = { ...SUPPLIER_SLIP_ESCALATION_STANDARD };
+    await tx.insert(appSettings).values({ key: APP_SETTING_SUPPLIER_SLIP_ESCALATION, value: escalation, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value: escalation, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
     await tx.insert(appSettings).values({ key: APP_SETTING_CCB, value: { keur: ccb }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
       .onConflictDoUpdate({ target: appSettings.key, set: { value: { keur: ccb }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
     await trace(tx, who, {
       objectRef: 'Settings', change: 'reset to defaults', area: 'Settings', activity: { text: 'Reset the settings lists to their defaults', kind: 'change' },
-      ...changedValues(settingsBefore, { [APP_SETTING_HEALTH]: health, [APP_SETTING_HOURS_VARIANCE]: hours, [APP_SETTING_DCMA]: dcma, [APP_SETTING_DRIFT]: drift, [APP_SETTING_SUPPLIER_SLIP]: supplierSlip, [APP_SETTING_CCB]: { keur: ccb } }),
+      ...changedValues(settingsBefore, { [APP_SETTING_HEALTH]: health, [APP_SETTING_HOURS_VARIANCE]: hours, [APP_SETTING_DCMA]: dcma, [APP_SETTING_DRIFT]: drift, [APP_SETTING_SUPPLIER_SLIP]: supplierSlip, [APP_SETTING_SUPPLIER_SLIP_ESCALATION]: escalation, [APP_SETTING_CCB]: { keur: ccb } }),
     });
   });
 }

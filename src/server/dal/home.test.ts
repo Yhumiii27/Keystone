@@ -197,7 +197,8 @@ const R073: Partial<Record<RoleKey, Record<Lang, Record<number, Kpi>>>> = {
  * prototype's figures gave €6.96M, 51 % · €13.97M, −€338k · 0.96; R-073 on the prototype's population €6.58M, 50 % · €13.25M,
  * −€17k · 0.97), and "Needs attention" lists the alerts computed by rules (R-130, NEW-D1-1) on those figures, not the
  * prototype's four fixed texts: HLT-026 off track (SPI 0.82 · CPI 0.89) and the RCF-019 cost overrun (on the prototype's
- * figures: RCF-019 off track, HLT-026 cost overrun €5.25M · CPI 0.91).
+ * figures: RCF-019 off track, HLT-026 cost overrun €5.25M · CPI 0.91). S-33 (owner, 5 Nov 2026): ordered by urgency and
+ * importance — the two largest critical-path slips (−29 d, −27 d) now come before HLT-026 off track (was first).
  */
 const DIRECTOR_D7: Record<Lang, Pick<Golden, 'kpis' | 'lr'>> = {
   en: {
@@ -206,9 +207,9 @@ const DIRECTOR_D7: Record<Lang, Pick<Golden, 'kpis' | 'lr'>> = {
       ['Forecast (EAC)', '€13.88M', '−€245k vs budget', true], ['Cost perf. (CPI)', '0.97', 'Earned per $1 spent', true],
     ],
     lr: [
-      ['Harbor Line Terminal Expansion — off track', 'SPI 0.82 · CPI 0.89 — below the off-track threshold 0.90.', '', ''],
       ['Clinique Pasteur Lyon Fit-out — critical path slip', 'Critical path −29 d · forecast finish 27 Dec 2026 (baseline 1 Dec 2026) · 2 milestones late: Fire systems complete, Commissioning & handover complete.', '', ''],
       ['Harbor Line Terminal Expansion — critical path slip', 'Critical path −27 d · forecast finish 14 Jan 2027 (baseline 18 Dec 2026) · 2 milestones late: Structure topped out, Cranes operational.', '', ''],
+      ['Harbor Line Terminal Expansion — off track', 'SPI 0.82 · CPI 0.89 — below the off-track threshold 0.90.', '', ''],
       ['Marseille Metro Signage Rollout — critical path slip', 'Critical path −9 d · forecast finish 9 Nov 2026 (baseline 1 Nov 2026).', '', ''],
       ['Northgate Data Center Retrofit — critical path slip', 'Critical path −4 d · forecast finish 5 Apr 2027 (baseline 1 Apr 2027).', '', ''],
       ['Clinique Pasteur Lyon Fit-out — cost overrun', 'Forecast €1.40M vs budget €1.35M (+€46k) · CPI 0.97.', '', ''],
@@ -224,9 +225,9 @@ const DIRECTOR_D7: Record<Lang, Pick<Golden, 'kpis' | 'lr'>> = {
       ['Prévision (EAC)', '13,88 M€', '−245 k€ vs budget', true], ['Perf. coût (CPI)', '0.97', 'Acquis par € dépensé', true],
     ],
     lr: [
-      ['Extension du terminal Harbor Line — hors trajectoire', 'SPI 0,82 · CPI 0,89 — sous le seuil « hors trajectoire » 0,90.', '', ''],
       ['Aménagement de la Clinique Pasteur Lyon — glissement du chemin critique', 'Chemin critique −29 j · fin prévue 27 déc. 2026 (référence 1 déc. 2026) · 2 jalons en retard : Systèmes incendie terminés, Mise en service & transfert terminés.', '', ''],
       ['Extension du terminal Harbor Line — glissement du chemin critique', 'Chemin critique −27 j · fin prévue 14 janv. 2027 (référence 18 déc. 2026) · 2 jalons en retard : Structure hors d’eau, Grues opérationnelles.', '', ''],
+      ['Extension du terminal Harbor Line — hors trajectoire', 'SPI 0,82 · CPI 0,89 — sous le seuil « hors trajectoire » 0,90.', '', ''],
       ['Déploiement signalétique métro de Marseille — glissement du chemin critique', 'Chemin critique −9 j · fin prévue 9 nov. 2026 (référence 1 nov. 2026).', '', ''],
       ['Rénovation du data center Northgate — glissement du chemin critique', 'Chemin critique −4 j · fin prévue 5 avr. 2027 (référence 1 avr. 2027).', '', ''],
       ['Aménagement de la Clinique Pasteur Lyon — dépassement de coût', 'Prévision 1,40 M€ pour un budget de 1,35 M€ (+46 k€) · CPI 0,97.', '', ''],
@@ -361,7 +362,8 @@ describe('Home view', () => {
       // R-130: each computed alert opens the screen that resolves it (on the R-073 figures: HLT-026 off track on its schedule
       // side, SPI 0.82 ≤ CPI 0.89; RCF-019's cost overrun on its budget).
       l: [
-        '/projects/HLT-026/schedule', '/projects/RCF-019/schedule', '/projects/HLT-026/schedule', '/projects/MSR-012/schedule', '/projects/NDC-031/schedule',
+        // S-33: by urgency and importance (RCF-019 −29 d, HLT-026 −27 d, then HLT-026 off track).
+        '/projects/RCF-019/schedule', '/projects/HLT-026/schedule', '/projects/HLT-026/schedule', '/projects/MSR-012/schedule', '/projects/NDC-031/schedule',
         '/projects/RCF-019/budget', '/resources', '/my/approvals', // R-084 + named demo assignments: the over-allocation alert
       ],
       r: ['/projects/HLT-026/changes?cr=CR-008', '/projects/HLT-026/orders', '/reference/eco', '/resources/requests'],

@@ -1,0 +1,8 @@
+{
+  "Directors told after (working days of slip)": "Directeurs prévenus après (jours ouvrés de glissement)",
+  "When the project finish moves by (working days)": "Si la fin du projet recule d’au moins (jours ouvrés)",
+  "Enter a whole number of working days within the range of this threshold": "Saisissez un nombre entier de jours ouvrés dans les bornes de ce seuil",
+  "The portfolio directors are told once per slip when it has lasted this many working days since it reached the alert threshold and pushes the project’s forecast finish by at least this many working days": "Les directeurs de portefeuille sont prévenus une fois par glissement quand il dure depuis ce nombre de jours ouvrés après avoir atteint le seuil d’alerte et qu’il repousse la fin prévue du projet d’au moins ce nombre de jours ouvrés",
+  "Supplier slip escalated to the directors": "Glissement fournisseur remonté à la direction",
+  "Supplier slip escalation thresholds": "Seuils de remontée des glissements fournisseurs"
+}

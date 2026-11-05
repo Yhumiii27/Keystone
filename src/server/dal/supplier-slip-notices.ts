@@ -9,18 +9,23 @@ import 'server-only';
 // person's preferences (R-036, family "Alerts and follow-up"). Read only on the schedules; best effort per order.
 // S-31: the threshold (and the level step) is the Settings entry (default 5 working days). S-30: `supplierSlipsOf` also feeds the
 // portfolio alerts.
-import { and, eq, inArray, like } from 'drizzle-orm';
+// S-34: a slip that has lasted the Settings duration (working days since it first reached the threshold — the earliest level row
+// of the episode) and pushes the project's forecast finish by the Settings impact (`supplierFinishImpact`) is also told to the
+// portfolio directors, once per episode (send-log slot "directors", cleared with the levels).
+import { and, eq, inArray, like, min } from 'drizzle-orm';
 import { inExecution } from '@/domain/portfolio';
 import { sendKeyText } from '@/domain/reminders';
-import { supplierForecast } from '@/domain/supplier-schedule';
-import { supplierSlipLevel, supplierSlipRecipients, supplierSlipSlots, supplierSlipTitle } from '@/domain/supplier-slip-alerts';
+import { supplierFinishImpact, supplierForecast } from '@/domain/supplier-schedule';
+import {
+  SUPPLIER_SLIP_DIRECTOR_SLOT, shouldEscalateSupplierSlip, supplierSlipEscalationTitle, supplierSlipLevel, supplierSlipRecipients, supplierSlipSlots, supplierSlipTitle,
+} from '@/domain/supplier-slip-alerts';
 import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { projects, purchaseOrders, reminderSends, rfqs, supplierSchedules } from '@/server/db/schema';
 import { logError } from '@/server/log';
 import { activePersonIds, notifyPersonIds, personIdsWithRoles, projectLeadIds } from './person-notices';
-import { loadScheduleNetwork } from './schedule-network';
-import { readSupplierSlipDays } from './supplier-slip-threshold';
+import { loadScheduleNetwork, toCpmActivity } from './schedule-network';
+import { readSupplierSlipDays, readSupplierSlipEscalation } from './supplier-slip-threshold';
 
 const OPEN = 'open';
 const itemKeyOf = (po: string) => `supplier-slip:${po}`;
@@ -37,6 +42,10 @@ export interface SupplierSlipRun {
   notified: number;
   /** Schedules back under the threshold whose levels were cleared. */
   cleared: number;
+  /** S-34: schedules told to the directors this run (lasted and pushing the project's finish). */
+  escalated: number;
+  /** S-34: directors notified (one notice per director and episode). */
+  directorsNotified: number;
 }
 
 /** A watched supplier schedule and its slip (working days, the largest finish slip against the committed dates). */
@@ -47,6 +56,11 @@ export interface WatchedSupplierSlip {
   slipDays: number;
   /** The name of the most late activity (as typed), null without one. */
   worstActivity: string | null;
+  /**
+   * S-33 / S-34: working days the slip pushes the project's forecast finish (`supplierFinishImpact`); computed for the schedules
+   * slipping at least `impactFrom` only, else null.
+   */
+  finishImpactDays: number | null;
 }
 
 type Network = NonNullable<Awaited<ReturnType<typeof loadScheduleNetwork>>>;
@@ -55,23 +69,31 @@ type Network = NonNullable<Awaited<ReturnType<typeof loadScheduleNetwork>>>;
  * The watched supplier schedules of a loaded network (order not cancelled, not all complete) with their slip at `today` — the
  * forecast of the Purchase orders drawer and the Plan card (`supplierForecast`).
  */
-function slipsOfNetwork(net: Network, today: string): WatchedSupplierSlip[] {
-  return net.suppliers
+function slipsOfNetwork(net: Network, today: string, impactFrom?: number): WatchedSupplierSlip[] {
+  const watched = net.suppliers
     .filter((s) => s.poStatus !== 'cancelled' && s.activities.some((a) => !(a.actualFinish || a.percentComplete >= 100)))
     .map((s) => {
       const f = supplierForecast(s.input, { dataDate: net.dataDate, projectCalendar: net.projectCalendar, calendars: net.calendars, today, options: net.input.options });
       const worst = s.activities
         .map((a) => ({ a, slip: f.ok ? f.activities[a.code]?.finishSlip ?? 0 : 0 }))
         .sort((x, y) => y.slip - x.slip)[0];
-      return { poId: s.poId, poNumber: s.poNumber, supplierName: s.supplierName, slipDays: f.ok ? f.slip : 0, worstActivity: worst?.a.name ?? null };
+      return { poId: s.poId, poNumber: s.poNumber, supplierName: s.supplierName, slipDays: f.ok ? f.slip : 0, worstActivity: worst?.a.name ?? null, finishImpactDays: null as number | null };
     });
+  if (impactFrom != null) for (const w of watched) if (w.slipDays >= impactFrom) w.finishImpactDays = finishImpactOf(net, w.poNumber);
+  return watched;
+}
+
+/** S-34: working days the schedule `po` pushes the project's forecast finish (the network's own activities); null if not computable. */
+function finishImpactOf(net: Network, po: string): number | null {
+  const base = { ...net.input, activities: net.activities.map(toCpmActivity), links: net.links.map((l) => ({ pred: l.pred, succ: l.succ, type: l.type, lag: l.lag })) };
+  return supplierFinishImpact(base, net.suppliers.map((s) => s.input), po);
 }
 
 /**
  * S-30: the watched supplier schedules of each given project that has some (projects without a supplier schedule are left out), at
  * `today`. Read only; a project whose network cannot be read is left out.
  */
-export async function supplierSlipsOf(codes: readonly string[], today: string): Promise<Map<string, WatchedSupplierSlip[]>> {
+export async function supplierSlipsOf(codes: readonly string[], today: string, opts: { impactFrom?: number } = {}): Promise<Map<string, WatchedSupplierSlip[]>> {
   const out = new Map<string, WatchedSupplierSlip[]>();
   if (!codes.length) return out;
   const db = await getDb();
@@ -84,7 +106,7 @@ export async function supplierSlipsOf(codes: readonly string[], today: string): 
     try {
       const net = await loadScheduleNetwork(code, undefined, { suppliers: true });
       if (!net) continue;
-      const slips = slipsOfNetwork(net, today);
+      const slips = slipsOfNetwork(net, today, opts.impactFrom);
       if (slips.length) out.set(code, slips);
     } catch (e) {
       logError('supplierSlipsOf', e, { projectCode: code });
@@ -98,7 +120,7 @@ export async function runSupplierSlipAlerts(on?: string): Promise<SupplierSlipRu
   const db = await getDb();
   const today = on ?? (await businessToday());
   const { claimSends } = await import('./reminders');
-  const run: SupplierSlipRun = { today, watched: 0, slipping: 0, raised: 0, notified: 0, cleared: 0 };
+  const run: SupplierSlipRun = { today, watched: 0, slipping: 0, raised: 0, notified: 0, cleared: 0, escalated: 0, directorsNotified: 0 };
   const heads = await db
     .selectDistinct({ code: projects.code, stage: projects.stage })
     .from(supplierSchedules)
@@ -106,15 +128,27 @@ export async function runSupplierSlipAlerts(on?: string): Promise<SupplierSlipRu
   const codes = heads.filter(inExecution).map((h) => h.code);
   if (!codes.length) return run;
 
-  const [active, procurement, openRows, threshold] = await Promise.all([
+  const [active, procurement, directors, openRows, threshold, escalation] = await Promise.all([
     activePersonIds(db),
     personIdsWithRoles(db, ['procurement']),
-    db.selectDistinct({ itemKey: reminderSends.itemKey }).from(reminderSends)
-      .where(and(eq(reminderSends.kind, 'alert'), eq(reminderSends.occurrence, OPEN), like(reminderSends.itemKey, 'supplier-slip:%'))),
+    personIdsWithRoles(db, ['director']),
+    // Per open episode: the day its first level was claimed (S-34 duration) and whether the directors were told.
+    db.select({ itemKey: reminderSends.itemKey, slot: reminderSends.slot, since: min(reminderSends.runOn) }).from(reminderSends)
+      .where(and(eq(reminderSends.kind, 'alert'), eq(reminderSends.occurrence, OPEN), like(reminderSends.itemKey, 'supplier-slip:%')))
+      .groupBy(reminderSends.itemKey, reminderSends.slot),
     // S-31: the Settings threshold (default 5 working days), also the step of the levels.
     readSupplierSlipDays(db),
+    // S-34: the escalation thresholds (defaults 10 working days lasted, 5 working days of finish impact).
+    readSupplierSlipEscalation(db),
   ]);
   const wasOpen = new Set(openRows.map((r) => r.itemKey));
+  const since = new Map<string, string>();
+  const directorsTold = new Set<string>();
+  for (const r of openRows) {
+    if (r.slot === SUPPLIER_SLIP_DIRECTOR_SLOT) directorsTold.add(r.itemKey);
+    else if (r.slot.startsWith('level:') && r.since && (!since.has(r.itemKey) || r.since < since.get(r.itemKey)!)) since.set(r.itemKey, r.since);
+  }
+  const boardIds = directors.filter((id) => active.has(id));
   const below = new Set<string>();
 
   for (const code of codes) {
@@ -139,6 +173,25 @@ export async function runSupplierSlipAlerts(on?: string): Promise<SupplierSlipRu
           continue;
         }
         run.slipping++;
+        // S-34: lasted long enough (working days since the episode's first level) and pushing the project's finish → the directors.
+        const cal = net.calendars[net.projectCalendar] ?? Object.values(net.calendars)[0];
+        const start = since.get(itemKey) ?? today;
+        const lastedDays = cal ? Math.max(0, cal.workDaysBetween(start, today)) : 0;
+        if (boardIds.length && !directorsTold.has(itemKey) && lastedDays >= escalation.days) {
+          const impact = finishImpactOf(net, s.poNumber);
+          if (shouldEscalateSupplierSlip({ lastedDays, finishImpactDays: impact }, escalation)) {
+            const got = await claimSends(boardIds.map((personId) => ({ personId, itemKey, slot: SUPPLIER_SLIP_DIRECTOR_SLOT, occurrence: OPEN })), 'alert', today);
+            const fresh = boardIds.filter((personId) => got.has(sendKeyText({ personId, itemKey, slot: SUPPLIER_SLIP_DIRECTOR_SLOT, occurrence: OPEN })));
+            if (fresh.length) {
+              run.escalated++;
+              const sent = await notifyPersonIds({
+                kind: 'alert', title: supplierSlipEscalationTitle(s.poNumber, slip, impact ?? 0), sub: [code, s.supplierName, s.worstActivity].filter(Boolean).join(' · '),
+                screen: 'orders', params: { po: s.poNumber }, projectCode: code,
+              }, fresh, null);
+              run.directorsNotified += sent.length;
+            }
+          }
+        }
         const o = orders.find((x) => x.id === s.poId);
         const buyerChain = [o?.sub ?? null, o?.by ?? null, rfqRows.find((r) => r.po === s.poId)?.owner ?? null];
         const to = supplierSlipRecipients({ buyerChain, procurement, leads }, active);

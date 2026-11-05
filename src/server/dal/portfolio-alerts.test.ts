@@ -14,12 +14,16 @@ beforeAll(async () => {
 // HLT-026 is the off-track project (SPI 0.82 · CPI 0.89; it was RCF-019 on the prototype's figures) and so carries no separate
 // cost alert, RCF-019 (At risk, CPI 0.97) raises the cost overrun (it was HLT-026, CPI 0.91).
 describe('portfolio alerts (R-130)', () => {
-  it('seed: 8 alerts, the director’s approvals last', async () => {
+  // S-33 (owner, 5 Nov 2026): ordered by urgency and importance — was 'off-HLT-026', 'slip-RCF-019', 'slip-HLT-026', 'slip-MSR-012',
+  // 'slip-NDC-031', 'cost-RCF-019', 'people', 'approvals' (rule order). Class 1 by magnitude: RCF-019 −29 d (48 %), HLT-026 −27 d
+  // (45 %), HLT-026 off track 0.08 under 0.90 (40 %), MSR-012 −9 d, NDC-031 −4 d; class 2: the cost overrun; class 3: 3 people
+  // over-allocated (60 %) before the approval waiting 15 days (50 %).
+  it('seed: 8 alerts, by urgency and importance (S-33)', async () => {
     // R-084 (owner answers 17 Oct 2026, third round): the loads come from the schedules; with the named demo assignments (owner
     // answer 18 Oct 2026, fourth round) three people are above 110 % again — the over-allocation alert is back, as on the
     // seeded allocation rows.
     expect((await getPortfolioAlerts('en')).map((a) => a.key)).toEqual([
-      'off-HLT-026', 'slip-RCF-019', 'slip-HLT-026', 'slip-MSR-012', 'slip-NDC-031', 'cost-RCF-019', 'people', 'approvals',
+      'slip-RCF-019', 'slip-HLT-026', 'off-HLT-026', 'slip-MSR-012', 'slip-NDC-031', 'cost-RCF-019', 'people', 'approvals',
     ]);
   });
 
@@ -27,9 +31,10 @@ describe('portfolio alerts (R-130)', () => {
     const n = await addPaymentMilestone('HLT-026', { label: 'Early works', sharePct: 1, contractualDue: '2026-08-01' }, 'Romain Aubert');
     let alerts = await getPortfolioAlerts('en');
     expect(alerts.map((a) => a.key)).toEqual([
-      'off-HLT-026', 'slip-RCF-019', 'slip-HLT-026', 'slip-MSR-012', 'slip-NDC-031', 'cost-RCF-019', 'bill-HLT-026', 'people',
+      // S-33: the milestone 55 days past its contractual date (92 % of class 2) before the cost overrun (17 %).
+      'slip-RCF-019', 'slip-HLT-026', 'off-HLT-026', 'slip-MSR-012', 'slip-NDC-031', 'bill-HLT-026', 'cost-RCF-019', 'people',
     ]);
-    expect(alerts[6]).toMatchObject({
+    expect(alerts[5]).toMatchObject({
       kind: 'billing_late', title: 'Harbor Line Terminal Expansion — billing late', detail: `${n} Early works · contractual date 1 Aug 2026, not invoiced.`,
       target: { screen: 'billing', code: 'HLT-026' },
     });

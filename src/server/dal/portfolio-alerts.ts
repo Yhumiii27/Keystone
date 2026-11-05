@@ -3,7 +3,8 @@ import 'server-only';
 // health, EVM figures and schedule header, the contract billing (overdue invoices, late payment milestones), the shared pool's
 // loads over the 8-week window from the data date, and the portfolio director's approval queue (items older than N days).
 // Health thresholds from Settings (A-13). Computed at the portfolio data date. S-30: the projects' supplier schedule slips (R-204),
-// listed from the Settings threshold (S-31).
+// listed from the Settings threshold (S-31). S-33: ranked by urgency and importance; a supplier slip pushing the project's finish by
+// the S-34 impact threshold ranks with the end-date alerts.
 import { businessToday } from '@/server/clock';
 import { versionedRead } from '@/server/cache/read-cache';
 import { PERSONA_BY_ROLE } from '@/config/personas';
@@ -25,7 +26,7 @@ import { latestRiskAnalysisRunsByCode } from './risk-analysis';
 import { listProjects, type ProjectRow } from './projects';
 import { getResourcePool } from './resources';
 import { supplierSlipsOf } from './supplier-slip-notices';
-import { readSupplierSlipDays } from './supplier-slip-threshold';
+import { readSupplierSlipDays, readSupplierSlipEscalation } from './supplier-slip-threshold';
 
 /** Billing of a project's contract for the rules: overdue invoices and late billable milestones; null without contract. */
 async function billingOf(code: string, lang: Lang): Promise<AlertProject['billing']> {
@@ -102,13 +103,14 @@ function runOf(runs: Awaited<ReturnType<typeof latestRiskAnalysisRunsByCode>>, c
 }
 
 async function computePortfolioAlerts(lang: Lang, asOf: string): Promise<PortfolioAlert[]> {
-  const [all, sched, health, runs, drift, slipDays] = await Promise.all([
-    listProjects(), listScheduleSummaries(), healthThresholds(), latestRiskAnalysisRunsByCode(), driftThresholds(), readSupplierSlipDays(),
+  const [all, sched, health, runs, drift, slipDays, escalation] = await Promise.all([
+    listProjects(), listScheduleSummaries(), healthThresholds(), latestRiskAnalysisRunsByCode(), driftThresholds(), readSupplierSlipDays(), readSupplierSlipEscalation(),
   ]);
   const t = makeT(lang);
   const rows = all.filter(inExecution);
   // S-30: the supplier schedules of the projects in execution (the S-27 forecast), at the data date.
-  const slips = await supplierSlipsOf(rows.map((p) => p.code), asOf);
+  // S-33: with each listed schedule's push on the project's finish.
+  const slips = await supplierSlipsOf(rows.map((p) => p.code), asOf, { impactFrom: slipDays });
   const projects: AlertProject[] = await Promise.all(rows.map(async (p) => {
     const s = sched[p.code];
     return {
@@ -122,6 +124,7 @@ async function computePortfolioAlerts(lang: Lang, asOf: string): Promise<Portfol
       riskAnalysis: runOf(runs, p.code),
       supplierSlips: slips.get(p.code)?.map((x) => ({
         po: x.poNumber, supplier: dataText(x.supplierName, lang), slipDays: x.slipDays, activity: x.worstActivity ? dataText(x.worstActivity, lang) : null,
+        finishImpactDays: x.finishImpactDays,
       })),
     };
   }));
@@ -129,5 +132,6 @@ async function computePortfolioAlerts(lang: Lang, asOf: string): Promise<Portfol
   // S-25: the Monte-Carlo alert threshold comes from Settings (default 20 %); S-31: the supplier slip threshold too (default 5).
   return portfolioAlertRules({ projects, people, approvals, asOf }, lang, t, {
     health, ...ALERT_RULE_DEFAULTS, onTimeChance: drift.portfolioOnTimePct / 100, supplierSlipDays: slipDays,
+    supplierImpactDays: escalation.impactDays,
   });
 }
