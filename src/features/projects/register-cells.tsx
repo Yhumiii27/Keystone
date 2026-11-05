@@ -17,9 +17,11 @@ import { setDeliverableAction } from './actions';
 import type { RegisterRow, StageView } from './register-model';
 import s from './register.module.css';
 
-/** S-23: schedule quality cell — the Schedule card's "Fail · n" counter, linked to the Schedule screen; "—" without data. */
-export function QualityCell({ row }: { row: RegisterRow }) {
-  const q = row.quality;
+/**
+ * S-23: schedule quality cell — the Schedule card's "Fail · n" counter, linked to the Schedule screen; "—" without data. S-32: also
+ * on the My projects cards.
+ */
+export function QualityCell({ quality: q }: { quality: RegisterRow['quality'] }) {
   if (!q) return <span className={s.qualityNone}>—</span>;
   const tag = <StatusTag tone={q.tone}>{q.text}</StatusTag>;
   return q.href ? (

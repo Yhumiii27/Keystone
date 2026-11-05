@@ -3,6 +3,7 @@ import 'server-only';
 // types, stored site and custom types with their values), the codes of each activity, and the writers of the dictionary and of
 // the assignments (the Server Functions check the rights: the project's leads and the director). Every write is audited.
 import { and, asc, eq, max } from 'drizzle-orm';
+import { activityLineOf } from '@/domain/equipment-scope';
 import {
   DERIVED_CODE_TYPE_NAMES, parseCodeType, parseCodeValue, type ActivityCodeError, type ActivityCodeMap, type CodeType,
 } from '@/domain/activity-codes';
@@ -10,6 +11,7 @@ import { getDb, type DB, type Tx } from '@/server/db/client';
 import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import {
   activities, activityCodeAssignments, activityCodeTypes, activityCodeValues, projectEquipments, projects, purchaseOrders, suppliers, supplierScheduleTies, supplierSchedules,
+  wbsNodes,
 } from '@/server/db/schema';
 import type { Actor } from './ops-common';
 
@@ -19,6 +21,11 @@ export interface ActivityCodes {
   types: CodeType[];
   /** Activity code ("A1250") → type key → value keys. */
   map: ActivityCodeMap;
+  /**
+   * S-29: the activities whose "Equipment" value comes from their work package (no line of their own) → that line's id. The
+   * drawer shows it as inherited; choosing a value there writes the activity's own line.
+   */
+  inheritedEquipment: Record<string, string>;
 }
 
 /** The project's activity code dictionary and the codes of its activities; null for an unknown project. */
@@ -26,8 +33,13 @@ export async function getActivityCodes(projectCode: string, q?: Q): Promise<Acti
   const db = q ?? (await getDb());
   const [p] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, projectCode));
   if (!p) return null;
-  const [acts, eqs, pos, ties, types, values, assigned] = await Promise.all([
-    db.select({ id: activities.id, code: activities.code, equipmentId: activities.equipmentId }).from(activities).where(eq(activities.projectId, p.id)),
+  const [acts, workPackages, eqs, pos, ties, types, values, assigned] = await Promise.all([
+    db
+      .select({ id: activities.id, code: activities.code, equipmentId: activities.equipmentId, wbs: wbsNodes.code })
+      .from(activities)
+      .innerJoin(wbsNodes, eq(wbsNodes.id, activities.wbsNodeId))
+      .where(eq(activities.projectId, p.id)),
+    db.select({ code: wbsNodes.code, line: wbsNodes.equipmentId }).from(wbsNodes).where(and(eq(wbsNodes.projectId, p.id), eq(wbsNodes.level, 1))),
     db
       .select({ id: projectEquipments.id, ref: projectEquipments.ref, type: projectEquipments.machineTypeCode, qty: projectEquipments.quantity, label: projectEquipments.label })
       .from(projectEquipments)
@@ -67,12 +79,20 @@ export async function getActivityCodes(projectCode: string, q?: Q): Promise<Acti
     if (!list.includes(value)) list.push(value);
   };
   const out: CodeType[] = [];
+  const inheritedEquipment: Record<string, string> = {};
   if (eqs.length) {
     out.push({
       key: 'equipment', kind: 'equipment', name: DERIVED_CODE_TYPE_NAMES.equipment, derived: true,
       values: eqs.map((e) => ({ key: e.id, code: e.ref, label: `${e.qty} × ${e.type.toUpperCase()}${e.label ? ` · ${e.label}` : ''}` })),
     });
-    for (const a of acts) if (a.equipmentId) add(a.id, 'equipment', a.equipmentId);
+    // S-29: the activity's own line, else its work package's — the Gantt's equipment filter rule (S-08, `activityLineOf`).
+    const known = new Set(eqs.map((e) => e.id));
+    for (const a of acts) {
+      const line = activityLineOf(a.equipmentId, a.wbs, workPackages);
+      if (!line || !known.has(line)) continue;
+      add(a.id, 'equipment', line);
+      if (!a.equipmentId) inheritedEquipment[a.code] = line;
+    }
   }
   const packages = pos.filter((x) => x.activityId) as typeof pos;
   const tiedNumbers = new Set(ties.map((t) => t.number));
@@ -85,7 +105,7 @@ export async function getActivityCodes(projectCode: string, q?: Q): Promise<Acti
   for (const t of types)
     out.push({ key: t.id, kind: t.kind, name: t.name, derived: false, values: values.filter((v) => v.v.typeId === t.id).map(({ v }) => ({ key: v.id, code: v.code, label: v.label })) });
   for (const a of assigned) add(a.activityId, a.typeId, a.valueId);
-  return { types: out, map };
+  return { types: out, map, inheritedEquipment };
 }
 
 export class ActivityCodeWriteError extends Error {

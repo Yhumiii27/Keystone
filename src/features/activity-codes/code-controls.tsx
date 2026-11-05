@@ -158,13 +158,15 @@ export function ActivityCodesCard({ code, types, canEdit }: { code: string; type
 
 /** The codes of an activity (drawer). */
 export function ActivityCodesSection({
-  code, activity, types, values, ties, canEdit,
+  code, activity, types, values, inheritedEquipment, ties, canEdit,
 }: {
   code: string;
   activity: string;
   types: CodeType[];
   /** Type key → value keys of the activity. */
   values: Record<string, string[]>;
+  /** S-29: the equipment line the activity takes from its work package (no line of its own), as a value key. */
+  inheritedEquipment?: string;
   /** Supplier activities tied to the activity ("PO-1082/F50 · Delivery → FS"), already formatted. */
   ties: string[];
   canEdit: boolean;
@@ -182,7 +184,10 @@ export function ActivityCodesSection({
     <section className={s.section} aria-label={t('Activity codes')}>
       <span className={s.kicker}>{t('Activity codes')}</span>
       {types.map((x) => {
-        const mine = values[x.key] ?? [];
+        // S-29: a line inherited from the work package is shown as such; the select holds the activity's own line only.
+        const inherited = x.kind === 'equipment' && inheritedEquipment ? x.values.find((v) => v.key === inheritedEquipment) : undefined;
+        const fromPackage = inherited ? `${t('From the work package')} · ${inherited.code}` : null;
+        const mine = inherited ? [] : (values[x.key] ?? []);
         const editable = canEdit && x.kind !== 'purchase_package';
         return (
           <div key={x.key} className={s.kv}>
@@ -194,10 +199,10 @@ export function ActivityCodesSection({
                 value={mine[0] ?? ''}
                 disabled={pending}
                 onChange={(e) => set(x.key, e.target.value)}
-                options={[{ value: '', label: '—' }, ...x.values.map((v) => ({ value: v.key, label: `${v.code}${v.label && v.label !== v.code ? ` · ${dataText(v.label, lang)}` : ''}` }))]}
+                options={[{ value: '', label: fromPackage ?? '—' }, ...x.values.map((v) => ({ value: v.key, label: `${v.code}${v.label && v.label !== v.code ? ` · ${dataText(v.label, lang)}` : ''}` }))]}
               />
             ) : (
-              <span className={s.kvVal}>{x.values.filter((v) => mine.includes(v.key)).map((v) => v.code).join(', ') || '—'}</span>
+              <span className={s.kvVal}>{fromPackage ?? (x.values.filter((v) => mine.includes(v.key)).map((v) => v.code).join(', ') || '—')}</span>
             )}
           </div>
         );

@@ -6,21 +6,26 @@
 //   4. billing late — an invoice past its due date, or a payment milestone past its contractual date not invoiced;
 //   5. over-allocation — people of the shared pool above 110 % in a week of the window (the Resources rule);
 //   6. approvals waiting — decisions in the portfolio director's queue older than N days (default 5);
-//   7. late milestone — a schedule milestone flagged Late while the critical path still has float.
+//   7. late milestone — a schedule milestone flagged Late while the critical path still has float;
+//   8. supplier slip (S-30) — a supplier schedule (R-204) whose forecast slips at or above the Settings threshold (S-31, default 5
+//      working days; the S-27 bell alerts use the same threshold);
+//   9. risk forecast (R-208) — the latest Monte-Carlo run gives a low chance of meeting the end date.
 // Project alerts follow the zone filter; the pool and approval alerts are portfolio-wide. Thresholds: the health thresholds of
 // Settings (A-13); the others have no Settings entry yet (`ALERT_RULE_DEFAULTS`, to confirm with the owner). Pure; texts are
 // returned in the render language (data texts — names, dates — come translated by the caller's `t`).
 // Golden values: src/domain/portfolio-alerts.test.ts.
-import type { ScreenId } from '@/config/screens';
+import { screenHref, type ScreenId } from '@/config/screens';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import { daysBetweenIso, displayOfIso } from '@/server/db/codes';
 import { BASE_CURRENCY, moneyIn, type CurrencyCode } from './currency';
 import { DEFAULT_HEALTH_THRESHOLDS, clampHealthCpi, type Health, type HealthThresholds } from './health';
 import { OVER_ALLOCATED_PCT, weekRangesText } from './resources';
+import { SUPPLIER_SLIP_ALERT_DAYS } from './supplier-slip-alerts';
 
-export type AlertKind = 'off_track' | 'critical_slip' | 'cost_overrun' | 'billing_late' | 'over_allocation' | 'approvals_waiting' | 'milestone_late' | 'risk_forecast';
-export type AlertIcon = 'lightning' | 'coins' | 'users-three' | 'clock-countdown' | 'receipt' | 'stamp' | 'warning';
+export type AlertKind =
+  | 'off_track' | 'critical_slip' | 'cost_overrun' | 'billing_late' | 'over_allocation' | 'approvals_waiting' | 'milestone_late' | 'supplier_slip' | 'risk_forecast';
+export type AlertIcon = 'lightning' | 'coins' | 'users-three' | 'clock-countdown' | 'receipt' | 'stamp' | 'warning' | 'truck';
 
 /** "Needs attention" item. `target` is the screen opened by the action button. */
 export interface PortfolioAlert {
@@ -34,7 +39,15 @@ export interface PortfolioAlert {
   detail: string;
   /** English source (translated by the screen). */
   action: string;
-  target: { screen: ScreenId; code?: string };
+  /** `params`: the screen's query (S-30: `?po=` opens the order's drawer). */
+  target: { screen: ScreenId; code?: string; params?: Record<string, string> };
+}
+
+/** The link of an alert's action button. */
+export function alertTargetHref(target: PortfolioAlert['target']): string {
+  const href = screenHref(target.screen, { code: target.code });
+  const q = new URLSearchParams(target.params ?? {}).toString();
+  return q ? `${href}?${q}` : href;
 }
 
 /** Thresholds without a Settings entry yet (R-130 defaults, owner to confirm — NEW-D1-1 "seuils dans Paramètres"). */
@@ -57,6 +70,8 @@ export interface AlertThresholds {
   maxAlerts: number;
   /** R-208 (optional for callers built before it): Monte-Carlo chance of meeting the end date under which a project is listed. */
   onTimeChance?: number;
+  /** S-30 / S-31 (optional; default 5): supplier schedule slip, working days, from which a project is listed. */
+  supplierSlipDays?: number;
 }
 
 export const DEFAULT_ALERT_THRESHOLDS: AlertThresholds = { health: DEFAULT_HEALTH_THRESHOLDS, ...ALERT_RULE_DEFAULTS };
@@ -85,6 +100,11 @@ export interface AlertProject {
    * finish, P80 finish and the target (ISO). Absent or null without a run.
    */
   riskAnalysis?: { probOnTarget: number | null; p80Finish: string; target: string | null } | null;
+  /**
+   * S-30: the project's watched supplier schedules (R-204: order not cancelled, not all complete) and their slip in working days;
+   * names as typed. Absent without a supplier schedule.
+   */
+  supplierSlips?: { po: string; supplier: string; slipDays: number; activity: string | null }[];
 }
 
 export interface AlertPeople {
@@ -112,7 +132,7 @@ export interface AlertInput {
 }
 
 const RANK: Record<AlertKind, number> = {
-  off_track: 0, critical_slip: 1, cost_overrun: 2, billing_late: 3, over_allocation: 4, approvals_waiting: 5, milestone_late: 6, risk_forecast: 7,
+  off_track: 0, critical_slip: 1, cost_overrun: 2, billing_late: 3, over_allocation: 4, approvals_waiting: 5, milestone_late: 6, supplier_slip: 7, risk_forecast: 8,
 };
 
 const dec = (v: number, lang: Lang) => (lang === 'fr' ? v.toFixed(2).replace('.', ',') : v.toFixed(2));
@@ -191,7 +211,24 @@ export function portfolioAlertRules(input: AlertInput, lang: Lang, t: T, th: Ale
         action: 'Open billing', target: { screen: 'billing', code: p.code },
       }, 0, order);
     }
-    // 7. R-208: the latest Monte-Carlo risk analysis gives a low chance of meeting the end date.
+    // 8. S-30: the supplier schedules slipping at or above the Settings threshold (S-31) — the worst one named, the others counted.
+    const slipFrom = th.supplierSlipDays ?? SUPPLIER_SLIP_ALERT_DAYS;
+    const slipping = (p.supplierSlips ?? []).filter((x) => x.slipDays >= slipFrom).sort((a, b) => b.slipDays - a.slipDays || a.po.localeCompare(b.po));
+    if (slipping.length) {
+      const w = slipping[0];
+      const n = slipping.length;
+      const more = n > 1 ? (fr ? ` · ${n - 1} de plus` : ` · ${n - 1} more`) : '';
+      const act = w.activity ? ` · ${w.activity}` : '';
+      push({
+        key: `supplier-${p.code}`, kind: 'supplier_slip', icon: 'truck', code: p.code,
+        title: fr ? `${p.name} — planning fournisseur en glissement` : `${p.name} — supplier schedule slipping`,
+        detail: fr
+          ? `${w.po} · ${w.supplier} · +${w.slipDays} jours ouvrés (seuil ${slipFrom})${act}${more}.`
+          : `${w.po} · ${w.supplier} · +${w.slipDays} working days (threshold ${slipFrom})${act}${more}.`,
+        action: 'Open the order', target: { screen: 'orders', code: p.code, params: { po: w.po } },
+      }, -w.slipDays, order);
+    }
+    // 9. R-208: the latest Monte-Carlo risk analysis gives a low chance of meeting the end date.
     const ra = p.riskAnalysis;
     const chance = th.onTimeChance ?? ALERT_RULE_DEFAULTS.onTimeChance;
     if (ra && ra.probOnTarget != null && ra.probOnTarget < chance) {

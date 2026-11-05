@@ -1,0 +1,9 @@
+{
+  "From the work package": "Héritée du lot",
+  "Supplier schedule slip": "Glissement des plannings fournisseurs",
+  "Alert from (working days)": "Alerte à partir de (jours ouvrés)",
+  "A supplier schedule whose forecast finish slips this many working days or more is told to the buyer and the project leads, again at each further step of the same size, and listed in the portfolio alerts": "Un planning fournisseur dont la fin prévue glisse d’au moins ce nombre de jours ouvrés est signalé à l’acheteur et aux responsables du projet, à nouveau à chaque palier de même taille, et figure dans les alertes du portefeuille",
+  "Enter a whole number of working days between 1 and 60": "Saisissez un nombre entier de jours ouvrés entre 1 et 60",
+  "Indicator alert · Supplier schedule slipping": "Alerte d’indicateur · Planning fournisseur en glissement",
+  "Supplier schedule slip threshold": "Seuil de glissement des plannings fournisseurs"
+}

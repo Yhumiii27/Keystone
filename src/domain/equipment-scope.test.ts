@@ -1,7 +1,7 @@
 // R-185 part 2: which equipment line a record belongs to — choice in a form, URL filter, grouping by line, line removal rule.
 import { describe, expect, it } from 'vitest';
 import {
-  COMMON_EQUIPMENT, equipmentChoiceOf, equipmentFilterOf, equipmentRemovalBlocker, filterByEquipment, groupByEquipment, lineOfRef, mainLineOf, sameEquipment,
+  COMMON_EQUIPMENT, activityLineOf, equipmentChoiceOf, equipmentFilterOf, equipmentRemovalBlocker, filterByEquipment, groupByEquipment, lineOfRef, mainLineOf, sameEquipment,
   showsEquipment,
 } from './equipment-scope';
 
@@ -69,5 +69,23 @@ describe('equipment scope (R-185 part 2)', () => {
   it('a line whose plan has inspections is not removed', () => {
     expect(equipmentRemovalBlocker({ inspections: 0 })).toBeNull();
     expect(equipmentRemovalBlocker({ inspections: 2 })).toBe('This equipment line has inspections in its inspection plan');
+  });
+});
+
+describe('activity line (S-08, S-29)', () => {
+  const packages = [
+    { code: '1', line: null },
+    { code: '2', line: 'EQ-02' },
+    { code: '12', line: 'EQ-03' },
+  ];
+  it('takes the activity’s own line first', () => {
+    expect(activityLineOf('EQ-01', '2.1', packages)).toBe('EQ-01');
+  });
+  it('else the line of its work package (code or code + dot), never a mere prefix', () => {
+    expect(activityLineOf(null, '2', packages)).toBe('EQ-02');
+    expect(activityLineOf(null, '2.3.1', packages)).toBe('EQ-02');
+    expect(activityLineOf(undefined, '12.1', packages)).toBe('EQ-03');
+    expect(activityLineOf(null, '1.4', packages)).toBeNull();
+    expect(activityLineOf(null, '9.1', packages)).toBeNull();
   });
 });

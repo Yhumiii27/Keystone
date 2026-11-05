@@ -11,6 +11,7 @@ import { ProgressBar, SpendVsEarned } from '@/components/app/Progress';
 import { CardGrid, SectionCard, Stack } from '@/components/app/SectionCard';
 import { LO, OK } from '@/components/app/tones';
 import { screenHref } from '@/config/screens';
+import { alertTargetHref } from '@/domain/portfolio-alerts';
 import { activeProjectsHint } from '@/domain/portfolio';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
@@ -120,7 +121,7 @@ function NeedsAttentionCard({ data, t }: { data: PortfolioOverview; t: T }) {
               {/* The alert texts are written in the viewer's language with the typed names as typed (R-130, R-148). */}
               <span className={s.alertTitle}>{a.title}</span>
               <span className={s.alertDetail}>{a.detail}</span>
-              <ButtonLink variant="ghost" size="inline" iconRight={ArrowRight} href={screenHref(a.target.screen, { code: a.target.code })}>
+              <ButtonLink variant="ghost" size="inline" iconRight={ArrowRight} href={alertTargetHref(a.target)}>
                 {t(a.action)}
               </ButtonLink>
             </div>

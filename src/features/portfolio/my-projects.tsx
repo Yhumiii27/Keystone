@@ -1,8 +1,12 @@
 // My projects body (docs/spec/03 §2, template 196–214). Server Components.
+// S-32: the register's "Schedule quality" cell on each of the viewer's live projects. The card stays clickable as a whole through a
+// stretched link (the project name's link covers the card), so the quality cell can carry its own link to the Schedule screen
+// without nesting links.
 import { ArrowRight, Eye, Info } from '@phosphor-icons/react/dist/ssr';
 import type { CSSProperties } from 'react';
 import { Tag } from '@/components/ds/Tag';
 import { cx } from '@/components/ds/cx';
+import Link from 'next/link';
 import { Callout } from '@/components/app/Callout';
 import { KpiGrid } from '@/components/app/Kpi';
 import { ProgressBar } from '@/components/app/Progress';
@@ -12,13 +16,21 @@ import { screenHref } from '@/config/screens';
 import type { MyProjectCard, MyProjectsModel, Tint } from '@/domain/portfolio';
 import type { Lang, T } from '@/i18n/translate';
 import type { ProjectRow } from '@/server/dal/projects';
+import { QualityCell } from '@/features/projects/register-cells';
+import type { RegisterRow } from '@/features/projects/register-model';
 import { HealthBadge, Kpi, TINT, projectName } from './view';
 import s from './portfolio.module.css';
 import { dataText } from '@/i18n/data-text';
 
 const tint = (x: Tint) => ({ '--tint': TINT[x] }) as CSSProperties;
 
-export function MyProjectsBody({ data, t, lang }: { data: MyProjectsModel<ProjectRow>; t: T; lang: Lang }) {
+export function MyProjectsBody({ data, t, lang, quality }: {
+  data: MyProjectsModel<ProjectRow>;
+  t: T;
+  lang: Lang;
+  /** S-32: the schedule quality cell of each of the viewer's live projects (absent: no row; null: "—"). */
+  quality?: Record<string, RegisterRow['quality']>;
+}) {
   return (
     <Stack gap={14}>
       <KpiGrid min={160}>
@@ -33,22 +45,24 @@ export function MyProjectsBody({ data, t, lang }: { data: MyProjectsModel<Projec
       )}
       <CardGrid min={300} gap={12} fill align="stretch">
         {data.cards.map((c) => (
-          <ProjectCard key={c.project.code} card={c} t={t} lang={lang} />
+          <ProjectCard key={c.project.code} card={c} t={t} lang={lang} quality={quality && c.project.code in quality ? { cell: quality[c.project.code] } : undefined} />
         ))}
       </CardGrid>
     </Stack>
   );
 }
 
-/** Whole card opens the project's Plan (`p.open`). */
-function ProjectCard({ card: c, t, lang }: { card: MyProjectCard<ProjectRow>; t: T; lang: Lang }) {
+/** Whole card opens the project's Plan (`p.open`): the name's link is stretched over the card. */
+function ProjectCard({ card: c, t, lang, quality }: { card: MyProjectCard<ProjectRow>; t: T; lang: Lang; quality?: { cell: RegisterRow['quality'] } }) {
   const p = c.project;
   const x = c.ind;
   return (
-    <SectionCard href={screenHref('plan', { code: p.code })} gap={10}>
+    <SectionCard as="article" gap={10} className={s.cardLink}>
       <div className={s.head}>
         <div className={s.headText}>
-          <span className={s.name}>{projectName(p, lang)}</span>
+          <Link href={screenHref('plan', { code: p.code })} className={cx(s.name, s.stretched)}>
+            {projectName(p, lang)}
+          </Link>
           <span className={s.sub}>{`${p.analytic || p.code} · ${p.pm} · ${dataText(p.client, lang)}`}</span>
         </div>
         <HealthBadge health={c.health} t={t} />
@@ -82,6 +96,14 @@ function ProjectCard({ card: c, t, lang }: { card: MyProjectCard<ProjectRow>; t:
           {t(x.msLine || x.msDate || '—')}
         </span>
       </div>
+      {quality && (
+        <div className={s.quality}>
+          <span className={s.metricLabel}>{t('Schedule quality')}</span>
+          <span className={s.qualityCell}>
+            <QualityCell quality={quality.cell} />
+          </span>
+        </div>
+      )}
       <div className={s.foot}>
         <span className={s.footLabel}>{t('My open tasks')}</span>
         <span className={cx(s.footCount, !c.myOpen && s.footCountNone)}>{c.myOpen}</span>

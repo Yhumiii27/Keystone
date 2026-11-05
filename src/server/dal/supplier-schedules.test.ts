@@ -132,6 +132,26 @@ describe('activity codes (R-204)', () => {
     expect(c.map.A1010).toEqual({});
   });
 
+  it('S-29: the equipment code takes the work package’s line when the activity has none — the Gantt filter’s rule (S-08)', async () => {
+    const c = (await getActivityCodes('HLT-026'))!;
+    const [eq1, eq2] = c.types[0].values;
+    const wbsOf = new Map(
+      ((await (await getDb()).execute(sql`select a.code, w.code wbs from activities a join wbs_nodes w on w.id = a.wbs_node_id join projects p on p.id = a.project_id where p.code = 'HLT-026'`)).rows as { code: string; wbs: string }[])
+        .map((r) => [r.code, r.wbs]),
+    );
+    const in16 = [...wbsOf].filter(([, w]) => w === '1.6' || w.startsWith('1.6.')).map(([a]) => a);
+    const in15 = [...wbsOf].filter(([, w]) => w === '1.5' || w.startsWith('1.5.')).map(([a]) => a);
+    expect(in16.length).toBeGreaterThan(0);
+    for (const a of in16) expect([a, c.map[a].equipment]).toEqual([a, [eq2.key]]);
+    for (const a of in15) expect([a, c.map[a].equipment]).toEqual([a, [eq1.key]]);
+    // Inherited (the demo data put the line on the packages only), so the drawer shows it as the package's.
+    expect(c.inheritedEquipment[in16[0]]).toBe(eq2.key);
+    // The Gantt's equipment of every project activity is the code's value.
+    const g = (await getGanttNetwork('HLT-026'))!;
+    const refOf = new Map(c.types[0].values.map((v) => [v.key, v.code]));
+    for (const a of g.activities.filter((x) => !x.source)) expect([a.id, a.equipment ?? null]).toEqual([a.id, refOf.get(c.map[a.id]?.equipment?.[0] ?? '') ?? null]);
+  });
+
   it('stores types and values, assigns one value per type, sets the equipment line', async () => {
     const zone = await addActivityCodeType('HLT-026', { name: 'Zone', kind: 'custom' }, PM);
     await expect(addActivityCodeType('HLT-026', { name: 'zone' }, PM)).rejects.toMatchObject({ code: 'typeTaken' });

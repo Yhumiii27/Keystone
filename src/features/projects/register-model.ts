@@ -119,8 +119,8 @@ export interface RegisterInput {
   scheduleLinks?: boolean;
 }
 
-/** S-23: the register's schedule quality cell. */
-function qualityCell(q: ScheduleQualitySummary | undefined, code: string, link: boolean, t: T): RegisterRow['quality'] {
+/** S-23: the register's schedule quality cell (S-32: also the My projects cards'). */
+export function qualityCell(q: ScheduleQualitySummary | undefined, code: string, link: boolean, t: T): RegisterRow['quality'] {
   if (!q) return null;
   const which = q.failedChecks.length ? ` · ${q.failedChecks.map((n) => `#${n}`).join(', ')}` : '';
   return {

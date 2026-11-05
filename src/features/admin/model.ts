@@ -13,6 +13,7 @@ import { IMPORTS_ENABLED } from '@/domain/ch4-defaults';
 import { DEFAULT_CCB_THRESHOLD_KEUR } from '@/domain/change-control';
 import { DCMA_STANDARD, DCMA_THRESHOLD_FIELDS, type DcmaThresholdKey } from '@/domain/schedule-quality';
 import { DRIFT_STANDARD, DRIFT_THRESHOLD_FIELDS, type DriftThresholdKey } from '@/domain/drift-forecast';
+import { SUPPLIER_SLIP_ALERT_DAYS, SUPPLIER_SLIP_DAYS_MAX, SUPPLIER_SLIP_DAYS_MIN, SUPPLIER_SLIP_RULE } from '@/domain/supplier-slip-alerts';
 import { HOURS_VARIANCE_RULE, ratesMaskedActivity, ratesMaskedAudit } from '@/domain/hr';
 import { connectorStateTone } from '@/domain/connectors';
 import { PACK_FAMILY_LABELS, type PackFamily } from '@/domain/engineering-pack';
@@ -68,6 +69,8 @@ export interface SettingsView {
   dcma: { key: DcmaThresholdKey; label: string; value: string; standard: string; min: number; max: number; step: string }[];
   /** S-25: the drift forecast and portfolio Monte-Carlo alert thresholds, as the fields show them. */
   drift: { key: DriftThresholdKey; label: string; value: string; standard: string; min: number; max: number; step: string }[];
+  /** S-31: the supplier schedule slip threshold (working days) as the field shows it, its rule (translated), default and bounds. */
+  supplierSlip: { value: string; text: string; standard: string; min: number; max: number };
   cards: SettingsCardView[];
   /** Location type options of the Locations card (shortened labels). */
   locTypes: { value: LocationType; label: string }[];
@@ -99,6 +102,10 @@ export function settingsView(data: SettingsData, t: T, lang: Lang): SettingsView
       key: f.key, label: t(f.label), value: String((data.drift ?? DRIFT_STANDARD)[f.key]), standard: String(DRIFT_STANDARD[f.key]), min: f.min, max: f.max,
       step: f.integer ? '1' : 'any',
     })),
+    supplierSlip: {
+      value: String(data.supplierSlipDays ?? SUPPLIER_SLIP_ALERT_DAYS), text: t(SUPPLIER_SLIP_RULE), standard: String(SUPPLIER_SLIP_ALERT_DAYS),
+      min: SUPPLIER_SLIP_DAYS_MIN, max: SUPPLIER_SLIP_DAYS_MAX,
+    },
     cards: SETTINGS_CARDS.map((c) => ({ key: c.key, title: t(c.title), sub: t(c.sub), icon: c.icon, count: String(items[c.key].length), isLoc: c.key === 'locations', items: items[c.key] })),
     locTypes: locTypeCodes.map((code) => ({ value: code, label: t(locationTypeShortLabel(locationType.label(code))) })),
   };

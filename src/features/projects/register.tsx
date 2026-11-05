@@ -262,7 +262,7 @@ export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, editableCod
                       </div>
                     </td>
                     <td className={s.quality}>
-                      <QualityCell row={r} />
+                      <QualityCell quality={r.quality} />
                     </td>
                     <td className={s.attention}>
                       <span className={s.attentionText}>{r.attention}</span>
