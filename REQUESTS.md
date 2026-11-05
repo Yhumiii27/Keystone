@@ -128,3 +128,35 @@ Format d'une entrée :
   par `droits.accorder_execution` ; `droits.verifier()` signale une fonction `pub_` exécutable par tous ou sans
   `search_path` fixé. Rien ne change pour Keystone tant que la fonction n'existe pas : la visionneuse reste en lecture seule.
 - Validé par Guillaume le : 2026-11-05
+
+## [2026-11-05] Vigie → Keystone — NC de projet de Vigie : lecture par les vues, avancement par vigie.pub_signaler_avancement_nc (D13)
+- Statut : OUVERTE
+- Demande :
+  1. Lecture : rafraîchir vigie_ncrs et vigie_hse_items par SELECT sur vigie.pub_non_conformites et vigie.pub_hse_projet
+     (liens keystone_app de la convention ; vues reprises par Matrix) au lieu de GET /api/ncrs et /api/hse
+     (quality-connector.ts) ; Vigie n'exposera pas de GET. Correspondance : pub_non_conformites.project_code →
+     projectCode, number → number, vigie_ref → vigieRef, status (open … closed : étapes 0 à 5 de Vigie), closed_on,
+     supplier_id, owner_matricule (voir le plan de Matrix, D13).
+  2. Numéro : décision CV-07 de Vigie (04/11/2026) — le numéro d'une NC est la référence EV-… de Vigie
+     (pub_non_conformites.number = vigie_ref, ex. EV-2026-130), unique ; plus de NCR-nnn (déjà accepté par le contrat
+     vigie-contract.md § 2.2). Seules les NC portant un code projet de keystone.pub_projets sont publiées.
+  3. Avancement (outbox vigie_ncr_progress) : au lieu de POST /api/ncrs/:project/:number/progress, appeler
+     select vigie.pub_signaler_avancement_nc(p_numero => number, p_projet => projectCode, p_nature => kind
+     ('step' | 'verification' | 'references'), p_etape_depuis => fromStatus, p_etape_cible => targetStatus,
+     p_decision => decision ('approved' | 'rejected'), p_commentaire => comment, p_acteur_nom => actor.name,
+     p_acteur_role => actor.role, p_enregistre_le => recordedAt, p_id_externe => keystoneId (même valeur au renvoi :
+     même demande), p_activite, p_article, p_livrable => null hors 'references') ; le résultat est le numéro de la demande
+     dans Vigie (à garder comme vigieRef de l'entrée). Erreur P0V01 (appelant non admis) ou P0V02 (argument invalide) :
+     entrée « failed », non renvoyée telle quelle.
+  4. Réponse asynchrone : la demande est traitée par Vigie dans les 10 minutes ; état et motif lus dans la publication de
+     l'état des demandes (demandée à Matrix : statut applied | rejected, code_resultat stale | refused | not_found |
+     invalid, resultat) ; rejected = état « refused » de l'outbox (fin des renvois) ; stale = l'état a changé dans Vigie
+     (renvoyer d'après le nouvel état lu dans pub_non_conformites).
+  5. Ce que Vigie applique (choix restrictifs, à confirmer avec Keystone) : étape suivante seulement depuis l'état vu
+     (ni « containment », qui est la qualification par le QHSE de Vigie, ni « closed ») et selon les règles de Vigie
+     (analyse saisie, action liée, actions vérifiées) ; vérification (approved / rejected) : proposition au QHSE de Vigie,
+     qui clôt ou renvoie la NC lui-même (la NC reste « verification » d'ici là) ; références activité / article /
+     livrable : posées si vides dans Vigie.
+  6. Liens profonds : fiche /evenements?etat=tous&sel=<EV-…> (inchangé, vigieRef = number).
+- Justification : M-17 (lecture par vues, écriture par fonction pub_ du propriétaire), décisions CV-07 et CV-08 de Vigie.
+- Validé par Guillaume le : 2026-11-05
