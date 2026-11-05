@@ -102,3 +102,29 @@ Format d'une entrée :
 - Détails techniques : vues de Keystone reprises par Matrix : pub_activites, pub_affectations, pub_articles, pub_avancement_projets, pub_avenants, pub_catalogue_machines, pub_chantiers, pub_clients, pub_expeditions, pub_fournisseurs, pub_jalons, pub_jalons_projets, pub_journal, pub_livrables, pub_nomenclatures, pub_pack_ingenierie, pub_parc_machines, pub_projets, pub_reponses_besoins, pub_reserves, pub_rex, pub_taches_jours (22 vues). Écritures reçues d'autres outils : événements RH de Cursus (webhook, flux F03) et retours de Vigie par ses connecteurs : API, conformes, rien à changer. Une vue reprise garde son nom, ses colonnes, son commentaire et ses lecteurs ; seule sa propriété change. Contrôles : `droits.verifier()` (vue `pub_` encore à l'outil : attention, « pas encore reprise »). Pour un essai local (PGlite, base de démonstration), vos migrations anciennes continuent de créer les vues : seule une **nouvelle** migration ne doit plus en créer ni en modifier.
 - Validé par Guillaume le : 2026-11-01
 
+
+## [2026-11-05] Matrix → Keystone — M-19 · Fonction d'édition `keystone.pub_editer` : corriger les données de Keystone depuis Matrix, par vos règles
+- Statut : OUVERTE
+- Demande : fournir, par une migration de Keystone, la fonction
+  `keystone.pub_editer(p_table text, p_action text, p_cle jsonb, p_valeurs jsonb, p_par text, p_motif text) RETURNS jsonb`
+  (`SECURITY DEFINER`, `SET search_path = keystone, pg_temp`, `REVOKE EXECUTE … FROM PUBLIC`), qui ajoute, corrige ou retire une ligne
+  d'une table de Keystone en appliquant vos règles et votre journal :
+  - `p_action` = `ajouter` | `corriger` | `retirer` (un retrait peut être un archivage) ; `p_cle` = clé primaire de la ligne
+    (null pour `ajouter`) ; `p_valeurs` = colonnes à écrire (null pour `retirer`) ;
+  - `p_par` = nom de la personne connectée à Matrix (Microsoft Entra ID, rôle Administrateur) ; `p_motif` = motif saisi
+    (obligatoire) ;
+  - refus par `RAISE EXCEPTION` (message montré tel quel dans Matrix) ; la fonction renvoie la ligne après modification,
+    sans colonne sensible ;
+  - elle refuse les tables que Keystone ne veut pas ouvrir et toute colonne de `droits.colonnes_sensibles` (Matrix ne les
+    transmet jamais, mais la fonction ne doit pas en dépendre) ;
+  - règle propre à Keystone à respecter : journal d'audit en ajout seul (`audit_entries`, R-168) : chaque modification y est écrite avec `p_par` et `p_motif`.
+  Une fonction par table (`keystone.pub_editer_<table>`, mêmes paramètres sans `p_table`) reste possible et passe avant la
+  générique. Une fois la migration passée, passer cette entrée à FAITE : la DSI autorise alors le lien d'écriture dans Matrix.
+- Justification : décision M-19 du 05/11/2026 (responsable produit) : « pour le moment, l'admin IT peut modifier toutes les
+  données à l'exception des données sensibles RGPD », **par les outils** : Matrix n'écrit jamais lui-même dans vos tables
+  (M-18) ; la DSI corrige depuis la visionneuse de Matrix, Keystone garde ses règles et son journal.
+- Détails techniques : convention complète et exemple dans `docs/edition-par-les-outils.md` du dépôt Matrix. Le droit
+  d'exécution est un lien « écriture » `matrix_app` → `keystone.pub_editer`, décidé dans Matrix (« Liens entre outils ») et posé
+  par `droits.accorder_execution` ; `droits.verifier()` signale une fonction `pub_` exécutable par tous ou sans
+  `search_path` fixé. Rien ne change pour Keystone tant que la fonction n'existe pas : la visionneuse reste en lecture seule.
+- Validé par Guillaume le : 2026-11-05
