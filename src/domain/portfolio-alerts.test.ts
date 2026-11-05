@@ -108,7 +108,10 @@ describe('portfolio alert rules', () => {
     expect(portfolioAlertRules(input({ approvals: approvals.slice(0, 1) }), 'en', t)).toEqual([]);
   });
 
-  it('worst first: rule rank, then severity, then register order; capped', () => {
+  // S-33 (owner, 5 Nov 2026): ordered by urgency and importance (class, then magnitude), no longer by rule — was
+  // ['off-O-1', 'slip-S-2', 'slip-S-1', 'cost-C-1', 'people', 'approvals']. Here: O-1 is 0.10 under the off-track threshold (50 %
+  // of class 1) before S-2's −29 d (48 %); the approval waiting 24 days (80 % of class 3) before 1 person over-allocated (20 %).
+  it('worst first (S-33): class, then magnitude, then register order; capped', () => {
     const slip = (code: string, floatDays: number) => project({ code, name: code, schedule: { floatDays, finishText: 'x', baselineText: 'y', lateMilestones: [] } });
     const projects = [
       slip('S-1', -4), slip('S-2', -29), project({ code: 'C-1', name: 'C-1', actual: 440 }), project({ code: 'O-1', name: 'O-1', health: 'off_track', actual: 500, spi: 0.8 }),
@@ -116,7 +119,7 @@ describe('portfolio alert rules', () => {
     const all = portfolioAlertRules(
       input({ projects, people: { over: ['A'], peakWeeks: [42] }, approvals: [{ id: 'X', title: 'x', since: '2026-09-01' }] }), 'en', t,
     );
-    expect(all.map((a) => a.key)).toEqual(['off-O-1', 'slip-S-2', 'slip-S-1', 'cost-C-1', 'people', 'approvals']);
+    expect(all.map((a) => a.key)).toEqual(['off-O-1', 'slip-S-2', 'slip-S-1', 'cost-C-1', 'approvals', 'people']);
     const capped = portfolioAlertRules(input({ projects, people: { over: ['A'], peakWeeks: [42] } }), 'en', t, { ...DEFAULT_ALERT_THRESHOLDS, maxAlerts: 2 });
     expect(capped.map((a) => a.key)).toEqual(['off-O-1', 'slip-S-2']);
   });
@@ -165,11 +168,33 @@ describe('S-30: supplier schedule slipping (threshold S-31)', () => {
     expect(portfolioAlertRules(input({ projects: [p(slips.slice(2))] }), 'en', t)).toEqual([]);
     expect(portfolioAlertRules(input({ projects: [p(undefined)] }), 'en', t)).toEqual([]);
   });
-  it('ranked after the late milestones, before the Monte-Carlo forecast; the worse slip first', () => {
+  // S-33: was ['ms-MS-1', 'supplier-S-2', 'supplier-S-1', 'mc-MC-1'] (rule order). Now by magnitude inside class 2: the 10 %
+  // Monte-Carlo chance (half the 20 % threshold missing: 50 %), then 1 late milestone and a 20-day slip (both 33 %: the former rule
+  // order breaks the tie), then a 6-day slip (10 %).
+  it('ranked by magnitude in class 2 (S-33); the worse slip first', () => {
     const late = project({ code: 'MS-1', name: 'MS-1', schedule: { floatDays: 2, finishText: 'x', baselineText: 'y', lateMilestones: ['M'] } });
     const mc = project({ code: 'MC-1', name: 'MC-1', riskAnalysis: { probOnTarget: 0.1, p80Finish: '2027-01-04', target: null } });
     const small = project({ code: 'S-1', name: 'S-1', supplierSlips: [{ po: 'PO-1', supplier: 'X', slipDays: 6, activity: null }] });
     const big = project({ code: 'S-2', name: 'S-2', supplierSlips: [{ po: 'PO-2', supplier: 'Y', slipDays: 20, activity: null }] });
-    expect(portfolioAlertRules(input({ projects: [mc, small, late, big] }), 'en', makeT('en')).map((a) => a.key)).toEqual(['ms-MS-1', 'supplier-S-2', 'supplier-S-1', 'mc-MC-1']);
+    expect(portfolioAlertRules(input({ projects: [mc, small, late, big] }), 'en', makeT('en')).map((a) => a.key)).toEqual(['mc-MC-1', 'ms-MS-1', 'supplier-S-2', 'supplier-S-1']);
+  });
+  it('S-33 / S-34: a slip pushing the project finish by the impact threshold ranks with the end-date alerts; the impact is shown', () => {
+    const slipCp = project({ code: 'CP-1', name: 'CP-1', schedule: { floatDays: -3, finishText: 'x', baselineText: 'y', lateMilestones: [] } });
+    const push = (finishImpactDays: number | null) => project({ code: 'S-1', name: 'S-1', supplierSlips: [
+      { po: 'PO-1', supplier: 'X', slipDays: 8, activity: null, finishImpactDays },
+      { po: 'PO-2', supplier: 'Y', slipDays: 12, activity: null, finishImpactDays: 0 },
+    ] });
+    const mc = project({ code: 'MC-1', name: 'MC-1', riskAnalysis: { probOnTarget: 0.1, p80Finish: '2027-01-04', target: null } });
+    // 6 working days ≥ 5: class 1, 10 % (6 / 60) — before the 3-day critical slip (5 %) and every class-2 alert.
+    const hit = portfolioAlertRules(input({ projects: [mc, slipCp, push(6)] }), 'en', t);
+    expect(hit.map((a) => a.key)).toEqual(['supplier-S-1', 'slip-CP-1', 'mc-MC-1']);
+    // The schedule pushing the finish is named first, even with the smaller slip.
+    expect(hit[0].detail).toBe('PO-1 · X · +8 working days (threshold 5) · project finish +6 working days · 1 more.');
+    expect(portfolioAlertRules(input({ projects: [push(6)] }), 'fr', t)[0].detail).toBe('PO-1 · X · +8 jours ouvrés (seuil 5) · fin du projet +6 jours ouvrés · 1 de plus.');
+    // Under the impact threshold (Settings): class 2, ranked by the slip (12 / 60 = 20 %) after the Monte-Carlo alert (50 %).
+    expect(portfolioAlertRules(input({ projects: [mc, slipCp, push(6)] }), 'en', t, { ...DEFAULT_ALERT_THRESHOLDS, supplierImpactDays: 7 }).map((a) => a.key))
+      .toEqual(['slip-CP-1', 'mc-MC-1', 'supplier-S-1']);
+    expect(portfolioAlertRules(input({ projects: [mc, slipCp, push(null)] }), 'en', t).map((a) => a.key)).toEqual(['slip-CP-1', 'mc-MC-1', 'supplier-S-1']);
+    expect(portfolioAlertRules(input({ projects: [push(null)] }), 'en', t)[0].detail).toBe('PO-2 · Y · +12 working days (threshold 5) · 1 more.');
   });
 });

@@ -27,8 +27,11 @@ import type { Actor } from '@/server/dal/ops-common';
 import {
   CCB_THRESHOLD_ERROR, HOURS_VARIANCE_RANGE, addLocation, addReferenceValue, getHealthThresholds, removeLocation, removeReferenceValue, resetSettings, setCcbThreshold, setDcmaThreshold, setDriftThreshold, setHealthThresholds, setHoursVariance,
   setSupplierSlipDays,
+  setSupplierSlipEscalation,
 } from '@/server/dal/settings';
-import { SUPPLIER_SLIP_DAYS_RANGE, parseSupplierSlipDays } from '@/domain/supplier-slip-alerts';
+import {
+  SUPPLIER_SLIP_DAYS_RANGE, SUPPLIER_SLIP_ESCALATION_RANGE, isSupplierSlipEscalationKey, parseSupplierSlipDays, parseSupplierSlipEscalation,
+} from '@/domain/supplier-slip-alerts';
 import { isCcbThreshold } from '@/domain/change-control';
 import { parseHoursVarianceInput } from '@/domain/hr';
 import { DCMA_THRESHOLD_RANGE, isDcmaThresholdKey, parseDcmaThreshold } from '@/domain/schedule-quality';
@@ -239,6 +242,25 @@ export async function setSupplierSlipDaysAction(raw: unknown): Promise<AdminActi
   if (days === null) return fail(SUPPLIER_SLIP_DAYS_RANGE);
   try {
     await setSupplierSlipDays(days, ok.actor);
+  } catch (e) {
+    return failure(e);
+  }
+  refresh();
+  return { ok: true };
+}
+
+/**
+ * S-34: one escalation threshold of the supplier slips to the portfolio directors (working days lasted, working days of push on
+ * the project's finish; defaults 10 and 5) — the director only.
+ */
+export async function setSupplierSlipEscalationAction(key: unknown, raw: unknown): Promise<AdminActionResult> {
+  const ok = await settingsEditor();
+  if ('error' in ok) return ok;
+  if (!isSupplierSlipEscalationKey(key)) return fail('Invalid request');
+  const v = parseSupplierSlipEscalation(key, raw);
+  if (v === null) return fail(SUPPLIER_SLIP_ESCALATION_RANGE);
+  try {
+    await setSupplierSlipEscalation(key, v, ok.actor);
   } catch (e) {
     return failure(e);
   }

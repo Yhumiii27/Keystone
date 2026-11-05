@@ -53,3 +53,67 @@ export const supplierSlipSlots = (level: number): string[] => Array.from({ lengt
 /** Fixed EN title (FR in src/i18n/extra/d9-s-quality.json); the order number and the slip follow after " · ". */
 export const SUPPLIER_SLIP_TITLE = 'Supplier schedule slipping';
 export const supplierSlipTitle = (po: string, slipDays: number) => `${SUPPLIER_SLIP_TITLE} · ${po} · +${slipDays} working days`;
+
+// ── S-34: escalation to the portfolio directors ──────────────────────────────────────────────────────────────────────────────
+// (owner, 5 Nov 2026) A supplier slip is also told to the portfolio directors when it has lasted too long AND its impact on the
+// project is significant, by two Settings thresholds (app_settings "purchasing.supplierSlipEscalation" = { days, impactDays },
+// the portfolio director's, next to the S-31 threshold):
+//   - duration: working days (project calendar) since the slip first reached the alert threshold (the day S-27 first told it;
+//     an episode ends when the schedule falls back under the threshold) — default 10;
+//   - impact: working days the slip pushes the project's forecast finish — the project's finish (its own activities) with the
+//     supplier schedule as forecast, against the same network with that supplier holding its committed dates
+//     (`supplierFinishImpact`, src/domain/supplier-schedule.ts) — default 5. A schedule that is not tied to the project's
+//     activities cannot move the project: impact 0.
+// One director notice per slip episode.
+
+export interface SupplierSlipEscalation {
+  /** Working days the slip has lasted (from the day it first reached the alert threshold). */
+  days: number;
+  /** Working days of push on the project's forecast finish. */
+  impactDays: number;
+}
+export type SupplierSlipEscalationKey = keyof SupplierSlipEscalation;
+
+export const SUPPLIER_SLIP_ESCALATION_STANDARD: SupplierSlipEscalation = { days: 10, impactDays: 5 };
+
+/** The two fields of Settings (EN labels; FR in src/i18n/extra/d9-s-alerts.json). Whole working days. */
+export const SUPPLIER_SLIP_ESCALATION_FIELDS: readonly { key: SupplierSlipEscalationKey; label: string; min: number; max: number }[] = [
+  { key: 'days', label: 'Directors told after (working days of slip)', min: 1, max: 120 },
+  { key: 'impactDays', label: 'When the project finish moves by (working days)', min: 1, max: 60 },
+];
+export const SUPPLIER_SLIP_ESCALATION_RANGE = 'Enter a whole number of working days within the range of this threshold';
+export const SUPPLIER_SLIP_ESCALATION_RULE = 'The portfolio directors are told once per slip when it has lasted this many working days since it reached the alert threshold and pushes the project’s forecast finish by at least this many working days';
+
+export const isSupplierSlipEscalationKey = (k: unknown): k is SupplierSlipEscalationKey =>
+  typeof k === 'string' && SUPPLIER_SLIP_ESCALATION_FIELDS.some((f) => f.key === k);
+
+/** A typed value of one escalation threshold ("10", " 8 ", 10): a whole number in its range; null otherwise. */
+export function parseSupplierSlipEscalation(key: SupplierSlipEscalationKey, raw: unknown): number | null {
+  const f = SUPPLIER_SLIP_ESCALATION_FIELDS.find((x) => x.key === key);
+  if (!f) return null;
+  const v = typeof raw === 'number' ? raw : typeof raw === 'string' && /^\s*\d{1,4}\s*$/.test(raw) ? Number(raw.trim()) : NaN;
+  return Number.isInteger(v) && v >= f.min && v <= f.max ? v : null;
+}
+
+/** The stored setting over the defaults: a missing or invalid value keeps its default. */
+export function usableSupplierSlipEscalation(stored: unknown): SupplierSlipEscalation {
+  const out = { ...SUPPLIER_SLIP_ESCALATION_STANDARD };
+  if (!stored || typeof stored !== 'object') return out;
+  for (const f of SUPPLIER_SLIP_ESCALATION_FIELDS) {
+    const v = (stored as Record<string, unknown>)[f.key];
+    if (typeof v === 'number' && parseSupplierSlipEscalation(f.key, v) !== null) out[f.key] = v;
+  }
+  return out;
+}
+
+/** The slip is told to the directors: it has lasted at least `days` and pushes the project's finish by at least `impactDays`. */
+export const shouldEscalateSupplierSlip = (s: { lastedDays: number; finishImpactDays: number | null }, th: SupplierSlipEscalation): boolean =>
+  s.lastedDays >= th.days && (s.finishImpactDays ?? 0) >= th.impactDays;
+
+/** Send-log slot of the director notice (one per episode: the episode's rows are cleared with the levels). */
+export const SUPPLIER_SLIP_DIRECTOR_SLOT = 'directors';
+
+/** Fixed EN title of the director notice (FR in src/i18n/extra/d9-s-alerts.json); the order, the slip and the impact follow. */
+export const SUPPLIER_SLIP_ESCALATION_TITLE = 'Supplier slip escalated to the directors';
+export const supplierSlipEscalationTitle = (po: string, slipDays: number, impactDays: number) =>
+  `${SUPPLIER_SLIP_ESCALATION_TITLE} · ${po} · +${slipDays} working days · project finish +${impactDays} working days`;

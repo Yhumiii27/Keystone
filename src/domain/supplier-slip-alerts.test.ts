@@ -1,6 +1,7 @@
 // S-27 — supplier schedule slip alerts: levels, slots and recipients.
 import { describe, expect, it } from 'vitest';
 import { makeT } from '@/i18n/translate';
+import * as m from './supplier-slip-alerts';
 import { SUPPLIER_SLIP_ALERT_DAYS, parseSupplierSlipDays, supplierSlipLevel, usableSupplierSlipDays, supplierSlipRecipients, supplierSlipSlots, supplierSlipTitle } from './supplier-slip-alerts';
 
 describe('supplier slip alerts (S-27)', () => {
@@ -27,5 +28,36 @@ describe('supplier slip alerts (S-27)', () => {
     expect(['0', '61', '2.5', '2,5', 'ten', '', null, undefined, 4.5].map(parseSupplierSlipDays)).toEqual(Array(9).fill(null));
     expect(usableSupplierSlipDays({ days: 9 })).toBe(9);
     expect([null, {}, { days: 0 }, { days: '7' }, 'x'].map(usableSupplierSlipDays)).toEqual([5, 5, 5, 5, 5]);
+  });
+});
+
+describe('S-34: escalation to the directors', () => {
+  it('defaults, parsing, stored values', () => {
+    expect(m.SUPPLIER_SLIP_ESCALATION_STANDARD).toEqual({ days: 10, impactDays: 5 });
+    expect(m.parseSupplierSlipEscalation('days', ' 15 ')).toBe(15);
+    expect(m.parseSupplierSlipEscalation('days', 120)).toBe(120);
+    expect(m.parseSupplierSlipEscalation('days', 121)).toBeNull();
+    expect(m.parseSupplierSlipEscalation('impactDays', '61')).toBeNull();
+    expect(m.parseSupplierSlipEscalation('impactDays', '0')).toBeNull();
+    expect(m.parseSupplierSlipEscalation('impactDays', '2.5')).toBeNull();
+    expect(m.parseSupplierSlipEscalation('impactDays', 'ten')).toBeNull();
+    expect(m.isSupplierSlipEscalationKey('days')).toBe(true);
+    expect(m.isSupplierSlipEscalationKey('other')).toBe(false);
+    expect(m.usableSupplierSlipEscalation(null)).toEqual({ days: 10, impactDays: 5 });
+    expect(m.usableSupplierSlipEscalation({ days: 20, impactDays: 0 })).toEqual({ days: 20, impactDays: 5 });
+    expect(m.usableSupplierSlipEscalation({ days: '20', impactDays: 3 })).toEqual({ days: 10, impactDays: 3 });
+  });
+  it('both conditions: lasted long enough AND pushing the project finish enough', () => {
+    const esc = m.shouldEscalateSupplierSlip;
+    const th = { days: 10, impactDays: 5 };
+    expect(esc({ lastedDays: 10, finishImpactDays: 5 }, th)).toBe(true);
+    expect(esc({ lastedDays: 9, finishImpactDays: 30 }, th)).toBe(false);
+    expect(esc({ lastedDays: 40, finishImpactDays: 4 }, th)).toBe(false);
+    expect(esc({ lastedDays: 40, finishImpactDays: null }, th)).toBe(false);
+  });
+  it('title, EN and FR', () => {
+    const title = m.supplierSlipEscalationTitle('PO-1078', 12, 6);
+    expect(title).toBe('Supplier slip escalated to the directors · PO-1078 · +12 working days · project finish +6 working days');
+    expect(makeT('fr')(title)).toBe('Glissement fournisseur remonté à la direction · PO-1078 · +12 jours ouvrés · fin du projet +6 jours ouvrés');
   });
 });

@@ -1100,6 +1100,8 @@ export const APP_SETTING_DCMA = 'schedule.dcma';
 export const APP_SETTING_DRIFT = 'forecast.drift';
 /** S-31: the supplier schedule slip threshold { days } (default and bounds: src/domain/supplier-slip-alerts.ts). */
 export const APP_SETTING_SUPPLIER_SLIP = 'purchasing.supplierSlip';
+/** S-34: the escalation of a supplier slip to the directors { days, impactDays } (src/domain/supplier-slip-alerts.ts). */
+export const APP_SETTING_SUPPLIER_SLIP_ESCALATION = 'purchasing.supplierSlipEscalation';
 
 /** Slug of a free label (custom Settings entries, custom machine types): "Permits & fees" → "permits_fees". */
 export const slugOf = (label: string) =>

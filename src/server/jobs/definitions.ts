@@ -185,16 +185,17 @@ const RUNS: Record<JobName, () => Promise<JobOutcome>> = {
     };
   },
   // ── Delivery 9 · R-015: the portfolio alert rules as notices, once per alert while it lasts.
-  // S-27: with them, the supplier schedule slips (5 working days or more), once per slip level.
+  // S-27: with them, the supplier schedule slips (5 working days or more), once per slip level; S-34: escalated to the directors.
   'indicator-alerts': async (): Promise<JobOutcome> => {
     const r = await (await import('@/server/dal/event-notices')).runIndicatorAlerts();
     const s = await (await import('@/server/dal/supplier-slip-notices')).runSupplierSlipAlerts(r.today);
     return {
       summary: `Indicator alerts at ${r.today} · ${r.alerts} active · ${r.raised} new · ${r.notified} persons notified · ${r.cleared} cleared`
-        + ` · supplier slips: ${s.slipping} of ${s.watched} schedules · ${s.raised} new levels · ${s.notified} persons notified · ${s.cleared} cleared`,
+        + ` · supplier slips: ${s.slipping} of ${s.watched} schedules · ${s.raised} new levels · ${s.notified} persons notified · ${s.cleared} cleared · ${s.escalated} escalated to the directors`,
       counts: {
         alerts: r.alerts, raised: r.raised, notified: r.notified, cleared: r.cleared,
         supplierSlipping: s.slipping, supplierRaised: s.raised, supplierNotified: s.notified, supplierCleared: s.cleared,
+        supplierEscalated: s.escalated, supplierDirectorsNotified: s.directorsNotified,
       },
     };
   },

@@ -53,3 +53,7 @@ FR_RULES.push([/^(\d+) not at class E10$/, '$1 hors classe E10']);
 
 // R-017: the pager of the long lists (documents vault, audit trail), "Page 2 of 7".
 FR_RULES.push([/^Page (\d+) of (\d+)$/, 'Page $1 sur $2']);
+
+// S-34: the director notice of a supplier slip ("Supplier slip escalated to the directors · PO-1078 · +12 working days · project
+// finish +6 working days"): its last segment, ahead of the general " working days" rule.
+FR_RULES.unshift([/^project finish \+(\d+) working days$/, 'fin du projet +$1 jours ouvrés']);

@@ -25,7 +25,7 @@ import { REQUIRED_STAGES } from '@/domain/settings-rules';
 import { useI18n } from '@/i18n/client';
 import type { LocationType } from '@/server/db/codes';
 import {
-  addSettingsEntryAction, removeSettingsEntryAction, setCcbThresholdAction, setDcmaThresholdAction, setDriftThresholdAction, setHealthThresholdAction, setHoursVarianceAction, setSupplierSlipDaysAction,
+  addSettingsEntryAction, removeSettingsEntryAction, setCcbThresholdAction, setDcmaThresholdAction, setDriftThresholdAction, setHealthThresholdAction, setHoursVarianceAction, setSupplierSlipDaysAction, setSupplierSlipEscalationAction,
   type AdminActionResult,
 } from './actions';
 import type { SettingsCardView, SettingsView } from './model';
@@ -159,6 +159,13 @@ export function SettingsBody({ view, canEdit, directorOnlyNote = false }: { view
             label={t('Alert from (working days)')}
             defaultLabel={t('Default')}
           />
+        </div>
+        {/* S-34: the escalation to the portfolio directors (a slip that lasts and pushes the project's finish), 10 and 5 by default. */}
+        <span className={s.muted12}>{view.supplierSlipEscalation.text}</span>
+        <div className={st.dcmaGrid}>
+          {view.supplierSlipEscalation.fields.map((f) => (
+            <DcmaField key={`${f.key}-${f.value}`} field={f} canEdit={canEdit} standardLabel={t('Default')} save={setSupplierSlipEscalationAction} idPrefix="slip-escalation" />
+          ))}
         </div>
       </div>
       <div className={s.cardGrid}>
@@ -307,7 +314,7 @@ function CcbField({ initial, label, canEdit }: { initial: string; label: string;
  * non-directors.
  */
 function DcmaField({ field, canEdit, standardLabel, save, idPrefix }: {
-  field: SettingsView['dcma'][number] | SettingsView['drift'][number];
+  field: SettingsView['dcma'][number] | SettingsView['drift'][number] | SettingsView['supplierSlipEscalation']['fields'][number];
   canEdit: boolean;
   standardLabel: string;
   save: (key: string, raw: unknown) => Promise<AdminActionResult>;

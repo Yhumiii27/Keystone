@@ -6,7 +6,7 @@ import { WorkCalendar, type CalendarDef } from './calendar';
 import { schedule, type CpmInput } from './cpm';
 import {
   checkSupplierLink, checkSupplierTie, consolidateNetwork, lastSupplierActivity, parseSupplierActivity, parseSupplierProgress, supplierCpmActivity,
-  supplierForecast, supplierNetworkCycle, supplierNodeId, type SupplierScheduleInput,
+  supplierFinishImpact, supplierForecast, supplierNetworkCycle, supplierNodeId, supplierOnCommitment, type SupplierScheduleInput,
 } from './supplier-schedule';
 
 // Mon–Fri without holidays; 5 Jan 2026 is a Monday.
@@ -200,5 +200,43 @@ describe('forecast and slips', () => {
     expect(supplierForecast({ po: 'PO-1', activities: [], links: [], ties: [] }, ctx)).toEqual({ ok: true, activities: {}, finish: null, slip: 0, late: false });
     const loop = supplier({ links: [...supplier().links, { pred: 'F30', succ: 'F10', type: 'FS', lag: 0 }] });
     expect(supplierForecast(loop, ctx)).toMatchObject({ ok: false });
+  });
+});
+
+describe('S-34: impact of a supplier slip on the project finish', () => {
+  const lateDrawings = (finish: string) => {
+    const s = supplier();
+    s.activities = s.activities.map((a) => (a.code === 'F10' ? { ...a, actualStart: '2026-01-05', actualFinish: finish, pct: 100 } : a));
+    return s;
+  };
+  const at = { ...project, dataDate: '2026-01-16' };
+
+  it('on commitment: each committed activity ends on its committed finish (or earlier when it did)', () => {
+    const held = supplierOnCommitment(lateDrawings('2026-01-15'));
+    expect(held.activities.map((a) => [a.code, a.actualStart, a.actualFinish])).toEqual([
+      ['F10', '2026-01-05', '2026-01-09'], ['F20', '2026-01-12', '2026-01-23'], ['F30', undefined, undefined],
+    ]);
+    const early = supplierOnCommitment(lateDrawings('2026-01-07'));
+    expect(early.activities[0]).toMatchObject({ actualFinish: '2026-01-07' });
+    const free = supplier({ activities: [{ code: 'F10', name: 'x', duration: 3, pct: 0 }] });
+    expect(supplierOnCommitment(free)).toEqual(free);
+  });
+
+  it('a tied schedule 4 working days late pushes the project finish by 4 working days', () => {
+    expect(supplierFinishImpact(at, [lateDrawings('2026-01-15')], 'PO-1082')).toBe(4);
+    // On time, or early: no push.
+    expect(supplierFinishImpact(project, [supplier()], 'PO-1082')).toBe(0);
+    expect(supplierFinishImpact({ ...project, dataDate: '2026-01-08' }, [lateDrawings('2026-01-07')], 'PO-1082')).toBe(0);
+    // Early drawings but manufacturing still not started at the data date (16 Jan, committed 12 Jan): it slips, and pushes.
+    expect(supplierFinishImpact(at, [lateDrawings('2026-01-07')], 'PO-1082')).toBe(4);
+  });
+
+  it('a slip absorbed by the float of the tie pushes nothing; an untied schedule cannot move the project', () => {
+    const slack = { ...at, activities: [...at.activities, { id: 'A40', duration: 40 }] };
+    expect(supplierFinishImpact(slack, [lateDrawings('2026-01-15')], 'PO-1082')).toBe(0);
+    expect(supplierFinishImpact(at, [lateDrawings('2026-01-15'), supplier({ po: 'PO-1090', ties: [] })], 'PO-1090')).toBe(0);
+    expect(supplierFinishImpact(at, [lateDrawings('2026-01-15')], 'PO-9999')).toBeNull();
+    const loop = { ...at, links: [...at.links, { pred: 'A20', succ: 'A10', type: 'FS' as const, lag: 0 }] };
+    expect(supplierFinishImpact(loop, [lateDrawings('2026-01-15')], 'PO-1082')).toBeNull();
   });
 });

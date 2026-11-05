@@ -325,3 +325,58 @@ export function supplierForecast(
   }
   return { ok: true, activities: out, finish, slip, late };
 }
+
+// ── S-34: impact of a supplier slip on the project's finish ──────────────────────────────────────────────────────────────
+
+/**
+ * The schedule as if the supplier held its commitments: each activity with a committed finish ends on it (or earlier when it
+ * actually did), started on its committed start; activities without a committed finish are kept as they are, and so is a
+ * milestone not reached yet (it follows its predecessors, held to its committed date — the engine's start-of-day milestones).
+ */
+export function supplierOnCommitment(s: SupplierScheduleInput): SupplierScheduleInput {
+  return {
+    ...s,
+    activities: s.activities.map((a) => {
+      if (!a.committedFinish) return a;
+      if (a.duration === 0 && !a.actualFinish) return a;
+      if (a.actualFinish && a.actualStart && a.actualFinish <= a.committedFinish) return a;
+      const start = a.actualStart && a.actualStart <= a.committedFinish ? a.actualStart : a.committedStart && a.committedStart <= a.committedFinish ? a.committedStart : a.committedFinish;
+      return { ...a, actualStart: start, actualFinish: a.committedFinish, pct: 100 };
+    }),
+  };
+}
+
+/** Latest finish of the project's own activities (supplier nodes left out); null without any. */
+function projectFinishOf(result: ReturnType<typeof schedule>, projectIds: readonly string[]): IsoDate | null {
+  let finish: IsoDate | null = null;
+  for (const id of projectIds) {
+    const f = result.activities[id]?.finish;
+    if (f && (!finish || f > finish)) finish = f;
+  }
+  return finish;
+}
+
+/**
+ * S-34: working days the supplier schedule `po` pushes the project's forecast finish — the finish of the project's own
+ * activities in the consolidated network (every tied schedule as forecast) against the same network with `po` on its
+ * commitments (`supplierOnCommitment`), on the project calendar; 0 when it does not push (or is not tied: it cannot move the
+ * project); null when the network cannot be computed (loop, invalid input).
+ */
+export function supplierFinishImpact(projectInput: CpmInput, schedules: readonly SupplierScheduleInput[], po: string): number | null {
+  const target = schedules.find((s) => s.po === po);
+  if (!target) return null;
+  const projectIds = projectInput.activities.map((a) => a.id);
+  const ids = new Set(projectIds);
+  if (!target.ties.some((t) => ids.has(t.activity))) return 0;
+  const cal = projectInput.calendars[projectInput.projectCalendar];
+  if (!cal) return null;
+  try {
+    const now = projectFinishOf(schedule(consolidateNetwork(projectInput, schedules).input), projectIds);
+    const held = projectFinishOf(schedule(consolidateNetwork(projectInput, schedules.map((s) => (s.po === po ? supplierOnCommitment(s) : s))).input), projectIds);
+    if (!now || !held) return 0;
+    return Math.max(0, cal.workDaysBetween(held, now));
+  } catch (e) {
+    if (e instanceof CpmCycleError || e instanceof CpmInputError) return null;
+    throw e;
+  }
+}
