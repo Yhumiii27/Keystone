@@ -407,3 +407,5 @@ Questionnaire https://claude.ai/artifact/4AAS3t3L6t8soKaQCNxRBh (`docs/decisions
 - **S-30 · Glissement fournisseur dans les alertes du portefeuille (S-27)** : oui, une ligne dans les alertes de la Vue d’ensemble.
 - **S-31 · Seuil du glissement fournisseur (S-27)** : réglable dans Paramètres (défaut 5 jours ouvrés).
 - **S-32 · Colonne « Qualité du planning » dans « Mes projets » (S-23)** : oui.
+- **S-33 · Alertes de la Vue d’ensemble** : le nombre affiché (8) suffit ; les alertes sont classées par urgence et importance, et non plus par type d’alerte.
+- **S-34 · Glissement fournisseur prévenu aux directeurs** : oui quand le glissement dure trop longtemps et que son impact sur le projet est important, selon des seuils réglables dans Paramètres.
