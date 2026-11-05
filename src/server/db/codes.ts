@@ -1098,6 +1098,8 @@ export const APP_SETTING_HOURS_VARIANCE = 'hours.variance';
 export const APP_SETTING_DCMA = 'schedule.dcma';
 /** S-25: the drift forecast and portfolio Monte-Carlo alert thresholds (DriftThresholds, src/domain/drift-forecast.ts). */
 export const APP_SETTING_DRIFT = 'forecast.drift';
+/** S-31: the supplier schedule slip threshold { days } (default and bounds: src/domain/supplier-slip-alerts.ts). */
+export const APP_SETTING_SUPPLIER_SLIP = 'purchasing.supplierSlip';
 
 /** Slug of a free label (custom Settings entries, custom machine types): "Permits & fees" → "permits_fees". */
 export const slugOf = (label: string) =>

@@ -9,7 +9,7 @@
 // note. "Remove" toasts whether the value was deleted or deactivated (still in use / a default). The health card states
 // the one rule every screen applies.
 import {
-  CalendarX, Certificate, ChartLineUp, ClockCountdown, Coins, CurrencyEur, Files, Flag, Gavel, Heartbeat, LockSimple, Plus, TrendUp, Warehouse, Warning, X,
+  CalendarX, Certificate, ChartLineUp, ClockCountdown, Coins, CurrencyEur, Files, Flag, Gavel, Heartbeat, LockSimple, Plus, TrendUp, Truck, Warehouse, Warning, X,
 } from '@phosphor-icons/react/dist/ssr';
 import type { Icon } from '@phosphor-icons/react';
 import Link from 'next/link';
@@ -25,7 +25,8 @@ import { REQUIRED_STAGES } from '@/domain/settings-rules';
 import { useI18n } from '@/i18n/client';
 import type { LocationType } from '@/server/db/codes';
 import {
-  addSettingsEntryAction, removeSettingsEntryAction, setCcbThresholdAction, setDcmaThresholdAction, setDriftThresholdAction, setHealthThresholdAction, setHoursVarianceAction, type AdminActionResult,
+  addSettingsEntryAction, removeSettingsEntryAction, setCcbThresholdAction, setDcmaThresholdAction, setDriftThresholdAction, setHealthThresholdAction, setHoursVarianceAction, setSupplierSlipDaysAction,
+  type AdminActionResult,
 } from './actions';
 import type { SettingsCardView, SettingsView } from './model';
 import s from './admin.module.css';
@@ -143,6 +144,23 @@ export function SettingsBody({ view, canEdit, directorOnlyNote = false }: { view
           ))}
         </div>
       </div>
+      {/* S-31: the supplier schedule slip threshold (S-27 alerts, S-30 portfolio alert line), 5 working days by default. */}
+      <div className={cx('card', 'elev-sm', s.healthCard)}>
+        <div className={s.healthHead}>
+          <Truck className={s.accent} aria-hidden />
+          <div className={s.healthTitle}>
+            <div className="card-title">{t('Supplier schedule slip')}</div>
+            <span className={s.muted12}>{view.supplierSlip.text}</span>
+          </div>
+          <SupplierSlipField
+            key={`slip-${view.supplierSlip.value}`}
+            field={view.supplierSlip}
+            canEdit={canEdit}
+            label={t('Alert from (working days)')}
+            defaultLabel={t('Default')}
+          />
+        </div>
+      </div>
       <div className={s.cardGrid}>
         {view.cards.map((c) => (
           <ListCard key={c.key} card={c} locTypes={view.locTypes} canEdit={canEdit} />
@@ -213,6 +231,41 @@ function HoursVarianceField({ initial, canEdit, label }: { initial: string; canE
           if (e.key === 'Enter') commit();
         }}
       />
+    </div>
+  );
+}
+
+/** S-31: the supplier schedule slip threshold — an integer 1–60, saved on blur / Enter when changed; read-only for non-directors. */
+function SupplierSlipField({ field, canEdit, label, defaultLabel }: { field: SettingsView['supplierSlip']; canEdit: boolean; label: string; defaultLabel: string }) {
+  const [value, setValue] = useState(field.value);
+  const [pending, start] = useTransition();
+  const commit = () => {
+    if (!canEdit || pending || value.trim() === field.value) return;
+    start(async () => {
+      if (!(await attempt(setSupplierSlipDaysAction(value)))) setValue(field.value);
+    });
+  };
+  return (
+    <div className={cx('field', s.thresholdField)}>
+      <label htmlFor="supplier-slip-days">{label}</label>
+      <input
+        id="supplier-slip-days"
+        className={cx('input', s.thresholdInput)}
+        type="number"
+        step="1"
+        min={field.min}
+        max={field.max}
+        value={value}
+        readOnly={!canEdit}
+        aria-busy={pending || undefined}
+        aria-describedby="supplier-slip-days-std"
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+        }}
+      />
+      <span id="supplier-slip-days-std" className={st.dcmaStd}>{`${defaultLabel} ${field.standard}`}</span>
     </div>
   );
 }

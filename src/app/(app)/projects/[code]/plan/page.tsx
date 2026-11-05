@@ -206,6 +206,7 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
             activity={act.id}
             types={codeTypes}
             values={codeMap[act.id] ?? {}}
+            inheritedEquipment={codes?.inheritedEquipment[act.id]}
             ties={(suppliers?.schedules ?? []).flatMap((x) =>
               x.ties.filter((y) => y.activity === act.id).map((y) => {
                 const sa = x.activities.find((z) => z.code === y.supplier);

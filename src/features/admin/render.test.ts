@@ -66,8 +66,10 @@ describe('Settings body', () => {
     expect(out).not.toContain('placeholder="Add an entry"');
     expect(out).not.toContain('aria-pressed=');
     // The two health thresholds, the hours-variance threshold (R-088), (delivery 8, R-069) the change control board threshold and
-    // (R-206, K-206b) the 15 schedule quality thresholds and (S-25) the 13 drift forecast thresholds.
-    expect(count(out, /readOnly=""|readonly=""/gi)).toBe(32);
+    // (R-206, K-206b) the 15 schedule quality thresholds, (S-25) the 13 drift forecast thresholds and (S-31) the supplier slip
+    // threshold.
+    expect(count(out, /readOnly=""|readonly=""/gi)).toBe(33);
+    expect(out).toContain('id="supplier-slip-days"');
     expect(text(out)).toContain('Software / IT');
   });
 });

@@ -73,6 +73,20 @@ export function groupByEquipment<R extends { equipmentRef: string | null }>(rows
   return groups.filter((g) => g.rows.length);
 }
 
+/**
+ * S-08 / S-29: the equipment line of a planning activity — its own line (`activities.equipment_id`), else its work package's (a
+ * level-1 WBS node specific to a line, `wbs_nodes.equipment_id`: the activity's WBS code is the package's or starts with it and a
+ * dot); null = common to the project. One rule for the Gantt's equipment filter and the derived "Equipment" activity code.
+ * `line` is whatever identifies a line for the caller (its id or its reference).
+ */
+export function activityLineOf<L extends string>(
+  own: L | null | undefined, wbsCode: string, packages: readonly { code: string; line: L | null }[],
+): L | null {
+  if (own) return own;
+  const p = packages.find((x) => wbsCode === x.code || wbsCode.startsWith(`${x.code}.`));
+  return p?.line ?? null;
+}
+
 /** Two records may concern each other: same line, or one of them is common to the project. */
 export const sameEquipment = (a: string | null | undefined, b: string | null | undefined) => !a || !b || a === b;
 

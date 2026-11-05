@@ -400,3 +400,10 @@ Questionnaire https://claude.ai/artifact/4AAS3t3L6t8soKaQCNxRBh (`docs/decisions
 - **S-26 · Un objet « lot d’achat » regroupant plusieurs commandes (un planning fournisseur par lot) ?** : Plus tard ★
 - **S-27 · Alerter quand un planning fournisseur glisse ?** : Oui : acheteur et chef de projet, à partir de 5 jours ouvrés ★
 - **S-28 · Planning fournisseur type par type de machine ou catégorie d’achat ?** : Plus tard, avec les standards par type de machine (R-053) ★
+
+### Suites des lots de suivi (réponses du 05/11/2026)
+
+- **S-29 · Filtre par code « Équipement » du planning multi-niveaux (R-204)** : prendre la ligne du lot quand l’activité n’en a pas, comme le filtre du Gantt (S-08). Oui.
+- **S-30 · Glissement fournisseur dans les alertes du portefeuille (S-27)** : oui, une ligne dans les alertes de la Vue d’ensemble.
+- **S-31 · Seuil du glissement fournisseur (S-27)** : réglable dans Paramètres (défaut 5 jours ouvrés).
+- **S-32 · Colonne « Qualité du planning » dans « Mes projets » (S-23)** : oui.

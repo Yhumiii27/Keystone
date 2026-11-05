@@ -1,7 +1,7 @@
 // R-130 (NEW-D1-1 a): "Needs attention" computed by rules — one case per rule, the order, the cap and the thresholds.
 import { describe, expect, it } from 'vitest';
 import { makeT, type T } from '@/i18n/translate';
-import { ALERT_RULE_DEFAULTS, DEFAULT_ALERT_THRESHOLDS, portfolioAlertRules, type AlertInput, type AlertProject } from './portfolio-alerts';
+import { ALERT_RULE_DEFAULTS, DEFAULT_ALERT_THRESHOLDS, alertTargetHref, portfolioAlertRules, type AlertInput, type AlertProject } from './portfolio-alerts';
 
 const t: T = ((s: string) => s) as T;
 const AS_OF = '2026-09-25';
@@ -136,5 +136,40 @@ describe('R-208: Monte-Carlo chance of meeting the end date', () => {
     expect(run([p({ probOnTarget: 0.35, p80Finish: '2027-02-05', target: '2026-12-18' })])).toEqual([]);
     expect(run([p(null)])).toEqual([]);
     expect(run([p(undefined)])).toEqual([]);
+  });
+});
+
+describe('S-30: supplier schedule slipping (threshold S-31)', () => {
+  const slips: AlertProject['supplierSlips'] = [
+    { po: 'PO-1082', supplier: 'Acme', slipDays: 7, activity: 'Fabrication' },
+    { po: 'PO-1078', supplier: 'Steelco', slipDays: 12, activity: null },
+    { po: 'PO-1090', supplier: 'Bolt', slipDays: 4, activity: 'FAT' },
+  ];
+  const p = (supplierSlips: AlertProject['supplierSlips']) => project({ code: 'HLT-026', name: 'Harbor Line', supplierSlips });
+  it('one line per project: the worst schedule at or above the threshold named, the others counted; opens the order', () => {
+    const [a, ...rest] = portfolioAlertRules(input({ projects: [p(slips)] }), 'en', t);
+    expect(rest).toEqual([]);
+    expect(a).toMatchObject({
+      key: 'supplier-HLT-026', kind: 'supplier_slip', icon: 'truck', code: 'HLT-026', title: 'Harbor Line — supplier schedule slipping',
+      detail: 'PO-1078 · Steelco · +12 working days (threshold 5) · 1 more.', action: 'Open the order', target: { screen: 'orders', code: 'HLT-026', params: { po: 'PO-1078' } },
+    });
+    expect(alertTargetHref(a.target)).toBe('/projects/HLT-026/orders?po=PO-1078');
+    expect(alertTargetHref({ screen: 'schedule', code: 'HLT-026' })).toBe('/projects/HLT-026/schedule');
+    const [fr] = portfolioAlertRules(input({ projects: [p(slips.slice(0, 1))] }), 'fr', t);
+    expect([fr.title, fr.detail]).toEqual(['Harbor Line — planning fournisseur en glissement', 'PO-1082 · Acme · +7 jours ouvrés (seuil 5) · Fabrication.']);
+  });
+  it('the Settings threshold; nothing under it or without schedules', () => {
+    expect(portfolioAlertRules(input({ projects: [p(slips)] }), 'en', t, { ...DEFAULT_ALERT_THRESHOLDS, supplierSlipDays: 13 })).toEqual([]);
+    const [a] = portfolioAlertRules(input({ projects: [p(slips)] }), 'en', t, { ...DEFAULT_ALERT_THRESHOLDS, supplierSlipDays: 4 });
+    expect(a.detail).toBe('PO-1078 · Steelco · +12 working days (threshold 4) · 2 more.');
+    expect(portfolioAlertRules(input({ projects: [p(slips.slice(2))] }), 'en', t)).toEqual([]);
+    expect(portfolioAlertRules(input({ projects: [p(undefined)] }), 'en', t)).toEqual([]);
+  });
+  it('ranked after the late milestones, before the Monte-Carlo forecast; the worse slip first', () => {
+    const late = project({ code: 'MS-1', name: 'MS-1', schedule: { floatDays: 2, finishText: 'x', baselineText: 'y', lateMilestones: ['M'] } });
+    const mc = project({ code: 'MC-1', name: 'MC-1', riskAnalysis: { probOnTarget: 0.1, p80Finish: '2027-01-04', target: null } });
+    const small = project({ code: 'S-1', name: 'S-1', supplierSlips: [{ po: 'PO-1', supplier: 'X', slipDays: 6, activity: null }] });
+    const big = project({ code: 'S-2', name: 'S-2', supplierSlips: [{ po: 'PO-2', supplier: 'Y', slipDays: 20, activity: null }] });
+    expect(portfolioAlertRules(input({ projects: [mc, small, late, big] }), 'en', makeT('en')).map((a) => a.key)).toEqual(['ms-MS-1', 'supplier-S-2', 'supplier-S-1', 'mc-MC-1']);
   });
 });

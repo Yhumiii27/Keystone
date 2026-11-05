@@ -26,7 +26,9 @@ import { PACK_FAMILIES, PACK_INVALID_ERROR, isPackFamily, packStandardError, typ
 import type { Actor } from '@/server/dal/ops-common';
 import {
   CCB_THRESHOLD_ERROR, HOURS_VARIANCE_RANGE, addLocation, addReferenceValue, getHealthThresholds, removeLocation, removeReferenceValue, resetSettings, setCcbThreshold, setDcmaThreshold, setDriftThreshold, setHealthThresholds, setHoursVariance,
+  setSupplierSlipDays,
 } from '@/server/dal/settings';
+import { SUPPLIER_SLIP_DAYS_RANGE, parseSupplierSlipDays } from '@/domain/supplier-slip-alerts';
 import { isCcbThreshold } from '@/domain/change-control';
 import { parseHoursVarianceInput } from '@/domain/hr';
 import { DCMA_THRESHOLD_RANGE, isDcmaThresholdKey, parseDcmaThreshold } from '@/domain/schedule-quality';
@@ -219,6 +221,24 @@ export async function setDriftThresholdAction(key: unknown, raw: unknown): Promi
   if (parseDriftThreshold(key, raw) === null) return fail(DRIFT_THRESHOLD_RANGE);
   try {
     await setDriftThreshold(key, raw, ok.actor);
+  } catch (e) {
+    return failure(e);
+  }
+  refresh();
+  return { ok: true };
+}
+
+/**
+ * S-31: the supplier schedule slip threshold (working days, an integer 1–60; default 5) — the director only; the daily supplier
+ * slip alerts (S-27) and the portfolio alerts (S-30) follow it.
+ */
+export async function setSupplierSlipDaysAction(raw: unknown): Promise<AdminActionResult> {
+  const ok = await settingsEditor();
+  if ('error' in ok) return ok;
+  const days = parseSupplierSlipDays(raw);
+  if (days === null) return fail(SUPPLIER_SLIP_DAYS_RANGE);
+  try {
+    await setSupplierSlipDays(days, ok.actor);
   } catch (e) {
     return failure(e);
   }

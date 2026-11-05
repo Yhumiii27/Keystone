@@ -11,7 +11,7 @@ import { LO, OK } from '@/components/app/tones';
 import { EvmSCurve } from '@/components/charts/evm-s-curve';
 import { ButtonLink } from '@/components/ds/Button';
 import { Tag } from '@/components/ds/Tag';
-import { screenHref } from '@/config/screens';
+import { alertTargetHref } from '@/domain/portfolio-alerts';
 import { ALERT_ICON, KPI_ICON } from '@/features/portfolio/view';
 import { capacityRoleBars } from '@/features/resources/model';
 import { dataText } from '@/i18n/data-text';
@@ -55,7 +55,7 @@ export function WidgetBody({ data, t, lang }: { data: WidgetData; t: T; lang: La
                 {/* Written in the viewer's language with the typed names as typed (R-130, R-148). */}
                 <span className={s.rowText}>{a.title}</span>
                 <span className={s.rowSub}>{a.detail}</span>
-                <ButtonLink variant="ghost" size="inline" iconRight={ArrowRight} href={screenHref(a.target.screen, { code: a.target.code })}>
+                <ButtonLink variant="ghost" size="inline" iconRight={ArrowRight} href={alertTargetHref(a.target)}>
                   {t(a.action)}
                 </ButtonLink>
               </div>

@@ -13,7 +13,7 @@ import { yearOfIso } from '@/domain/clock';
 import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import {
-  APP_SETTING_CCB, APP_SETTING_DCMA, APP_SETTING_DRIFT, APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, REFERENCE_LIST_KEYS, locationType, slugOf,
+  APP_SETTING_CCB, APP_SETTING_DCMA, APP_SETTING_DRIFT, APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, APP_SETTING_SUPPLIER_SLIP, REFERENCE_LIST_KEYS, locationType, slugOf,
   type LocationType, type ReferenceListKey,
 } from '@/server/db/codes';
 import { SETTINGS_CARDS } from '@/domain/admin';
@@ -23,6 +23,7 @@ import { DCMA_STANDARD, DCMA_THRESHOLD_FIELDS, DCMA_THRESHOLD_RANGE, parseDcmaTh
 import {
   DRIFT_STANDARD, DRIFT_THRESHOLD_FIELDS, DRIFT_THRESHOLD_ORDER_ERROR, DRIFT_THRESHOLD_RANGE, driftOrderBroken, parseDriftThreshold, type DriftThresholdKey, type DriftThresholds,
 } from '@/domain/drift-forecast';
+import { SUPPLIER_SLIP_ALERT_DAYS, SUPPLIER_SLIP_DAYS_RANGE, isSupplierSlipDays } from '@/domain/supplier-slip-alerts';
 import {
   APP_SETTING_DEFAULTS, defaultHoursVariance, defaultsOfList, fallbackSettingsDefaults, holidayCode, parseSettingsDefaults, type SettingsDefaults,
 } from '@/domain/settings-defaults';
@@ -37,6 +38,7 @@ import { readHealthThresholds } from './health-thresholds';
 import { readDcmaThresholds } from './dcma-thresholds';
 import { readDriftThresholds } from './drift-thresholds';
 import { readHoursVariance } from './hours-variance';
+import { readSupplierSlipDays } from './supplier-slip-threshold';
 import { requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
 import { referenceUsage } from './settings-lists';
 
@@ -64,6 +66,8 @@ export interface SettingsData {
   dcma?: DcmaThresholds;
   /** S-25: the drift forecast and portfolio Monte-Carlo alert thresholds (optional for callers building the data by hand: the defaults). */
   drift?: DriftThresholds;
+  /** S-31: the supplier schedule slip threshold, working days (optional for callers building the data by hand: 5). */
+  supplierSlipDays?: number;
 }
 
 /** Project health thresholds (On track ≥ risk, At risk below risk, Off track below off) — uncached, for writers and tests. */
@@ -74,7 +78,7 @@ export async function getHealthThresholds(): Promise<HealthThresholds> {
 /** Everything the Settings screen shows. */
 export async function getSettings(): Promise<SettingsData> {
   const db = await getDb();
-  const [values, locs, health, hoursVariance, ccbThresholdKeur, dcma, drift] = await Promise.all([
+  const [values, locs, health, hoursVariance, ccbThresholdKeur, dcma, drift, supplierSlipDays] = await Promise.all([
     db.select().from(referenceValues).where(eq(referenceValues.active, true)).orderBy(asc(referenceValues.position)),
     db.select().from(storageLocations).where(eq(storageLocations.active, true)).orderBy(asc(storageLocations.position)),
     getHealthThresholds(),
@@ -82,9 +86,10 @@ export async function getSettings(): Promise<SettingsData> {
     readCcbThreshold(),
     readDcmaThresholds(),
     readDriftThresholds(),
+    readSupplierSlipDays(),
   ]);
   const lists = Object.fromEntries(REFERENCE_LIST_KEYS.map((k) => [k, values.filter((v) => v.listKey === k).map((v) => ({ code: v.code, label: v.label }))])) as Record<ReferenceListKey, ReferenceValueRow[]>;
-  return { lists, locations: locs.map((l) => ({ name: l.name, type: l.type, typeLabel: locationType.label(l.type) })), health, hoursVariance, ccbThresholdKeur, dcma, drift };
+  return { lists, locations: locs.map((l) => ({ name: l.name, type: l.type, typeLabel: locationType.label(l.type) })), health, hoursVariance, ccbThresholdKeur, dcma, drift, supplierSlipDays };
 }
 
 /** Writers: the Settings workspace, and only the roles that edit Settings (A-14: the portfolio director). */
@@ -329,6 +334,30 @@ export async function setDriftThreshold(key: DriftThresholdKey, raw: unknown, ac
 }
 
 /**
+ * S-31: the supplier schedule slip threshold — an integer of working days, 1–60 (A-14: the portfolio director). Audit (before /
+ * after) and activity "Supplier schedule slip threshold · 5 → 8 working days". Returns the stored value.
+ */
+export async function setSupplierSlipDays(days: unknown, actor: Actor): Promise<number> {
+  ST(actor);
+  if (!isSupplierSlipDays(days)) throw new Error(SUPPLIER_SLIP_DAYS_RANGE);
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const cur = await readSupplierSlipDays(tx);
+    if (cur === days) return cur;
+    const who = await whoIs(tx, actor);
+    const value = { days };
+    await tx.insert(appSettings).values({ key: APP_SETTING_SUPPLIER_SLIP, value, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
+    const change = `${cur} → ${days} working days`;
+    await trace(tx, who, {
+      objectRef: 'Supplier schedule slip threshold', change, area: 'Settings', entityType: 'app_setting', before: { days: cur }, after: { days },
+      activity: { text: `Supplier schedule slip threshold · ${change}`, kind: 'change' },
+    });
+    return days;
+  });
+}
+
+/**
  * The stored "Reset to defaults" document (R-170: app_settings "settings.defaults", written with the reference data);
  * null when none is stored or it does not validate.
  */
@@ -376,7 +405,7 @@ export async function resetSettings(actor: Actor): Promise<void> {
     }
     const who = await whoIs(tx, actor);
     // R-168: the stored thresholds before the reset (the lists' entries are not copied: their reset is the list of defaults).
-    const keys = [APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, APP_SETTING_DCMA, APP_SETTING_DRIFT, APP_SETTING_CCB];
+    const keys = [APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, APP_SETTING_DCMA, APP_SETTING_DRIFT, APP_SETTING_SUPPLIER_SLIP, APP_SETTING_CCB];
     const settingsBefore = Object.fromEntries((await tx.select({ key: appSettings.key, value: appSettings.value }).from(appSettings).where(inArray(appSettings.key, keys))).map((r) => [r.key, r.value]));
     const health = { ...defaults.health };
     await tx.insert(appSettings).values({ key: APP_SETTING_HEALTH, value: health, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
@@ -393,11 +422,15 @@ export async function resetSettings(actor: Actor): Promise<void> {
     const drift = { ...DRIFT_STANDARD };
     await tx.insert(appSettings).values({ key: APP_SETTING_DRIFT, value: drift, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
       .onConflictDoUpdate({ target: appSettings.key, set: { value: drift, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
+    // S-31: the supplier schedule slip threshold goes back to 5 working days.
+    const supplierSlip = { days: SUPPLIER_SLIP_ALERT_DAYS };
+    await tx.insert(appSettings).values({ key: APP_SETTING_SUPPLIER_SLIP, value: supplierSlip, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value: supplierSlip, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
     await tx.insert(appSettings).values({ key: APP_SETTING_CCB, value: { keur: ccb }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
       .onConflictDoUpdate({ target: appSettings.key, set: { value: { keur: ccb }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
     await trace(tx, who, {
       objectRef: 'Settings', change: 'reset to defaults', area: 'Settings', activity: { text: 'Reset the settings lists to their defaults', kind: 'change' },
-      ...changedValues(settingsBefore, { [APP_SETTING_HEALTH]: health, [APP_SETTING_HOURS_VARIANCE]: hours, [APP_SETTING_DCMA]: dcma, [APP_SETTING_DRIFT]: drift, [APP_SETTING_CCB]: { keur: ccb } }),
+      ...changedValues(settingsBefore, { [APP_SETTING_HEALTH]: health, [APP_SETTING_HOURS_VARIANCE]: hours, [APP_SETTING_DCMA]: dcma, [APP_SETTING_DRIFT]: drift, [APP_SETTING_SUPPLIER_SLIP]: supplierSlip, [APP_SETTING_CCB]: { keur: ccb } }),
     });
   });
 }

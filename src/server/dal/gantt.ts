@@ -26,7 +26,7 @@ export async function getGanttNetwork(code: string): Promise<GanttNetwork | null
   const db = await getDb();
   const [nodes, cals, holidays, blCode, codes] = await Promise.all([
     db
-      .select({ code: wbsNodes.code, name: wbsNodes.name, equipmentId: wbsNodes.equipmentId })
+      .select({ code: wbsNodes.code, name: wbsNodes.name })
       .from(wbsNodes)
       .innerJoin(projects, eq(projects.id, wbsNodes.projectId))
       .where(and(eq(projects.code, code), eq(wbsNodes.level, 1)))
@@ -38,13 +38,9 @@ export async function getGanttNetwork(code: string): Promise<GanttNetwork | null
   ]);
   const snapshot = blCode ? await getBaselineActivities(code, blCode) : [];
   const bl = new Map(snapshot.map((r) => [r.activityCode, r]));
-  // R-185 / S-08: the activity's equipment line (derived code type 'equipment': value key = the line's id, code = its ref).
-  // An activity without a line of its own takes its work package's (a lot specific to an equipment, R-185) — décision S-08.
+  // R-185 / S-08 / S-29: the activity's equipment line — the derived code type 'equipment' (value key = the line's id, code = its
+  // ref), which already holds the activity's own line, else its work package's (`activityLineOf`, src/domain/equipment-scope.ts).
   const lineRef = new Map((codes?.types.find((x) => x.key === 'equipment')?.values ?? []).map((v) => [v.key, v.code]));
-  const packageLine = (wbs: string) => {
-    const n = nodes.find((x) => wbs === x.code || wbs.startsWith(`${x.code}.`));
-    return n?.equipmentId ? (lineRef.get(n.equipmentId) ?? null) : null;
-  };
   const activities = net.activities.map((a): GanttActivity => {
     const complete = a.finishActual || a.percentComplete >= 100;
     const b = bl.get(a.code);
@@ -57,7 +53,7 @@ export async function getGanttNetwork(code: string): Promise<GanttNetwork | null
       totalFloat: complete ? null : a.totalFloatDays, baselineStart: b?.startDate ?? null, baselineFinish: b?.finishDate ?? null,
       version: tokenOf(a.version, readAt),
       codes: codes?.map[a.code] ?? {},
-      equipment: lineRef.get(codes?.map[a.code]?.equipment?.[0] ?? '') ?? packageLine(a.wbsCode),
+      equipment: lineRef.get(codes?.map[a.code]?.equipment?.[0] ?? '') ?? null,
     };
   });
   // R-204: the supplier activities, dated by the consolidated network (as the last Reschedule would date them now); their

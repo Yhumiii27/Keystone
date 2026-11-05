@@ -123,8 +123,12 @@ export const ALERT_KIND_TITLE: Record<PortfolioAlert['kind'], string> = {
   over_allocation: 'Indicator alert · Over-allocation',
   approvals_waiting: 'Indicator alert · Approvals waiting',
   milestone_late: 'Indicator alert · Late milestone',
+  supplier_slip: 'Indicator alert · Supplier schedule slipping',
   risk_forecast: 'Indicator alert · Low chance of meeting the end date',
 };
+
+/** Alert rules told by their own notices (S-27 supplier slips), left out of the indicator alerts. */
+const NOT_NOTIFIED = new Set<PortfolioAlert['kind']>(['supplier_slip']);
 
 /** The send-log key of an alert while it lasts; a cleared alert's rows are renamed `cleared:<date>` so it can be raised again. */
 const ALERT_SLOT = 'raised';
@@ -154,7 +158,8 @@ export async function runIndicatorAlerts(on?: string): Promise<IndicatorAlertRun
   const { getPortfolioAlerts } = await import('./portfolio-alerts');
   const { claimSends } = await import('./reminders');
   // In French, the default language (the sub-line is shown as computed, like the e-mails).
-  const alerts = await getPortfolioAlerts('fr', today);
+  // S-30: a supplier slip is told by its own daily notice (S-27: the buyer and the leads, once per level), never twice.
+  const alerts = (await getPortfolioAlerts('fr', today)).filter((a) => !NOT_NOTIFIED.has(a.kind));
   const run: IndicatorAlertRun = { today, alerts: alerts.length, raised: 0, notified: 0, cleared: 0 };
   // Alerts that cleared: their open rows are renamed, so the alert is told again when it comes back.
   const live = new Set(alerts.map(alertItemKey));
