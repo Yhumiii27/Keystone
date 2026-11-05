@@ -286,6 +286,10 @@
   {
    "date": "2026-11-05",
    "text": "Réponses S-29 à S-32 appliquées : filtre Équipement hérité du lot, glissement fournisseur dans les alertes du portefeuille et seuil réglable, qualité du planning dans « Mes projets »."
+  },
+  {
+   "date": "2026-11-05",
+   "text": "S-33 : alertes du portefeuille classées par urgence et importance. S-34 : glissement fournisseur remonté aux directeurs (durée 10 j.o. et impact 5 j.o. sur la fin du projet, réglables)."
   }
  ],
  "items": [
@@ -4030,7 +4034,8 @@
    ],
    "progress": {
     "state": "fait",
-    "delivery": "Livraison 7"
+    "delivery": "Livraison 7",
+    "note": " 5 nov. 2026 (S-33) : alertes du portefeuille classées par urgence et importance (src/domain/alert-priority.ts)."
    }
   },
   {
@@ -6038,7 +6043,7 @@
    "progress": {
     "state": "fait",
     "delivery": "Livraison 9",
-    "note": "01/11/2026 : codes d’activité (équipement et lot d’achat déduits, site et types libres) avec filtre et regroupement sur le Plan et le Gantt ; plannings fournisseurs par commande consolidés dans le CPM (rattachements fin-début), suivi de l’avancement et du glissement fournisseur (migration 0074). Options non faites : filtre par code sur la qualité du planning, alerte de glissement fournisseur. 4 nov. 2026 (S-26 à S-28) : alerte de glissement fournisseur (≥ 5 j.o., acheteur et chef de projet, S-27) ; lot d’achat et plannings types : plus tard. 5 nov. 2026 (S-29 à S-31) : code « Équipement » = ligne de l’activité sinon de son lot ; glissement fournisseur dans les alertes du portefeuille ; seuil réglable dans Paramètres (défaut 5 j.o.) — notes-s-followup2.md."
+    "note": "01/11/2026 : codes d’activité (équipement et lot d’achat déduits, site et types libres) avec filtre et regroupement sur le Plan et le Gantt ; plannings fournisseurs par commande consolidés dans le CPM (rattachements fin-début), suivi de l’avancement et du glissement fournisseur (migration 0074). Options non faites : filtre par code sur la qualité du planning, alerte de glissement fournisseur. 4 nov. 2026 (S-26 à S-28) : alerte de glissement fournisseur (≥ 5 j.o., acheteur et chef de projet, S-27) ; lot d’achat et plannings types : plus tard. 5 nov. 2026 (S-29 à S-31) : code « Équipement » = ligne de l’activité sinon de son lot ; glissement fournisseur dans les alertes du portefeuille ; seuil réglable dans Paramètres (défaut 5 j.o.) — notes-s-followup2.md. 5 nov. 2026 (S-34) : glissement fournisseur remonté aux directeurs selon durée et impact sur la fin du projet (seuils dans Paramètres)."
    }
   },
   {
