@@ -160,3 +160,26 @@ Format d'une entrée :
   6. Liens profonds : fiche /evenements?etat=tous&sel=<EV-…> (inchangé, vigieRef = number).
 - Justification : M-17 (lecture par vues, écriture par fonction pub_ du propriétaire), décisions CV-07 et CV-08 de Vigie.
 - Validé par Guillaume le : 2026-11-05
+
+## [2026-11-06] Vigie → Keystone — Ordres de modification de Vigie : lecture par les vues, avancement par vigie.pub_signaler_avancement_eco (D12, lot 5 livré le 05/11/2026)
+- Statut : OUVERTE
+- Demande :
+  1. Lecture : rafraîchir vigie_ecos par SELECT sur vigie.pub_ordres_modification (number, title, eco_type → type,
+     status, interchangeability, from_revision, to_revision, cost_eur, schedule_days, stock_impact, document_refs,
+     requested_by_name → requestedBy, raised_on, pending_dispositions, locked, parts, projects, released_at,
+     vigie_updated_at → updatedAt), pub_eco_approbations (approvals : approval_key → key, decision, approver_text →
+     approver, decided_by_name → decidedBy, decided_at) et pub_eco_effectivite (effectivity, même noms en snake_case) au
+     lieu de GET /api/ecos?source=keystone ; projets = codes de keystone.pub_projets.
+  2. Avancement (outbox vigie_eco_progress) : au lieu de POST /api/ecos/:number/progress, select
+     vigie.pub_signaler_avancement_eco(p_numero => ecoNumber, p_nature => kind ('step' | 'approval'), p_cle => approvalKey,
+     p_decision => decision, p_etape_depuis => fromStatus, p_etape_cible => targetStatus, p_commentaire => comment,
+     p_acteur_nom => actor.name, p_acteur_role => actor.role, p_enregistre_le => recordedAt, p_id_externe => keystoneId) ;
+     résultat : numéro de la demande dans Vigie (vigieRef). P0V01 / P0V02 : entrée « failed », non renvoyée telle quelle.
+  3. Ce que Vigie applique (choix restrictifs, à confirmer) : étape suivante depuis l'état vu (draft → impact_analysis →
+     in_approval, interchangeabilité évaluée) ; clés englead et pm (quality décidée dans Vigie) ; jamais released (d'office)
+     ni rejected (une clé refusée rejette l'ordre). Réponse asynchrone : état lu dans la publication de l'état des demandes
+     (§ 5.1) ; refus « refused » = fin des renvois.
+  4. Liens : /modifications-techniques/<ECO> (inchangé, NEW-D4-1), /modifications-techniques/nouvelle?part=&project=&title=
+     &source=keystone (formulaire prérempli), filtres ?part= et ?project= (projet = code de Keystone).
+- Justification : M-17, M-18 ; CV-06 et CV-08 de Vigie.
+- Validé par Guillaume le : 2026-11-06
