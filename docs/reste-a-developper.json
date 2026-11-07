@@ -1,6 +1,6 @@
 {
  "generated": "2026-10-10",
- "updated": "2026-11-05",
+ "updated": "2026-11-07",
  "branch": "main-2a2fep",
  "history": [
   {
@@ -290,6 +290,10 @@
   {
    "date": "2026-11-05",
    "text": "S-33 : alertes du portefeuille classées par urgence et importance. S-34 : glissement fournisseur remonté aux directeurs (durée 10 j.o. et impact 5 j.o. sur la fin du projet, réglables)."
+  },
+  {
+   "date": "2026-11-07",
+   "text": "Demandes M-19 (fonction keystone.pub_editer, liste fermée de tables) et Vigie D12/D13 (connecteur Vigie par vues et fonctions pub_) traitées."
   }
  ],
  "items": [
@@ -946,7 +950,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "Livraison 8",
-    "note": "Livraison 8, lot connecteurs : côté Keystone du connecteur Vigie (élagage du miroir, contrat, liens projet) ; l’API réelle attend Vigie (V-2, V-3a)."
+    "note": "Livraison 8, lot connecteurs : côté Keystone du connecteur Vigie (élagage du miroir, contrat, liens projet) ; l’API réelle attend Vigie (V-2, V-3a). 7 nov. 2026 (demandes Vigie D12/D13) : lecture par les vues vigie.pub_*, avancement par vigie.pub_signaler_avancement_nc/eco, numéro EV-… ; D13 faite, D12 attend le lien d’exécution de Matrix — notes-vigie-d12-d13.md."
    }
   },
   {
