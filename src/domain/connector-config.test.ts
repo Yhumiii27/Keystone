@@ -56,7 +56,7 @@ describe('connectors file (R-020)', () => {
   it('server variables of the connector layer: set or not, secrets flagged', () => {
     expect(Object.keys(CONNECTOR_ENV)).toEqual(['Vigie', 'Cursus', 'Codex']);
     expect(CONNECTOR_ENV.Cursus.filter((v) => v.secret).map((v) => v.name)).toEqual(['CURSUS_API_KEY']);
-    expect(connectorEnvState('Vigie', { VIGIE_API_URL: ' https://vigie.example ', NEXT_PUBLIC_VIGIE_URL: '' }).map((v) => [v.name, v.set])).toEqual([['VIGIE_API_URL', true], ['NEXT_PUBLIC_VIGIE_URL', false]]);
+    expect(connectorEnvState('Vigie', { VIGIE_SOURCE: ' server ', NEXT_PUBLIC_VIGIE_URL: '' }).map((v) => [v.name, v.set])).toEqual([['VIGIE_SOURCE', true], ['NEXT_PUBLIC_VIGIE_URL', false]]);
     expect(connectorEnvState('Sage X3', {})).toEqual([]);
   });
 });

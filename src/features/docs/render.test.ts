@@ -22,13 +22,15 @@ import { getCodexSyncState, getDocumentRecord, listDocumentTypes, listVaultDocum
 import { docsBadge } from '@/server/dal/docs-badge';
 import { L9X3_FILED, withoutL9X3, withoutL9X3Type } from '@/test/l9-x3';
 import GOLD from './docs.golden.json';
+import { demoNcrGolden } from '@/domain/vigie-demo';
 import { depositHref, docHref, documentsHref } from './links';
 import { depositView, docTypesView, drawerView, vaultView, type DocsState } from './model';
 import { DocsVault } from './vault';
 import { DocTypesRegister } from './doc-types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const G = GOLD as any;
+// D13 (CV-07): the prototype's NCR numbers as the demo data set has them (EV-2026-0nn, src/domain/vigie-demo.ts).
+const G = demoNcrGolden(GOLD) as any;
 const LANGS: Lang[] = ['en', 'fr'];
 const S0: DocsState = { scope: 'proj', view: 'all', family: null, status: null, q: '', doc: null };
 const DIRECTOR = { short: 'M. Lefebvre', role: 'director' };

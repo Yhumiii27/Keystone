@@ -59,6 +59,14 @@ export type ClamdTarget = { socket: string } | { host: string; port: number };
 export const ARCHE_SOURCES = ['server', 'simulation', 'off'] as const;
 export type ArcheSource = (typeof ARCHE_SOURCES)[number];
 /**
+ * D12 / D13 (Vigie): where the Vigie connectors read Vigie's views (vigie.pub_non_conformites, pub_hse_projet,
+ * pub_ordres_modification, pub_eco_approbations, pub_eco_effectivite, pub_demandes_recues) and deposit Keystone's progress
+ * (vigie.pub_signaler_avancement_nc / _eco): `server` = on the shared PostgreSQL server (links decided by Matrix), `simulation` =
+ * the local mirrors seeded from the demo data, progress kept "pending sync with Vigie".
+ */
+export const VIGIE_SOURCES = ['server', 'simulation'] as const;
+export type VigieSource = (typeof VIGIE_SOURCES)[number];
+/**
  * Matrix D21: where the subsidiaries connector reads Matrix's view matrix.pub_filiales (the group's subsidiaries): `server` = on
  * the shared PostgreSQL server (Keystone's role only SELECTs it), `simulation` = the demo subsidiaries (a demo database only),
  * `off` = no read.
@@ -131,7 +139,8 @@ export interface KeystoneConfig {
    * (inbound, R-029; null = the endpoint refuses every call); `directory` = the staff directory import is switched on (R-027).
    */
   cursus: { apiUrl: string | null; apiKey: string | null; eventsKey: string | null; directory: boolean };
-  vigie: { apiUrl: string | null; apiKey: string | null };
+  /** D12 / D13: where Vigie is read and written (VIGIE_SOURCE; default `server` with DATABASE_URL, else `simulation`). */
+  vigie: { source: VigieSource };
   /**
    * R-187 (Arche K-02): the CAPEX application. `url` = its web app (deep links `<url>/capex/<code>`), `source` = where the capex
    * connector reads (ARCHE_SOURCE; default `server` with DATABASE_URL, else `simulation`).
@@ -248,7 +257,14 @@ const VARS = {
   CURSUS_EVENTS_KEY: z.string().min(16, 'must be at least 16 characters').optional(),
   // R-027 (NEW-CURSUS-2): staff directory import from Cursus, off until Cursus publishes its directory endpoint.
   CURSUS_DIRECTORY: onOff.optional(),
-  VIGIE_API_URL: httpUrl.optional(),
+  // D12 / D13: Vigie is read through its pub_ views and written through its pub_ functions on the shared server (no API).
+  VIGIE_SOURCE: z
+    .string()
+    .transform((v) => v.toLowerCase())
+    .pipe(z.enum(VIGIE_SOURCES, { message: 'must be "server" or "simulation"' }))
+    .optional(),
+  // Retired by D12 / D13 (Vigie exposes no API to Keystone): accepted so an old configuration still starts, with a warning.
+  VIGIE_API_URL: z.string().optional(),
   VIGIE_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   KEYSTONE_AI: onOff.optional(),
@@ -410,8 +426,11 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
     errors.push({ variable: 'CURSUS_EVENTS_KEY', message: 'is the demo events key, refused in production' });
   const cursusEventsKey = production ? (v.CURSUS_EVENTS_KEY && v.CURSUS_EVENTS_KEY !== DEMO_CURSUS_EVENTS_KEY ? v.CURSUS_EVENTS_KEY : null) : (v.CURSUS_EVENTS_KEY ?? DEMO_CURSUS_EVENTS_KEY);
 
-  if (v.VIGIE_API_URL && !v.VIGIE_API_KEY && production)
-    warnings.push({ variable: 'VIGIE_API_KEY', message: 'is not set: calls to Vigie are not authenticated (Vigie API authentication is open question V-3)' });
+  // D12 / D13: Vigie's views and functions are on the shared server only (a PGlite database has no vigie schema).
+  if (v.VIGIE_SOURCE === 'server' && !v.DATABASE_URL) errors.push({ variable: 'VIGIE_SOURCE', message: 'is "server" but DATABASE_URL is not set (Vigie’s views are read on the shared PostgreSQL server)' });
+  const vigieSource: VigieSource = v.VIGIE_SOURCE && !(v.VIGIE_SOURCE === 'server' && !v.DATABASE_URL) ? v.VIGIE_SOURCE : v.DATABASE_URL ? 'server' : 'simulation';
+  for (const name of ['VIGIE_API_URL', 'VIGIE_API_KEY'] as const)
+    if (v[name]) warnings.push({ variable: name, message: 'is no longer read: Vigie is read through its views and written through its functions on the shared server (D12, D13; VIGIE_SOURCE)' });
   if (production)
     for (const [name, app] of [['NEXT_PUBLIC_CODEX_URL', 'Codex'], ['NEXT_PUBLIC_CURSUS_URL', 'Cursus'], ['NEXT_PUBLIC_VIGIE_URL', 'Vigie']] as const)
       if (!v[name]) warnings.push({ variable: name, message: `is not set: links open ${app} on localhost` });
@@ -503,7 +522,7 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
       readCache: v.KEYSTONE_READ_CACHE !== 'off',
       log: { level: v.LOG_LEVEL ?? 'info', format: v.LOG_FORMAT ?? (production ? 'json' : 'pretty') },
       cursus: { apiUrl: v.CURSUS_API_URL ?? null, apiKey: cursusApiKey, eventsKey: cursusEventsKey, directory: v.CURSUS_DIRECTORY === 'on' },
-      vigie: { apiUrl: v.VIGIE_API_URL ?? null, apiKey: v.VIGIE_API_KEY ?? null },
+      vigie: { source: vigieSource },
       arche: { url: v.ARCHE_URL ?? DEFAULT_ARCHE_URL, source: archeSource },
       matrix: { source: matrixSource },
       ai: { anthropicApiKeySet: !!anthropic, enabled: !!anthropic && v.KEYSTONE_AI !== 'off', model: v.KEYSTONE_AI_MODEL ?? null, fallbacks: v.KEYSTONE_AI_FALLBACKS !== 'off' },

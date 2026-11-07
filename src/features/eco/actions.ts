@@ -9,7 +9,7 @@
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import { canActOnKey, nextStepOf, requestedStepText } from '@/domain/eco';
-import { ECO_APPROVER_KEYS, vaultSyncScope, vaultSyncSource, vigieSyncStatus, type EcoApproverKey, type EcoStatus } from '@/server/db/codes';
+import { ECO_APPROVER_KEYS, vaultSyncScope, vaultSyncSource, vigieSyncStatus, type EcoApproverKey, type EcoStatus, type VigieSyncStatus } from '@/server/db/codes';
 import { syncPdmVault } from '@/server/dal/drawings';
 import { getEco, recordEcoProgress } from '@/server/dal/eco';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
@@ -33,7 +33,7 @@ const STEPS: readonly EcoStatus[] = ['impact_analysis', 'in_approval'];
 /** Sidebar badge, My approvals, Home and the screen change together. */
 const refreshAll = () => revalidatePath('/', 'layout');
 
-const syncText = (status: 'pending' | 'sent' | 'failed') => vigieSyncStatus.label(status);
+const syncText = (status: VigieSyncStatus) => vigieSyncStatus.label(status);
 
 /**
  * Approve (ok) or reject on the viewer's approval key — from the ECO drawer or the My approvals inbox. Allowed when

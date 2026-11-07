@@ -6,10 +6,11 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { canSee, type RoleKey } from '@/config/screens';
 import { sql } from 'drizzle-orm';
-import { setDb } from '@/server/db/client';
+import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { seedIfEmpty } from '@/server/db/seed';
-import { getVigieEcoConnector, httpEcoConnector, mockEcoConnector, resetVigieRefreshThrottle } from '@/server/integrations/vigie/eco-connector';
+import { getVigieEcoConnector, mockEcoConnector, resetVigieRefreshThrottle, sqlEcoConnector } from '@/server/integrations/vigie/eco-connector';
+import { createVigieServer, processVigieRequests, setVigieEcoRows, vigieRequests } from '@/test/vigie-server';
 import { vigieEcoListUrl, vigieEcoUrl, vigieNewEcoUrl } from '@/server/integrations/vigie/links';
 import { ECO_SCREEN_ROLES } from '@/server/integrations/vigie/progress';
 import type { VigieEcoRecord } from '@/server/integrations/vigie/types';
@@ -239,7 +240,9 @@ describe('ECO progress sent to Vigie (outbox)', () => {
     await expect(recordEcoProgress('ECO-2026-015', { key: 'englead', decision: 'ok' }, { name: 'Antoine Girard', role: 'englead' })).rejects.toThrow(/not pending/);
     await expect(recordEcoProgress('ECO-2026-015', { key: 'pm', decision: 'ok' }, { name: 'Gabriel Comte', role: 'quality' })).rejects.toThrow(/Only the PM of impacted projects/);
     await expect(recordEcoProgress('ECO-2026-015', { key: 'pm', decision: 'ok' }, { name: 'Marie Lefebvre', role: 'director' })).rejects.toThrow(/holds no ECO approval/);
-    await expect(recordEcoProgress('ECO-2026-016', { key: 'quality', decision: 'ok' }, { name: 'Gabriel Comte', role: 'quality' })).rejects.toThrow(/not in approval/);
+    // D12: the quality key is decided in Vigie (whatever the ECO's step).
+    await expect(recordEcoProgress('ECO-2026-016', { key: 'quality', decision: 'ok' }, { name: 'Gabriel Comte', role: 'quality' })).rejects.toThrow(/decided in Vigie/);
+    await expect(recordEcoProgress('ECO-2026-016', { key: 'englead', decision: 'ok' }, { name: 'Antoine Girard', role: 'englead' })).rejects.toThrow(/not in approval/);
     await expect(recordEcoProgress('ECO-2026-099', { key: 'quality', decision: 'ok' }, { name: 'Gabriel Comte', role: 'quality' })).rejects.toThrow(/Unknown ECO/);
   });
 
@@ -259,9 +262,7 @@ describe('ECO progress sent to Vigie (outbox)', () => {
     expect(await mockEcoConnector.sync()).toEqual({ delivered: 0, failed: 0, pending: 2, refreshed: 0 });
   });
 
-  it('HTTP connector (VIGIE_API_URL): delivers the outbox, then the refresh from Vigie becomes the mirror', async () => {
-    vi.stubEnv('VIGIE_API_URL', 'http://vigie.test/');
-    const posted: string[] = [];
+  it('sql connector (D12): deposits the outbox through Vigie’s function, then the refresh from Vigie’s views becomes the mirror', async () => {
     const current = (await listEcos({ numbers: ['ECO-2026-015'] }))[0];
     const record: VigieEcoRecord = {
       number: current.number, title: current.title, type: current.type, status: 'in_approval', interchangeability: current.interchangeability, fromRevision: current.fromRevision,
@@ -270,28 +271,26 @@ describe('ECO progress sent to Vigie (outbox)', () => {
       approvals: current.approvals.map((a) => ({ key: a.key, decision: 'ok', approver: a.approver, decidedBy: a.key === 'pm' ? 'Romain Aubert' : a.decidedBy, decidedAt: null })),
       effectivity: current.effectivity, updatedAt: '2026-09-25T10:00:00Z',
     };
-    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
-      if (init?.method === 'POST') {
-        posted.push(String(url));
-        return new Response(JSON.stringify({ id: `V-${posted.length}` }), { status: 200 });
-      }
-      return new Response(JSON.stringify([record]), { status: 200 });
-    }));
-    expect(getVigieEcoConnector().mode).toBe('http');
-    const res = await httpEcoConnector.sync();
+    const db = await getDb();
+    await createVigieServer(db);
+    await setVigieEcoRows(db, [record]);
+    expect(getVigieEcoConnector().mode).toBe('mock'); // VIGIE_SOURCE=server needs the shared server (DATABASE_URL)
+    const res = await sqlEcoConnector.sync();
     expect([res.delivered, res.failed, res.pending, res.refreshed]).toEqual([2, 0, 0, 1]);
-    expect(posted).toEqual(['http://vigie.test/api/ecos/ECO-2026-015/progress', 'http://vigie.test/api/ecos/ECO-2026-017/progress']);
-    const after = await httpEcoConnector.listEcos();
-    expect(after.map((e) => e.number)).toEqual(['ECO-2026-015']); // full refresh: Vigie reports only what concerns Keystone
+    expect((await vigieRequests(db)).map((r) => [r.kind, r.target_ref])).toEqual([['eco_approval', 'ECO-2026-015'], ['eco_step', 'ECO-2026-017']]);
+    // Vigie applies the requests; the next sync reads their outcome.
+    await processVigieRequests(db, () => ({ status: 'applied' }));
+    await sqlEcoConnector.sync();
+    const after = await sqlEcoConnector.listEcos();
+    expect(after.map((e) => e.number)).toEqual(['ECO-2026-015']); // full refresh: Vigie publishes what concerns Keystone
     expect([after[0].locked, after[0].approvals.map((a) => [a.decision, a.pending]), after[0].pendingProgress]).toEqual([true, [['ok', null], ['ok', null], ['ok', null]], []]);
   });
 
-  it('HTTP connector falls back to the local mirror when Vigie is unreachable', async () => {
-    vi.stubEnv('VIGIE_API_URL', 'http://vigie.test');
-    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('ECONNREFUSED'); }));
+  it('sql connector falls back to the local mirror when Vigie’s views cannot be read', async () => {
+    await (await getDb()).execute(sql.raw('drop schema if exists vigie cascade'));
     resetVigieRefreshThrottle();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    expect((await getVigieEcoConnector().listEcos()).map((e) => e.number)).toEqual(['ECO-2026-015']);
+    expect((await sqlEcoConnector.listEcos()).map((e) => e.number)).toEqual(['ECO-2026-015']);
     expect(warn).toHaveBeenCalled();
   });
 

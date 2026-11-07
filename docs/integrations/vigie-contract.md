@@ -1,5 +1,12 @@
 # Keystone ↔ Vigie — interface contract (draft for the Vigie team)
 
+> **Superseded by D12 and D13 (Vigie, 5 and 6 Nov 2026; built in delivery 9, `docs/delivery-9/notes-vigie-d12-d13.md`).** Vigie
+> exposes no API to Keystone: Keystone reads `vigie.pub_non_conformites`, `vigie.pub_hse_projet`, `vigie.pub_ordres_modification`,
+> `vigie.pub_eco_approbations`, `vigie.pub_eco_effectivite` and `vigie.pub_demandes_recues` on the shared PostgreSQL server and
+> deposits its progress with `vigie.pub_signaler_avancement_nc` / `vigie.pub_signaler_avancement_eco` (`VIGIE_SOURCE=server`,
+> `src/server/integrations/vigie/server.ts`). An NCR's number is Vigie's EV-… reference (CV-07). §§ 1–3 below (HTTP endpoints)
+> are history; § 4 (links) and § 5 (notices) still apply.
+
 > **Status: proposal (delivery 8, lot `connectors`; R-023, R-024, R-025, R-096).** Written from what Keystone already
 > implements (`src/server/integrations/vigie/`). Vigie publishes no API yet (open questions V-2, V-3): every endpoint below
 > is Keystone's proposal, marked `TODO(vigie)` in the code, until Vigie confirms or changes it. Sections marked

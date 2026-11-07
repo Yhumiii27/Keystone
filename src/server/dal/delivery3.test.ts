@@ -35,6 +35,7 @@ import { priorityScore } from '@/domain/portfolio-finance';
 import { getCapacityWhatIf, getPrioritisation } from './prioritisation';
 import { getStakeholderRegister } from './stakeholders';
 import golden from './delivery3.golden.json';
+import { demoNcrGolden } from '@/domain/vigie-demo';
 
 /**
  * R-013: the prototype's PG_NOW (month index 8.97, just after 30 Sep 2026) for the golden comparisons, and the business date of the demo data set the
@@ -44,7 +45,8 @@ const PG_NOW = 8.97;
 const NOW = monthNowOf(DEMO_TODAY_ISO);
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const G = golden as any;
+// D13 (CV-07): the prototype's NCR numbers as the demo data set has them (EV-2026-0nn, src/domain/vigie-demo.ts).
+const G = demoNcrGolden(golden) as any;
 const f = (k: number, signed = false) => money(k, 'en', { signed });
 /** Copy of a golden object without one key (a field the DAL leaves to the screen). */
 const without = (o: Record<string, unknown>, key: string) => Object.fromEntries(Object.entries(o).filter(([k]) => k !== key));

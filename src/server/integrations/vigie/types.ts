@@ -2,10 +2,10 @@
 // connector returns (mirror + progress not yet acknowledged by Vigie) and the progress Keystone records.
 import type {
   EcoApproverKey, EcoDecision, EcoDisposition, EcoProgressKind, EcoStatus, EcoTargetType, EcoType, HseItemKind, HseStatus, Interchangeability, NcrProgressKind,
-  NcrSeverity, NcrSource, NcrStatus, NcrVerificationDecision, VigieSyncStatus,
+  NcrSeverity, NcrSource, NcrStatus, NcrVerificationDecision, VigieRequestOutcome, VigieResultCode, VigieSyncStatus,
 } from '@/server/db/codes';
 
-/** An ECO as Vigie reports it (Vigie's API payload to confirm, R-023; this is the shape the mirror needs). */
+/** An ECO as Vigie publishes it (D12: vigie.pub_ordres_modification, pub_eco_approbations, pub_eco_effectivite). */
 export interface VigieEcoRecord {
   number: string;
   title: string;
@@ -40,10 +40,22 @@ export interface VigieEcoRecord {
   }[];
   /** ISO timestamp of the last change in Vigie, when known. */
   updatedAt: string | null;
+  /** ISO timestamp of the release in Vigie (D12, pub_ordres_modification.released_at), when published. */
+  releasedAt?: string | null;
+}
+
+/** What Vigie's processing of a deposited request gave (D12 / D13, vigie.pub_demandes_recues); all null until read. */
+export interface VigieRequestFields {
+  /** Vigie's request number, returned by its pub_signaler_avancement_* function. */
+  vigieRef: string | null;
+  outcome: VigieRequestOutcome | null;
+  resultCode: VigieResultCode | null;
+  /** Vigie's message (the reason of a refusal). */
+  result: string | null;
 }
 
 /** Progress recorded in Keystone, waiting for (or delivered to) Vigie. */
-export interface EcoProgressEntry {
+export interface EcoProgressEntry extends VigieRequestFields {
   id: string;
   ecoNumber: string;
   kind: EcoProgressKind;
@@ -68,7 +80,7 @@ export interface VigieEcoApproval {
   approver: string;
   decidedBy: string | null;
   decidedAt: string | null;
-  /** Decision recorded in Keystone and not yet reflected by Vigie ("pending sync with Vigie"); null when none. */
+  /** Decision recorded in Keystone and not yet reflected by Vigie ("pending sync with Vigie"); null when none (a refused one is not). */
   pending: EcoProgressEntry | null;
 }
 
@@ -98,7 +110,10 @@ export interface VigieEco {
   effectivity: VigieEcoTarget[];
   /** Step advancement recorded in Keystone, pending sync with Vigie; null when none. */
   requestedStatus: EcoStatus | null;
-  /** Progress entries not yet reflected by the mirror (oldest first). */
+  /**
+   * Progress entries not yet reflected by the mirror (oldest first): waiting ones (pending, sent and not processed), and the
+   * latest entry when it failed or Vigie refused it, while the ECO is still where it was (so the refusal shows).
+   */
   pendingProgress: EcoProgressEntry[];
   /** ISO timestamp of the last refresh from Vigie. */
   lastSyncedAt: string;
@@ -135,27 +150,27 @@ export interface EcoListFilter {
   numbers?: string[];
 }
 
-/** The ECO connector (mock over the local mirror, or HTTP to Vigie). */
+/** The ECO connector (mock over the local mirror, or Vigie's views and function on the shared server). */
 export interface VigieEcoConnector {
-  readonly mode: 'mock' | 'http';
+  readonly mode: 'mock' | 'sql';
   /** ECOs relevant to Keystone, in Vigie's order (filtered when asked). */
   listEcos(filter?: EcoListFilter): Promise<VigieEco[]>;
   getEco(number: string): Promise<VigieEco | null>;
-  /** Validates and records progress in the outbox, then tries to deliver it (HTTP mode). */
+  /** Validates and records progress in the outbox, then tries to deposit it in Vigie (sql mode). */
   recordProgress(number: string, input: EcoProgressInput, actor: EcoProgressActor): Promise<EcoProgressReceipt>;
-  /** Delivers the outbox and refreshes the mirror (no-op for the mock: Vigie has no API yet). */
+  /** Deposits the outbox, reads the outcome of the requests and refreshes the mirror (no-op for the mock). */
   sync(): Promise<{ delivered: number; failed: number; pending: number; refreshed: number }>;
 }
 
 // ── Non-conformities (NCR) and site HSE — Vigie owns them (user decision, Delivery 5) ──────────────────
 
-/** An NCR as Vigie reports it (Vigie's NCR payload to confirm, R-023; this is the shape the mirror needs). */
+/** An NCR as Vigie publishes it (D13: vigie.pub_non_conformites). */
 export interface VigieNcrRecord {
   /** Keystone project code ("HLT-026"). */
   projectCode: string;
   /**
-   * The NCR's number, unique per project. Vigie's own number once its API is connected (V-3a: "EV-2026-130"); the
-   * prototype mirror keeps Keystone's demo numbers ("NCR-029"). Keystone never sends NCR numbers of its own (R-023).
+   * The NCR's number: Vigie's EV-… reference (D13, CV-07: pub_non_conformites.number = vigie_ref, "EV-2026-130", unique).
+   * Keystone never sends NCR numbers of its own (R-023); the demo data use EV-… references too (demoNcrNumber).
    */
   number: string;
   /** Vigie's own record id ("EV-2026-130") when Vigie gives it. */
@@ -181,10 +196,14 @@ export interface VigieNcrRecord {
   costKeur: number;
   isoClause: string;
   updatedAt: string | null;
+  /** D13 share: closure date in Vigie, the Cursus matricule of the owner, the supplier (suppliers.id) of a supplier NCR. */
+  closedOn?: string | null;
+  ownerMatricule?: string | null;
+  supplierId?: string | null;
 }
 
 /** Progress recorded in Keystone on a Vigie NCR. */
-export interface NcrProgressEntry {
+export interface NcrProgressEntry extends VigieRequestFields {
   id: string;
   projectCode: string;
   ncrNumber: string;
@@ -232,7 +251,7 @@ export interface NcrListFilter {
   partRefs?: string[];
 }
 
-/** A site HSE register item as Vigie reports it (prevention plan, induction, permit, near-miss register). */
+/** A site HSE register item as Vigie publishes it (D13: vigie.pub_hse_projet — prevention plan, permit, near-miss register). */
 export interface VigieHseRecord {
   projectCode: string;
   /** Vigie's id ("PP-2026-013", "PF-2026-030") when known. */
@@ -251,14 +270,14 @@ export interface VigieHseItem extends VigieHseRecord {
   vigieUrl: string;
 }
 
-/** The quality / HSE connector (mock over the local mirrors, or HTTP to Vigie). */
+/** The quality / HSE connector (mock over the local mirrors, or Vigie's views and function on the shared server). */
 export interface VigieQualityConnector {
-  readonly mode: 'mock' | 'http';
+  readonly mode: 'mock' | 'sql';
   listNcrs(filter?: NcrListFilter): Promise<VigieNcr[]>;
   getNcr(projectCode: string, number: string): Promise<VigieNcr | null>;
-  /** Validates and records the viewer's progress in the outbox, then tries to deliver it (HTTP mode). */
+  /** Validates and records the viewer's progress in the outbox, then tries to deposit it in Vigie (sql mode). */
   recordNcrProgress(projectCode: string, number: string, input: NcrProgressInput, actor: EcoProgressActor): Promise<NcrProgressReceipt>;
   listHse(projectCode: string): Promise<VigieHseItem[]>;
-  /** Delivers the NCR outbox and refreshes the NCR and HSE mirrors (no-op for the mock). */
+  /** Deposits the NCR outbox, reads the outcome of the requests and refreshes the NCR and HSE mirrors (no-op for the mock). */
   sync(): Promise<{ delivered: number; failed: number; pending: number; refreshed: number }>;
 }

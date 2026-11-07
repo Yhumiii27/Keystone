@@ -11,7 +11,7 @@
 import { boolean, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid, index } from 'drizzle-orm/pg-core';
 import type {
   EcoApproverKey, EcoDecision, EcoDisposition, EcoProgressKind, EcoStatus, EcoTargetType, EcoType, HseItemKind, HseStatus, Interchangeability, NcrProgressKind,
-  NcrSeverity, NcrSource, NcrStatus, NcrVerificationDecision, VigieSyncStatus,
+  NcrSeverity, NcrSource, NcrStatus, NcrVerificationDecision, VigieRequestOutcome, VigieResultCode, VigieSyncStatus,
 } from '../codes';
 import { eur, id, keur } from './_common';
 import { persons } from './organisation';
@@ -151,6 +151,14 @@ export const vigieEcoProgress = pgTable('vigie_eco_progress', {
   vigieRef: text('vigie_ref'),
   /** Set while a delivery is in flight (R-010: two deliveries never send the same entry); cleared by the result. */
   claimedAt: timestamp('claimed_at', { withTimezone: true }),
+  /**
+   * D12 / D13: processing of the request in Vigie, read in vigie.pub_demandes_recues (statut, code_resultat, resultat, traite_le)
+   * once deposited; null until read (and for the mock connector).
+   */
+  vigieOutcome: text('vigie_outcome').$type<VigieRequestOutcome>(),
+  vigieResultCode: text('vigie_result_code').$type<VigieResultCode>(),
+  vigieResult: text('vigie_result'),
+  vigieProcessedAt: timestamp('vigie_processed_at', { withTimezone: true }),
 }, (t) => [index('vigie_eco_progress_eco_id_idx').on(t.ecoId)]);
 
 // ── Non-conformities (NCR) — Vigie mirror (user decision: Vigie owns project NCRs, the 8D, causes and action plans) ──
@@ -167,7 +175,7 @@ export const vigieNcrs = pgTable(
     id: id(),
     /** Keystone project code ("HLT-026"). */
     projectCode: text('project_code').notNull(),
-    /** "NCR-029". */
+    /** Vigie's number: its EV-… reference since D13 (CV-07: pub_non_conformites.number = vigie_ref, "EV-2026-130"). */
     number: text('number').notNull(),
     /** Vigie's own record id when known ("EV-2026-130"); the deep link falls back to a search on the number (links.ts). */
     vigieRef: text('vigie_ref'),
@@ -241,6 +249,14 @@ export const vigieNcrProgress = pgTable('vigie_ncr_progress', {
   vigieRef: text('vigie_ref'),
   /** Set while a delivery is in flight (R-010); cleared by the result. */
   claimedAt: timestamp('claimed_at', { withTimezone: true }),
+  /**
+   * D12 / D13: processing of the request in Vigie, read in vigie.pub_demandes_recues (statut, code_resultat, resultat, traite_le)
+   * once deposited; null until read (and for the mock connector).
+   */
+  vigieOutcome: text('vigie_outcome').$type<VigieRequestOutcome>(),
+  vigieResultCode: text('vigie_result_code').$type<VigieResultCode>(),
+  vigieResult: text('vigie_result'),
+  vigieProcessedAt: timestamp('vigie_processed_at', { withTimezone: true }),
 }, (t) => [index('vigie_ncr_progress_ncr_id_idx').on(t.ncrId)]);
 
 // ── Site HSE — Vigie mirror (prevention plans, inductions, permits, near-miss register) ───────────────────

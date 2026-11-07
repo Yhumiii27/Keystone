@@ -159,7 +159,7 @@ describe('R-036 · rights: a person is mailed only what the bell shows them', ()
     const nadia = await userOf('client');
     const mails = await mailsOf(async () => {
       expect(await statesOf(await createNotification(notice({ kind: 'request', title: 'SAT invitation', screen: 'client', params: {}, toPersonIds: [nadia.personId] })))).toEqual({ client: 'sent' });
-      expect(await statesOf(await createNotification(notice({ kind: 'quality', title: 'NCR raised', screen: 'quality', params: { qTab: 'ncr', ncr: 'NCR-029' }, toPersonIds: [nadia.personId] }))))
+      expect(await statesOf(await createNotification(notice({ kind: 'quality', title: 'NCR raised', screen: 'quality', params: { qTab: 'ncr', ncr: 'EV-2026-029' }, toPersonIds: [nadia.personId] }))))
         .toEqual({ client: 'not_visible' });
       expect(await statesOf(await createNotification(notice({ projectCode: 'NDC-031', toPersonIds: [nadia.personId] })))).toEqual({ client: 'not_visible' });
     });

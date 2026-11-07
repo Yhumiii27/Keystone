@@ -1,10 +1,11 @@
 import 'server-only';
 // Progress recorded in Keystone on a Vigie NCR: one step forward ("→ Root cause", the prototype's row and drawer
-// action) or the quality verification of My approvals (approve → Closed, reject → back to Corrective action). Validated
-// against the mirror and queued in the outbox (vigie_ncr_progress) "pending sync with Vigie"; the NCR keeps Vigie's
-// status until Vigie reports the change. Creation, severity, causes, actions, costs and due dates are managed in Vigie.
+// action) or the quality verification of My approvals (approve → closure proposed, reject → back to Corrective action
+// proposed). Validated against the mirror and queued in the outbox (vigie_ncr_progress) "pending sync with Vigie"; the NCR
+// keeps Vigie's status until Vigie reports the change. Creation, qualification (Containment), severity, causes, actions, costs,
+// due dates and closure are managed in Vigie (D13: Vigie applies only what its rules allow, so Keystone never asks for more).
 import { eq, and } from 'drizzle-orm';
-import { NCR_VERIFIER_ROLES, inWorkspace, ncrNextStatus, ncrStatus, vigieSyncStatus, type NcrStatus } from '@/server/db/codes';
+import { NCR_VERIFIER_ROLES, inWorkspace, ncrKeystoneStep, ncrNextStatus, ncrStatus, vigieSyncStatus, type NcrStatus } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
 import { projects, vigieNcrProgress, vigieNcrs } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
@@ -15,8 +16,10 @@ import type { EcoProgressActor, NcrProgressEntry, NcrProgressInput, VigieNcr } f
  * Rules (07 §2.3.a, §5; the user decision "NCR verification / closure by quality"), server-side:
  * - the viewer's workspace includes the Quality screen;
  * - one request at a time per NCR (a request already waiting for Vigie blocks the next one);
- * - step: exactly the next step of Vigie's status, never Closed — closing is the quality verification;
- * - verification: quality only, on an NCR in Verification; approve → Closed, reject → Corrective action.
+ * - step: exactly the next step of Vigie's status (D13, Vigie's rules), never Containment — the qualification of the NCR by
+ *   Vigie's QHSE — nor Closed — closing is the quality verification;
+ * - verification: quality only, on an NCR in Verification; approve → Closed, reject → Corrective action — a proposal to Vigie's
+ *   QHSE, who closes the NCR or sends it back in Vigie (D13); the NCR stays in Verification until then.
  */
 export async function recordNcrProgressEntry(
   tx: Tx, ncr: VigieNcr, input: NcrProgressInput, actor: EcoProgressActor, at: Date = new Date(),
@@ -44,6 +47,8 @@ export async function recordNcrProgressEntry(
     const next = ncrNextStatus(ncr.status);
     if (input.step !== next) throw new Error(`${ncr.number} cannot move from ${ncrStatus.label(ncr.status)} to ${ncrStatus.label(input.step)}`);
     if (next === 'closed') throw new Error('Only the quality manager verifies and closes NCRs');
+    // D13: the qualification (Open → Containment) is Vigie's QHSE's, in Vigie.
+    if (ncrKeystoneStep(ncr.status) !== next) throw new Error(`${ncr.number}: the containment step is decided in Vigie`);
     kind = 'step';
     target = next;
   }

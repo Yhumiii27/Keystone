@@ -80,7 +80,7 @@ describe('"Contingency draw-down" form (delivery 7, C-4: link required from a li
   const links: DrawLinkOption[] = [
     { value: 'CR-004', label: linkOptionLabel('CR-004', 'Additional piling — soft ground at Bay 4'), type: 'change_request' },
     { value: 'R-07', label: linkOptionLabel('R-07', 'Night works'), type: 'risk' },
-    { value: 'NCR-029', label: linkOptionLabel('NCR-029', 'Weld defect'), type: 'ncr' },
+    { value: 'EV-2026-029', label: linkOptionLabel('EV-2026-029', 'Weld defect'), type: 'ncr' },
   ];
 
   it('option label "CR-004 · title"', () => {
@@ -98,7 +98,7 @@ describe('"Contingency draw-down" form (delivery 7, C-4: link required from a li
     expect(parseDrawDown({ amount: '5,25', reason: 'UPS', link: 'CR-004 · Additional piling — soft ground at Bay 4' }, links)).toEqual({
       ok: true, value: { amountKeur: 5.25, reason: 'UPS', linkRef: 'CR-004', linkType: 'change_request' },
     });
-    expect(parseDrawDown({ amount: '3', reason: 'x', link: 'NCR-029' }, links)).toMatchObject({ ok: true, value: { linkType: 'ncr' } });
+    expect(parseDrawDown({ amount: '3', reason: 'x', link: 'EV-2026-029' }, links)).toMatchObject({ ok: true, value: { linkType: 'ncr' } });
   });
 
   it('rejects a missing / non-positive amount, a blank reason, a missing link and a link that is not offered', () => {

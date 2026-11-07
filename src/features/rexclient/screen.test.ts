@@ -12,10 +12,12 @@ import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { getContract } from '@/server/dal/contract';
 import golden from '@/domain/rexclient.golden.json';
+import { demoNcrGolden } from '@/domain/vigie-demo';
 import { getClientScreen, getRexScreen } from './screen';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const G = golden as any;
+// D13 (CV-07): the prototype's NCR numbers as the demo data set has them (EV-2026-0nn, src/domain/vigie-demo.ts).
+const G = demoNcrGolden(golden) as any;
 
 /**
  * Delivery 7 (R-073; C-2a "EV = avancement × budget", A-12): the portal's progress tile and "Progress to date" bars read the earned

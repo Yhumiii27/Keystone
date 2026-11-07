@@ -15,7 +15,7 @@ describe('parseConfig', () => {
     expect(r.config).toMatchObject({
       env: 'development', production: false, dataDir: path.join(cwd, '.data'), database: { driver: 'pglite', dir: path.join(cwd, '.data', 'pg') },
       seed: 'demo', seedExplicit: false, log: { level: 'info', format: 'pretty' },
-      cursus: { apiUrl: null, apiKey: DEMO_CURSUS_API_KEY }, vigie: { apiUrl: null, apiKey: null },
+      cursus: { apiUrl: null, apiKey: DEMO_CURSUS_API_KEY }, vigie: { source: 'simulation' },
       ai: { anthropicApiKeySet: false, enabled: false, model: null, fallbacks: true },
       secrets: [],
     });
@@ -43,10 +43,10 @@ describe('parseConfig', () => {
   it('invalid values are errors naming the variable, never its value; the variable falls back to its default', () => {
     const r = parse({
       DATABASE_URL: 'mysql://root:hunter22@db/x', DATABASE_POOL_MAX: '0', KEYSTONE_SEED: 'prod', LOG_LEVEL: 'verbose', LOG_FORMAT: 'xml',
-      NEXT_PUBLIC_CODEX_URL: 'codex.local', CURSUS_API_URL: 'ftp://cursus', VIGIE_API_URL: 'not a url', KEYSTONE_AI: 'maybe', KEYSTONE_AI_MODEL: 'bad model!',
+      NEXT_PUBLIC_CODEX_URL: 'codex.local', CURSUS_API_URL: 'ftp://cursus', VIGIE_SOURCE: 'api', KEYSTONE_AI: 'maybe', KEYSTONE_AI_MODEL: 'bad model!',
     });
     expect(vars(r.errors)).toEqual([
-      'DATABASE_URL', 'DATABASE_POOL_MAX', 'KEYSTONE_SEED', 'LOG_LEVEL', 'LOG_FORMAT', 'NEXT_PUBLIC_CODEX_URL', 'CURSUS_API_URL', 'VIGIE_API_URL', 'KEYSTONE_AI',
+      'DATABASE_URL', 'DATABASE_POOL_MAX', 'KEYSTONE_SEED', 'LOG_LEVEL', 'LOG_FORMAT', 'NEXT_PUBLIC_CODEX_URL', 'CURSUS_API_URL', 'VIGIE_SOURCE', 'KEYSTONE_AI',
       'KEYSTONE_AI_MODEL',
     ]);
     const text = formatIssues(r.errors).join('\n');
@@ -96,11 +96,19 @@ describe('parseConfig', () => {
     expect(parse({ ...base, CURSUS_API_URL: 'http://localhost:3210', CURSUS_API_KEY: 'real-key-123' }).warnings).toEqual([]);
   });
 
-  it('production warnings: links to localhost, Vigie without a key (V-3)', () => {
+  it('production warnings: links to localhost, Vigie’s retired API settings (D12, D13)', () => {
     const r = parse({ NODE_ENV: 'production', KEYSTONE_AUTH: 'demo', KEYSTONE_FILE_SCAN: 'off', VIGIE_API_URL: 'https://vigie/api' });
     expect(r.errors).toEqual([]);
-    expect(vars(r.warnings)).toEqual(['VIGIE_API_KEY', 'NEXT_PUBLIC_CODEX_URL', 'NEXT_PUBLIC_CURSUS_URL', 'NEXT_PUBLIC_VIGIE_URL', 'ARCHE_URL']);
-    expect(parse({ NODE_ENV: 'production', VIGIE_API_URL: 'https://vigie/api', VIGIE_API_KEY: 'v-key-123' }).config.vigie).toEqual({ apiUrl: 'https://vigie/api', apiKey: 'v-key-123' });
+    expect(vars(r.warnings)).toEqual(['VIGIE_API_URL', 'NEXT_PUBLIC_CODEX_URL', 'NEXT_PUBLIC_CURSUS_URL', 'NEXT_PUBLIC_VIGIE_URL', 'ARCHE_URL']);
+  });
+
+  it('D12 / D13: VIGIE_SOURCE — server by default with DATABASE_URL, simulation otherwise; server without DATABASE_URL is an error', () => {
+    expect(parse({}).config.vigie).toEqual({ source: 'simulation' });
+    expect(parse({ DATABASE_URL: 'postgres://u@h/db' }).config.vigie).toEqual({ source: 'server' });
+    expect(parse({ DATABASE_URL: 'postgres://u@h/db', VIGIE_SOURCE: 'Simulation' }).config.vigie).toEqual({ source: 'simulation' });
+    const r = parse({ VIGIE_SOURCE: 'server' });
+    expect(vars(r.errors)).toEqual(['VIGIE_SOURCE']);
+    expect(r.config.vigie).toEqual({ source: 'simulation' });
   });
 
   it('an unknown NODE_ENV is a warning (development assumed), not an error', () => {

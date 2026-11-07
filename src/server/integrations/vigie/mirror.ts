@@ -1,14 +1,16 @@
 import 'server-only';
 // The local mirror of Vigie's ECOs and the outbox of progress recorded in Keystone (schema/vigie.ts). Shared by the
-// mock and HTTP connectors and the seed: `upsertMirror` is the only writer of the mirror tables (seed and Vigie
-// refresh), `readMirror` overlays the progress Vigie has not reflected yet (progress.ts queues it).
+// mock and sql connectors and the seed: `upsertMirror` is the only writer of the mirror tables (seed and the read of Vigie's
+// views, D12), `readMirror` overlays the progress Vigie has not reflected yet (progress.ts queues it; ./outbox-state.ts).
 import { and, asc, eq, inArray, isNull, lt, ne, notExists, or, sql } from 'drizzle-orm';
 import { claimExpiry } from '../outbox';
 import { ecoStatus, type EcoApproverKey } from '@/server/db/codes';
 import { findPerson } from '@/server/db/helpers';
 import { vigieEcoApprovals, vigieEcoEffectivity, vigieEcoParts, vigieEcoProgress, vigieEcoProjects, vigieEcos } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
+import type { VigieRequestState } from '@/domain/vigie-views';
 import { vigieEcoUrl } from './links';
+import { isWaiting, outcomeUpdate, shownEntries } from './outbox-state';
 import type { EcoListFilter, EcoProgressEntry, VigieEco, VigieEcoRecord } from './types';
 
 type Q = DB | Tx;
@@ -34,6 +36,7 @@ export async function upsertMirror(q: Q, records: VigieEcoRecord[], syncedAt: Da
       toRevision: r.toRevision, costEur: r.costEur, scheduleDays: r.scheduleDays, stockImpact: r.stockImpact, documentRefs: r.documentRefs,
       requestedByName: r.requestedBy, requestedByPersonId: person?.id ?? null, raisedOn: r.raisedOn, pendingDispositions: r.pendingDispositions,
       locked: r.locked, vigieUpdatedAt: r.updatedAt ? new Date(r.updatedAt) : null, lastSyncedAt: syncedAt,
+      ...(r.releasedAt !== undefined ? { releasedAt: r.releasedAt ? new Date(r.releasedAt) : null } : {}),
     };
     const old = byNumber.get(r.number);
     let ecoId: string;
@@ -73,14 +76,8 @@ export const entryOf = (r: typeof vigieEcoProgress.$inferSelect): EcoProgressEnt
   id: r.id, ecoNumber: r.ecoNumber, kind: r.kind, approvalKey: r.approvalKey ?? null, decision: r.decision ?? null, targetStatus: r.targetStatus ?? null,
   fromStatus: r.fromStatus, comment: r.comment, actorName: r.actorName, actorRole: r.actorRole, recordedAt: r.recordedAt.toISOString(),
   syncStatus: r.syncStatus, attempts: r.attempts, lastError: r.lastError,
+  vigieRef: r.vigieRef ?? null, outcome: r.vigieOutcome ?? null, resultCode: r.vigieResultCode ?? null, result: r.vigieResult ?? null,
 });
-
-/**
- * Progress Vigie has not reflected yet: entries not delivered (pending, failed) and delivered ones recorded after the
- * row's last refresh.
- */
-const unreflected = (r: typeof vigieEcoProgress.$inferSelect, lastSyncedAt: Date) =>
-  r.syncStatus !== 'sent' || r.recordedAt.getTime() > lastSyncedAt.getTime();
 
 /** The mirror (Vigie order) with the progress recorded in Keystone overlaid; optionally filtered. */
 export async function readMirror(q: Q, filter: EcoListFilter = {}): Promise<VigieEco[]> {
@@ -101,7 +98,10 @@ export async function readMirror(q: Q, filter: EcoListFilter = {}): Promise<Vigi
   };
   const [apprBy, partsBy, projBy, effBy, progBy] = [group(approvals), group(partRows), group(projectRows), group(effect), group(progress)];
   const out: VigieEco[] = rows.map((r) => {
-    const pending = (progBy.get(r.id) ?? []).filter((p) => unreflected(p, r.lastSyncedAt)).map(entryOf);
+    const entries = progBy.get(r.id) ?? [];
+    // Waiting entries drive the requested status and the pending decisions; a failed or refused latest entry is only shown.
+    const waiting = entries.filter((p) => isWaiting(p, r.lastSyncedAt)).map(entryOf);
+    const pending = shownEntries(entries, r.lastSyncedAt, r.status).map(entryOf);
     const appr = new Map((apprBy.get(r.id) ?? []).map((a) => [a.key, a]));
     return {
       number: r.number, title: r.title, type: r.type, status: r.status, interchangeability: r.interchangeability ?? null, fromRevision: r.fromRevision,
@@ -113,14 +113,14 @@ export async function readMirror(q: Q, filter: EcoListFilter = {}): Promise<Vigi
         const a = appr.get(k)!;
         return {
           key: k, decision: a.decision, approver: a.approverText, decidedBy: a.decidedByName, decidedAt: a.decidedAt?.toISOString() ?? null,
-          pending: pending.filter((p) => p.kind === 'approval' && p.approvalKey === k).at(-1) ?? null,
+          pending: waiting.filter((p) => p.kind === 'approval' && p.approvalKey === k).at(-1) ?? null,
         };
       }),
       effectivity: (effBy.get(r.id) ?? []).map((t) => ({
         targetType: t.targetType, targetRef: t.targetRef, label: t.label, disposition: t.disposition ?? null, isAutomatic: t.isAutomatic, note: t.note,
         fittedPartRef: t.fittedPartRef, fittedRevision: t.fittedRevision,
       })),
-      requestedStatus: pending.filter((p) => p.kind === 'step').at(-1)?.targetStatus ?? null,
+      requestedStatus: waiting.filter((p) => p.kind === 'step').at(-1)?.targetStatus ?? null,
       pendingProgress: pending,
       lastSyncedAt: r.lastSyncedAt.toISOString(),
       vigieUrl: vigieEcoUrl(r.number),
@@ -137,10 +137,32 @@ export async function readMirror(q: Q, filter: EcoListFilter = {}): Promise<Vigi
 
 // ── Progress (outbox) ──────────────────────────────────────────────────────────────────────────────────
 
-/** Outbox entries waiting for delivery (pending or failed), oldest first. */
+/**
+ * Outbox entries waiting to be deposited in Vigie (pending), oldest first. A `failed` entry (P0V01 / P0V02: Vigie's function
+ * refused it) is never sent again as is (D12, D13).
+ */
 export async function undeliveredProgress(q: Q): Promise<EcoProgressEntry[]> {
-  const rows = await q.select().from(vigieEcoProgress).orderBy(asc(vigieEcoProgress.recordedAt));
-  return rows.filter((r) => r.syncStatus !== 'sent').map(entryOf);
+  const rows = await q.select().from(vigieEcoProgress).where(eq(vigieEcoProgress.syncStatus, 'pending')).orderBy(asc(vigieEcoProgress.recordedAt));
+  return rows.map(entryOf);
+}
+
+/** Deposited entries whose processing by Vigie is not known yet (no outcome, or still `received`). */
+export async function unprocessedProgress(q: Q): Promise<{ id: string }[]> {
+  return q.select({ id: vigieEcoProgress.id }).from(vigieEcoProgress)
+    .where(and(eq(vigieEcoProgress.syncStatus, 'sent'), or(isNull(vigieEcoProgress.vigieOutcome), eq(vigieEcoProgress.vigieOutcome, 'received'))));
+}
+
+/** Records what Vigie published about deposited entries (D13 CV-08); returns how many changed. */
+export async function applyProgressOutcomes(q: Q, states: readonly VigieRequestState[]): Promise<number> {
+  let n = 0;
+  for (const st of states) {
+    const [cur] = await q.select({ vigieOutcome: vigieEcoProgress.vigieOutcome, syncStatus: vigieEcoProgress.syncStatus }).from(vigieEcoProgress).where(eq(vigieEcoProgress.id, st.externalId));
+    const set = cur ? outcomeUpdate(cur, st) : null;
+    if (!set) continue;
+    await q.update(vigieEcoProgress).set(set).where(and(eq(vigieEcoProgress.id, st.externalId), eq(vigieEcoProgress.syncStatus, 'sent')));
+    n++;
+  }
+  return n;
 }
 
 /** Delivery state of an outbox entry (null when unknown). */
@@ -150,24 +172,29 @@ export async function progressSyncStatus(q: Q, id: string) {
 }
 
 /**
- * Claims an outbox entry before sending it (R-010, ../outbox.ts): true when it is still undelivered and no other delivery
+ * Claims an outbox entry before sending it (R-010, ../outbox.ts): true when it is still pending and no other delivery
  * holds it — the caller then sends it and records the result with markDelivery.
  */
 export async function claimProgressDelivery(q: Q, id: string, at = new Date()): Promise<boolean> {
   const rows = await q
     .update(vigieEcoProgress)
     .set({ claimedAt: at })
-    .where(and(eq(vigieEcoProgress.id, id), ne(vigieEcoProgress.syncStatus, 'sent'), or(isNull(vigieEcoProgress.claimedAt), lt(vigieEcoProgress.claimedAt, claimExpiry(at)))))
+    .where(and(eq(vigieEcoProgress.id, id), eq(vigieEcoProgress.syncStatus, 'pending'), or(isNull(vigieEcoProgress.claimedAt), lt(vigieEcoProgress.claimedAt, claimExpiry(at)))))
     .returning({ id: vigieEcoProgress.id });
   return rows.length > 0;
 }
 
-/** Marks a delivery attempt of an outbox entry (and releases its claim). */
-export async function markDelivery(q: Q, id: string, result: { ok: true; vigieRef?: string | null } | { ok: false; error: string }, at = new Date()): Promise<void> {
+/**
+ * Marks a delivery attempt of an outbox entry (and releases its claim): deposited (`sent`, Vigie's request number), refused by
+ * Vigie's function (`failed`, never resent — `retry: false`), or a transient failure (`retry: true`: stays `pending`, sent again).
+ */
+export async function markDelivery(
+  q: Q, id: string, result: { ok: true; vigieRef?: string | null } | { ok: false; error: string; retry?: boolean }, at = new Date(),
+): Promise<void> {
   await q
     .update(vigieEcoProgress)
     .set(result.ok
       ? { syncStatus: 'sent', sentAt: at, lastAttemptAt: at, attempts: sql`${vigieEcoProgress.attempts} + 1`, lastError: null, vigieRef: result.vigieRef ?? null, claimedAt: null }
-      : { syncStatus: 'failed', lastAttemptAt: at, attempts: sql`${vigieEcoProgress.attempts} + 1`, lastError: result.error.slice(0, 500), claimedAt: null })
+      : { syncStatus: result.retry ? 'pending' : 'failed', lastAttemptAt: at, attempts: sql`${vigieEcoProgress.attempts} + 1`, lastError: result.error.slice(0, 500), claimedAt: null })
     .where(eq(vigieEcoProgress.id, id));
 }

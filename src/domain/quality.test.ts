@@ -12,6 +12,7 @@ import { deliverableStatus, NCR_FLOW, ncrStatus, type DeliverableStatus } from '
 import { forwardIso } from '@/server/db/seed/dates';
 import { prototypeNcrSnapshot, type ProtoNcrRow } from '@/server/integrations/vigie/prototype-snapshot';
 import GOLD from '@/features/quality/quality.golden.json';
+import { demoNcrGolden } from '@/domain/vigie-demo';
 import { money } from '@/lib/format';
 import {
   QUALITY_COLOR, RACI_LABEL, RACI_ORDER, awaitsVerification, deliverableAcceptanceItems, deliverableActionFor, deliverableChips, deliverableFilterOf,
@@ -22,7 +23,8 @@ import {
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const P = PROTO as any;
-const G = (GOLD as any).en;
+// D13 (CV-07): the prototype's NCR numbers as the demo data set has them (EV-2026-0nn, src/domain/vigie-demo.ts).
+const G = demoNcrGolden((GOLD as any).en);
 const DATA = ['HLT-026', 'NDC-031', 'RCF-019', 'ERP-202', 'WSA-044', 'MSR-012'];
 
 const NCRS: (NcrLike & { projectCode: string; vigieUrl: string })[] = prototypeNcrSnapshot(P.HLT_NCRS as ProtoNcrRow[], DATA).map((r) => ({
@@ -83,16 +85,17 @@ describe('NCR log (Vigie NCRs) — ncrKpis / ncrChips / ncrRows / ncrVals', () =
   it('the viewer’s action: next step for editors (never Closed), verification for quality only, nothing for the client / read-only / waiting', () => {
     const byId = (x: string) => ncrsOf('HLT-026').find((n) => n.number === x)!;
     // Every open row offers its next step in the prototype; here the editors get it as a request sent to Vigie.
+    // D13: never Containment from Open (the qualification by Vigie's QHSE) — the prototype offered it.
     for (const r of G.projects['HLT-026'].ncr.rows) {
       const a = ncrActionFor(byId(r.id), EDITOR);
-      expect(a, r.id).toEqual(r.canAdvance ? { kind: 'step', target: ncrStatus.code(r.nextLabel) } : null);
+      expect(a, r.id).toEqual(r.canAdvance && r.nextLabel !== 'Containment' ? { kind: 'step', target: ncrStatus.code(r.nextLabel) } : null);
     }
-    const ver = { ...byId('NCR-026'), status: 'verification' as const };
+    const ver = { ...byId('EV-2026-026'), status: 'verification' as const };
     expect([ncrActionFor(ver, EDITOR), ncrActionFor(ver, { role: 'quality', canEdit: true }), ncrActionFor(ver, { role: 'quality', canEdit: false })]).toEqual([null, { kind: 'verify' }, null]);
     expect([awaitsVerification(ver), awaitsVerification({ ...ver, requestedStatus: 'closed' })]).toEqual([true, false]);
-    expect(ncrActionFor(byId('NCR-030'), { role: 'client', canEdit: true })).toBeNull();
-    expect(ncrActionFor(byId('NCR-030'), { role: 'pm', canEdit: false })).toBeNull();
-    expect(ncrActionFor({ ...byId('NCR-030'), requestedStatus: 'containment' }, EDITOR)).toBeNull();
+    expect(ncrActionFor(byId('EV-2026-030'), { role: 'client', canEdit: true })).toBeNull();
+    expect(ncrActionFor(byId('EV-2026-030'), { role: 'pm', canEdit: false })).toBeNull();
+    expect(ncrActionFor({ ...byId('EV-2026-030'), requestedStatus: 'containment' }, EDITOR)).toBeNull();
   });
 
   it('progress waiting for Vigie: request texts and sync line (failed > pending > sent)', () => {
@@ -117,11 +120,11 @@ describe('NCR log (Vigie NCRs) — ncrKpis / ncrChips / ncrRows / ncrVals', () =
     const code = 'HLT-026';
     const href = { ncr: (n: string) => `/q/${n}` };
     expect(ncrVerificationItems(ncrsOf(code), code, href, 2026)).toEqual([]);
-    const ver = ncrsOf(code).map((n) => (n.number === 'NCR-026' ? { ...n, status: 'verification' as const } : n));
+    const ver = ncrsOf(code).map((n) => (n.number === 'EV-2026-026' ? { ...n, status: 'verification' as const } : n));
     const items = ncrVerificationItems(ver, code, href, 2026);
     expect(items.map((i) => ({ kind: 'NCR verification', id: i.id, title: i.title, sub: i.sub, when: i.when, who: i.who }))).toEqual(G.approvals.qualityVerification);
-    expect(items[0]).toMatchObject({ kind: 'ncr', whenIso: '2026-10-02', href: '/q/NCR-026', decision: { mode: 'ncr-verification', projectCode: code, number: 'NCR-026' }, external: { href: 'vigie:NCR-026', label: 'Open in Vigie' } });
-    expect(ncrVerificationItems(ver.map((n) => (n.number === 'NCR-026' ? { ...n, requestedStatus: 'closed' as const } : n)), code, href, 2026)).toEqual([]);
+    expect(items[0]).toMatchObject({ kind: 'ncr', whenIso: '2026-10-02', href: '/q/EV-2026-026', decision: { mode: 'ncr-verification', projectCode: code, number: 'EV-2026-026' }, external: { href: 'vigie:EV-2026-026', label: 'Open in Vigie' } });
+    expect(ncrVerificationItems(ver.map((n) => (n.number === 'EV-2026-026' ? { ...n, requestedStatus: 'closed' as const } : n)), code, href, 2026)).toEqual([]);
   });
 });
 

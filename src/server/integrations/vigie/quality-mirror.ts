@@ -1,15 +1,17 @@
 import 'server-only';
 // Local mirrors of Vigie's project non-conformities (NCR) and site HSE register, and the outbox of the NCR progress
-// recorded in Keystone (schema/vigie.ts). Shared by the mock and HTTP quality connectors and the seed: the upsert
-// functions are the only writers of the mirror tables (seed and Vigie refresh); `readNcrMirror` overlays the progress
-// Vigie has not reflected yet (quality-progress.ts queues it).
+// recorded in Keystone (schema/vigie.ts). Shared by the mock and sql quality connectors and the seed: the upsert
+// functions are the only writers of the mirror tables (seed and the read of Vigie's views, D13); `readNcrMirror` overlays the
+// progress Vigie has not reflected yet (quality-progress.ts queues it; ./outbox-state.ts).
 import { and, asc, eq, inArray, isNull, lt, ne, notExists, or, sql } from 'drizzle-orm';
 import { claimExpiry } from '../outbox';
 import { hseStatus, ncrStatus } from '@/server/db/codes';
 import { findPerson } from '@/server/db/helpers';
 import { vigieHseItems, vigieNcrProgress, vigieNcrs } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
+import type { VigieRequestState } from '@/domain/vigie-views';
 import { vigieHseUrl, vigieNcrUrl } from './links';
+import { isWaiting, outcomeUpdate, shownEntries } from './outbox-state';
 import type { NcrListFilter, NcrProgressEntry, VigieHseItem, VigieHseRecord, VigieNcr, VigieNcrRecord } from './types';
 
 type Q = DB | Tx;
@@ -36,6 +38,10 @@ export async function upsertNcrMirror(q: Q, records: VigieNcrRecord[], syncedAt:
       inspectionNumber: r.inspectionNumber ?? null, raisedByName: r.raisedBy,
       raisedByPersonId: raised?.id ?? null, raisedOn: r.raisedOn, ownerName: r.owner, ownerPersonId: owner?.id ?? null, rootCause: r.rootCause, action: r.action,
       dueOn: r.dueOn, costKeur: r.costKeur, isoClause: r.isoClause, vigieUpdatedAt: r.updatedAt ? new Date(r.updatedAt) : null, lastSyncedAt: syncedAt,
+      // D13 share columns, written when Vigie's view gives them (the demo snapshot does not).
+      ...(r.closedOn !== undefined ? { closedOn: r.closedOn } : {}),
+      ...(r.ownerMatricule !== undefined ? { ownerMatricule: r.ownerMatricule } : {}),
+      ...(r.supplierId !== undefined ? { supplierId: r.supplierId } : {}),
     };
     const old = byKey.get(key(r.projectCode, r.number));
     if (old) await q.update(vigieNcrs).set(values).where(eq(vigieNcrs.id, old.id));
@@ -58,11 +64,8 @@ export async function upsertNcrMirror(q: Q, records: VigieNcrRecord[], syncedAt:
 export const ncrEntryOf = (r: typeof vigieNcrProgress.$inferSelect): NcrProgressEntry => ({
   id: r.id, projectCode: r.projectCode, ncrNumber: r.ncrNumber, kind: r.kind, decision: r.decision ?? null, fromStatus: r.fromStatus, targetStatus: r.targetStatus,
   comment: r.comment, actorName: r.actorName, actorRole: r.actorRole, recordedAt: r.recordedAt.toISOString(), syncStatus: r.syncStatus, attempts: r.attempts,
-  lastError: r.lastError,
+  lastError: r.lastError, vigieRef: r.vigieRef ?? null, outcome: r.vigieOutcome ?? null, resultCode: r.vigieResultCode ?? null, result: r.vigieResult ?? null,
 });
-
-/** Progress Vigie has not reflected yet: entries not delivered, and delivered ones recorded after the row's last refresh. */
-const unreflected = (r: typeof vigieNcrProgress.$inferSelect, lastSyncedAt: Date) => r.syncStatus !== 'sent' || r.recordedAt.getTime() > lastSyncedAt.getTime();
 
 /** The NCR mirror (Vigie order) with the progress recorded in Keystone overlaid; optionally filtered. */
 export async function readNcrMirror(q: Q, filter: NcrListFilter = {}): Promise<VigieNcr[]> {
@@ -75,13 +78,17 @@ export async function readNcrMirror(q: Q, filter: NcrListFilter = {}): Promise<V
   const byNcr = new Map<string, (typeof progress)[number][]>();
   for (const p of progress) byNcr.set(p.ncrId, [...(byNcr.get(p.ncrId) ?? []), p]);
   return rows.map((r) => {
-    const pending = (byNcr.get(r.id) ?? []).filter((p) => unreflected(p, r.lastSyncedAt)).map(ncrEntryOf);
+    const entries = byNcr.get(r.id) ?? [];
+    // D13: a verification is a proposal Vigie's QHSE acts on — once accepted, it stays shown while the NCR is still in Verification.
+    const held = (p: (typeof entries)[number]) => p.kind === 'verification' && r.status === 'verification';
+    const waiting = entries.filter((p) => isWaiting(p, r.lastSyncedAt, held(p))).map(ncrEntryOf);
+    const pending = shownEntries(entries, r.lastSyncedAt, r.status, held).map(ncrEntryOf);
     return {
       projectCode: r.projectCode, number: r.number, vigieRef: r.vigieRef, title: r.title, severity: r.severity, source: r.source, status: r.status,
       activityCode: r.activityCode, partRef: r.partRef, deliverableNumber: r.deliverableNumber, supplierName: r.supplierName,
       inspectionNumber: r.inspectionNumber, raisedBy: r.raisedByName,
       raisedOn: r.raisedOn, owner: r.ownerName, rootCause: r.rootCause, action: r.action, dueOn: r.dueOn, costKeur: r.costKeur, isoClause: r.isoClause,
-      requestedStatus: pending.at(-1)?.targetStatus ?? null, pendingProgress: pending, lastSyncedAt: r.lastSyncedAt.toISOString(),
+      requestedStatus: waiting.at(-1)?.targetStatus ?? null, pendingProgress: pending, lastSyncedAt: r.lastSyncedAt.toISOString(),
       vigieUrl: vigieNcrUrl({ number: r.number, vigieRef: r.vigieRef }),
     };
   });
@@ -89,10 +96,29 @@ export async function readNcrMirror(q: Q, filter: NcrListFilter = {}): Promise<V
 
 // ── NCR outbox ─────────────────────────────────────────────────────────────────────────────────────────
 
-/** NCR progress waiting for delivery (pending or failed), oldest first. */
+/** NCR progress waiting to be deposited in Vigie (pending), oldest first; a `failed` entry is never sent again as is (D13). */
 export async function undeliveredNcrProgress(q: Q): Promise<NcrProgressEntry[]> {
-  const rows = await q.select().from(vigieNcrProgress).orderBy(asc(vigieNcrProgress.recordedAt));
-  return rows.filter((r) => r.syncStatus !== 'sent').map(ncrEntryOf);
+  const rows = await q.select().from(vigieNcrProgress).where(eq(vigieNcrProgress.syncStatus, 'pending')).orderBy(asc(vigieNcrProgress.recordedAt));
+  return rows.map(ncrEntryOf);
+}
+
+/** Deposited NCR entries whose processing by Vigie is not known yet (no outcome, or still `received`). */
+export async function unprocessedNcrProgress(q: Q): Promise<{ id: string }[]> {
+  return q.select({ id: vigieNcrProgress.id }).from(vigieNcrProgress)
+    .where(and(eq(vigieNcrProgress.syncStatus, 'sent'), or(isNull(vigieNcrProgress.vigieOutcome), eq(vigieNcrProgress.vigieOutcome, 'received'))));
+}
+
+/** Records what Vigie published about deposited NCR entries (D13 CV-08); returns how many changed. */
+export async function applyNcrProgressOutcomes(q: Q, states: readonly VigieRequestState[]): Promise<number> {
+  let n = 0;
+  for (const st of states) {
+    const [cur] = await q.select({ vigieOutcome: vigieNcrProgress.vigieOutcome, syncStatus: vigieNcrProgress.syncStatus }).from(vigieNcrProgress).where(eq(vigieNcrProgress.id, st.externalId));
+    const set = cur ? outcomeUpdate(cur, st) : null;
+    if (!set) continue;
+    await q.update(vigieNcrProgress).set(set).where(and(eq(vigieNcrProgress.id, st.externalId), eq(vigieNcrProgress.syncStatus, 'sent')));
+    n++;
+  }
+  return n;
 }
 
 export async function ncrProgressSyncStatus(q: Q, id: string) {
@@ -105,18 +131,20 @@ export async function claimNcrDelivery(q: Q, id: string, at = new Date()): Promi
   const rows = await q
     .update(vigieNcrProgress)
     .set({ claimedAt: at })
-    .where(and(eq(vigieNcrProgress.id, id), ne(vigieNcrProgress.syncStatus, 'sent'), or(isNull(vigieNcrProgress.claimedAt), lt(vigieNcrProgress.claimedAt, claimExpiry(at)))))
+    .where(and(eq(vigieNcrProgress.id, id), eq(vigieNcrProgress.syncStatus, 'pending'), or(isNull(vigieNcrProgress.claimedAt), lt(vigieNcrProgress.claimedAt, claimExpiry(at)))))
     .returning({ id: vigieNcrProgress.id });
   return rows.length > 0;
 }
 
-/** Marks a delivery attempt of an NCR outbox entry (and releases its claim). */
-export async function markNcrDelivery(q: Q, id: string, result: { ok: true; vigieRef?: string | null } | { ok: false; error: string }, at = new Date()): Promise<void> {
+/** Marks a delivery attempt of an NCR outbox entry (and releases its claim) — as markDelivery (mirror.ts). */
+export async function markNcrDelivery(
+  q: Q, id: string, result: { ok: true; vigieRef?: string | null } | { ok: false; error: string; retry?: boolean }, at = new Date(),
+): Promise<void> {
   await q
     .update(vigieNcrProgress)
     .set(result.ok
       ? { syncStatus: 'sent', sentAt: at, lastAttemptAt: at, attempts: sql`${vigieNcrProgress.attempts} + 1`, lastError: null, vigieRef: result.vigieRef ?? null, claimedAt: null }
-      : { syncStatus: 'failed', lastAttemptAt: at, attempts: sql`${vigieNcrProgress.attempts} + 1`, lastError: result.error.slice(0, 500), claimedAt: null })
+      : { syncStatus: result.retry ? 'pending' : 'failed', lastAttemptAt: at, attempts: sql`${vigieNcrProgress.attempts} + 1`, lastError: result.error.slice(0, 500), claimedAt: null })
     .where(eq(vigieNcrProgress.id, id));
 }
 

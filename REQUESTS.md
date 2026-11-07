@@ -104,7 +104,18 @@ Format d'une entrée :
 
 
 ## [2026-11-05] Matrix → Keystone — M-19 · Fonction d'édition `keystone.pub_editer` : corriger les données de Keystone depuis Matrix, par vos règles
-- Statut : OUVERTE
+- Statut : FAITE (07/11/2026, migration `0076_pub_editer`, notes `docs/delivery-9/notes-m19-edit.md`) — fonction générique
+  `keystone.pub_editer` (pas de fonction par table), `SECURITY DEFINER`, `search_path = keystone, pg_temp`, EXECUTE retiré à
+  PUBLIC. **Liste fermée** (restriction du responsable produit) : `reference_values` (ajouter `list_key`, `label` ; corriger
+  `label` des catégories de risque et types de livrable ; retirer = désactivation), `storage_locations` (ajouter, corriger
+  `name`, `location_type` ; retirer = désactivation), `clients` (ajouter, corriger `name`), `suppliers` (ajouter, corriger `name`,
+  `x3_code`), `persons` (corriger `full_name`, `initials`, `job_title`), `projects` (corriger `name`, `short_name`). Toute autre
+  table, colonne ou action est refusée avec son motif ; colonnes sensibles refusées et jamais renvoyées (`persons.email`,
+  `matricule`, `rate_role_id`). Clé : `{"id": "<uuid>"}` (clé primaire). Refus : SQLSTATE `P0K01` (non ouvert), `P0K02`
+  (argument invalide), `P0K03` (règle de Keystone), `P0K04` (ligne introuvable). Journal : `keystone.audit_entries`, acteur
+  `p_par`, motif `p_motif`, valeurs avant / après, domaine « Matrix », texte « Matrix (<session_user>) · … ».
+  **À faire par Matrix** : le lien « écriture » `matrix_app` → `keystone.pub_editer` (`droits.accorder_execution`) ; la
+  visionneuse peut proposer « Ajouter / Corriger / Retirer » sur les seules tables et colonnes ci-dessus.
 - Demande : fournir, par une migration de Keystone, la fonction
   `keystone.pub_editer(p_table text, p_action text, p_cle jsonb, p_valeurs jsonb, p_par text, p_motif text) RETURNS jsonb`
   (`SECURITY DEFINER`, `SET search_path = keystone, pg_temp`, `REVOKE EXECUTE … FROM PUBLIC`), qui ajoute, corrige ou retire une ligne
@@ -130,7 +141,7 @@ Format d'une entrée :
 - Validé par Guillaume le : 2026-11-05
 
 ## [2026-11-05] Vigie → Keystone — NC de projet de Vigie : lecture par les vues, avancement par vigie.pub_signaler_avancement_nc (D13)
-- Statut : OUVERTE
+- Statut : FAITE (07/11/2026, `docs/delivery-9/notes-vigie-d12-d13.md`, migration 0077) : `VIGIE_SOURCE=server` (défaut avec `DATABASE_URL`) — miroirs rafraîchis par SELECT sur `vigie.pub_non_conformites` et `vigie.pub_hse_projet` (plus de GET), numéro = référence EV-… (CV-07, démonstration renumérotée EV-2026-0nn) ; avancement par `select vigie.pub_signaler_avancement_nc(…)` aux paramètres nommés, numéro de demande gardé (`vigie_ref`), P0V01 / P0V02 → « failed » sans renvoi, autre erreur → renvoyée ; issue lue dans `vigie.pub_demandes_recues` (rejected → « refused », motif affiché) ; règles de Vigie reprises (ni Confinement ni Clôturée demandés, vérification = proposition, NC laissée en Vérification) ; liens `/evenements?etat=tous&sel=EV-…`. Fonctionnement réel dès que Matrix applique sur le serveur le lien d’exécution et la publication `pub_demandes_recues` (préparés). « Stale » : pas de renvoi automatique, la personne redemande d’après le nouvel état
 - Demande :
   1. Lecture : rafraîchir vigie_ncrs et vigie_hse_items par SELECT sur vigie.pub_non_conformites et vigie.pub_hse_projet
      (liens keystone_app de la convention ; vues reprises par Matrix) au lieu de GET /api/ncrs et /api/hse
@@ -162,7 +173,7 @@ Format d'une entrée :
 - Validé par Guillaume le : 2026-11-05
 
 ## [2026-11-06] Vigie → Keystone — Ordres de modification de Vigie : lecture par les vues, avancement par vigie.pub_signaler_avancement_eco (D12, lot 5 livré le 05/11/2026)
-- Statut : OUVERTE
+- Statut : ACCEPTÉE (07/11/2026, construit côté Keystone, `docs/delivery-9/notes-vigie-d12-d13.md`) : miroir rafraîchi par SELECT sur `vigie.pub_ordres_modification`, `pub_eco_approbations`, `pub_eco_effectivite` (plus de GET) ; avancement par `select vigie.pub_signaler_avancement_eco(…)` aux paramètres nommés, numéro de demande gardé, P0V01 / P0V02 → « failed », issue lue dans `vigie.pub_demandes_recues` ; clés englead et pm seulement (la qualité décide dans Vigie), jamais released ni rejected ; liens inchangés. Reste, hors Keystone : le lien d’exécution `keystone_app` → `vigie.pub_signaler_avancement_eco` est absent du dépôt des publications de Matrix (à demander à Matrix) et les trois publications D12 sont à appliquer sur le serveur ; d’ici là les avancements restent « en attente de synchronisation avec Vigie »
 - Demande :
   1. Lecture : rafraîchir vigie_ecos par SELECT sur vigie.pub_ordres_modification (number, title, eco_type → type,
      status, interchangeability, from_revision, to_revision, cost_eur, schedule_days, stock_impact, document_refs,

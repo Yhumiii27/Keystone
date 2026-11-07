@@ -26,7 +26,7 @@ export interface JobDefinition extends JobSchedule {
   run: () => Promise<JobOutcome>;
 }
 
-type Delivery = { mode: 'mock' | 'http'; delivered: number; failed: number; pending: number };
+type Delivery = { mode: 'mock' | 'http' | 'sql'; delivered: number; failed: number; pending: number };
 
 /** "mock connector · nothing sent · 2 waiting" or "3 delivered · 0 failed · 0 pending". */
 function outboxOutcome(system: string, parts: Delivery[]): JobOutcome {

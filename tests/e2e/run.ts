@@ -85,7 +85,7 @@ async function main(): Promise<number> {
     KEYSTONE_DATA_DIR: dataDir,
     ...(root ? { KEYSTONE_TURBOPACK_ROOT: root } : {}),
     // Nothing leaves the machine: mock connectors, local transcript analyser.
-    VIGIE_API_URL: '',
+    VIGIE_SOURCE: 'simulation',
     CURSUS_API_URL: '',
     ANTHROPIC_API_KEY: '',
     // No antivirus (R-175) and no backups (R-004) in the end-to-end runs, whatever the shell sets.

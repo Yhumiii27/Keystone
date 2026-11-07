@@ -15,7 +15,7 @@ import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import {
   DELIVERABLE_ACCEPTANCE_DAYS, DELIVERABLE_STATUS_TAG, NCR_FLOW, NCR_STATUS_TAG, NCR_VERIFIER_ROLES, RACI_CODES, SEVERITY_TAG, addDaysIso, deliverableStatus, deliverableType,
-  fmtDOfIso, nextBusinessNumber, ncrNextStatus, ncrSeverity, ncrSource, ncrStatus, vigieSyncStatus,
+  fmtDOfIso, nextBusinessNumber, ncrKeystoneStep, ncrNextStatus, ncrSeverity, ncrSource, ncrStatus, vigieSyncStatus,
   type DeliverableReviewDecision, type DeliverableStatus, type NcrStatus, type NcrVerificationDecision, type RaciCode,
 } from '@/server/db/codes';
 import { findPerson, nameOf } from '@/server/db/helpers';
@@ -72,7 +72,8 @@ function ncrRow(n: VigieNcr, names: Map<string, string>): NcrRow {
     statusTag: NCR_STATUS_TAG[n.status], stepIndex: NCR_FLOW.indexOf(n.status), nextStatus: next, nextStatusLabel: next ? ncrStatus.label(next) : null,
     open: n.status !== 'closed', activityName: n.activityCode ? names.get(n.activityCode) ?? null : null,
     requestedStatusLabel: n.requestedStatus ? ncrStatus.label(n.requestedStatus) : null, pendingSync: !!last,
-    pendingSyncLabel: last ? vigieSyncStatus.label(last.syncStatus) : null, canStep: !!next && next !== 'closed' && !n.requestedStatus,
+    // D13: Keystone never asks for Containment (Vigie's qualification) nor Closed (the verification).
+    pendingSyncLabel: last ? vigieSyncStatus.label(last.syncStatus) : null, canStep: !!ncrKeystoneStep(n.status) && !n.requestedStatus,
     awaitingVerification: n.status === 'verification' && !n.requestedStatus,
   };
 }
@@ -83,7 +84,7 @@ export async function listNcrs(projectCode: string): Promise<NcrRow[]> {
   return list.map((n) => ncrRow(n, names));
 }
 
-/** One NCR ("NCR-029"), case-insensitive; null when unknown on that project. */
+/** One NCR (Vigie's number, "EV-2026-029"), case-insensitive; null when unknown on that project. */
 export async function getNcr(projectCode: string, number: string): Promise<NcrRow | null> {
   return (await listNcrs(projectCode)).find((n) => n.number.toLowerCase() === number.trim().toLowerCase()) ?? null;
 }

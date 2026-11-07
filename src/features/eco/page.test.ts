@@ -103,12 +103,12 @@ describe('/reference/eco', () => {
     const pm = await d('pm');
     expect([pm.approvals.map((a) => a.canAct), pm.projects.map((x) => x.manage), pm.machines.map((x) => x.manage), pm.interch.manage]).toEqual([[false, false, true], [true, true], [false, false, false], false]);
     const dir = await d('director');
-    expect([dir.approvals.some((a) => a.canAct), dir.projects.every((x) => x.manage), dir.machines.every((x) => x.manage), dir.hint]).toEqual([false, true, true, 'Switch to Engineering lead, Quality or Project manager (bottom-left) to approve.']);
+    expect([dir.approvals.some((a) => a.canAct), dir.projects.every((x) => x.manage), dir.machines.every((x) => x.manage), dir.hint]).toEqual([false, true, true, 'Switch to Engineering lead or Project manager (bottom-left) to approve.']); // D12: quality decides in Vigie
     const ql = await d('quality', 'ECO-2026-016');
     expect([ql.interch.manage, ql.approvals.some((a) => a.canAct), ql.hint]).toEqual([true, false, 'Approvals open once the impact analysis is submitted.']);
     session.lang = 'fr';
     const proc = await d('procurement');
-    expect(proc.hint).toBe('Passez en Responsable ingénierie, Qualité ou Chef de projet (en bas à gauche) pour approuver.');
+    expect(proc.hint).toBe('Passez en Responsable ingénierie ou Chef de projet (en bas à gauche) pour approuver.'); // D12
     session.role = 'pm';
     session.lang = 'en';
     // The Drawer itself renders through a portal on the client: render the panel's content.
