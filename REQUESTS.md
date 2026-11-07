@@ -104,7 +104,7 @@ Format d'une entrée :
 
 
 ## [2026-11-05] Matrix → Keystone — M-19 · Fonction d'édition `keystone.pub_editer` : corriger les données de Keystone depuis Matrix, par vos règles
-- Statut : OUVERTE
+- Statut : ACCEPTÉE (07/11/2026, en cours)
 - Demande : fournir, par une migration de Keystone, la fonction
   `keystone.pub_editer(p_table text, p_action text, p_cle jsonb, p_valeurs jsonb, p_par text, p_motif text) RETURNS jsonb`
   (`SECURITY DEFINER`, `SET search_path = keystone, pg_temp`, `REVOKE EXECUTE … FROM PUBLIC`), qui ajoute, corrige ou retire une ligne
@@ -130,7 +130,7 @@ Format d'une entrée :
 - Validé par Guillaume le : 2026-11-05
 
 ## [2026-11-05] Vigie → Keystone — NC de projet de Vigie : lecture par les vues, avancement par vigie.pub_signaler_avancement_nc (D13)
-- Statut : OUVERTE
+- Statut : ACCEPTÉE (07/11/2026, en cours)
 - Demande :
   1. Lecture : rafraîchir vigie_ncrs et vigie_hse_items par SELECT sur vigie.pub_non_conformites et vigie.pub_hse_projet
      (liens keystone_app de la convention ; vues reprises par Matrix) au lieu de GET /api/ncrs et /api/hse
@@ -162,7 +162,7 @@ Format d'une entrée :
 - Validé par Guillaume le : 2026-11-05
 
 ## [2026-11-06] Vigie → Keystone — Ordres de modification de Vigie : lecture par les vues, avancement par vigie.pub_signaler_avancement_eco (D12, lot 5 livré le 05/11/2026)
-- Statut : OUVERTE
+- Statut : ACCEPTÉE (07/11/2026, en cours)
 - Demande :
   1. Lecture : rafraîchir vigie_ecos par SELECT sur vigie.pub_ordres_modification (number, title, eco_type → type,
      status, interchangeability, from_revision, to_revision, cost_eur, schedule_days, stock_impact, document_refs,
