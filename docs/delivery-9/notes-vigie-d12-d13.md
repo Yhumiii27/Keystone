@@ -13,7 +13,7 @@ Sources lues en lecture seule (aucune écriture dans ces dépôts) :
   `pub_eco_effectivite`, `pub_demandes_recues` et liens), `data/contrats/vigie.pub_demandes_recues.json`,
   `infra/postgres/partage/90-droits.sql` (droits de lecture de `keystone_app`), `REQUESTS.md`.
 
-Une migration : **0076** (`drizzle/0076_moaning_amphibian.sql`) — quatre colonnes sur chacune des deux files d’envoi
+Une migration : **0077** (`drizzle/0077_vigie_request_outcome.sql`, renumérotée à l’intégration) — quatre colonnes sur chacune des deux files d’envoi
 (`vigie_outcome`, `vigie_result_code`, `vigie_result`, `vigie_processed_at`). Aucune vue `pub_`, aucun droit accordé (M-18).
 
 ## 1. Ce qui a été construit

@@ -540,6 +540,13 @@
       "when": 1794045994294,
       "tag": "0076_pub_editer",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1794051066045,
+      "tag": "0077_vigie_request_outcome",
+      "breakpoints": true
     }
   ]
 }
