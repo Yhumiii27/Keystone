@@ -10,10 +10,12 @@ import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { getQualityScreen } from '@/server/dal/quality-screen';
 import GOLD from './quality.golden.json';
+import { demoNcrGolden } from '@/domain/vigie-demo';
 import { dlvDrawerView, dlvTabView, ncrDrawerView, ncrTabView, qualitySegView, type QualityState, type QualityViewerCtx } from './model';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const G = GOLD as any;
+// D13 (CV-07): the prototype's NCR numbers as the demo data set has them (EV-2026-0nn, src/domain/vigie-demo.ts).
+const G = demoNcrGolden(GOLD) as any;
 const LANGS: Lang[] = ['en', 'fr'];
 const DATA = ['HLT-026', 'NDC-031', 'RCF-019', 'ERP-202', 'WSA-044', 'MSR-012'];
 const S0: QualityState = { tab: 'ncr', filter: null, status: null, ncr: null, dlv: null };
@@ -65,7 +67,7 @@ const dlvTab = async (code: string, lang: Lang, state: QualityState = { ...S0, t
 
 describe('register switch', () => {
   it.each(LANGS)('%s: two options (links keep the chip filters)', (lang) => {
-    const seg = qualitySegView('HLT-026', { ...S0, filter: 'major', status: 'submitted', ncr: 'NCR-026' }, makeT(lang));
+    const seg = qualitySegView('HLT-026', { ...S0, filter: 'major', status: 'submitted', ncr: 'EV-2026-026' }, makeT(lang));
     expect(seg.map((o) => o.label)).toEqual(G[lang].qSeg.map((o: any) => o.label));
     expect(seg.map((o) => o.href)).toEqual(['/projects/HLT-026/quality?filter=major&status=submitted', '/projects/HLT-026/quality?tab=dlv&filter=major&status=submitted']);
   });
@@ -83,20 +85,22 @@ describe('NCR log — EN and FR', () => {
         costText: r.cost, status: r.status, tagClass: r.statusClass, steps: r.segments, next: r.action?.label ?? null,
       })), code).toEqual(g.rows.map((r: any) => ({
         id: r.id, title: r.title, raised: `${r.raised} · ${day(r.date)}`, sev: r.sev, sevClass: r.sevClass, src: r.src, actText: r.actText, owner: r.owner, due: r.due,
-        costText: r.costText, status: r.status, tagClass: r.tagClass, steps: r.steps, next: r.canAdvance ? `→ ${r.nextLabel}` : null,
+        // D13: no "→ Containment" on an open NCR (Vigie's QHSE qualifies it).
+        costText: r.costText, status: r.status, tagClass: r.tagClass, steps: r.steps, next: r.canAdvance && r.nextLabel !== 'Containment' && r.nextLabel !== 'Confinement' ? `→ ${r.nextLabel}` : null,
       })));
       expect(v.empty).toBe(g.empty ? 'x' : null);
-      expect(v.rows.every((r) => r.sync === null && r.vigieUrl === `http://localhost:3200/evenements?etat=tous&type=NC&q=${r.number}`)).toBe(true);
+      // D13 (CV-07): the number is Vigie's record: the link opens it.
+      expect(v.rows.every((r) => r.sync === null && r.vigieUrl === `http://localhost:3200/evenements?etat=tous&sel=${r.number}`)).toBe(true);
     }
   });
 
   it.each(LANGS)('%s: severity chips are links; filters, selection and the empty message', async (lang) => {
-    const v = await ncrTab('HLT-026', lang, { ...S0, ncr: 'NCR-029' });
-    expect(v.chips.map((c) => c.href)).toEqual(['', '?filter=minor&', '?filter=major&', '?filter=critical&'].map((q) => `/projects/HLT-026/quality${q ? q : '?'}ncr=NCR-029`));
+    const v = await ncrTab('HLT-026', lang, { ...S0, ncr: 'EV-2026-029' });
+    expect(v.chips.map((c) => c.href)).toEqual(['', '?filter=minor&', '?filter=major&', '?filter=critical&'].map((q) => `/projects/HLT-026/quality${q ? q : '?'}ncr=EV-2026-029`));
     expect(v.rows.map((r) => r.selected ? 'var(--color-accent-300)' : 'var(--color-neutral-300)')).toEqual(G[lang].ncrSelected);
     // Row links toggle the drawer and keep the filter.
-    expect(v.rows.find((r) => r.number === 'NCR-029')!.href).toBe('/projects/HLT-026/quality');
-    expect(v.rows.find((r) => r.number === 'NCR-030')!.href).toBe('/projects/HLT-026/quality?ncr=NCR-030');
+    expect(v.rows.find((r) => r.number === 'EV-2026-029')!.href).toBe('/projects/HLT-026/quality');
+    expect(v.rows.find((r) => r.number === 'EV-2026-030')!.href).toBe('/projects/HLT-026/quality?ncr=EV-2026-030');
     for (const [label, g] of Object.entries(G[lang].ncrFilters) as [string, any][]) {
       const f = (['minor', 'major', 'critical'] as const)[['Minor', 'Major', 'Critical'].indexOf(label)];
       const fv = await ncrTab('HLT-026', lang, { ...S0, filter: f });
@@ -128,7 +132,7 @@ describe('NCR log — EN and FR', () => {
         }, n.number).toEqual({
           head: `${g.id} · ${g.src}`, title: g.title, sev: g.sev, sevClass: g.sevClass, status: g.status, tagClass: g.tagClass, root: g.root, action: g.action,
           steps: g.steps.map((s: any) => ({ label: s.label, reached: s.dot === 'var(--color-accent)' })), meta: g.meta.map((m: any) => ({ k: actionDue(lang, m.k), v: fix(lang, day(m.v)) })),
-          sevSeg: g.sevSeg, next: g.canAdvance ? fix(lang, g.nextLabel) : null, hasAct: g.hasAct, hasPart: g.hasPart, ecoId: g.ecoId,
+          sevSeg: g.sevSeg, next: g.canAdvance && n.status !== 'open' ? fix(lang, g.nextLabel) : null /* D13: no Containment from Keystone */, hasAct: g.hasAct, hasPart: g.hasPart, ecoId: g.ecoId,
         });
         expect(d.vigieUrl).toBe(n.vigieUrl);
         expect(d.closeHref).toBe(`/projects/${code}/quality`);
@@ -139,11 +143,11 @@ describe('NCR log — EN and FR', () => {
   it('drawer links: activity, part record, open ECO of the part, purchase orders carrying it, impacted deliverable', async () => {
     const data = await screen('HLT-026');
     const view = (num: string) => ncrDrawerView({ today: DEMO_TODAY_ISO, code: 'HLT-026', ncr: data.ncrs.find((n) => n.number === num)!, state: S0, viewer: DIRECTOR, ecoByPart: data.ecoByPart, ordersByPart: data.ordersByPart }, makeT('en'), 'en');
-    const d30 = view('NCR-030');
+    const d30 = view('EV-2026-030');
     expect([d30.activityHref, d30.partHref, d30.eco]).toEqual(['/projects/HLT-026/plan?act=A1430', '/reference/parts?part=FD-DET-OPT', { number: 'ECO-2026-015', href: '/reference/eco?eco=ECO-2026-015' }]);
     expect(d30.orders.every((o) => o.href === `/projects/HLT-026/orders?po=${o.number}`)).toBe(true);
     expect(data.ordersByPart['FD-DET-OPT'] ?? []).toEqual(d30.orders.map((o) => o.number));
-    const d29 = view('NCR-029');
+    const d29 = view('EV-2026-029');
     expect(d29.record.find((r) => r.k === 'Deliverable impacted')).toEqual({ k: 'Deliverable impacted', v: 'D-015', href: '/projects/HLT-026/quality?tab=dlv&dlv=D-015' });
     expect([d29.partHref, d29.eco, d29.orders]).toEqual([null, null, []]);
   });
@@ -155,7 +159,7 @@ describe('NCR log — EN and FR', () => {
     const ro = await ncrTab('HLT-026', 'en', S0, { ...PM, canEdit: false });
     expect(ro.rows.every((r) => r.action === null && r.vigieUrl)).toBe(true);
     const data = await screen('HLT-026');
-    const ver = { ...data.ncrs.find((n) => n.number === 'NCR-026')!, status: 'verification' as const, statusLabel: 'Verification' };
+    const ver = { ...data.ncrs.find((n) => n.number === 'EV-2026-026')!, status: 'verification' as const, statusLabel: 'Verification' };
     const q = ncrDrawerView({ today: DEMO_TODAY_ISO, code: 'HLT-026', ncr: ver, state: S0, viewer: { ...DIRECTOR, role: 'quality' }, ecoByPart: {}, ordersByPart: {} }, makeT('fr'), 'fr');
     expect([q.move, q.verify, q.verifyHint]).toEqual([null, { closeLabel: 'Passer à Clôturée', backLabel: 'Retour à l’action corrective' }, null]);
     const p = ncrDrawerView({ today: DEMO_TODAY_ISO, code: 'HLT-026', ncr: ver, state: S0, viewer: PM, ecoByPart: {}, ordersByPart: {} }, makeT('en'), 'en');
@@ -221,7 +225,7 @@ describe('Deliverables register — EN and FR', () => {
       }
     }
     const d15 = dlvDrawerView({ today: DEMO_TODAY_ISO, code: 'HLT-026', deliverable: data.deliverables.find((d) => d.number === 'D-015')!, state: S0, viewer: PM, documents: data.documents }, makeT(lang), lang);
-    expect(d15.record.find((r) => r.links)?.links).toEqual([{ label: 'NCR-029', href: '/projects/HLT-026/quality?ncr=NCR-029' }]);
+    expect(d15.record.find((r) => r.links)?.links).toEqual([{ label: 'EV-2026-029', href: '/projects/HLT-026/quality?ncr=EV-2026-029' }]);
     expect([d15.document, d15.canLinkDocument, d15.depositType]).toEqual([null, true, null]);
     expect(d15.documentOptions.length).toBeGreaterThan(0);
     expect(d15.documentOptions.every((o) => o.label.startsWith(o.value + ' · '))).toBe(true);

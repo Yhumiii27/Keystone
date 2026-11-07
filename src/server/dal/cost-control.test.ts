@@ -210,7 +210,7 @@ describe('R-071 — linked draw-downs validated by the portfolio director (C-4)'
   it('offers the project\'s change requests, risks and NCRs only', async () => {
     const links = await drawLinkOptions('HLT-026');
     expect(links.find((l) => l.value === 'R-03')).toMatchObject({ type: 'risk' });
-    expect(links.find((l) => l.value === 'NCR-029')).toMatchObject({ type: 'ncr' });
+    expect(links.find((l) => l.value === 'EV-2026-029')).toMatchObject({ type: 'ncr' });
     expect(links.some((l) => l.value === 'CR-009')).toBe(false); // still a draft
     await expect(submitContingencyDraw('HLT-026', { amountKeur: 5, reason: 'x', linkRef: 'R-99', linkType: 'risk' }, PM_RA)).rejects.toThrow(ContingencyError);
     // NDC-031's R-01 exists, but not on HLT-026 (R-01 is not an HLT-026 risk number).
@@ -219,11 +219,11 @@ describe('R-071 — linked draw-downs validated by the portfolio director (C-4)'
 
   it('a submitted draw-down is not drawn; the director validates (→ drawn, actual cost) or rejects it; the balance is checked', async () => {
     const before = (await getProjectEvm('HLT-026'))!.ac;
-    const r = await submitContingencyDraw('HLT-026', { amountKeur: 30, reason: 'Second mill audit', linkRef: 'NCR-029', linkType: 'ncr' }, PM_RA);
+    const r = await submitContingencyDraw('HLT-026', { amountKeur: 30, reason: 'Second mill audit', linkRef: 'EV-2026-029', linkType: 'ncr' }, PM_RA);
     expect([r.amount, r.requestedBy, r.director]).toEqual([30, 'Romain Aubert', 'Marie Lefebvre']);
     let c = (await getContingency('HLT-026'))!;
     expect([c.drawn, c.pending, c.remaining, c.draws.at(-1)!.status, c.draws.at(-1)!.approvedBy]).toEqual([48, 30, 102, 'submitted', null]);
-    expect((await listDrawsAwaitingValidation()).map((d) => [d.projectCode, d.amount, d.linkRef, d.requestedBy])).toEqual([['HLT-026', 30, 'NCR-029', 'R. Aubert']]);
+    expect((await listDrawsAwaitingValidation()).map((d) => [d.projectCode, d.amount, d.linkRef, d.requestedBy])).toEqual([['HLT-026', 30, 'EV-2026-029', 'R. Aubert']]);
     // Balance: 150 − 48 drawn − 30 pending = 72 left to submit.
     await expect(submitContingencyDraw('HLT-026', { amountKeur: 73, reason: 'x', linkRef: 'R-03', linkType: 'risk' }, PM_RA)).rejects.toThrow('The draw-down exceeds the remaining provision');
     // Only the director decides; then the draw-down is drawn and counts in the actual cost at its date.

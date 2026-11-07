@@ -12,10 +12,10 @@ afterEach(() => {
 
 describe('getConfig / assertValidConfig', () => {
   it('re-reads the environment when a variable changes', () => {
-    vi.stubEnv('VIGIE_API_URL', '');
-    expect(getConfig().vigie.apiUrl).toBeNull();
-    vi.stubEnv('VIGIE_API_URL', 'http://vigie.test');
-    expect(getConfig().vigie.apiUrl).toBe('http://vigie.test');
+    vi.stubEnv('CURSUS_API_URL', '');
+    expect(getConfig().cursus.apiUrl).toBeNull();
+    vi.stubEnv('CURSUS_API_URL', 'http://cursus.test');
+    expect(getConfig().cursus.apiUrl).toBe('http://cursus.test');
     expect(configResult()).toBe(configResult());
   });
 

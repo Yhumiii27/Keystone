@@ -7,11 +7,13 @@ import { deliverableRefusalText, ncrRefusalText } from '@/domain/quality';
 
 describe('Quality refusals say why (R-157)', () => {
   it('NCR step and verification', () => {
-    expect(ncrRefusalText({ number: 'NCR-027', status: 'closed', requestedStatus: null }, 'step')).toBe('NCR-027 · This NCR is closed in Vigie');
-    expect(ncrRefusalText({ number: 'NCR-026', status: 'corrective_action', requestedStatus: 'verification' }, 'step')).toBe('NCR-026 · A request on this NCR already waits for Vigie');
-    expect(ncrRefusalText({ number: 'NCR-028', status: 'verification', requestedStatus: null }, 'step')).toBe('NCR-028 · In verification, only the quality manager decides');
-    expect(ncrRefusalText({ number: 'NCR-030', status: 'open', requestedStatus: null }, 'step')).toBe('NCR-030 · This NCR has moved to another step');
-    expect(ncrRefusalText({ number: 'NCR-029', status: 'root_cause', requestedStatus: null }, 'verify')).toBe('NCR-029 · This NCR is not in verification');
+    expect(ncrRefusalText({ number: 'EV-2026-027', status: 'closed', requestedStatus: null }, 'step')).toBe('EV-2026-027 · This NCR is closed in Vigie');
+    expect(ncrRefusalText({ number: 'EV-2026-026', status: 'corrective_action', requestedStatus: 'verification' }, 'step')).toBe('EV-2026-026 · A request on this NCR already waits for Vigie');
+    expect(ncrRefusalText({ number: 'EV-2026-028', status: 'verification', requestedStatus: null }, 'step')).toBe('EV-2026-028 · In verification, only the quality manager decides');
+    expect(ncrRefusalText({ number: 'EV-2026-029', status: 'root_cause', requestedStatus: null }, 'step')).toBe('EV-2026-029 · This NCR has moved to another step');
+    // D13: Containment is the qualification by Vigie's QHSE.
+    expect(ncrRefusalText({ number: 'EV-2026-030', status: 'open', requestedStatus: null }, 'step')).toBe('EV-2026-030 · Containment is decided in Vigie');
+    expect(ncrRefusalText({ number: 'EV-2026-029', status: 'root_cause', requestedStatus: null }, 'verify')).toBe('EV-2026-029 · This NCR is not in verification');
   });
 
   it('deliverable step and client decision', () => {
@@ -25,7 +27,7 @@ describe('Quality refusals say why (R-157)', () => {
 
   it('each reason has its French entry (the toast translates every "·" part)', () => {
     const t = makeT('fr');
-    for (const s of [ncrRefusalText({ number: 'NCR-027', status: 'closed', requestedStatus: null }, 'step'), deliverableRefusalText({ number: 'D-018', status: 'submitted' }, 'move')])
+    for (const s of [ncrRefusalText({ number: 'EV-2026-027', status: 'closed', requestedStatus: null }, 'step'), deliverableRefusalText({ number: 'D-018', status: 'submitted' }, 'move')])
       expect(s.split(' · ').map(t).join(' · ')).not.toBe(s);
   });
 });

@@ -2,7 +2,7 @@ import 'server-only';
 // Progress recorded in Keystone on a Vigie ECO (the viewer's approval-key decision, step advancement): validated
 // against the mirror and queued in the outbox (vigie_eco_progress) "pending sync with Vigie".
 import { eq } from 'drizzle-orm';
-import { ECO_STEP_ADVANCE, ecoApproverKey, ecoDecision, ecoKeyOfRole, ecoStatus, vigieSyncStatus, type EcoStatus } from '@/server/db/codes';
+import { ECO_STEP_ADVANCE, KEYSTONE_ECO_KEYS, ecoApproverKey, ecoDecision, ecoKeyOfRole, ecoStatus, vigieSyncStatus, type EcoStatus } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
 import { vigieEcoProgress, vigieEcos } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
@@ -19,9 +19,9 @@ export const ECO_SCREEN_ROLES: readonly string[] = ['director', 'pm', 'englead',
 /**
  * Validates progress against the mirror and queues it in the outbox ("pending sync with Vigie"), with an audit row
  * and an activity event. Rules (09 §4.7–4.8, the prototype's in-screen gates, server-side):
- * - approval: only the viewer's own key (ecoRoleKey: englead, quality, pm — the director holds none), the ECO in
- *   approval in Vigie, the key still pending and not already decided in Keystone; the PM key belongs to the PMs of
- *   the ECO's projects;
+ * - approval: only the viewer's own key (ecoRoleKey: englead, pm — the director holds none; D12: the quality key is decided
+ *   in Vigie by its QHSE, Vigie refuses it from Keystone), the ECO in approval in Vigie, the key still pending and not
+ *   already decided in Keystone; the PM key belongs to the PMs of the ECO's projects;
  * - step: "Start impact analysis" (Draft) and "Submit for approval" (Impact analysis, interchangeability decided in
  *   Vigie), one at a time, by a viewer whose workspace includes the ECO screen.
  */
@@ -40,6 +40,7 @@ export async function recordProgressEntry(
     const own = ecoKeyOfRole(actor.role);
     if (!own) throw new Error('Your role holds no ECO approval');
     if (input.key !== own) throw new Error(`Only the ${ecoApproverKey.label(input.key)} decides this approval`);
+    if (!KEYSTONE_ECO_KEYS.includes(own)) throw new Error(`The ${ecoApproverKey.label(own)} approval is decided in Vigie`);
     if (input.decision !== 'ok' && input.decision !== 'rejected') throw new Error('Invalid decision');
     if (eco.status !== 'in_approval') throw new Error(`${eco.number} is not in approval`);
     const a = eco.approvals.find((x) => x.key === input.key);

@@ -216,20 +216,20 @@ describe('R-112 "Record result" Server Function and DAL', () => {
 
     // Vigie reports the NCR with the inspection (V-3): its number replaces the report link.
     const db = await getDb();
-    const [ncr] = await db.select().from(vigieNcrs).where(and(eq(vigieNcrs.projectCode, 'HLT-026'), eq(vigieNcrs.number, 'NCR-026')));
+    const [ncr] = await db.select().from(vigieNcrs).where(and(eq(vigieNcrs.projectCode, 'HLT-026'), eq(vigieNcrs.number, 'EV-2026-026')));
     await upsertNcrMirror(db, [{
-      projectCode: 'HLT-026', number: 'NCR-031', vigieRef: 'EV-2026-140', title: 'Paint thickness below spec on G2', severity: 'major', source: 'workshop', status: 'open',
+      projectCode: 'HLT-026', number: 'EV-2026-031', vigieRef: 'EV-2026-140', title: 'Paint thickness below spec on G2', severity: 'major', source: 'workshop', status: 'open',
       activityCode: null, partRef: null, deliverableNumber: null, supplierName: null, inspectionNumber: 'I-03', raisedBy: ncr.raisedByName, raisedOn: '2026-09-29',
       owner: ncr.ownerName, rootCause: '', action: '', dueOn: null, costKeur: 0, isoClause: ncr.isoClause, updatedAt: null,
     }], new Date());
     const after = row(await view(true, true), 'I-03');
-    expect(after.ncrs).toEqual([{ number: 'NCR-031', href: 'http://localhost:3200/evenements?etat=tous&sel=EV-2026-140', label: 'Open in Vigie · NCR-031' }]);
+    expect(after.ncrs).toEqual([{ number: 'EV-2026-031', href: 'http://localhost:3200/evenements?etat=tous&sel=EV-2026-140', label: 'Open in Vigie · EV-2026-031' }]);
     expect(after.reportNcr).toBeNull();
     expect(row(await view(false, false), 'I-03').ncrs).toEqual([]);
 
     // FR render: the line, the button, the NCR tag.
     const fr = await view(true, true, 'fr');
     const out = renderToStaticMarkup(h(I18nProvider, { lang: 'fr', children: ItpBody({ code: 'HLT-026', view: fr, canEdit: true, t: makeT('fr') }) }));
-    for (const s of ['Non conforme 25 sept. · Gabriel Comte', 'Enregistrer le résultat', 'NCR-031', 'aria-label="Ouvrir dans Vigie · NCR-031"', 'target="_blank"']) expect(out).toContain(s);
+    for (const s of ['Non conforme 25 sept. · Gabriel Comte', 'Enregistrer le résultat', 'EV-2026-031', 'aria-label="Ouvrir dans Vigie · EV-2026-031"', 'target="_blank"']) expect(out).toContain(s);
   });
 });

@@ -92,7 +92,9 @@ async function vigieState() {
   const out = [...ecoOut, ...ncrOut];
   const last = [lastEco?.at, lastNcr?.at].filter((x): x is Date => !!x).sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
   return {
-    volume: `${ecos.n} ECOs · ${ncrs.n} NCRs · ${hse.n} HSE items`, pending: out.filter((x) => x.s === 'pending').length, failed: out.filter((x) => x.s === 'failed').length,
+    // D12 / D13: an entry Vigie's function or Vigie's processing refused needs attention as a failed one.
+    volume: `${ecos.n} ECOs · ${ncrs.n} NCRs · ${hse.n} HSE items`, pending: out.filter((x) => x.s === 'pending').length,
+    failed: out.filter((x) => x.s === 'failed' || x.s === 'refused').length,
     lastSyncAt: last,
   };
 }

@@ -6,7 +6,7 @@ import 'server-only';
 import { installedBasePinsOf, syncLabelOf, type InstalledBasePin } from '@/domain/eco';
 import { getDb } from '@/server/db/client';
 import {
-  ECO_APPROVER_SHORT, ecoApproverKey, ecoDecision, ecoDisposition, ecoKeyOfRole, ecoStatus, ecoStepIndex, ecoType, interchangeability,
+  ECO_APPROVER_SHORT, ecoApproverKey, ecoDecision, ecoDisposition, ecoKeyDecidedInKeystone, ecoKeyOfRole, ecoStatus, ecoStepIndex, ecoType, interchangeability,
   INTERCHANGEABILITY_NOT_ASSESSED,
   type EcoApproverKey, type EcoDecision,
 } from '@/server/db/codes';
@@ -165,10 +165,11 @@ export interface EcoApprovalItem {
 
 /**
  * ECOs in approval in Vigie whose approval key of the viewer is still pending and not yet decided in Keystone
- * (apprItems 4724). The PM key goes to the PMs of the ECO's projects; the director holds no key.
+ * (apprItems 4724). The PM key goes to the PMs of the ECO's projects; the director holds no key; D12: the quality key is
+ * decided in Vigie, never queued here.
  */
 export async function ecoApprovalQueue(viewer: EcoProgressActor): Promise<EcoApprovalItem[]> {
-  const key = ecoKeyOfRole(viewer.role);
+  const key = ecoKeyDecidedInKeystone(viewer.role);
   if (!key) return [];
   const ecos = await listEcos();
   let managed: Set<string> | null = null;

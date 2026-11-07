@@ -132,9 +132,13 @@ describe('drawer (ecoVals 4352–4369)', () => {
       expect(canSetInterchangeability(e.status, role)).toBe(g.canSetInterch);
       expect(g.dispProjects.every((t: any) => t.canDecide === canDecideDisposition(e.status, 'project', role))).toBe(true);
       expect(g.dispMachines.every((t: any) => t.canDecide === canDecideDisposition(e.status, 'machine', role))).toBe(true);
+      // D12 (Vigie CV-06 / CV-08): the quality key is decided in Vigie — never offered in Keystone, a hint says so; the other roles'
+      // hint no longer names Quality.
       expect(keyStates(e, { role, managedProjects: MANAGED[role] ?? [] }).map((k) => ({ label: k.label, who: k.who, state: k.state, tagClass: k.tagClass, canAct: k.canAct })))
-        .toEqual(g.approvers);
-      expect(approvalsHint(e.status, role)).toBe(g.roleHint);
+        .toEqual(g.approvers.map((a: any) => (role === 'quality' ? { ...a, canAct: false } : a)));
+      const hint = role === 'quality' && e.status === 'in_approval' ? 'The quality approval is decided in Vigie.'
+        : String(g.roleHint).replace('Engineering lead, Quality or Project manager', 'Engineering lead or Project manager');
+      expect(approvalsHint(e.status, role)).toBe(hint);
     }
   });
 });

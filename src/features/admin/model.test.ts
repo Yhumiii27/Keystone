@@ -22,12 +22,14 @@ import { countUnreadNotifications, listActivity, listAudit } from '@/server/dal/
 import { listProjects } from '@/server/dal/projects';
 import { addLocation, addReferenceValue, getSettings, removeReferenceValue, resetSettings, setHealthThresholds } from '@/server/dal/settings';
 import GOLDEN from './admin.golden.json';
+import { demoNcrGolden } from '@/domain/vigie-demo';
 import { integrationsHref, machineTypesHref } from './links';
 import { machineTypesView, plumbingView, settingsView, visibleImportFormats } from './model';
 import { dataText } from '@/i18n/data-text';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const G = GOLDEN as any;
+// D13 (CV-07): the prototype's NCR numbers as the demo data set has them (EV-2026-0nn, src/domain/vigie-demo.ts).
+const G = demoNcrGolden(GOLDEN) as any;
 const trFr = makeT('fr');
 /**
  * Strings the prototype half-translated ("Financier / currency") and the rebuild's dictionary (src/i18n/extra/risks.json)
@@ -307,17 +309,19 @@ describe('Activity, integrations & audit view model', () => {
     });
   });
 
-  it('R-021: with its API URL, Vigie is a live connector — its status, last refresh and "Sync now" for real', async () => {
-    const prev = process.env.VIGIE_API_URL;
-    process.env.VIGIE_API_URL = 'http://vigie.invalid';
+  it('R-021 / D12 / D13: on the shared server, Vigie is a live connector — its status, last refresh and "Sync now" for real', async () => {
+    const keys = ['DATABASE_URL', 'VIGIE_SOURCE', 'ARCHE_SOURCE', 'MATRIX_SOURCE'] as const;
+    const prev = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
+    // VIGIE_SOURCE=server needs the shared server (DATABASE_URL); Arche and Matrix stay simulated.
+    Object.assign(process.env, { DATABASE_URL: 'postgres://keystone_app@localhost:5432/epc2i', VIGIE_SOURCE: 'server', ARCHE_SOURCE: 'simulation', MATRIX_SOURCE: 'simulation' });
     try {
       const vigie = (await listAdminConnectors()).find((c) => c.name === 'Vigie')!;
-      expect([vigie.link, vigie.state, vigie.mode, vigie.canSync, vigie.lastSyncAt]).toEqual(['live', 'ok', 'http', true, '2026-09-25T05:30:00.000Z']);
+      expect([vigie.link, vigie.state, vigie.mode, vigie.canSync, vigie.lastSyncAt]).toEqual(['live', 'ok', 'sql', true, '2026-09-25T05:30:00.000Z']);
       const v = await plumbing('en', { view: 'connectors' });
-      expect(v.connectors.find((c) => c.rawName === 'Vigie')).toMatchObject({ mode: 'Live connector · HTTP API', status: 'OK', tone: 'neutral', last: '25 Sep 07:30' });
+      expect(v.connectors.find((c) => c.rawName === 'Vigie')).toMatchObject({ mode: 'Live connector · shared database views', status: 'OK', tone: 'neutral', last: '25 Sep 07:30' });
       expect(v.kpis[1].sub).toBe('2 connected · 3 mock · 5 not connected'); // R-187: + Arche (mock)
     } finally {
-      process.env.VIGIE_API_URL = prev ?? '';
+      for (const k of keys) if (prev[k] === undefined) delete process.env[k]; else process.env[k] = prev[k];
     }
   });
 

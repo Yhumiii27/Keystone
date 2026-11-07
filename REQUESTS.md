@@ -130,7 +130,7 @@ Format d'une entrée :
 - Validé par Guillaume le : 2026-11-05
 
 ## [2026-11-05] Vigie → Keystone — NC de projet de Vigie : lecture par les vues, avancement par vigie.pub_signaler_avancement_nc (D13)
-- Statut : ACCEPTÉE (07/11/2026, en cours)
+- Statut : FAITE (07/11/2026, `docs/delivery-9/notes-vigie-d12-d13.md`, migration 0076) : `VIGIE_SOURCE=server` (défaut avec `DATABASE_URL`) — miroirs rafraîchis par SELECT sur `vigie.pub_non_conformites` et `vigie.pub_hse_projet` (plus de GET), numéro = référence EV-… (CV-07, démonstration renumérotée EV-2026-0nn) ; avancement par `select vigie.pub_signaler_avancement_nc(…)` aux paramètres nommés, numéro de demande gardé (`vigie_ref`), P0V01 / P0V02 → « failed » sans renvoi, autre erreur → renvoyée ; issue lue dans `vigie.pub_demandes_recues` (rejected → « refused », motif affiché) ; règles de Vigie reprises (ni Confinement ni Clôturée demandés, vérification = proposition, NC laissée en Vérification) ; liens `/evenements?etat=tous&sel=EV-…`. Fonctionnement réel dès que Matrix applique sur le serveur le lien d’exécution et la publication `pub_demandes_recues` (préparés). « Stale » : pas de renvoi automatique, la personne redemande d’après le nouvel état
 - Demande :
   1. Lecture : rafraîchir vigie_ncrs et vigie_hse_items par SELECT sur vigie.pub_non_conformites et vigie.pub_hse_projet
      (liens keystone_app de la convention ; vues reprises par Matrix) au lieu de GET /api/ncrs et /api/hse
@@ -162,7 +162,7 @@ Format d'une entrée :
 - Validé par Guillaume le : 2026-11-05
 
 ## [2026-11-06] Vigie → Keystone — Ordres de modification de Vigie : lecture par les vues, avancement par vigie.pub_signaler_avancement_eco (D12, lot 5 livré le 05/11/2026)
-- Statut : ACCEPTÉE (07/11/2026, en cours)
+- Statut : ACCEPTÉE (07/11/2026, construit côté Keystone, `docs/delivery-9/notes-vigie-d12-d13.md`) : miroir rafraîchi par SELECT sur `vigie.pub_ordres_modification`, `pub_eco_approbations`, `pub_eco_effectivite` (plus de GET) ; avancement par `select vigie.pub_signaler_avancement_eco(…)` aux paramètres nommés, numéro de demande gardé, P0V01 / P0V02 → « failed », issue lue dans `vigie.pub_demandes_recues` ; clés englead et pm seulement (la qualité décide dans Vigie), jamais released ni rejected ; liens inchangés. Reste, hors Keystone : le lien d’exécution `keystone_app` → `vigie.pub_signaler_avancement_eco` est absent du dépôt des publications de Matrix (à demander à Matrix) et les trois publications D12 sont à appliquer sur le serveur ; d’ici là les avancements restent « en attente de synchronisation avec Vigie »
 - Demande :
   1. Lecture : rafraîchir vigie_ecos par SELECT sur vigie.pub_ordres_modification (number, title, eco_type → type,
      status, interchangeability, from_revision, to_revision, cost_eur, schedule_days, stock_impact, document_refs,

@@ -13,7 +13,8 @@ import { withoutK14Demo } from '@/test/k14';
 import { seedIfEmpty } from '@/server/db/seed';
 import { prototypeNcrSnapshot, type ProtoNcrRow } from '@/server/integrations/vigie/prototype-snapshot';
 import { upsertNcrMirror } from '@/server/integrations/vigie/quality-mirror';
-import { httpQualityConnector, mockQualityConnector, resetVigieQualityRefreshThrottle, getVigieQualityConnector } from '@/server/integrations/vigie/quality-connector';
+import { sqlQualityConnector, mockQualityConnector, resetVigieQualityRefreshThrottle, getVigieQualityConnector } from '@/server/integrations/vigie/quality-connector';
+import { createVigieServer, processVigieRequests, setVigieQualityRows, vigieRequests } from '@/test/vigie-server';
 import { vigieCoactivityUrl, vigieHseListUrl, vigieHseUrl, vigieNcrListUrl, vigieNcrUrl, vigieReportNcrUrl } from '@/server/integrations/vigie/links';
 import { cursusRequestId, getCursusConnector, httpCursusConnector, recordsOfPayload, resetCursusRefreshThrottle } from '@/server/integrations/cursus/connector';
 import { cursusChantierUrl } from '@/server/integrations/cursus/links';
@@ -62,41 +63,41 @@ const lastAudit = async () => (await listAudit({ limit: 1 }))[0];
 
 describe('NCRs — progress sent to Vigie (Vigie owns the NCRs)', () => {
   it('one step at a time, "pending sync with Vigie"; the status stays Vigie’s until Vigie reports it', async () => {
-    const r = await advanceNcr(HLT, 'NCR-028', A.pm);
-    expect(r).toMatchObject({ ncrNumber: 'NCR-028', kind: 'step', targetStatus: 'root_cause', syncStatus: 'pending' });
-    const n = (await getNcr(HLT, 'ncr-028'))!;
+    const r = await advanceNcr(HLT, 'EV-2026-028', A.pm);
+    expect(r).toMatchObject({ ncrNumber: 'EV-2026-028', kind: 'step', targetStatus: 'root_cause', syncStatus: 'pending' });
+    const n = (await getNcr(HLT, 'ev-2026-028'))!;
     expect([n.status, n.requestedStatus, n.requestedStatusLabel, n.pendingSyncLabel, n.canStep]).toEqual(['containment', 'root_cause', 'Root cause', 'Pending sync with Vigie', false]);
-    await expect(advanceNcr(HLT, 'NCR-028', A.pm)).rejects.toThrow(/already waiting for Vigie/);
-    expect(await lastAudit()).toMatchObject({ who: 'Romain Aubert', object: 'NCR-028', area: 'Quality' });
+    await expect(advanceNcr(HLT, 'EV-2026-028', A.pm)).rejects.toThrow(/already waiting for Vigie/);
+    expect(await lastAudit()).toMatchObject({ who: 'Romain Aubert', object: 'EV-2026-028', area: 'Quality' });
   });
 
   it('refusals: closed NCR, outside the Quality workspace, closing by a step', async () => {
-    await expect(advanceNcr(HLT, 'NCR-027', A.quality)).rejects.toThrow(/closed/);
-    await expect(advanceNcr(HLT, 'NCR-026', A.member)).rejects.toThrow(/outside your workspace/);
+    await expect(advanceNcr(HLT, 'EV-2026-027', A.quality)).rejects.toThrow(/closed/);
+    await expect(advanceNcr(HLT, 'EV-2026-026', A.member)).rejects.toThrow(/outside your workspace/);
     await expect(advanceNcr(HLT, 'NCR-999', A.quality)).rejects.toThrow(/Unknown NCR/);
-    await expect(getVigieQualityConnector().recordNcrProgress(HLT, 'NCR-029', { step: 'verification' }, A.quality)).rejects.toThrow(/cannot move/);
+    await expect(getVigieQualityConnector().recordNcrProgress(HLT, 'EV-2026-029', { step: 'verification' }, A.quality)).rejects.toThrow(/cannot move/);
   });
 
   it('verification: quality only, on an NCR Vigie reports in Verification; approve → Closed, reject → Corrective action', async () => {
-    // Vigie moves NCR-026 to Verification (a refresh of the mirror).
+    // Vigie moves EV-2026-026 to Verification (a refresh of the mirror).
     const db = await getDb();
-    const recs = prototypeNcrSnapshot(PROTO.HLT_NCRS as ProtoNcrRow[], Object.keys(PROTO_GEN.projectData)).map((r) => (r.projectCode === HLT && r.number === 'NCR-026' ? { ...r, status: 'verification' as const } : r));
+    const recs = prototypeNcrSnapshot(PROTO.HLT_NCRS as ProtoNcrRow[], Object.keys(PROTO_GEN.projectData)).map((r) => (r.projectCode === HLT && r.number === 'EV-2026-026' ? { ...r, status: 'verification' as const } : r));
     await db.transaction((tx) => upsertNcrMirror(tx, recs, new Date()));
-    expect((await ncrVerificationQueue(HLT, A.quality)).map((n) => n.number)).toEqual(['NCR-026']);
+    expect((await ncrVerificationQueue(HLT, A.quality)).map((n) => n.number)).toEqual(['EV-2026-026']);
     expect(await ncrVerificationQueue(HLT, A.pm)).toEqual([]);
-    await expect(advanceNcr(HLT, 'NCR-026', A.pm)).rejects.toThrow(/Only the quality manager verifies and closes/);
-    await expect(verifyNcr(HLT, 'NCR-026', 'approved', A.director)).rejects.toThrow(/Only the quality manager/);
-    await expect(verifyNcr(HLT, 'NCR-029', 'approved', A.quality)).rejects.toThrow(/not in verification/);
-    const r = await verifyNcr(HLT, 'NCR-026', 'approved', A.quality, 'Splice re-welded and UT tested');
+    await expect(advanceNcr(HLT, 'EV-2026-026', A.pm)).rejects.toThrow(/Only the quality manager verifies and closes/);
+    await expect(verifyNcr(HLT, 'EV-2026-026', 'approved', A.director)).rejects.toThrow(/Only the quality manager/);
+    await expect(verifyNcr(HLT, 'EV-2026-029', 'approved', A.quality)).rejects.toThrow(/not in verification/);
+    const r = await verifyNcr(HLT, 'EV-2026-026', 'approved', A.quality, 'Splice re-welded and UT tested');
     expect(r).toMatchObject({ kind: 'verification', targetStatus: 'closed', syncStatus: 'pending' });
     expect(await ncrVerificationQueue(HLT, A.quality)).toEqual([]);
     expect(await ncrVerificationDecidedCount(A.quality)).toBe(1);
-    expect((await getNcr(HLT, 'NCR-026'))!.requestedStatus).toBe('closed');
+    expect((await getNcr(HLT, 'EV-2026-026'))!.requestedStatus).toBe('closed');
   });
 
   it('links: Vigie events (NC), report form with the Keystone context, prevention plans and permits', () => {
-    expect(vigieNcrUrl({ number: 'NCR-029' })).toBe('http://localhost:3200/evenements?etat=tous&type=NC&q=NCR-029');
-    expect(vigieNcrUrl({ number: 'NCR-029', vigieRef: 'EV-2026-130' })).toBe('http://localhost:3200/evenements?etat=tous&sel=EV-2026-130');
+    expect(vigieNcrUrl({ number: 'EV-2026-029' })).toBe('http://localhost:3200/evenements?etat=tous&type=NC&q=EV-2026-029');
+    expect(vigieNcrUrl({ number: 'EV-2026-029', vigieRef: 'EV-2026-130' })).toBe('http://localhost:3200/evenements?etat=tous&sel=EV-2026-130');
     expect(vigieReportNcrUrl({ projectCode: HLT, partRef: 'KS-STL-0450' })).toBe('http://localhost:3200/signaler?type=NC&projet=HLT-026&article=KS-STL-0450&source=keystone');
     expect(vigieHseUrl({ kind: 'permit', vigieRef: 'PF-2026-030' })).toBe('http://localhost:3200/prevention?onglet=permis&permis=PF-2026-030');
     expect(vigieHseUrl({ kind: 'prevention_plan' })).toBe('http://localhost:3200/prevention');
@@ -111,28 +112,26 @@ describe('NCRs — progress sent to Vigie (Vigie owns the NCRs)', () => {
     expect(vigieHseUrl({ kind: 'prevention_plan', vigieRef: 'PP-2026-013', projectCode: HLT })).toBe('http://localhost:3200/prevention?plan=PP-2026-013');
   });
 
-  it('HTTP connector (VIGIE_API_URL): delivers the NCR outbox, then Vigie’s refresh becomes the mirror (NCRs and HSE)', async () => {
-    vi.stubEnv('VIGIE_API_URL', 'http://vigie.test/');
+  it('sql connector (D13): deposits the NCR outbox through Vigie’s function, then Vigie’s views become the mirrors (NCRs and HSE)', async () => {
     resetVigieQualityRefreshThrottle();
-    const posted: string[] = [];
-    const ncrs = (await mockQualityConnector.listNcrs({ projectCodes: [HLT] })).map((n) => ({ ...n, updatedAt: null, status: n.number === 'NCR-028' ? 'root_cause' : n.status }));
-    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
-      if (init?.method === 'POST') {
-        posted.push(url);
-        return new Response(JSON.stringify({ id: 'VG-' + posted.length }), { status: 201 });
-      }
-      if (url.endsWith('/api/ncrs?source=keystone')) return new Response(JSON.stringify(ncrs), { status: 200 });
-      if (url.endsWith('/api/hse?source=keystone')) return new Response(JSON.stringify([{ projectCode: HLT, vigieRef: 'PP-2026-013', kind: 'prevention_plan', title: 'Plan de prévention signé', status: 'signed', statusText: null, dateOn: '2026-09-15' }]), { status: 200 });
-      return new Response('{}', { status: 404 });
-    }));
-    const r = await httpQualityConnector.sync();
+    const db = await getDb();
+    const ncrs = (await mockQualityConnector.listNcrs({ projectCodes: [HLT] })).map((n) => ({ ...n, updatedAt: null, status: n.number === 'EV-2026-028' ? 'root_cause' as const : n.status }));
+    await createVigieServer(db);
+    await setVigieQualityRows(db, {
+      ncrs, hse: [{ projectCode: HLT, vigieRef: 'PP-2026-013', kind: 'prevention_plan', title: 'Plan de prévention signé', status: 'signed', statusText: null, dateOn: '2026-09-15' }],
+    });
+    const r = await sqlQualityConnector.sync();
     expect(r).toMatchObject({ delivered: 2, failed: 0, pending: 0 });
-    expect(posted).toEqual(['http://vigie.test/api/ncrs/HLT-026/NCR-028/progress', 'http://vigie.test/api/ncrs/HLT-026/NCR-026/progress']);
-    const n = (await getNcr(HLT, 'NCR-028'))!;
+    expect((await vigieRequests(db)).map((q) => [q.kind, q.project_code, q.target_ref])).toEqual([['nc_step', HLT, 'EV-2026-028'], ['nc_verification', HLT, 'EV-2026-026']]);
+    // Deposited, not processed yet: still waiting. Vigie applies them; the next sync reads it.
+    expect((await getNcr(HLT, 'EV-2026-028'))!.requestedStatus).toBe('root_cause');
+    await processVigieRequests(db, () => ({ status: 'applied' }));
+    await sqlQualityConnector.sync();
+    const n = (await getNcr(HLT, 'EV-2026-028'))!;
     expect([n.status, n.requestedStatus]).toEqual(['root_cause', null]);
-    expect((await httpQualityConnector.listHse(HLT)).map((h) => [h.vigieRef, h.vigieUrl])).toEqual([['PP-2026-013', 'http://localhost:3200/prevention?plan=PP-2026-013']]);
-    // Other projects' NCRs pruned by the full refresh (Vigie only sent HLT-026's).
-    expect(await httpQualityConnector.listNcrs({ projectCodes: ['NDC-031'] })).toEqual([]);
+    expect((await sqlQualityConnector.listHse(HLT)).map((h) => [h.vigieRef, h.vigieUrl])).toEqual([['PP-2026-013', 'http://localhost:3200/prevention?plan=PP-2026-013']]);
+    // Other projects' NCRs pruned by the full refresh (Vigie only published HLT-026's).
+    expect(await sqlQualityConnector.listNcrs({ projectCodes: ['NDC-031'] })).toEqual([]);
   });
 });
 

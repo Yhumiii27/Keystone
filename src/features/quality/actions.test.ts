@@ -55,29 +55,29 @@ describe('Quality Server Functions', () => {
     const readOnly = { ok: false, error: 'Quality is read-only for you' };
     for (const role of ['depthead', 'member', 'procurement']) {
       as(role);
-      expect(await advanceNcrAction({ projectCode: HLT, number: 'NCR-030', step: 'containment' })).toEqual(readOnly);
+      expect(await advanceNcrAction({ projectCode: HLT, number: 'EV-2026-030', step: 'containment' })).toEqual(readOnly);
       expect(await moveDeliverableAction({ projectCode: HLT, number: 'D-018', to: 'in_progress' })).toEqual(readOnly);
       expect(await decideDeliverableAction({ projectCode: HLT, number: 'D-014', decision: 'accepted' })).toEqual(readOnly);
     }
     // The PM and the client on a project that is not theirs (read-only project, 01 §5.2).
     as('pm');
-    expect(await advanceNcrAction({ projectCode: 'NDC-031', number: 'NCR-041', step: 'root_cause' })).toEqual(readOnly);
+    expect(await advanceNcrAction({ projectCode: 'NDC-031', number: 'EV-2026-041', step: 'root_cause' })).toEqual(readOnly);
     // R-042 (P-10a): another organisation's project is refused to the client (sent home), nothing written.
     as('client');
     await expect(decideDeliverableAction({ projectCode: 'NDC-031', number: 'D-110', decision: 'accepted' })).rejects.toThrow('NEXT_REDIRECT');
     const team = { ok: false, error: 'Only the project team records this progress' };
-    expect(await advanceNcrAction({ projectCode: HLT, number: 'NCR-030', step: 'containment' })).toEqual(team);
+    expect(await advanceNcrAction({ projectCode: HLT, number: 'EV-2026-030', step: 'containment' })).toEqual(team);
     expect(await moveDeliverableAction({ projectCode: HLT, number: 'D-018', to: 'in_progress' })).toEqual(team);
     expect(await linkDeliverableDocumentAction(HLT, 'D-018', { doc: 'X' })).toEqual({ error: 'Only the project team records this progress' });
     as('pm');
     const invalid = { ok: false, error: 'Invalid request' };
-    expect(await advanceNcrAction({ projectCode: HLT, number: 'NCR-030', step: 'nope' })).toEqual(invalid);
+    expect(await advanceNcrAction({ projectCode: HLT, number: 'EV-2026-030', step: 'nope' })).toEqual(invalid);
     expect(await advanceNcrAction({ projectCode: HLT, number: '<b>', step: 'containment' })).toEqual(invalid);
     expect(await advanceNcrAction(null as never)).toEqual(invalid);
     expect(await moveDeliverableAction({ projectCode: HLT, number: 'D-018', to: 'accepted' })).toEqual(invalid);
     expect(await decideDeliverableAction({ projectCode: HLT, number: 'D-014', decision: 'maybe' })).toEqual(invalid);
-    expect(await advanceNcrAction({ projectCode: 'XXX-999', number: 'NCR-030', step: 'containment' })).toEqual({ ok: false, error: 'Unknown project' });
-    expect(await advanceNcrAction({ projectCode: HLT, number: 'NCR-099', step: 'containment' })).toEqual({ ok: false, error: 'Unknown NCR' });
+    expect(await advanceNcrAction({ projectCode: 'XXX-999', number: 'EV-2026-030', step: 'containment' })).toEqual({ ok: false, error: 'Unknown project' });
+    expect(await advanceNcrAction({ projectCode: HLT, number: 'EV-2026-099', step: 'containment' })).toEqual({ ok: false, error: 'Unknown NCR' });
     expect(await moveDeliverableAction({ projectCode: HLT, number: 'D-099', to: 'in_progress' })).toEqual({ ok: false, error: 'Unknown deliverable' });
     expect(revalidatePath).not.toHaveBeenCalled();
   });
@@ -86,46 +86,48 @@ describe('Quality Server Functions', () => {
     as('pm');
     // R-157: each refusal says why.
     const gone = (error: string) => ({ ok: false, error });
-    expect(await advanceNcrAction({ projectCode: HLT, number: 'NCR-030', step: 'root_cause' })).toEqual(gone('NCR-030 · This NCR has moved to another step'));
-    expect(await advanceNcrAction({ projectCode: HLT, number: 'NCR-027', step: 'closed' })).toEqual(gone('NCR-027 · This NCR is closed in Vigie'));
-    expect(await advanceNcrAction({ projectCode: HLT, number: 'NCR-026', step: 'verification' })).toEqual({
-      ok: true, toast: 'NCR-026 · Verification requested · Pending sync with Vigie',
+    expect(await advanceNcrAction({ projectCode: HLT, number: 'EV-2026-029', step: 'verification' })).toEqual(gone('EV-2026-029 · This NCR has moved to another step'));
+    // D13: Containment (the qualification) is decided in Vigie.
+    expect(await advanceNcrAction({ projectCode: HLT, number: 'EV-2026-030', step: 'containment' })).toEqual(gone('EV-2026-030 · Containment is decided in Vigie'));
+    expect(await advanceNcrAction({ projectCode: HLT, number: 'EV-2026-027', step: 'closed' })).toEqual(gone('EV-2026-027 · This NCR is closed in Vigie'));
+    expect(await advanceNcrAction({ projectCode: HLT, number: 'EV-2026-026', step: 'verification' })).toEqual({
+      ok: true, toast: 'EV-2026-026 · Verification requested · Pending sync with Vigie',
     });
     expect(revalidatePath).toHaveBeenCalledWith('/', 'layout');
-    expect(await advanceNcrAction({ projectCode: HLT, number: 'ncr-026', step: 'verification' })).toEqual(gone('NCR-026 · A request on this NCR already waits for Vigie'));
-    const n = (await getNcr(HLT, 'NCR-026'))!;
+    expect(await advanceNcrAction({ projectCode: HLT, number: 'ev-2026-026', step: 'verification' })).toEqual(gone('EV-2026-026 · A request on this NCR already waits for Vigie'));
+    const n = (await getNcr(HLT, 'EV-2026-026'))!;
     expect([n.status, n.requestedStatus, n.pendingSyncLabel]).toEqual(['corrective_action', 'verification', 'Pending sync with Vigie']);
-    expect(await lastAudit()).toMatchObject({ who: 'Romain Aubert', object: 'NCR-026', area: 'Quality' });
+    expect(await lastAudit()).toMatchObject({ who: 'Romain Aubert', object: 'EV-2026-026', area: 'Quality' });
     as('englead', 'fr');
-    expect(await advanceNcrAction({ projectCode: HLT, number: 'NCR-030', step: 'containment' })).toMatchObject({ ok: true, toast: 'NCR-030 · Containment requested · Pending sync with Vigie' });
+    expect(await advanceNcrAction({ projectCode: HLT, number: 'EV-2026-029', step: 'corrective_action' })).toMatchObject({ ok: true, toast: 'EV-2026-029 · Corrective action requested · Pending sync with Vigie' });
     // Closing is never a step: in Verification only the quality manager decides.
     expect((await listNcrs(HLT)).length).toBe(5);
   });
 
   it('verification: quality only, on an NCR Vigie reports in Verification; inbox item, decision, then gone', async () => {
-    // Vigie moves NCR-028 to Verification (a refresh of the mirror).
+    // Vigie moves EV-2026-028 to Verification (a refresh of the mirror).
     const db = await getDb();
     const recs = prototypeNcrSnapshot(PROTO.HLT_NCRS as ProtoNcrRow[], Object.keys(PROTO_GEN.projectData)).map((r) =>
-      r.projectCode === HLT && r.number === 'NCR-028' ? { ...r, status: 'verification' as const } : r,
+      r.projectCode === HLT && r.number === 'EV-2026-028' ? { ...r, status: 'verification' as const } : r,
     );
     await db.transaction((tx) => upsertNcrMirror(tx, recs, new Date()));
     expect((await inbox('quality', 'ncr')).map((i) => [i.id, i.sub, i.who, i.when, i.href, i.decision, i.external?.label])).toEqual([
-      ['NCR-028', 'Minor · Fabien Bertrand', 'Hélène Sauvage', '7 Oct', '/projects/HLT-026/quality?ncr=NCR-028', { mode: 'ncr-verification', projectCode: HLT, number: 'NCR-028' }, 'Open in Vigie'],
+      ['EV-2026-028', 'Minor · Fabien Bertrand', 'Hélène Sauvage', '7 Oct', '/projects/HLT-026/quality?ncr=EV-2026-028', { mode: 'ncr-verification', projectCode: HLT, number: 'EV-2026-028' }, 'Open in Vigie'],
     ]);
     expect(await inbox('pm', 'ncr')).toEqual([]);
     as('pm');
-    expect(await advanceNcrAction({ projectCode: HLT, number: 'NCR-028', step: 'closed' })).toEqual({ ok: false, error: 'NCR-028 · In verification, only the quality manager decides' });
-    expect(await verifyNcrAction({ projectCode: HLT, number: 'NCR-028', decision: 'approved' })).toEqual({ ok: false, error: 'Only the quality manager verifies and closes NCRs' });
+    expect(await advanceNcrAction({ projectCode: HLT, number: 'EV-2026-028', step: 'closed' })).toEqual({ ok: false, error: 'EV-2026-028 · In verification, only the quality manager decides' });
+    expect(await verifyNcrAction({ projectCode: HLT, number: 'EV-2026-028', decision: 'approved' })).toEqual({ ok: false, error: 'Only the quality manager verifies and closes NCRs' });
     as('quality');
-    expect(await verifyNcrAction({ projectCode: HLT, number: 'NCR-029', decision: 'approved' })).toEqual({ ok: false, error: 'NCR-029 · This NCR is not in verification' });
-    expect(await verifyNcrAction({ projectCode: HLT, number: 'NCR-028', decision: 'yes' })).toEqual({ ok: false, error: 'Invalid request' });
-    expect(await verifyNcrAction({ projectCode: HLT, number: 'NCR-028', decision: 'rejected' })).toEqual({
-      ok: true, toast: 'NCR-028 · Back to corrective action requested · Pending sync with Vigie',
+    expect(await verifyNcrAction({ projectCode: HLT, number: 'EV-2026-030', decision: 'approved' })).toEqual({ ok: false, error: 'EV-2026-030 · This NCR is not in verification' });
+    expect(await verifyNcrAction({ projectCode: HLT, number: 'EV-2026-028', decision: 'yes' })).toEqual({ ok: false, error: 'Invalid request' });
+    expect(await verifyNcrAction({ projectCode: HLT, number: 'EV-2026-028', decision: 'rejected' })).toEqual({
+      ok: true, toast: 'EV-2026-028 · Back to corrective action requested · Pending sync with Vigie',
     });
     expect(await inbox('quality', 'ncr')).toEqual([]);
     expect((await getApprovalInbox(PERSONA_BY_ROLE.quality, { projectCode: HLT })).decided).toBeGreaterThanOrEqual(1);
-    expect(await verifyNcrAction({ projectCode: HLT, number: 'NCR-028', decision: 'approved' })).toEqual({ ok: false, error: 'NCR-028 · A request on this NCR already waits for Vigie' });
-    expect((await getNcr(HLT, 'NCR-028'))!.requestedStatus).toBe('corrective_action');
+    expect(await verifyNcrAction({ projectCode: HLT, number: 'EV-2026-028', decision: 'approved' })).toEqual({ ok: false, error: 'EV-2026-028 · A request on this NCR already waits for Vigie' });
+    expect((await getNcr(HLT, 'EV-2026-028'))!.requestedStatus).toBe('corrective_action');
   });
 
   it('deliverables: Start → To internal review → Submit to client by the team; wrong or repeated steps refused', async () => {

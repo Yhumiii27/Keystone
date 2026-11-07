@@ -121,7 +121,8 @@ export interface EnvSetting {
 /** The server variables each connector of Keystone's connector layer reads (src/server/integrations/<app>/config.ts). */
 export const CONNECTOR_ENV: Readonly<Record<string, readonly EnvSetting[]>> = {
   Vigie: [
-    { name: 'VIGIE_API_URL', purpose: "Vigie's API (ECOs, NCRs, site HSE)", secret: false, whenUnset: 'Simulated over the local mirror' },
+    // D12 / D13: Vigie's views and functions on the shared server (no API); `server` by default with DATABASE_URL.
+    { name: 'VIGIE_SOURCE', purpose: "Vigie's views and functions on the shared database (ECOs, NCRs, site HSE)", secret: false, whenUnset: 'Shared database with DATABASE_URL, else simulated over the local mirror' },
     { name: 'NEXT_PUBLIC_VIGIE_URL', purpose: 'Vigie web app the links open', secret: false, whenUnset: 'Local development address' },
   ],
   Cursus: [

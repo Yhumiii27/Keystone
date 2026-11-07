@@ -1,7 +1,7 @@
 // R-010: connector outboxes under concurrent deliveries — an entry is claimed before it is sent, so two deliveries running at
 // the same time (two users, a page and the worker, two instances) never send it twice; a failed attempt releases the claim; a
-// claim older than the lease no longer blocks. Refreshes of one process are shared. R-007: the Vigie key header, and no
-// Cursus call without a key in production.
+// claim older than the lease no longer blocks. Refreshes of one process are shared. R-007: no Cursus call without a key in
+// production. Vigie (D12, D13): its views and functions simulated in the test database (src/test/vigie-server.ts).
 import { eq, sql } from 'drizzle-orm';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { getDb, setDb } from '@/server/db/client';
@@ -12,13 +12,13 @@ import { advanceNcr } from '@/server/dal/quality';
 import { claimRequestDelivery, markRequestDelivery } from './cursus/mirror';
 import { httpCursusConnector, mockCursusConnector, resetCursusRefreshThrottle } from './cursus/connector';
 import { DELIVERY_LEASE_MS } from './outbox';
-import { httpEcoConnector, resetVigieRefreshThrottle } from './vigie/eco-connector';
+import { createVigieServer, vigieRequests } from '@/test/vigie-server';
+import { resetVigieRefreshThrottle, sqlEcoConnector } from './vigie/eco-connector';
 import { claimProgressDelivery, markDelivery, undeliveredProgress } from './vigie/mirror';
 import { claimNcrDelivery, markNcrDelivery } from './vigie/quality-mirror';
 
 const PM = { name: 'Romain Aubert', role: 'pm' };
 const PROC = { name: 'Fabien Bertrand', role: 'procurement' };
-const later = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 beforeAll(async () => {
   setDb(await openDatabase());
@@ -36,9 +36,10 @@ describe('claims (one conditional UPDATE per entry)', () => {
     const db = await getDb();
     expect(await claimProgressDelivery(db, r.id)).toBe(true);
     expect(await claimProgressDelivery(db, r.id)).toBe(false);
-    await markDelivery(db, r.id, { ok: false, error: 'Vigie 503' });
+    // A transient failure (D12: anything but P0V01 / P0V02) keeps the entry pending and releases the claim.
+    await markDelivery(db, r.id, { ok: false, error: 'connection reset', retry: true });
     const [failed] = await db.select().from(vigieEcoProgress).where(eq(vigieEcoProgress.id, r.id));
-    expect([failed.syncStatus, failed.attempts, failed.claimedAt]).toEqual(['failed', 1, null]);
+    expect([failed.syncStatus, failed.attempts, failed.claimedAt]).toEqual(['pending', 1, null]);
     const t0 = new Date();
     expect(await claimProgressDelivery(db, r.id, t0)).toBe(true);
     expect(await claimProgressDelivery(db, r.id, new Date(t0.getTime() + DELIVERY_LEASE_MS - 1000))).toBe(false);
@@ -51,12 +52,12 @@ describe('claims (one conditional UPDATE per entry)', () => {
 
   it('NCR progress and Cursus requests follow the same rule', async () => {
     const db = await getDb();
-    const { id } = await advanceNcr('HLT-026', 'NCR-028', { name: 'Romain Aubert', role: 'pm' });
+    const { id } = await advanceNcr('HLT-026', 'EV-2026-028', { name: 'Romain Aubert', role: 'pm' });
     expect(await claimNcrDelivery(db, id)).toBe(true);
     expect(await claimNcrDelivery(db, id)).toBe(false);
-    await markNcrDelivery(db, id, { ok: false, error: 'Vigie 503' });
+    await markNcrDelivery(db, id, { ok: false, error: 'connection reset', retry: true });
     const [ncr] = await db.select().from(vigieNcrProgress).where(eq(vigieNcrProgress.id, id));
-    expect([ncr.syncStatus, ncr.attempts, ncr.claimedAt]).toEqual(['failed', 1, null]);
+    expect([ncr.syncStatus, ncr.attempts, ncr.claimedAt]).toEqual(['pending', 1, null]);
     expect(await claimNcrDelivery(db, id)).toBe(true);
     const q = await mockCursusConnector.remind('HLT-026', 'Thomas Kerbrat', { ...PM, role: 'pm' });
     expect(await claimRequestDelivery(db, q.id)).toBe(true);
@@ -68,46 +69,32 @@ describe('claims (one conditional UPDATE per entry)', () => {
   });
 });
 
-describe('concurrent deliveries (HTTP connector)', () => {
-  it('two Vigie syncs at the same time send each outbox entry once', async () => {
+describe('concurrent deliveries (Vigie on the shared server, Cursus over HTTP)', () => {
+  it('two Vigie syncs at the same time deposit each outbox entry once (D12: vigie.pub_signaler_avancement_eco)', async () => {
     await recordEcoProgress('ECO-2026-017', { step: 'impact_analysis' }, PROC);
     const db = await getDb();
-    const pending = (await undeliveredProgress(db)).map((e) => e.ecoNumber);
+    const pending = (await undeliveredProgress(db)).map((e) => e.id);
     expect(pending.length).toBeGreaterThanOrEqual(1);
-    vi.stubEnv('VIGIE_API_URL', 'http://vigie.test');
-    vi.stubEnv('VIGIE_API_KEY', 'vigie-key-123');
+    await createVigieServer(db);
     resetVigieRefreshThrottle();
-    const posted: string[] = [];
-    const keys = new Set<string | null>();
-    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
-      keys.add(new Headers(init?.headers).get('x-api-key'));
-      if (init?.method === 'POST') {
-        posted.push(String(url));
-        await later(20); // the other sync runs while this entry is in flight
-        return new Response(JSON.stringify({ id: `V-${posted.length}` }), { status: 200 });
-      }
-      return new Response(JSON.stringify([]), { status: 200 });
-    }));
-    const [a, b] = await Promise.all([httpEcoConnector.sync(), httpEcoConnector.sync()]);
-    expect(posted.length).toBe(pending.length);
-    expect(new Set(posted).size).toBe(posted.length);
+    const [a, b] = await Promise.all([sqlEcoConnector.sync(), sqlEcoConnector.sync()]);
+    const deposited = (await vigieRequests(db)).map((r) => r.external_id);
+    expect(deposited.sort()).toEqual([...pending].sort());
     expect(a.delivered + b.delivered).toBe(pending.length);
     expect(a.failed + b.failed).toBe(0);
     expect(await undeliveredProgress(db)).toEqual([]);
-    expect([...keys]).toEqual(['vigie-key-123']);
   });
 
   it('concurrent reads share one refresh from Vigie', async () => {
-    vi.stubEnv('VIGIE_API_URL', 'http://vigie.test');
+    const db = await getDb();
+    await createVigieServer(db);
+    // Each read of the orders view takes one number of a sequence.
+    await db.execute(sql.raw('create sequence vigie.reads'));
+    await db.execute(sql.raw('create or replace view vigie.pub_ordres_modification as select e.* from (select nextval(\'vigie.reads\') as n) t join vigie.eco_rows e on true'));
     resetVigieRefreshThrottle();
-    let gets = 0;
-    vi.stubGlobal('fetch', vi.fn(async () => {
-      gets++;
-      await later(20);
-      return new Response(JSON.stringify([]), { status: 200 });
-    }));
-    await Promise.all([httpEcoConnector.listEcos(), httpEcoConnector.listEcos(), httpEcoConnector.listEcos()]);
-    expect(gets).toBe(1);
+    await Promise.all([sqlEcoConnector.listEcos(), sqlEcoConnector.listEcos(), sqlEcoConnector.listEcos()]);
+    const [{ n }] = (await db.execute(sql.raw('select last_value::int as n from vigie.reads'))).rows as { n: number }[];
+    expect(n).toBe(1);
   });
 
   it('Cursus in production without an API key: nothing is sent, the attempt is recorded as failed', async () => {

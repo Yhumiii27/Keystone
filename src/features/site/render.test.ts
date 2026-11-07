@@ -16,6 +16,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push() {}, replace() {},
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DEMO_TODAY_ISO } from '@/domain/clock';
 import GOLDEN from '@/domain/site.golden.json';
+import { demoNcrGolden } from '@/domain/vigie-demo';
 import { I18nProvider } from '@/i18n/client';
 import { fieldsText } from '@/i18n/data-text';
 import { makeT, type Lang } from '@/i18n/translate';
@@ -28,7 +29,8 @@ import { dailyReportFormDef, siteView } from './model';
 import { SiteBody } from './site-view';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const G = GOLDEN as any;
+// D13 (CV-07): the prototype's NCR numbers as the demo data set has them (EV-2026-0nn, src/domain/vigie-demo.ts).
+const G = demoNcrGolden(GOLDEN) as any;
 const html = (el: ReactElement, lang: Lang) => renderToStaticMarkup(h(I18nProvider, { lang, children: el }));
 const text = (s: string) => s.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&#x27;/g, '’').replace(/&quot;/g, '"').replace(/&gt;/g, '>').replace(/\s+/g, ' ');
 const kpis = (ks: any[]) => ks.map((k) => ({ label: k.label, value: String(k.value), sub: k.sub, color: k.color }));
@@ -157,8 +159,8 @@ describe('Site view model vs the prototype (EN and FR)', () => {
       expect(x.kpis).toEqual(kpis(g.execKpis).map(computed(4, '2')).map(computed(2, '8')));
       expect(x.reports.map((r) => ({ date: r.date, act: r.act, pct: r.pct, txt: r.txt, link: r.link, by: r.by }))).toEqual(g.reports);
       expect(x.reports.map((r) => !!r.href)).toEqual(g.reportLinks);
-      expect(G.reportLink).toEqual({ screen: 'quality', qTab: 'ncr', ncr: 'NCR-029' });
-      expect(x.reports[1].href).toBe('/projects/HLT-026/quality?ncr=NCR-029');
+      expect(G.reportLink).toEqual({ screen: 'quality', qTab: 'ncr', ncr: 'EV-2026-029' });
+      expect(x.reports[1].href).toBe('/projects/HLT-026/quality?ncr=EV-2026-029');
       expect(x.note).toBe(lang === 'en' ? 'Site starts 19 Oct — reports so far cover preparation visits.' : 'Le chantier démarre le 19 oct. — les rapports actuels couvrent les visites de préparation.');
       // A-6 'a' (R-117): the Site shows the items raised on site by default, numbered after the ITP items (P-01…P-03 → P-06…P-08).
       const renumbered = (id: string) => `P-0${+id.slice(2) + 5}`;
@@ -282,7 +284,7 @@ describe('Site static render', () => {
 
   it('Daily execution: NCR link row, footnote, punch list, HSE register with Open in Vigie, Declare incident in Vigie, no HSE editing', async () => {
     const out = await render('en', 'exec', true);
-    expect(out).toContain('href="/projects/HLT-026/quality?ncr=NCR-029"');
+    expect(out).toContain('href="/projects/HLT-026/quality?ncr=EV-2026-029"');
     expect(text(out)).toContain('Site starts 19 Oct — reports so far cover preparation visits.');
     expect(out.match(/aria-label="Open in Vigie — /g)).toHaveLength(5);
     expect(out).toMatch(/href="http:\/\/localhost:3200\/signaler\?[^"]*" target="_blank" rel="noopener noreferrer"[^>]*title="Report in Vigie"/);

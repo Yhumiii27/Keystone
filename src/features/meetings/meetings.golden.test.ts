@@ -24,7 +24,11 @@ import { monthIndexOfIso } from '@/server/db/codes';
 import type { MeetingFilter, MeetingsView } from '@/domain/meetings';
 import { dataText } from './i18n';
 import { meetingsHref, meetingsScreenView, type MeetingsScreenView } from './model';
-import { loadPrototype, plain } from './prototype-harness';
+import { demoNcrGolden } from '@/domain/vigie-demo';
+import { loadPrototype, plain as plainRaw } from './prototype-harness';
+
+/** D13 (CV-07): the prototype's NCR numbers as the demo data set has them (EV-2026-0nn, src/domain/vigie-demo.ts). */
+const plain = (v: any): any => demoNcrGolden(plainRaw(v));
 
 const P = loadPrototype();
 /** The prototype's "now" (month index 8.97, just after 30 Sep 2026). */

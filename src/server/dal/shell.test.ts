@@ -89,7 +89,7 @@ describe('notifications (docs/spec/01 §5.5)', () => {
 
   it('targets are deep links', async () => {
     const byId = Object.fromEntries((await notificationsFor('pm')).map((n) => [n.id, n.href]));
-    expect(byId.n3).toBe('/projects/HLT-026/quality?tab=ncr&ncr=NCR-029');
+    expect(byId.n3).toBe('/projects/HLT-026/quality?tab=ncr&ncr=EV-2026-029');
     expect(byId.n6).toBe('/projects/HLT-026/plan?act=A1250');
     expect(byId.n4).toBe('/projects/HLT-026/deliveries?receipt=BL-2026-0533');
     expect(deepLink('procurement', { pTab: 'inv', inv: 'INV-HC-7781' })).toBe('/purchasing/sourcing?tab=inv&inv=INV-HC-7781');
@@ -263,15 +263,17 @@ describe('Delivery 5 badges, search and zone bar follow the database (docs/spec/
   });
 
   it('NCR search reads the Vigie mirror of the portfolio, current project first (X-5, R-052)', async () => {
-    const hits = (await searchShell('ncr-029', 'HLT-026')).filter((h) => h.kind === 'NCR');
-    expect(hits).toEqual([{ kind: 'NCR', title: expect.stringMatching(/^NCR-029 · /), sub: 'HLT-026 · Critical · Root cause', subData: ['HLT-026'], href: '/projects/HLT-026/quality?ncr=NCR-029' }]);
-    // X-5: Northgate's own NCR-040 / NCR-041 first, then the next project in register order (Riverside clinic's NCR-040).
-    expect((await searchShell('ncr-04', 'NDC-031')).filter((h) => h.kind === 'NCR').map((h) => h.href)).toEqual([
-      '/projects/NDC-031/quality?ncr=NCR-040', '/projects/NDC-031/quality?ncr=NCR-041', '/projects/RCF-019/quality?ncr=NCR-040',
+    // D13 (CV-07): NCR numbers are Vigie's EV-… references (the prototype's NCR-029 is EV-2026-029).
+    const hits = (await searchShell('ev-2026-029', 'HLT-026')).filter((h) => h.kind === 'NCR');
+    expect(hits).toEqual([{ kind: 'NCR', title: expect.stringMatching(/^EV-2026-029 · /), sub: 'HLT-026 · Critical · Root cause', subData: ['HLT-026'], href: '/projects/HLT-026/quality?ncr=EV-2026-029' }]);
+    // X-5: Northgate's own EV-2026-040 / EV-2026-041 first, then the next project in register order (Riverside clinic's EV-2026-042,
+    // the prototype's NCR-040 there).
+    expect((await searchShell('ev-2026-04', 'NDC-031')).filter((h) => h.kind === 'NCR').map((h) => h.href)).toEqual([
+      '/projects/NDC-031/quality?ncr=EV-2026-040', '/projects/NDC-031/quality?ncr=EV-2026-041', '/projects/RCF-019/quality?ncr=EV-2026-042',
     ]);
     // X-5: a project without NCRs finds the portfolio's (register order: Harbor Line first), at most 3.
-    expect((await searchShell('ncr', 'EWA-051')).filter((h) => h.kind === 'NCR').map((h) => h.href)).toEqual([
-      '/projects/HLT-026/quality?ncr=NCR-026', '/projects/HLT-026/quality?ncr=NCR-027', '/projects/HLT-026/quality?ncr=NCR-028',
+    expect((await searchShell('ev-2026', 'EWA-051')).filter((h) => h.kind === 'NCR').map((h) => h.href)).toEqual([
+      '/projects/HLT-026/quality?ncr=EV-2026-026', '/projects/HLT-026/quality?ncr=EV-2026-027', '/projects/HLT-026/quality?ncr=EV-2026-028',
     ]);
   });
 
@@ -293,7 +295,7 @@ describe('Delivery 5 badges, search and zone bar follow the database (docs/spec/
     ]);
     expect(await searchShell('northgate', 'HLT-026', 'client')).toEqual([]);
     // No NCR, purchase order, part, person, ECO, risk, drawing or activity; change requests of their organisation's projects.
-    for (const q of ['ncr-029', 'po-1082', 'gbx-91', 'wagner', 'eco-2026', 'dwg'])
+    for (const q of ['ev-2026-029', 'po-1082', 'gbx-91', 'wagner', 'eco-2026', 'dwg'])
       expect(await searchShell(q, 'HLT-026', 'client'), q).toEqual([]);
     expect((await searchShell('cr-008', 'HLT-026', 'client')).map((h) => [h.kind, h.href])).toEqual([['Change request', '/projects/HLT-026/changes?cr=CR-008']]);
     // X-5 (R-052): the change requests of every project of their organisation, wherever they search from (Harbor Line's here).

@@ -39,9 +39,11 @@ import { getRex } from './rex';
 import { getSettings } from './settings';
 import { cursusLabels, getSite, siteBadgeByProject } from './site';
 import golden from './delivery5.golden.json';
+import { demoNcrGolden } from '@/domain/vigie-demo';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const G = golden as any;
+// D13 (CV-07): the prototype's NCR numbers as the demo data set has them (EV-2026-0nn, src/domain/vigie-demo.ts).
+const G = demoNcrGolden(golden) as any;
 const f = (k: number, signed = false) => money(k, 'en', { signed });
 const DATA = ['HLT-026', 'NDC-031', 'RCF-019', 'ERP-202', 'WSA-044', 'MSR-012'];
 /** Prototype dates are partly zero-padded ("02 Sep"); the rebuild formats every date the same way ("2 Sep"). */
@@ -105,7 +107,7 @@ describe('quality — NCRs (Vigie mirror) and deliverables (07 §2.3)', () => {
       expect([n.rootCause, n.action, `Move to ${ncrStatus.label(NCR_FLOW[Math.min(5, n.stepIndex + 1)])}`]).toEqual([g.root, g.action, g.nextLabel]);
       const eco = n.partRef ? ecos[n.partRef] ?? '' : '';
       expect([!!eco, eco, !!n.partRef]).toEqual([g.hasEco, g.ecoId, g.hasPart]);
-      expect(n.vigieUrl).toMatch(/\/evenements\?etat=tous&type=NC&q=NCR-\d+$/);
+      expect(n.vigieUrl).toMatch(/\/evenements\?etat=tous&sel=EV-2026-\d+$/); // D13 (CV-07): the number is Vigie's record
     }
   });
 
@@ -158,7 +160,7 @@ describe('quality — NCRs (Vigie mirror) and deliverables (07 §2.3)', () => {
   it('badges and supplier references: open critical NCRs per project; goods-receipt NCRs with their parts', async () => {
     expect(await criticalOpenNcrsByProject()).toEqual({ 'HLT-026': 1 });
     expect((await listProjectNcrRefs('HLT-026')).filter((n) => n.src === 'Goods receipt')).toEqual([
-      { id: 'NCR-027', src: 'Goods receipt', part: 'CR-RAIL-A100' }, { id: 'NCR-028', src: 'Goods receipt', part: 'EL-CBL-XLPE' }, { id: 'NCR-030', src: 'Goods receipt', part: 'FD-DET-OPT' },
+      { id: 'EV-2026-027', src: 'Goods receipt', part: 'CR-RAIL-A100' }, { id: 'EV-2026-028', src: 'Goods receipt', part: 'EL-CBL-XLPE' }, { id: 'EV-2026-030', src: 'Goods receipt', part: 'FD-DET-OPT' },
     ]);
   });
 

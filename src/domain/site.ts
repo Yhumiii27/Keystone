@@ -425,8 +425,8 @@ export const missionCostUse = (c: { budgetKeur: number; actualKeur: number }) =>
 export const preparationNote = (f: Pick<SiteFacts, 'startOn' | 'doneDays'>, today: string) =>
   f.doneDays === 0 && today < f.startOn ? `Site starts ${shortDateOfIso(f.startOn)} — reports so far cover preparation visits.` : null;
 
-/** A daily-report link that opens the Quality screen (NCR drawer): "NCR-029". */
-export const isNcrLink = (link: string | null | undefined): link is string => !!link && /^NCR-\d+$/.test(link);
+/** A daily-report link that opens the Quality screen (NCR drawer): Vigie's "EV-2026-029" (D13 CV-07), or a former "NCR-029". */
+export const isNcrLink = (link: string | null | undefined): link is string => !!link && /^(NCR-\d+|EV-\d{4}-\d+)$/.test(link);
 
 // ── Daily report form (AF.site 3692) ───────────────────────────────────────────────────────────────────
 

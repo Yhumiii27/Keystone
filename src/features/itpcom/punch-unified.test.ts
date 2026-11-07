@@ -51,7 +51,7 @@ describe('R-117 · "Add punch item" on the single list, 9 personas', () => {
     const added: Record<string, string> = {};
     for (const role of ROLES) {
       as(role);
-      const r = await addPunchItemAction(HLT, { item: `Item by ${role}`, origin: 'site', party: 'client', ncr: 'NCR-031', owner: '', cat: 'B', loc: 'Structure · Bay 1' });
+      const r = await addPunchItemAction(HLT, { item: `Item by ${role}`, origin: 'site', party: 'client', ncr: 'EV-2026-031', owner: '', cat: 'B', loc: 'Structure · Bay 1' });
       if (!EDITORS.includes(role)) {
         expect([role, r]).toEqual([role, { error: READ_ONLY }]);
         continue;
@@ -63,8 +63,8 @@ describe('R-117 · "Add punch item" on the single list, 9 personas', () => {
     expect(revalidatePath).toHaveBeenCalledWith('/projects/HLT-026', 'layout');
     const rows = await listPunchItems(HLT, 'site');
     expect(rows.filter((p) => p.description.startsWith('Item by')).map((p) => [p.description, p.origin, p.ownerParty, p.ownerName, p.owner, p.ncrNumber, p.category])).toEqual([
-      ['Item by director', 'site', 'client', null, 'Client', 'NCR-031', 'B'], ['Item by pm', 'site', 'client', null, 'Client', 'NCR-031', 'B'],
-      ['Item by englead', 'site', 'client', null, 'Client', 'NCR-031', 'B'], ['Item by quality', 'site', 'client', null, 'Client', 'NCR-031', 'B'],
+      ['Item by director', 'site', 'client', null, 'Client', 'EV-2026-031', 'B'], ['Item by pm', 'site', 'client', null, 'Client', 'EV-2026-031', 'B'],
+      ['Item by englead', 'site', 'client', null, 'Client', 'EV-2026-031', 'B'], ['Item by quality', 'site', 'client', null, 'Client', 'EV-2026-031', 'B'],
       // P-10b: whatever the client's request says, no NCR number is recorded from the client.
       ['Item by client', 'site', 'client', null, 'Client', null, 'B'],
     ]);
@@ -85,14 +85,14 @@ describe('R-117 · "Add punch item" on the single list, 9 personas', () => {
     const before = (await listPunchItems(HLT)).length;
     expect(await addPunchItemAction(HLT, { item: 'x', origin: 'vigie' })).toEqual({ error: 'Unknown origin' });
     expect(await addPunchItemAction(HLT, { item: 'x', party: 'supplier' })).toEqual({ error: 'Unknown owner party' });
-    expect(await addPunchItemAction(HLT, { item: 'x', ncr: '<script>' })).toEqual({ error: 'Enter the NCR number as Vigie gives it, e.g. NCR-029' });
+    expect(await addPunchItemAction(HLT, { item: 'x', ncr: '<script>' })).toEqual({ error: 'Enter the NCR number as Vigie gives it, e.g. EV-2026-029' });
     expect(await addPunchItemAction(HLT, { item: 'x', owner: 'Nobody' })).toEqual({ error: 'Unknown owner' });
     expect(await addPunchItemAction(HLT, null as never)).toEqual({ error: 'Item is required' });
     expect(await addPunchItemAction('' as string, { item: 'x' })).toEqual({ error: 'Invalid request' });
     expect(await addPunchItemAction(HLT, { item: 'x', origin: 42 } as never)).toMatchObject({ toast: 'Punch item added' }); // non-string entries dropped → default origin
     as('pm', 'fr');
     expect(await addPunchItemAction(HLT, { item: 'x', origin: 'vigie' })).toEqual({ error: 'Origine inconnue' });
-    expect(await addPunchItemAction(HLT, { item: 'x', ncr: '!!' })).toEqual({ error: 'Saisissez le numéro de NCR donné par Vigie, par ex. NCR-029' });
+    expect(await addPunchItemAction(HLT, { item: 'x', ncr: '!!' })).toEqual({ error: 'Saisissez le numéro de NCR donné par Vigie, par ex. EV-2026-029' });
     expect((await listPunchItems(HLT)).length).toBe(before + 1);
   });
 
@@ -103,7 +103,7 @@ describe('R-117 · "Add punch item" on the single list, 9 personas', () => {
     await expect(addPunchItem(HLT, { description: 'x', category: 'C', source: 'site_walk' }, { name: 'Somebody Else', role: 'client' })).rejects.toThrow(/read-only/);
     await expect(addPunchItem(HLT, { description: 'x', category: 'C', source: 'site_walk', origin: 'nope' as never }, { name: 'Marie Lefebvre', role: 'director' })).rejects.toThrow(/Invalid origin/);
     // A client's NCR is dropped by the writer as well.
-    expect(await addPunchItem(HLT, { description: 'By the client', category: 'C', source: 'client_inspection', ncrNumber: 'NCR-099' }, { name: 'Nadia Bensaïd', role: 'client' })).toMatch(/^P-\d+$/);
+    expect(await addPunchItem(HLT, { description: 'By the client', category: 'C', source: 'client_inspection', ncrNumber: 'EV-2026-099' }, { name: 'Nadia Bensaïd', role: 'client' })).toMatch(/^P-\d+$/);
     expect((await listPunchItems(HLT)).at(-1)!.ncrNumber).toBeNull();
   });
 });
@@ -125,7 +125,7 @@ describe('R-117 · Start / Close on every origin, 9 personas', () => {
       expect([role, await advancePunchItemAction(HLT, n, 'in_progress')]).toEqual([role, { ok: true }]);
       expect([role, await advancePunchItemAction(HLT, n, 'in_progress')]).toEqual([role, { error: 'This punch item is already closed' }]);
     }
-    // The seed's Site item P-06 (NCR-029), by the PM.
+    // The seed's Site item P-06 (EV-2026-029), by the PM.
     as('pm');
     expect(await advancePunchItemAction(HLT, 'P-06', 'open')).toEqual({ ok: true });
     expect((await item('P-06'))!.status).toBe('in_progress');
@@ -144,7 +144,7 @@ describe('R-117 · the screen and the export', () => {
       ['all', 'All', '/projects/HLT-026/itp?view=punch'], ['itp', 'Inspection', '/projects/HLT-026/itp?view=punch&origin=itp'], ['site', 'Site', '/projects/HLT-026/itp?view=punch&origin=site'],
     ]);
     expect([all.origin, all.ncr, all.rows[0].anchor, punchAnchorId('P-01'), punchListHref(HLT, 'site')]).toEqual(['all', true, 'punch-P-01', 'punch-P-01', '/projects/HLT-026/itp?view=punch&origin=site']);
-    expect(all.rows.find((r) => r.number === 'P-06')).toMatchObject({ origin: 'Site', siteOrigin: true, ncr: 'NCR-029', owner: 'Client' });
+    expect(all.rows.find((r) => r.number === 'P-06')).toMatchObject({ origin: 'Site', siteOrigin: true, ncr: 'EV-2026-029', owner: 'Client' });
     const site = itpScreenView({ code: HLT, view: 'punch', plan, punch, origin: 'site', machineType: null, today: DEMO_TODAY_ISO }, t, 'en').punch!;
     expect(site.rows.every((r) => r.siteOrigin)).toBe(true);
     const client = itpScreenView({ code: HLT, view: 'punch', plan, punch, machineType: null, today: DEMO_TODAY_ISO, viewer: { canRecord: false, internal: false, name: 'Nadia Bensaïd' } }, t, 'en').punch!;
@@ -154,7 +154,7 @@ describe('R-117 · the screen and the export', () => {
     const team = await teamOwnerOptions(HLT);
     expect(localizeForm(punchFormDef(team, { internal: false }), t, 'en').fields.map((f) => f.id)).toEqual(['item', 'loc', 'cat', 'src', 'owner', 'due', 'origin', 'party']);
     expect(localizeForm(punchFormDef(team), makeT('fr'), 'fr').fields.slice(6).map((f) => [f.label, f.placeholder ?? null])).toEqual([
-      ['Origine', null], ['Partie responsable', null], ['NCR (Vigie)', 'ex. NCR-029'],
+      ['Origine', null], ['Partie responsable', null], ['NCR (Vigie)', 'ex. EV-2026-029'],
     ]);
   });
 
@@ -168,10 +168,10 @@ describe('R-117 · the screen and the export', () => {
     expect(internal.rows[0]).toEqual(['Item', 'Description', 'Origin', 'Equipment', 'System / location', 'Category', 'Raised by', 'NCR', 'Owner', 'Due', 'Status']);
     expect(internal.rows.find((r) => r[0] === 'P-06')!.slice(0, 4)).toEqual(['P-06', 'Massif poste 7 — reprise implantation tiges', 'Site', 'Common']);
     expect(internal.rows.find((r) => r[0] === 'P-09')![3]).toBe('EQ-02');
-    expect(internal.rows.find((r) => r[0] === 'P-06')![7]).toBe('NCR-029');
+    expect(internal.rows.find((r) => r[0] === 'P-06')![7]).toBe('EV-2026-029');
     const client = await sheetOf('client');
     expect(client.rows[0]).not.toContain('NCR');
-    expect(client.rows.flat().join(' ')).not.toContain('NCR-031');
+    expect(client.rows.flat().join(' ')).not.toContain('EV-2026-031');
     expect((await sheetOf('quality', '&origin=itp')).rows.slice(1).every((r) => r[2] === 'Inspection')).toBe(true);
   });
 });

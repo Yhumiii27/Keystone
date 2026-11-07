@@ -23,9 +23,9 @@ describe('R-052 portfolio-wide search (X-5)', () => {
     expect(po).toEqual([{ kind: 'Purchase order', title: 'PO-1082 · Cotswold Fire Systems', sub: 'HLT-026 · Awaiting approval', subData: ['HLT-026'], href: '/projects/HLT-026/orders?po=PO-1082' }]);
   });
 
-  it('NCR-029 is found from a project without NCRs and opens Harbor Line\'s Quality', async () => {
-    const ncr = of(await searchShell('ncr-029', 'EWA-051'), 'NCR');
-    expect(ncr.map((h) => [h.title.split(' · ')[0], h.sub, h.href])).toEqual([['NCR-029', 'HLT-026 · Critical · Root cause', '/projects/HLT-026/quality?ncr=NCR-029']]);
+  it('EV-2026-029 is found from a project without NCRs and opens Harbor Line\'s Quality', async () => {
+    const ncr = of(await searchShell('ev-2026-029', 'EWA-051'), 'NCR');
+    expect(ncr.map((h) => [h.title.split(' · ')[0], h.sub, h.href])).toEqual([['EV-2026-029', 'HLT-026 · Critical · Root cause', '/projects/HLT-026/quality?ncr=EV-2026-029']]);
   });
 
   it('risks: the current project\'s first, then register order, 3 per kind', async () => {
