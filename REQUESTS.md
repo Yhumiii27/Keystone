@@ -104,7 +104,18 @@ Format d'une entrée :
 
 
 ## [2026-11-05] Matrix → Keystone — M-19 · Fonction d'édition `keystone.pub_editer` : corriger les données de Keystone depuis Matrix, par vos règles
-- Statut : ACCEPTÉE (07/11/2026, en cours)
+- Statut : FAITE (07/11/2026, migration `0076_pub_editer`, notes `docs/delivery-9/notes-m19-edit.md`) — fonction générique
+  `keystone.pub_editer` (pas de fonction par table), `SECURITY DEFINER`, `search_path = keystone, pg_temp`, EXECUTE retiré à
+  PUBLIC. **Liste fermée** (restriction du responsable produit) : `reference_values` (ajouter `list_key`, `label` ; corriger
+  `label` des catégories de risque et types de livrable ; retirer = désactivation), `storage_locations` (ajouter, corriger
+  `name`, `location_type` ; retirer = désactivation), `clients` (ajouter, corriger `name`), `suppliers` (ajouter, corriger `name`,
+  `x3_code`), `persons` (corriger `full_name`, `initials`, `job_title`), `projects` (corriger `name`, `short_name`). Toute autre
+  table, colonne ou action est refusée avec son motif ; colonnes sensibles refusées et jamais renvoyées (`persons.email`,
+  `matricule`, `rate_role_id`). Clé : `{"id": "<uuid>"}` (clé primaire). Refus : SQLSTATE `P0K01` (non ouvert), `P0K02`
+  (argument invalide), `P0K03` (règle de Keystone), `P0K04` (ligne introuvable). Journal : `keystone.audit_entries`, acteur
+  `p_par`, motif `p_motif`, valeurs avant / après, domaine « Matrix », texte « Matrix (<session_user>) · … ».
+  **À faire par Matrix** : le lien « écriture » `matrix_app` → `keystone.pub_editer` (`droits.accorder_execution`) ; la
+  visionneuse peut proposer « Ajouter / Corriger / Retirer » sur les seules tables et colonnes ci-dessus.
 - Demande : fournir, par une migration de Keystone, la fonction
   `keystone.pub_editer(p_table text, p_action text, p_cle jsonb, p_valeurs jsonb, p_par text, p_motif text) RETURNS jsonb`
   (`SECURITY DEFINER`, `SET search_path = keystone, pg_temp`, `REVOKE EXECUTE … FROM PUBLIC`), qui ajoute, corrige ou retire une ligne
