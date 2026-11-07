@@ -120,7 +120,7 @@ export interface SiteData {
   punch: PunchRow[];
   hse: HseRow[];
   /** Vigie connector mode and the last refresh of the HSE register (ISO; null when nothing was received). */
-  hseSource: { mode: 'mock' | 'http'; lastSyncedAt: string | null };
+  hseSource: { mode: 'mock' | 'sql'; lastSyncedAt: string | null };
   /** A-12: change requests of the project whose client step is decided ("Client decisions logged"). */
   clientDecisions: number;
   /** R-169: Saturday and Sunday / public holiday multipliers of the rate grid ("Site premium"). */

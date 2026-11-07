@@ -17,7 +17,7 @@ export async function startServer(): Promise<KeystoneConfig> {
   }
   log.info('Keystone server starting', {
     component: 'startup', env: config.env, database: config.database.driver, newDatabaseSeed: config.seed, logLevel: config.log.level,
-    cursus: config.cursus.apiUrl ? 'http' : 'mock', vigie: config.vigie.apiUrl ? 'http' : 'mock', transcriptAnalysis: config.ai.enabled ? 'claude' : 'local',
+    cursus: config.cursus.apiUrl ? 'http' : 'mock', vigie: config.vigie.source === 'server' ? 'sql' : 'mock', transcriptAnalysis: config.ai.enabled ? 'claude' : 'local',
     // R-013: the real date unless KEYSTONE_CLOCK pins one.
     clock: config.clock?.kind === 'fixed' ? config.clock.iso : 'real',
   });

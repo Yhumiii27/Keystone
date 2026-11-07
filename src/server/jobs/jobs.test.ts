@@ -16,6 +16,7 @@ import { acquireJobLock, listJobLocks, releaseJobLock } from '@/server/dal/job-l
 import { listPlanTrash, trashPlanRow } from '@/server/dal/plan-trash';
 import { mockCursusConnector } from '@/server/integrations/cursus/connector';
 import { getStoredFile, setFilesRoot, storeFile } from '@/server/storage/files';
+import { createVigieServer, vigieRequests } from '@/test/vigie-server';
 import { JOB_DEFINITIONS, jobDefinition, type JobDefinition } from './definitions';
 import { jobDailyAt, runJob, scheduledEntries } from './runner';
 
@@ -161,38 +162,33 @@ describe('outbox redelivery', () => {
     expect(await run('vigie-outbox')).toEqual({ summary: `Vigie mock connector · nothing sent · ${waiting} waiting`, counts: { delivered: 0, failed: 0, pending: waiting } });
   });
 
-  it('Vigie HTTP: every entry not yet sent is delivered once; a second run sends nothing', async () => {
-    vi.stubEnv('VIGIE_API_URL', 'http://vigie.test');
-    const posted: string[] = [];
-    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
-      if (init?.method !== 'POST') throw new Error('no read expected');
-      posted.push(String(url));
-      return new Response(JSON.stringify({ id: `V-${posted.length}` }), { status: 200 });
-    }));
+  it('Vigie on the shared server (D12, D13): every pending entry is deposited once; a second run sends nothing', async () => {
     const db = await getDb();
-    const waiting = (await db.select().from(vigieEcoProgress)).filter((e) => e.syncStatus !== 'sent').length;
+    await createVigieServer(db);
+    vi.stubEnv('DATABASE_URL', 'postgres://keystone_app@localhost:5432/epc2i'); // VIGIE_SOURCE defaults to server with it
+    vi.stubEnv('ARCHE_SOURCE', 'simulation');
+    vi.stubEnv('MATRIX_SOURCE', 'simulation');
+    const waiting = (await db.select().from(vigieEcoProgress)).filter((e) => e.syncStatus === 'pending').length;
     expect(await run('vigie-outbox')).toEqual({ summary: `Vigie · ${waiting} delivered · 0 failed · 0 pending`, counts: { delivered: waiting, failed: 0, pending: 0 }, warn: false });
-    expect(posted).toHaveLength(waiting);
+    expect(await vigieRequests(db)).toHaveLength(waiting);
     expect(await run('vigie-outbox')).toMatchObject({ summary: 'Vigie · 0 delivered · 0 failed · 0 pending' });
-    expect(posted).toHaveLength(waiting);
+    expect(await vigieRequests(db)).toHaveLength(waiting);
   });
 
   it('D-7a: a connector IT disabled sends nothing — its entries stay pending and go once it is enabled again', async () => {
-    vi.stubEnv('VIGIE_API_URL', 'http://vigie.test');
-    const posted: string[] = [];
-    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
-      posted.push(String(url));
-      return new Response(JSON.stringify({ id: 'V-x' }), { status: 200 });
-    }));
     const db = await getDb();
+    await createVigieServer(db);
+    vi.stubEnv('DATABASE_URL', 'postgres://keystone_app@localhost:5432/epc2i');
+    vi.stubEnv('ARCHE_SOURCE', 'simulation');
+    vi.stubEnv('MATRIX_SOURCE', 'simulation');
     const [entry] = await db.select({ id: vigieEcoProgress.id }).from(vigieEcoProgress).limit(1);
     await db.update(vigieEcoProgress).set({ syncStatus: 'pending', sentAt: null }).where(eq(vigieEcoProgress.id, entry.id));
     await db.update(connectors).set({ enabled: false }).where(eq(connectors.name, 'Vigie'));
     expect(await run('vigie-outbox')).toMatchObject({ counts: { delivered: 0, failed: 0, pending: 1 } });
-    expect(posted).toEqual([]);
+    expect(await vigieRequests(db)).toEqual([]);
     await db.update(connectors).set({ enabled: true }).where(eq(connectors.name, 'Vigie'));
     expect(await run('vigie-outbox')).toMatchObject({ counts: { delivered: 1, failed: 0, pending: 0 } });
-    expect(posted).toHaveLength(1);
+    expect(await vigieRequests(db)).toHaveLength(1);
   });
 
   it('Codex (R-124): the mock reports what waits; nothing is sent', async () => {

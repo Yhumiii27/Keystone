@@ -71,7 +71,9 @@ export function connectorScopeText(name: string, stored: string): string {
 
 /** How Keystone is linked to the system of a connector row (`mode`: Vigie / Cursus / Codex connector-layer mode). */
 export function connectorLink(c: { name: string; kind: ConnectorKind; mode: 'mock' | 'http' | 'sql' | null }): ConnectorLink {
-  if (c.kind === 'vigie' || c.kind === 'cursus') return c.mode === 'http' ? 'live' : 'mock';
+  // D12 / D13: Vigie is live on the shared server (its views and functions, `sql`); Cursus through its API (`http`).
+  if (c.kind === 'vigie') return c.mode === 'sql' ? 'live' : 'mock';
+  if (c.kind === 'cursus') return c.mode === 'http' ? 'live' : 'mock';
   if (SHARED_DB_CONNECTORS.includes(c.name)) return c.mode === 'sql' ? 'live' : c.mode === 'mock' ? 'mock' : 'none';
   // R-033: Codex is live once its API URL is set (the outbox is delivered and the index read), a mock over the index otherwise.
   if (MOCK_CONNECTORS.includes(c.name)) return c.mode === 'http' ? 'live' : 'mock';

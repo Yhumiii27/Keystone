@@ -8,8 +8,9 @@ import {
 } from './connectors';
 
 describe('connector link', () => {
-  it('Vigie and Cursus: live with their API URL (http), mock without', () => {
-    expect(connectorLink({ name: 'Vigie', kind: 'vigie', mode: 'http' })).toBe('live');
+  it('Vigie live on the shared server (sql, D12 / D13), Cursus live with its API URL (http), mock without', () => {
+    expect(connectorLink({ name: 'Vigie', kind: 'vigie', mode: 'sql' })).toBe('live');
+    expect(connectorLink({ name: 'Vigie', kind: 'vigie', mode: 'http' })).toBe('mock');
     expect(connectorLink({ name: 'Vigie', kind: 'vigie', mode: 'mock' })).toBe('mock');
     expect(connectorLink({ name: 'Cursus', kind: 'cursus', mode: 'http' })).toBe('live');
     expect(connectorLink({ name: 'Cursus', kind: 'cursus', mode: null })).toBe('mock');

@@ -82,8 +82,8 @@ describe('/projects/[code]/quality', () => {
   });
 
   it('URL state: tabs, severity / status filters, drawers (case-insensitive), unknown values', async () => {
-    const a = props(await page({ filter: 'major', ncr: ' ncr-026 ' }));
-    expect([a.ncr?.filter, a.ncr?.rows.map((r) => r.number), a.ncrDrawer?.number, a.ncrDrawer?.closeHref]).toEqual(['major', ['NCR-026', 'NCR-030'], 'NCR-026', '/projects/HLT-026/quality?filter=major']);
+    const a = props(await page({ filter: 'major', ncr: ' ev-2026-026 ' }));
+    expect([a.ncr?.filter, a.ncr?.rows.map((r) => r.number), a.ncrDrawer?.number, a.ncrDrawer?.closeHref]).toEqual(['major', ['EV-2026-026', 'EV-2026-030'], 'EV-2026-026', '/projects/HLT-026/quality?filter=major']);
     const b = props(await page({ tab: 'dlv', status: 'submitted', dlv: 'd-014' }));
     expect([b.tab, b.ncr, b.dlv?.rows.map((r) => r.number), b.dlvDrawer?.number, b.dlvDrawer?.closeHref]).toEqual(['dlv', null, ['D-014', 'D-016'], 'D-014', '/projects/HLT-026/quality?tab=dlv&status=submitted']);
     // `?dlv=` alone opens the deliverables register; `?tab=ncr` ignores a deliverable; unknown values fall back.
@@ -107,7 +107,8 @@ describe('/projects/[code]/quality', () => {
     const ro = props(await page({ tab: 'dlv' }, 'NDC-031'));
     expect([ro.dlv!.rows.length, ro.dlv!.rows.every((r) => r.action === null)]).toEqual([4, true]);
     const own = props(await page({}));
-    expect(own.ncr!.rows.map((r) => r.action?.label ?? null)).toEqual(['→ Verification', null, '→ Root cause', '→ Corrective action', '→ Containment']);
+    // D13: no '→ Containment' on the open NCR (Vigie's QHSE qualifies it).
+    expect(own.ncr!.rows.map((r) => r.action?.label ?? null)).toEqual(['→ Verification', null, '→ Root cause', '→ Corrective action', null]);
     session.role = 'client';
     const c = await page({ tab: 'dlv', dlv: 'D-014' });
     expect(c.PageHeader.props.primary).toBeUndefined();
@@ -115,7 +116,7 @@ describe('/projects/[code]/quality', () => {
     expect(cv.dlv!.rows.filter((r) => r.action?.kind === 'decide').map((r) => r.number)).toEqual(['D-014', 'D-016']);
     expect([cv.dlvDrawer!.canDecide, cv.dlvDrawer!.canLinkDocument, cv.dlvDrawer!.hint]).toEqual([true, false, '']);
     // P-10b (R-043): no NCR for the client — the screen is the deliverables register (no NCR tab, no NCR drawer, no linked NCR).
-    const cn = props(await page({ ncr: 'NCR-030', tab: 'ncr' }));
+    const cn = props(await page({ ncr: 'EV-2026-030', tab: 'ncr' }));
     expect([cn.tab, cn.ncr, cn.ncrDrawer, cn.seg.map((x) => x.value)]).toEqual(['dlv', null, null, ['dlv']]);
     expect(JSON.stringify(cn.dlv)).not.toContain('NCR-');
     // R-042 (P-10a): another organisation's project is refused (sent home).
@@ -154,8 +155,10 @@ describe('/projects/[code]/quality', () => {
   it('markup (EN): NCR log with Vigie links opening outside Keystone, step buttons, segments; register with avatars and actions', async () => {
     const p = await page({});
     const log = html(p.QualityView);
-    expect(log).toContain('href="http://localhost:3200/evenements?etat=tous&amp;type=NC&amp;q=NCR-029" target="_blank" rel="noopener noreferrer" aria-label="Open in Vigie NCR-029"');
-    expect(log).toContain('>→ Containment</button>');
+    // D13 (CV-07): the number is Vigie's record, opened directly.
+    expect(log).toContain('href="http://localhost:3200/evenements?etat=tous&amp;sel=EV-2026-029" target="_blank" rel="noopener noreferrer" aria-label="Open in Vigie EV-2026-029"');
+    expect(log).toContain('>→ Root cause</button>');
+    expect(log).not.toContain('>→ Containment</button>');
     expect(log).toContain('Mirrored from Vigie — NCRs are managed in Vigie');
     expect(log).toContain('Non-conformance log');
     expect(log).toContain('Open → containment → root cause → corrective action → verification → closed · ISO 9001 §8.7');
@@ -170,11 +173,11 @@ describe('/projects/[code]/quality', () => {
   });
 
   it('markup: NCR drawer (Vigie links, severity managed in Vigie, record links) and deliverable drawer (FR)', async () => {
-    const p = await page({ ncr: 'NCR-030' });
+    const p = await page({ ncr: 'EV-2026-030' });
     const nd = (await import('./ncr-drawer')).NcrDrawer;
     const v = props(p);
     const n = drawerHtml(createElement(nd, { code: 'HLT-026', view: v.ncrDrawer!, t: (s: string) => s }) as El);
-    expect(n).toContain('>Move to Containment</button>');
+    expect(n).not.toContain('>Move to Containment</button>'); // D13: decided in Vigie
     expect(n).toContain('>Manage in Vigie<');
     expect(n).toContain('8D report');
     expect(n).toContain('href="/reference/parts?part=FD-DET-OPT"');

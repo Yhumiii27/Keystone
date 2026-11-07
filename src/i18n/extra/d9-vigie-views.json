@@ -1,0 +1,15 @@
+{
+  "Refused by Vigie": "Refusée par Vigie",
+  "Design office": "Bureau d’études",
+  "Containment is decided in Vigie": "Le confinement se décide dans Vigie",
+  "The quality approval is decided in Vigie.": "L’approbation qualité se décide dans Vigie.",
+  "Switch to Engineering lead or Project manager (bottom-left) to approve.": "Passez en Responsable ingénierie ou Chef de projet (en bas à gauche) pour approuver.",
+  "e.g. EV-2026-029": "ex. EV-2026-029",
+  "Enter the NCR number as Vigie gives it, e.g. EV-2026-029": "Saisissez le numéro de NCR donné par Vigie, par ex. EV-2026-029",
+  "Vigie's views and functions on the shared database (ECOs, NCRs, site HSE)": "Vues et fonctions de Vigie sur la base partagée (ECO, NC, HSE chantier)",
+  "Shared database with DATABASE_URL, else simulated over the local mirror": "Base partagée avec DATABASE_URL, sinon simulé sur le miroir local",
+  "Raised EV-2026-029 (Critical) on A1230 Foundations": "EV-2026-029 (Critique) émise sur A1230 Foundations",
+  "Rejected 2 of 42 drums on BL-2026-0533 · EV-2026-028 opened": "2 tourets sur 42 refusés sur BL-2026-0533 · EV-2026-028 ouverte",
+  "Re-weld K-12 splice — EV-2026-026": "Reprise de soudure de l’éclissage K-12 — EV-2026-026",
+  "EV-2026-029 raised — Critical": "EV-2026-029 émise — Critique"
+}

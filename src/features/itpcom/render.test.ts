@@ -12,6 +12,7 @@ vi.mock('./actions', () => ({ addInspectionAction: vi.fn(), addPunchItemAction: 
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DEMO_TODAY_ISO } from '@/domain/clock';
 import GOLDEN from '@/domain/itpcom.golden.json';
+import { demoNcrGolden } from '@/domain/vigie-demo';
 import { I18nProvider } from '@/i18n/client';
 import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
@@ -25,7 +26,8 @@ import { ItpBody } from './itp-view';
 import { commissioningScreenView, itpHref, itpScreenView, itpViewOf, type ItpViewKey } from './model';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const G = GOLDEN as any;
+// D13 (CV-07): the prototype's NCR numbers as the demo data set has them (EV-2026-0nn, src/domain/vigie-demo.ts).
+const G = demoNcrGolden(GOLDEN) as any;
 const PROJECTS = ['HLT-026', 'NDC-031', 'RCF-019', 'ERP-202', 'WSA-044', 'MSR-012', 'EWA-051'];
 const html = (el: ReactElement, lang: Lang) => renderToStaticMarkup(h(I18nProvider, { lang, children: el }));
 
@@ -115,7 +117,7 @@ describe('ITP · punch view', () => {
       // R-158 lot B: + P-10, raised on site by the demo reception of EXP-01.
       expect(view.punch!.rows.map((r) => r.origin)).toEqual([...Array(5).fill('Inspection'), ...Array(3).fill('Site'), 'Inspection', 'Site']);
       expect(view.punch!.rows.slice(5, 8).map((r) => [r.number, r.category, r.ncr, r.owner, r.status, r.step?.label ?? null])).toEqual([
-        ['P-06', 'B', 'NCR-029', 'Client', lang === 'en' ? 'Open' : 'Ouverte', lang === 'en' ? 'Start' : 'Démarrer'],
+        ['P-06', 'B', 'EV-2026-029', 'Client', lang === 'en' ? 'Open' : 'Ouverte', lang === 'en' ? 'Start' : 'Démarrer'],
         ['P-07', 'B', '—', 'Keystone', lang === 'en' ? 'Open' : 'Ouverte', lang === 'en' ? 'Start' : 'Démarrer'],
         ['P-08', 'B', '—', 'Client', lang === 'en' ? 'Closed' : 'Clôturée', null],
       ]);

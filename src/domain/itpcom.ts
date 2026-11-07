@@ -297,7 +297,7 @@ export const PUNCH_SOURCES: readonly PunchSource[] = punchSource.codes.filter((c
 /** R-117: origins (Inspection first, the form's default) and responsible parties (Keystone first). */
 export const PUNCH_ORIGINS: readonly PunchOrigin[] = punchOrigin.codes;
 export const PUNCH_OWNER_PARTIES: readonly PunchOwnerParty[] = ['keystone', 'client'];
-/** A Vigie NCR reference as typed ("NCR-029"): letters, digits and separators, at most 40 characters (the DAL bound). */
+/** A Vigie NCR reference as typed (Vigie's "EV-2026-029", D13 CV-07): letters, digits and separators, at most 40 characters (the DAL bound). */
 export const NCR_REF = /^[A-Za-z0-9][A-Za-z0-9\-/. ]{0,39}$/;
 
 export interface NewInspectionValues {
@@ -374,7 +374,7 @@ export function parseNewPunch(values: Record<string, string | undefined>, team: 
   const owner = typed === NO_OWNER || typed === '—' ? null : typed;
   if (owner !== null && !team.includes(owner)) return { ok: false, error: 'Unknown owner' };
   const ncr = internal ? text(values.ncr) : '';
-  if (ncr && !NCR_REF.test(ncr)) return { ok: false, error: 'Enter the NCR number as Vigie gives it, e.g. NCR-029' };
+  if (ncr && !NCR_REF.test(ncr)) return { ok: false, error: 'Enter the NCR number as Vigie gives it, e.g. EV-2026-029' };
   const due = text(values.due);
   const dueOn = due ? parseForwardDate(due, today) : null;
   if (due && !dueOn) return { ok: false, error: 'Enter the due date as a date, e.g. 15 Oct' };

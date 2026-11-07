@@ -275,11 +275,14 @@ export const reportSections = codec<ReportSections, string>([['full', 'Full repo
 // ── Contingency (04 §5) ───────────────────────────────────────────────────────────────────────────────
 /** Status of a contingency draw-down (delivery 7, C-4): awaiting the director's validation, validated (drawn), rejected. */
 export type ContingencyDrawStatus = 'submitted' | 'validated' | 'rejected';
-/** What a draw-down is linked to (C-4), parsed from its reference ("CR-004", "R-03", "NCR-026"). */
+/**
+ * What a draw-down is linked to (C-4), parsed from its reference ("CR-004", "R-03", an NCR: Vigie's "EV-2026-026" since D13
+ * CV-07, or a former "NCR-026").
+ */
 export type ContingencyLinkType = 'change_request' | 'risk' | 'ncr';
 export function contingencyLinkTypeOf(ref: string | null | undefined): ContingencyLinkType | null {
   const r = (ref ?? '').trim();
-  return /^CR-\d+$/.test(r) ? 'change_request' : /^R-\d+$/.test(r) ? 'risk' : /^NCR-\d+$/.test(r) ? 'ncr' : null;
+  return /^CR-\d+$/.test(r) ? 'change_request' : /^R-\d+$/.test(r) ? 'risk' : /^(NCR-\d+|EV-\d{4}-\d+)$/.test(r) ? 'ncr' : null;
 }
 
 // ── Tasks, requests (docs/spec/11 §2.2, §2.5; 08 §5–6, 10 §6–7) ──────────────────────────────────────
@@ -746,6 +749,16 @@ export const ecoApproverKey = codec<EcoApproverKey, string>([
 export const ECO_APPROVER_SHORT: Record<EcoApproverKey, string> = { englead: 'Eng.', quality: 'Quality', pm: 'PM' };
 /** ECO approval key of a role (ecoRoleKey 4341); the portfolio director holds none. */
 export const ecoKeyOfRole = (role: string): EcoApproverKey | null => (role === 'englead' || role === 'quality' || role === 'pm' ? role : null);
+/**
+ * D12 (Vigie, CV-06 / CV-08): the approval keys Keystone may decide and send to Vigie — engineering lead and PMs. The quality key
+ * is decided in Vigie by its QHSE service (Vigie refuses it from Keystone): Keystone shows it, never sends it.
+ */
+export const KEYSTONE_ECO_KEYS: readonly EcoApproverKey[] = ['englead', 'pm'];
+/** The approval key a role decides in Keystone (D12): its own key when Keystone may send it, else null. */
+export const ecoKeyDecidedInKeystone = (role: string): EcoApproverKey | null => {
+  const k = ecoKeyOfRole(role);
+  return k && KEYSTONE_ECO_KEYS.includes(k) ? k : null;
+};
 /** Decision on an ECO approval key. */
 export type EcoDecision = 'pending' | 'ok' | 'rejected';
 export const ecoDecision = codec<EcoDecision, string>([['pending', 'Pending'], ['ok', 'Approved'], ['rejected', 'Rejected']]);
@@ -762,11 +775,21 @@ export const ecoDisposition = codec<EcoDisposition, string>([['update', 'Update'
 export type EcoTargetType = 'project' | 'machine';
 /** What a progress entry records: the viewer's decision on their approval key, or a step advancement. */
 export type EcoProgressKind = 'approval' | 'step';
-/** Delivery state of a progress entry in the outbox towards Vigie. */
-export type VigieSyncStatus = 'pending' | 'sent' | 'failed';
+/**
+ * Delivery state of a progress entry in the outbox towards Vigie (D12, D13: deposited through Vigie's `pub_signaler_avancement_*`
+ * functions). `pending`: not deposited yet (a transient failure keeps it pending, with its last error, and it is sent again);
+ * `sent`: deposited, Vigie's request number kept (its processing outcome is read later, `VigieRequestOutcome`); `failed`: refused by
+ * the function itself (P0V01 caller not admitted, P0V02 invalid argument) — never sent again as is; `refused`: Vigie's processing
+ * rejected it (stale, refused, not_found, invalid) — end of the resends.
+ */
+export type VigieSyncStatus = 'pending' | 'sent' | 'failed' | 'refused';
 export const vigieSyncStatus = codec<VigieSyncStatus, string>([
-  ['pending', 'Pending sync with Vigie'], ['sent', 'Sent to Vigie'], ['failed', 'Sync with Vigie failed'],
+  ['pending', 'Pending sync with Vigie'], ['sent', 'Sent to Vigie'], ['failed', 'Sync with Vigie failed'], ['refused', 'Refused by Vigie'],
 ]);
+/** Processing state of a request deposited in Vigie (vigie.pub_demandes_recues.statut, D13 CV-08). */
+export type VigieRequestOutcome = 'received' | 'applied' | 'rejected';
+/** Coded reason of a rejected request (vigie.pub_demandes_recues.code_resultat). */
+export type VigieResultCode = 'stale' | 'refused' | 'not_found' | 'invalid';
 /** State of a part fitted on a machine in service, derived from the ECO dispositions (part drawer, 09 §2.2). */
 export type InstalledPartState = 'latest' | 'update_planned' | 'decision_pending' | 'retrofit_pending' | 'pinned';
 export const installedPartState = codec<InstalledPartState, string>([
@@ -879,10 +902,11 @@ export type NcrSeverity = 'minor' | 'major' | 'critical';
 export const ncrSeverity = codec<NcrSeverity, string>([['minor', 'Minor'], ['major', 'Major'], ['critical', 'Critical']]);
 /** Severity tag (`sevTag` 4612, claims 4987): Critical accent, Major outline, Minor neutral. */
 export const SEVERITY_TAG: Record<NcrSeverity, 'tag-neutral' | 'tag-accent' | 'tag-outline'> = { critical: 'tag-accent', major: 'tag-outline', minor: 'tag-neutral' };
-/** Where an NCR was raised (HLT_NCRS.src, AF.quality). */
-export type NcrSource = 'site_inspection' | 'goods_receipt' | 'survey' | 'workshop' | 'client' | 'audit';
+/** Where an NCR was raised (HLT_NCRS.src, AF.quality); `design` (design office) is a source Vigie publishes (D13, pub_non_conformites). */
+export type NcrSource = 'site_inspection' | 'goods_receipt' | 'survey' | 'workshop' | 'client' | 'audit' | 'design';
 export const ncrSource = codec<NcrSource, string>([
   ['site_inspection', 'Site inspection'], ['goods_receipt', 'Goods receipt'], ['survey', 'Survey'], ['workshop', 'Workshop'], ['client', 'Client'], ['audit', 'Audit'],
+  ['design', 'Design office'],
 ]);
 /** NCR workflow (NCR_FLOW 3506), in order — the 8D itself is managed in Vigie. */
 export type NcrStatus = 'open' | 'containment' | 'root_cause' | 'corrective_action' | 'verification' | 'closed';
@@ -893,6 +917,15 @@ export const ncrStatus = codec<NcrStatus, string>([
 export const NCR_FLOW: readonly NcrStatus[] = ncrStatus.codes;
 /** Next NCR step (Closed stays Closed). */
 export const ncrNextStatus = (s: NcrStatus): NcrStatus => NCR_FLOW[Math.min(NCR_FLOW.length - 1, NCR_FLOW.indexOf(s) + 1)];
+/**
+ * The step Keystone may request of Vigie from an NCR's status, or null (D13, Vigie's rules applied to its requests): the next
+ * step only, never Containment — the NCR's qualification by Vigie's QHSE — nor Closed — closure goes through the quality
+ * verification, a proposal Vigie's QHSE acts on.
+ */
+export const ncrKeystoneStep = (s: NcrStatus): NcrStatus | null => {
+  const next = ncrNextStatus(s);
+  return next === s || next === 'containment' || next === 'closed' ? null : next;
+};
 /** NCR status tag (`ncrTag` 4613): Closed neutral, Open accent, intermediate steps outline. */
 export const NCR_STATUS_TAG: Record<NcrStatus, 'tag-neutral' | 'tag-accent' | 'tag-outline'> = {
   open: 'tag-accent', containment: 'tag-outline', root_cause: 'tag-outline', corrective_action: 'tag-outline', verification: 'tag-outline', closed: 'tag-neutral',

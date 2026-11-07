@@ -14,7 +14,7 @@ import { moneyEur } from '@/lib/format';
 import { releasedInMonth } from './kpis';
 import {
   ECO_APPROVER_KEYS, ECO_APPROVER_SHORT, ECO_DECISION_TAG, ECO_FLOW_STEPS, ECO_STATUS_TAG, ECO_STEP_ADVANCE, ecoApproverKey, ecoDecision,
-  ecoDisposition, ecoKeyOfRole, ecoStatus, interchangeability, INTERCHANGEABILITY_NOT_ASSESSED, vigieSyncStatus,
+  ecoDisposition, ecoKeyDecidedInKeystone, ecoKeyOfRole, ecoStatus, interchangeability, INTERCHANGEABILITY_NOT_ASSESSED, vigieSyncStatus,
   type EcoApproverKey, type EcoDecision, type EcoDisposition, type EcoStatus, type EcoTargetType, type Interchangeability, type VigieSyncStatus,
 } from '@/server/db/codes';
 
@@ -271,6 +271,7 @@ export function pendingLine(e: Pick<EcoLike, 'status' | 'pendingDispositions' | 
  */
 export function syncStateOf(e: Pick<EcoLike, 'pendingProgress'>): VigieSyncStatus | null {
   if (!e.pendingProgress.length) return null;
+  if (e.pendingProgress.some((p) => p.syncStatus === 'refused')) return 'refused';
   if (e.pendingProgress.some((p) => p.syncStatus === 'failed')) return 'failed';
   return e.pendingProgress.some((p) => p.syncStatus === 'pending') ? 'pending' : 'sent';
 }
@@ -383,11 +384,11 @@ export interface KeyStateView {
 
 /**
  * May the viewer decide `key` now (canAct)? The ECO is in approval in Vigie, the key is still pending there and not
- * already decided in Keystone, the key is the viewer's (englead, quality, pm — the director holds none) and, for the
- * PM key, the viewer manages one of the ECO's projects. Same rule as the server (progress.ts).
+ * already decided in Keystone, the key is the viewer's (englead, pm — the director holds none; D12: the quality key is
+ * decided in Vigie) and, for the PM key, the viewer manages one of the ECO's projects. Same rule as the server (progress.ts).
  */
 export function canActOnKey(e: Pick<EcoLike, 'status' | 'approvals' | 'projects'>, key: EcoApproverKey, viewer: EcoViewer): boolean {
-  if (e.status !== 'in_approval' || ecoKeyOfRole(viewer.role) !== key) return false;
+  if (e.status !== 'in_approval' || ecoKeyDecidedInKeystone(viewer.role) !== key) return false;
   const a = e.approvals.find((x) => x.key === key);
   if (!a || a.decision !== 'pending' || a.pending) return false;
   return key !== 'pm' || e.projects.some((c) => viewer.managedProjects.includes(c));
@@ -409,7 +410,9 @@ export function keyStates(e: Pick<EcoLike, 'status' | 'approvals' | 'projects'>,
 /** Footer hint of the Approvals section (roleHint). */
 export function approvalsHint(status: EcoStatus, role: string): string {
   if (status !== 'in_approval') return 'Approvals open once the impact analysis is submitted.';
-  return ecoKeyOfRole(role) ? '' : 'Switch to Engineering lead, Quality or Project manager (bottom-left) to approve.';
+  // D12: the quality key is decided in Vigie by its QHSE service.
+  if (ecoKeyOfRole(role) && !ecoKeyDecidedInKeystone(role)) return 'The quality approval is decided in Vigie.';
+  return ecoKeyOfRole(role) ? '' : 'Switch to Engineering lead or Project manager (bottom-left) to approve.';
 }
 
 // ── My approvals (apprItems 4724) ──────────────────────────────────────────────────────────────────────

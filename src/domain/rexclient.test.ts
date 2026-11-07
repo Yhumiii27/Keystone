@@ -16,12 +16,14 @@ import {
   paymentOf, rexView, type ChangeRequestLike, type ClosureLike, type DeliverableLike, type Kpi, type LessonLike, type SatisfactionLike,
 } from './rexclient';
 import golden from './rexclient.golden.json';
+import { demoNcrGolden } from '@/domain/vigie-demo';
 
 /** R-013: the prototype's status date (Fri 25 Sep 2026), passed explicitly ("Raised today"). */
 const STATUS_ISO = '2026-09-25';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const G = golden as any;
+// D13 (CV-07): the prototype's NCR numbers as the demo data set has them (EV-2026-0nn, src/domain/vigie-demo.ts).
+const G = demoNcrGolden(golden) as any;
 const LO = 'var(--color-accent-300)';
 const OK = 'var(--color-text)';
 const kpis = (ks: Kpi[]) => ks.map((k) => ({ label: k.label, value: k.value, sub: k.sub, color: k.alert ? LO : OK }));

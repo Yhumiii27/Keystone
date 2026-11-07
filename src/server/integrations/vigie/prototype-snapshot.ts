@@ -3,6 +3,7 @@
 // logic 4182–4193) from the project stages, the installed base (FLEET 3729, AS_MAINT 3722) and the approvals;
 // Vigie computes them now, so the seed materialises that derivation once. Pure (no database).
 import { DEMO_TODAY_ISO } from '@/domain/clock';
+import { demoNcrNumber } from '@/domain/vigie-demo';
 import {
   ecoStatus, hseStatus, isoOfDemoDate, ncrSeverity, ncrSource, ncrStatus, parisInstant, stage as stageCodec, OPEN_BOM_STAGES,
   type EcoApproverKey, type EcoDecision, type EcoDisposition, type EcoType, type HseItemKind, type HseStatus, type Interchangeability, type StageCode,
@@ -125,11 +126,13 @@ const HLT = 'HLT-026';
 /**
  * The NCRs as Vigie reports them: Harbor Line's register (HLT_NCRS) and, for the other projects with data, the
  * prototype's two generated rows NCR-040 / NCR-041 (HLT_NCRS[1..2] without activity, part or deliverable, `allNCRs`
- * 4614). Projects without data get none (the prototype would show Harbor Line's — 00 §7.16).
+ * 4614). Projects without data get none (the prototype would show Harbor Line's — 00 §7.16). D13 (CV-07): numbered with Vigie's
+ * EV-… references (`demoNcrNumber`: HLT_NCRS are already renumbered by the prototype loader; the generated pair gets a
+ * reference per project), the reference being also the Vigie record (vigieRef = number).
  */
 export function prototypeNcrSnapshot(ncrs: ProtoNcrRow[], projectsWithData: string[]): VigieNcrRecord[] {
   const rec = (code: string, n: ProtoNcrRow): VigieNcrRecord => ({
-    projectCode: code, number: n.id, vigieRef: null, title: n.title, severity: ncrSeverity.code(n.sev), source: ncrSource.code(n.src), status: ncrStatus.code(n.status),
+    projectCode: code, number: demoNcrNumber(n.id, code), vigieRef: demoNcrNumber(n.id, code), title: n.title, severity: ncrSeverity.code(n.sev), source: ncrSource.code(n.src), status: ncrStatus.code(n.status),
     activityCode: n.act || null, partRef: n.part || null, deliverableNumber: n.deliv || null, supplierName: null, raisedBy: n.raised,
     raisedOn: isoOfDemoDate(n.date)!, owner: n.owner, rootCause: n.root, action: n.action, dueOn: n.due && n.due !== '—' ? isoOfDemoDate(n.due) : null,
     costKeur: n.cost, isoClause: n.iso, updatedAt: null,
@@ -137,7 +140,7 @@ export function prototypeNcrSnapshot(ncrs: ProtoNcrRow[], projectsWithData: stri
   return projectsWithData.flatMap((code) =>
     code === HLT
       ? ncrs.map((n) => rec(code, n))
-      : ncrs.slice(1, 3).map((n, i) => rec(code, { ...n, id: 'NCR-0' + (40 + i), act: '', part: '', deliv: '' })),
+      : ncrs.slice(1, 3).map((n, i) => rec(code, { ...n, id: demoNcrNumber('NCR-0' + (40 + i), code), act: '', part: '', deliv: '' })),
   );
 }
 

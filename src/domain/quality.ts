@@ -23,7 +23,7 @@
 import type { ApprovalItem } from '@/domain/approvals';
 import {
   DELIVERABLE_ACCEPTANCE_DAYS, DELIVERABLE_STATUS_TAG, NCR_FLOW, NCR_STATUS_TAG, NCR_VERIFIER_ROLES, RACI_CODES, SEVERITY_TAG, addDaysIso,
-  deliverableStatus, fmtDOfIso, ncrNextStatus, ncrSeverity, ncrStatus, vigieSyncStatus,
+  deliverableStatus, fmtDOfIso, ncrKeystoneStep, ncrNextStatus, ncrSeverity, ncrStatus, vigieSyncStatus,
   type DeliverableStatus, type NcrSeverity, type NcrSource, type NcrStatus, type NcrVerificationDecision, type RaciCode, type VigieSyncStatus,
 } from '@/server/db/codes';
 import { parseDateInput, type ParseResult } from './contract';
@@ -163,10 +163,11 @@ export interface QualityViewer {
 
 /**
  * What the viewer may record on an NCR from Keystone (sent to Vigie):
- * - `step`: the next step ("→ Containment" in the log, "Move to Containment" in the drawer) — any editor but the client;
- * - `verify`: the NCR is in Verification and the viewer is the quality manager: close it ("→ Closed") or send it back
- *   to corrective action (drawer, My approvals);
- * - null: closed, a request already waiting for Vigie, read-only, the client, or the verification of someone else.
+ * - `step`: the next step ("→ Root cause" in the log, "Move to Root cause" in the drawer) — any editor but the client;
+ *   never from Open: Containment is the NCR's qualification by Vigie's QHSE (D13, Vigie's rules — the prototype offered it);
+ * - `verify`: the NCR is in Verification and the viewer is the quality manager: propose its closure ("→ Closed") or send it
+ *   back to corrective action (drawer, My approvals) — Vigie's QHSE closes it or sends it back in Vigie (D13);
+ * - null: open, closed, a request already waiting for Vigie, read-only, the client, or the verification of someone else.
  */
 export type NcrAction = { kind: 'step'; target: NcrStatus } | { kind: 'verify' } | null;
 
@@ -174,7 +175,8 @@ export function ncrActionFor(n: Pick<NcrLike, 'status' | 'requestedStatus'>, vie
   if (!viewer.canEdit || viewer.role === 'client' || n.status === 'closed' || n.requestedStatus) return null;
   const next = ncrNextStatus(n.status);
   if (next === 'closed') return NCR_VERIFIER_ROLES.includes(viewer.role) ? { kind: 'verify' } : null;
-  return { kind: 'step', target: next };
+  const step = ncrKeystoneStep(n.status);
+  return step ? { kind: 'step', target: step } : null;
 }
 
 /**
@@ -191,7 +193,9 @@ export function ncrRefusalText(n: Pick<NcrLike, 'number' | 'status' | 'requested
           ? 'This NCR is not in verification'
           : n.status === 'verification'
             ? 'In verification, only the quality manager decides'
-            : 'This NCR has moved to another step';
+            : n.status === 'open'
+              ? 'Containment is decided in Vigie'
+              : 'This NCR has moved to another step';
   return `${n.number} · ${reason}`;
 }
 
@@ -204,9 +208,10 @@ export function ncrRequestText(e: Pick<NcrProgressLike, 'kind' | 'decision' | 't
   return `${ncrStatus.label(e.targetStatus)} requested`;
 }
 
-/** Sync state of the progress recorded in Keystone (failed > pending > sent); null when nothing waits. */
+/** Sync state of the progress recorded in Keystone (refused > failed > pending > sent); null when nothing waits. */
 export function ncrSyncStateOf(n: Pick<NcrLike, 'pendingProgress'>): VigieSyncStatus | null {
   if (!n.pendingProgress.length) return null;
+  if (n.pendingProgress.some((p) => p.syncStatus === 'refused')) return 'refused';
   if (n.pendingProgress.some((p) => p.syncStatus === 'failed')) return 'failed';
   return n.pendingProgress.some((p) => p.syncStatus === 'pending') ? 'pending' : 'sent';
 }

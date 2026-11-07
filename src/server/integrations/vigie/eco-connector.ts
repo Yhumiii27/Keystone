@@ -1,25 +1,31 @@
 import 'server-only';
 // ECO connector to Vigie. Vigie owns the engineering change orders (creation, editing, dispositions,
 // interchangeability, effectivity, release, workflow); Keystone lists the ECOs relevant to its parts and projects,
-// opens them in Vigie (links.ts) and records progress — the viewer's approval-key decision and the step
-// advancements the prototype offered — which is sent to Vigie.
+// opens them in Vigie (links.ts) and records progress — the viewer's approval-key decision (engineering lead, PMs) and the
+// step advancements the prototype offered — which is deposited in Vigie.
 //
-// Vigie has no ECO module or API yet, hence two implementations behind one interface:
-// - mock (default): reads the local read-only mirror (seeded from the prototype's ECOS) and queues progress in the
-//   outbox, where it stays "pending sync with Vigie";
-// - http (when VIGIE_API_URL is set): refreshes the mirror from Vigie and delivers the outbox — TODO(vigie): the
-//   endpoints are a proposal until Vigie publishes its API (V-2 answered "a"; R-023).
+// D12 (Vigie, 06/11/2026; M-17, M-18): no API — two implementations behind one interface:
+// - mock (VIGIE_SOURCE=simulation, the default without DATABASE_URL): reads the local read-only mirror (seeded from the
+//   prototype's ECOS) and queues progress in the outbox, where it stays "pending sync with Vigie";
+// - sql (VIGIE_SOURCE=server): refreshes the mirror from vigie.pub_ordres_modification, pub_eco_approbations and
+//   pub_eco_effectivite, deposits the outbox through vigie.pub_signaler_avancement_eco and reads the outcome of each request in
+//   vigie.pub_demandes_recues (./server.ts).
 import { ecosToAnnounce } from '@/domain/vigie-events';
+import { ecoRecordsOf, parseRequestRow } from '@/domain/vigie-views';
 import { getDb } from '@/server/db/client';
 import { vigieEcos } from '@/server/db/schema';
 import { VIGIE_CONNECTOR_NAME, connectorEnabled } from '@/server/integrations/connector-enabled';
 import { giveBackRefresh, mayRefresh } from '@/server/integrations/refresh-claims';
-import { logError, logWarning } from '@/server/log';
-import { vigieApiUrl, vigieAuthHeaders, vigieConnectorMode } from './connection';
-import { claimProgressDelivery, markDelivery, progressSyncStatus, readMirror, undeliveredProgress, upsertMirror } from './mirror';
+import { log, logError, logWarning } from '@/server/log';
+import { vigieConnectorMode, type VigieConnectorMode } from './connection';
+import {
+  applyProgressOutcomes, claimProgressDelivery, markDelivery, progressSyncStatus, readMirror, undeliveredProgress, unprocessedProgress, upsertMirror,
+} from './mirror';
 import { notifyEcosToApprove } from './notices';
+import { isPermanentVigieError, sqlMessageOf } from './outbox-state';
 import { recordProgressEntry } from './progress';
-import type { EcoListFilter, EcoProgressActor, EcoProgressInput, EcoProgressReceipt, VigieEcoConnector, VigieEcoRecord } from './types';
+import { depositEcoProgress, readVigieEcoViews, readVigieRequestRows } from './server';
+import type { EcoListFilter, EcoProgressActor, EcoProgressInput, EcoProgressReceipt, VigieEcoConnector } from './types';
 
 export type { EcoListFilter, EcoProgressActor, EcoProgressInput, EcoProgressReceipt, VigieEco, VigieEcoConnector, VigieEcoRecord } from './types';
 
@@ -33,7 +39,7 @@ async function record(number: string, input: EcoProgressInput, actor: EcoProgres
   });
 }
 
-/** Mock connector: the local mirror is the source; progress waits in the outbox (Vigie has no API yet). */
+/** Mock connector: the local mirror is the source; progress waits in the outbox (simulation: nothing reaches Vigie). */
 export const mockEcoConnector: VigieEcoConnector = {
   mode: 'mock',
   async listEcos(filter?: EcoListFilter) {
@@ -49,9 +55,8 @@ export const mockEcoConnector: VigieEcoConnector = {
   },
 };
 
-// ── HTTP (TODO(vigie): endpoints to confirm with Vigie, R-023) ─────────────────────────────────────────
+// ── Vigie's views and function on the shared server (D12) ──────────────────────────────────────────────
 
-const HTTP_TIMEOUT_MS = 5000;
 /** Reads refresh the mirror at most once a minute (a failed refresh is retried at the next read). */
 const REFRESH_EVERY_MS = 60_000;
 // R-010: concurrent reads of one process share the refresh in flight; with several instances on the PostgreSQL server, one of
@@ -65,30 +70,18 @@ export function resetVigieRefreshThrottle(): void {
   g.__ksVigieRefreshing = undefined;
 }
 
-async function vigieFetch(path: string, init?: RequestInit): Promise<Response> {
-  const base = vigieApiUrl();
-  if (!base) throw new Error('VIGIE_API_URL is not set');
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), HTTP_TIMEOUT_MS);
-  try {
-    const res = await fetch(`${base}${path}`, { ...init, signal: ctrl.signal, headers: { 'content-type': 'application/json', accept: 'application/json', ...vigieAuthHeaders(), ...init?.headers } });
-    if (!res.ok) throw new Error(`Vigie ${init?.method ?? 'GET'} ${path} → ${res.status}`);
-    return res;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/** TODO(vigie): GET /api/ecos?source=keystone — the ECOs that concern Keystone's parts and projects (VigieEcoRecord[]). */
+/**
+ * Reads Vigie's three change-order views and replaces the mirror (malformed rows skipped and logged). Throws when a view cannot be
+ * read (view or link missing, server down): the mirror is kept.
+ */
 async function refreshFromVigie(): Promise<number> {
   if (!(await connectorEnabled(VIGIE_CONNECTOR_NAME))) return 0; // D-7a: disabled by IT — the local mirror is read
-  const res = await vigieFetch('/api/ecos?source=keystone');
-  const records = (await res.json()) as VigieEcoRecord[];
-  if (!Array.isArray(records)) throw new Error('Vigie: unexpected ECO payload');
   const db = await getDb();
-  // R-015 (X-6a, dormant until V-3): the ECOs entering "In approval", from the statuses read in the refresh's transaction
-  // and returned from it (the callback may run twice, R-010); notified after the commit. The first refresh of an empty
-  // mirror is the baseline: nothing announced (`ecosToAnnounce`).
+  const { records, skipped } = ecoRecordsOf(await readVigieEcoViews(db));
+  if (skipped) log.warn('Vigie ECO rows skipped (malformed)', { component: 'vigie', skipped });
+  // R-015 (X-6a): the ECOs entering "In approval", from the statuses read in the refresh's transaction and returned from it (the
+  // callback may run twice, R-010); notified after the commit. The first refresh of an empty mirror is the baseline: nothing
+  // announced (`ecosToAnnounce`).
   const { n, toApprove } = await db.transaction(async (tx) => {
     const before = await tx.select({ number: vigieEcos.number, status: vigieEcos.status }).from(vigieEcos);
     const count = await upsertMirror(tx, records, new Date(), { prune: true });
@@ -113,14 +106,36 @@ async function refreshIfStale(): Promise<void> {
       () => undefined,
       async (e) => {
         await giveBackRefresh(REFRESH_SLOT); // a failed refresh is retried at the next read, on any instance
-        logWarning('Vigie ECO refresh (the local mirror is used)', e, { component: 'vigie' });
+        logWarning('Vigie ECO views not read (the local mirror is used)', e, { component: 'vigie' });
       },
     );
   })().finally(() => { g.__ksVigieRefreshing = undefined; }));
   await running;
 }
 
-/** TODO(vigie): POST /api/ecos/:number/progress — one outbox entry; Vigie answers { id }. */
+/**
+ * Reads the outcome of the deposited requests not processed yet (vigie.pub_demandes_recues, D13 CV-08): applied, or rejected
+ * (the entry becomes `refused`: end of the resends). The view missing (Matrix's publication not applied yet) leaves the entries
+ * `sent`, their outcome unknown. Returns how many entries changed.
+ */
+async function readOutcomes(): Promise<number> {
+  const db = await getDb();
+  const ids = (await unprocessedProgress(db)).map((e) => e.id);
+  if (!ids.length) return 0;
+  try {
+    const states = (await readVigieRequestRows(db, ids)).map(parseRequestRow).filter((x): x is NonNullable<typeof x> => !!x);
+    return await applyProgressOutcomes(db, states);
+  } catch (e) {
+    logWarning('Vigie request states not read (pub_demandes_recues)', e, { component: 'vigie' });
+    return 0;
+  }
+}
+
+/**
+ * Deposits each pending outbox entry in Vigie (`select vigie.pub_signaler_avancement_eco(…)`): Vigie's request number kept as
+ * the entry's vigieRef; P0V01 / P0V02 → `failed`, never sent again as is; any other error (function or link missing, server
+ * down) keeps the entry pending with its last error, deposited again later (the same `p_id_externe`: the same request).
+ */
 async function deliverOutbox(): Promise<{ delivered: number; failed: number; pending: number }> {
   const db = await getDb();
   // D-7a: a connector IT disabled exchanges nothing; the entries stay pending until it is enabled again.
@@ -130,27 +145,20 @@ async function deliverOutbox(): Promise<{ delivered: number; failed: number; pen
   for (const e of await undeliveredProgress(db)) {
     if (!(await claimProgressDelivery(db, e.id))) continue; // another delivery is sending it (R-010)
     try {
-      const res = await vigieFetch(`/api/ecos/${encodeURIComponent(e.ecoNumber)}/progress`, {
-        method: 'POST',
-        body: JSON.stringify({
-          kind: e.kind, approvalKey: e.approvalKey, decision: e.decision, targetStatus: e.targetStatus, comment: e.comment,
-          actor: { name: e.actorName, role: e.actorRole }, recordedAt: e.recordedAt, keystoneId: e.id,
-        }),
-      });
-      const body = (await res.json().catch(() => ({}))) as { id?: string };
-      await markDelivery(db, e.id, { ok: true, vigieRef: body.id ?? null });
+      const ref = await depositEcoProgress(db, e);
+      await markDelivery(db, e.id, { ok: true, vigieRef: ref });
       delivered++;
     } catch (err) {
-      await markDelivery(db, e.id, { ok: false, error: err instanceof Error ? err.message : String(err) });
+      await markDelivery(db, e.id, { ok: false, error: sqlMessageOf(err), retry: !isPermanentVigieError(err) });
       failed++;
     }
   }
   return { delivered, failed, pending: (await undeliveredProgress(db)).length };
 }
 
-/** HTTP connector: refreshes the mirror before reading (at most once a minute; stale mirror when Vigie is unreachable). */
-export const httpEcoConnector: VigieEcoConnector = {
-  mode: 'http',
+/** Sql connector: refreshes the mirror before reading (at most once a minute; stale mirror when Vigie cannot be read). */
+export const sqlEcoConnector: VigieEcoConnector = {
+  mode: 'sql',
   async listEcos(filter?: EcoListFilter) {
     await refreshIfStale();
     return readMirror(await getDb(), filter);
@@ -165,22 +173,30 @@ export const httpEcoConnector: VigieEcoConnector = {
   },
   async sync() {
     const d = await deliverOutbox();
-    const refreshed = await refreshFromVigie().catch(() => 0);
+    await readOutcomes();
+    const refreshed = await refreshFromVigie().catch((e) => {
+      logWarning('Vigie ECO views not read (the local mirror is used)', e, { component: 'vigie' });
+      return 0;
+    });
     return { ...d, refreshed };
   },
 };
 
-/** The connector in use (http when VIGIE_API_URL is set, else the mock). */
+/** The connector in use (sql when VIGIE_SOURCE is `server`, else the mock). */
 export function getVigieEcoConnector(): VigieEcoConnector {
-  return vigieConnectorMode() === 'http' ? httpEcoConnector : mockEcoConnector;
+  return vigieConnectorMode() === 'sql' ? sqlEcoConnector : mockEcoConnector;
 }
 
 /**
- * Outbox redelivery of the worker (R-006, job "vigie-outbox"): with Vigie's API configured, every entry not yet sent (pending
- * or failed) is delivered again — only those, so a run never sends an entry twice; the mock sends nothing and reports what
- * waits. The mirror is not refreshed here (reads refresh it).
+ * Outbox redelivery of the worker (R-006, job "vigie-outbox"): with Vigie on the shared server, every pending entry is deposited
+ * (only those, so a run never sends an entry twice) and the outcome of the deposited ones read; the mock sends nothing and
+ * reports what waits. The mirror is not refreshed here (reads refresh it).
  */
-export async function redeliverEcoOutbox(): Promise<{ mode: 'mock' | 'http'; delivered: number; failed: number; pending: number }> {
-  if (vigieConnectorMode() === 'http') return { mode: 'http', ...(await deliverOutbox()) };
+export async function redeliverEcoOutbox(mode: VigieConnectorMode = vigieConnectorMode()): Promise<{ mode: VigieConnectorMode; delivered: number; failed: number; pending: number }> {
+  if (mode === 'sql') {
+    const d = await deliverOutbox();
+    await readOutcomes();
+    return { mode: 'sql', ...d };
+  }
   return { mode: 'mock', delivered: 0, failed: 0, pending: (await undeliveredProgress(await getDb())).length };
 }

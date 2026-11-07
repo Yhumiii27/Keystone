@@ -39,7 +39,7 @@ import { photoGate } from './access';
 
 const ROLES = PERSONAS.map((p) => p.role);
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
-/** HLT-026's P-06 is raised on site (the Site register's former P-01, NCR-029); P-02 is raised by inspection I-03. */
+/** HLT-026's P-06 is raised on site (the Site register's former P-01, EV-2026-029); P-02 is raised by inspection I-03. */
 const SITE_ITEM_FORGED: PhotoOwnerKey = { kind: 'punch_item', code: 'HLT-026', ref: 'P-06', register: 'itp' };
 const SITE_ITEM: PhotoOwnerKey = { kind: 'punch_item', code: 'HLT-026', ref: 'P-06' };
 const ITP_ITEM_FORGED: PhotoOwnerKey = { kind: 'punch_item', code: 'HLT-026', ref: 'P-02', register: 'site' };

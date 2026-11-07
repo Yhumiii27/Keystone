@@ -16,7 +16,7 @@ import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import { yearOfIso } from '@/domain/clock';
 import { DELIVERABLE_CREATOR_ROLES, deliverableActionFor, deliverableRefusalText, ncrActionFor, ncrRefusalText, ncrRequestText, parseNewDeliverable, producerNextOf, type ProducerTarget } from '@/domain/quality';
-import { NCR_VERIFIER_ROLES, deliverableStatus, ncrStatus, vigieSyncStatus, type NcrStatus } from '@/server/db/codes';
+import { NCR_VERIFIER_ROLES, deliverableStatus, ncrStatus, vigieSyncStatus, type NcrStatus, type VigieSyncStatus } from '@/server/db/codes';
 import { businessToday } from '@/server/clock';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { getProject } from '@/server/dal/projects';
@@ -75,7 +75,7 @@ async function access(projectCode: unknown): Promise<Access | { error: string }>
   return { code: project.code, actor: { name: ctx.viewer.name, role: ctx.viewer.role }, canEdit: ctx.canEdit('quality') };
 }
 
-const syncText = (s: 'pending' | 'sent' | 'failed') => vigieSyncStatus.label(s);
+const syncText = (s: VigieSyncStatus) => vigieSyncStatus.label(s);
 
 /**
  * "→ <next step>" (log row) / "Move to <next step>" (drawer): the next step of the NCR, sent to Vigie. Any editor of the

@@ -63,7 +63,7 @@ export function punchFormDef(
       { id: 'due', label: 'Due', type: 'text' },
       { id: 'origin', label: 'Origin', type: 'select', options: PUNCH_ORIGINS.map((c) => ({ value: c, label: punchOrigin.label(c) })) },
       { id: 'party', label: 'Owner party', type: 'select', options: PUNCH_OWNER_PARTIES.map((c) => ({ value: c, label: punchOwnerParty.label(c) })) },
-      ...(internal ? [{ id: 'ncr', label: 'NCR (Vigie)', type: 'text' as const, placeholder: 'e.g. NCR-029' }] : []),
+      ...(internal ? [{ id: 'ncr', label: 'NCR (Vigie)', type: 'text' as const, placeholder: 'e.g. EV-2026-029' }] : []),
       // R-185: the equipment line of the item, only when the project has more than one ("Common to the project" first).
       ...(opts.equipment
         ? [{

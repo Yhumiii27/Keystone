@@ -149,7 +149,7 @@ export interface ExecView {
     lastSync: string;
     listUrl: string;
     reportUrl: string;
-    mode: 'mock' | 'http';
+    mode: 'mock' | 'sql';
   };
 }
 

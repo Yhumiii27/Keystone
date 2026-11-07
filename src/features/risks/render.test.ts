@@ -151,13 +151,13 @@ describe('contingency register', () => {
       ['Exposition (EMV des risques ouverts)', '340 k€', 'dépasse la provision restante', 'var(--color-accent-300)'],
     ]);
     expect([v.usedPct, v.progPct, v.barUsed, v.barExposure, v.barProgress]).toEqual(['32 %', '63 %', '32%', '100%', '63%']);
-    // Delivery 7 (C-4): the linked change request / risk opens on its screen; NCR-026 is not in the Vigie mirror (plain text).
+    // Delivery 7 (C-4): the linked change request / risk opens on its screen; EV-2026-026 is not in the Vigie mirror (plain text).
     expect(v.rows.map((r) => [r.date, r.amount, r.link, r.linkHref, r.by, r.status])).toEqual([
-      ['12 sept.', '12 k€', 'NCR-026', null, 'R. Aubert', null],
+      ['12 sept.', '12 k€', 'EV-2026-026', null, 'R. Aubert', null],
       ['30 juil.', '14 k€', 'R-03', '/projects/HLT-026/risks?risk=R-03', 'R. Aubert', null],
       ['18 juin', '22 k€', 'CR-004', '/projects/HLT-026/changes?cr=CR-004', 'M. Lefebvre', null],
     ]);
-    expect(v.rows[0].reason).toBe('Reprise de soudure de l’éclissage K-12 — NCR-026');
+    expect(v.rows[0].reason).toBe('Reprise de soudure de l’éclissage K-12 — EV-2026-026');
   });
 
   it('EN render and a project without a register', async () => {
@@ -167,7 +167,7 @@ describe('contingency register', () => {
     for (const s of [
       'Initial provision', '€150k', '3 % of budget', '€48k', '32 % used · project 63 % complete', '€102k', '3 draw-downs', 'Exposure (open risks EMV)', '€340k',
       'exceeds remaining provision', 'Contingency use vs project progress', 'Project progress', 'Exposure (drawn + open risks EMV)', 'Draw-downs',
-      '--bar-w:32%', '--bar-w:100%', '--bar-w:63%', 'Re-weld K-12 splice — NCR-026', 'href="/projects/HLT-026/changes?cr=CR-004"',
+      '--bar-w:32%', '--bar-w:100%', '--bar-w:63%', 'Re-weld K-12 splice — EV-2026-026', 'href="/projects/HLT-026/changes?cr=CR-004"',
     ])
       expect(html).toContain(s);
     expect(html).not.toContain('No draw-down recorded yet');

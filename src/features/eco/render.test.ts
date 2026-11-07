@@ -106,6 +106,15 @@ describe('Change orders register — EN and FR', () => {
   });
 });
 
+/**
+ * D12: the approvals hint — the quality key is decided in Vigie (the prototype's empty hint for Quality, in approval), and the
+ * hint of the roles without a key no longer names Quality.
+ */
+const ecoHintD12 = (lang: Lang, role: string, hint: string) => {
+  if (role === 'quality' && hint === '') return lang === 'fr' ? 'L’approbation qualité se décide dans Vigie.' : 'The quality approval is decided in Vigie.';
+  return hint.replace('Engineering lead, Quality or Project manager', 'Engineering lead or Project manager').replace('Responsable ingénierie, Qualité ou Chef de projet', 'Responsable ingénierie ou Chef de projet');
+};
+
 describe('ECO drawer — EN and FR, every persona of the screen', () => {
   const NUMBERS = ['ECO-2026-014', 'ECO-2026-015', 'ECO-2026-016', 'ECO-2026-017', 'ECO-2026-012', 'ECO-2026-011'];
   it.each(LANGS)('%s', async (lang) => {
@@ -134,9 +143,11 @@ describe('ECO drawer — EN and FR, every persona of the screen', () => {
         expect(d.noMachines === null, tag).toBe(!g.noMachines);
         expect(!!d.retrofit, tag).toBe(g.hasRetrofit);
         expect(d.pinned ?? '', tag).toBe(g.hasPinned ? `${lang === 'fr' ? 'Les révisions épinglées conservent leurs pièces de rechange et leur stock — ne pas rebuter :' : 'Pinned revisions keep their spare parts and stock — do not scrap:'} ${g.pinnedList}` : '');
-        expect(d.approvals.map((a) => ({ label: a.label, who: a.who, state: a.state, tagClass: a.tagClass, canAct: a.canAct })), tag).toEqual(g.approvers);
+        // D12 (Vigie CV-06 / CV-08): the quality key is decided in Vigie — never offered in Keystone; the hints say so.
+        expect(d.approvals.map((a) => ({ label: a.label, who: a.who, state: a.state, tagClass: a.tagClass, canAct: a.canAct })), tag)
+          .toEqual(g.approvers.map((a: any) => (role === 'quality' ? { ...a, canAct: false } : a)));
         expect(d.approvals.every((a) => a.sync === null)).toBe(true);
-        expect(d.hint, tag).toBe(g.roleHint);
+        expect(d.hint, tag).toBe(ecoHintD12(lang, role, g.roleHint));
         expect([d.vigieUrl, d.sync]).toEqual([`http://localhost:3200/modifications-techniques/${n}`, null]);
       }
     }

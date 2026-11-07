@@ -7,6 +7,9 @@
 //   DATABASE_URL=postgres://keystone_app:…@host:5432/epc2i npx tsx --conditions=react-server scripts/db-check.ts --postgres
 // R-013: the golden values are the demo data set's at its date (the real clock is the default since 17 Oct 2026).
 process.env.KEYSTONE_CLOCK = '2026-09-25';
+// D12 / D13: the checks read Vigie's demo mirrors; the server under check (--postgres) has no vigie schema — the Vigie connector
+// stays simulated unless VIGIE_SOURCE says otherwise.
+process.env.VIGIE_SOURCE ||= 'simulation';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -831,7 +834,7 @@ async function delivery5Reads() {
   const open = ncrs.filter((n) => n.open);
   check('NCRs HLT-026 (Vigie mirror, mock): 5 · 4 open · 1 critical · €44k · 3 from goods receipt; 2 on each other project with data; none on EWA-051',
     getVigieQualityConnector().mode === 'mock' && same([ncrs.length, open.length, open.filter((n) => n.severity === 'critical').length, ncrs.reduce((a, n) => a + n.costKeur, 0),
-      ncrs.filter((n) => n.source === 'goods_receipt').length, (await listNcrs('NDC-031')).map((n) => n.number), (await listNcrs('EWA-051')).length], [5, 4, 1, 44, 3, ['NCR-040', 'NCR-041'], 0]));
+      ncrs.filter((n) => n.source === 'goods_receipt').length, (await listNcrs('NDC-031')).map((n) => n.number), (await listNcrs('EWA-051')).length], [5, 4, 1, 44, 3, ['EV-2026-040', 'EV-2026-041'], 0]));
   const dl = await listDeliverables('HLT-026');
   check('deliverables HLT-026: 10 · 3 accepted · 2 submitted (D-014 "Accept by 2 Oct", D-016) · D-021 due 2027-01-14; D-110…D-113 elsewhere',
     same([dl.length, dl.filter((d) => d.status === 'accepted').length, dl.filter((d) => d.status === 'submitted').map((d) => d.number), dl[2].acceptanceText, dl.at(-1)!.dueOn,
@@ -847,10 +850,10 @@ async function delivery5Reads() {
   // A-6 'a' (R-117): one punch list per project, numbered over it — the Site items renumbered after the ITP items.
   // R-185 part 2: + P-09, Harbor Line's EQ-02 (3 × MEMU) demo item; P-02 (raised by I-03) on EQ-01.
   // R-158 lot B: + P-10, raised on site on EQ-02 by the demo reception of EXP-01 (one damaged camera, category B chosen).
-  check('punch HLT-026: one list P-01…P-10 · ITP items Keystone · Site items P-06…P-08 category B · P-06 carries NCR-029 · P-09 on EQ-02 · P-10 reception',
+  check('punch HLT-026: one list P-01…P-10 · ITP items Keystone · Site items P-06…P-08 category B · P-06 carries EV-2026-029 · P-09 on EQ-02 · P-10 reception',
     same(all.map((p) => [p.number, p.origin, p.category, p.ownerParty, p.ncrNumber, p.equipmentRef]), [
       ['P-01', 'itp', 'A', 'keystone', null, null], ['P-02', 'itp', 'B', 'keystone', null, 'EQ-01'], ['P-03', 'itp', 'C', 'keystone', null, null],
-      ['P-04', 'itp', 'B', 'keystone', null, null], ['P-05', 'itp', 'C', 'keystone', null, null], ['P-06', 'site', 'B', 'client', 'NCR-029', null],
+      ['P-04', 'itp', 'B', 'keystone', null, null], ['P-05', 'itp', 'C', 'keystone', null, null], ['P-06', 'site', 'B', 'client', 'EV-2026-029', null],
       ['P-07', 'site', 'B', 'keystone', null, null], ['P-08', 'site', 'B', 'client', null, null], ['P-09', 'itp', 'C', 'keystone', null, 'EQ-02'],
       ['P-10', 'site', 'B', 'keystone', null, 'EQ-02'],
     ]), all.map((p) => p.number));
@@ -922,8 +925,8 @@ async function delivery5Reads() {
 async function delivery5Writes() {
   const before = (await listAudit()).length;
   const pm = { name: 'Romain Aubert', role: 'pm' };
-  const r = await advanceNcr('HLT-026', 'NCR-028', pm);
-  check('NCR-028 → Root cause recorded, pending sync with Vigie (Vigie status unchanged)', r.syncStatus === 'pending' && (await getNcr('HLT-026', 'NCR-028'))?.status === 'containment');
+  const r = await advanceNcr('HLT-026', 'EV-2026-028', pm);
+  check('EV-2026-028 → Root cause recorded, pending sync with Vigie (Vigie status unchanged)', r.syncStatus === 'pending' && (await getNcr('HLT-026', 'EV-2026-028'))?.status === 'containment');
   await decideDeliverable('HLT-026', 'D-014', 'accepted', { name: 'Nadia Bensaïd', role: 'client' });
   check('D-014 accepted by the client contact (PV): "25 Sep · N. Bensaïd"', (await listDeliverables('HLT-026')).find((d) => d.number === 'D-014')?.acceptanceText === '25 Sep · N. Bensaïd');
   const numbers = [
