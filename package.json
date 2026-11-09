@@ -32,7 +32,7 @@
     "drizzle-orm": "^0.45.4",
     "exceljs": "4.4.0",
     "fast-xml-parser": "5.11.2",
-    "next": "16.4.2",
+    "next": "16.4.5",
     "pdfkit": "0.20.2",
     "pg": "8.23.1",
     "react": "19.3.1",
@@ -57,7 +57,7 @@
     "@types/topojson-client": "^3.1.5",
     "drizzle-kit": "^0.31.11",
     "eslint": "^10",
-    "eslint-config-next": "16.4.2",
+    "eslint-config-next": "16.4.5",
     "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.0.5"
