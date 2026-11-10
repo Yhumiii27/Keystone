@@ -13,7 +13,7 @@
 // - R-021 (A-15): the Connectors and Channels tiles count what is really connected (src/domain/connectors.ts);
 // - the audit trail exports to CSV (ISO 9001), RFC 4180 quoting, ISO-8601 timestamps.
 import { LO, OK } from '@/components/app/tones';
-import type { ActivityKind, CalendarCode, ConnectorStatus, CostType } from '@/server/db/codes';
+import { isoOfDisplayDate, type ActivityKind, type CalendarCode, type ConnectorStatus, type CostType } from '@/server/db/codes';
 import { connectorsSummary, type ConnectorLink, type ConnectorState } from './connectors';
 
 /** KPI tile in English (label, value, sub) with its value colour. */
@@ -104,6 +104,34 @@ export function holidayEntry(raw: unknown): string {
   const mon = m[2].replace(/\.$/, '').toLowerCase();
   const i = [MONTHS_EN.map((x) => x.toLowerCase()), MONTHS_FR, MONTHS_FR_LONG].map((list) => list.indexOf(mon)).find((x) => x >= 0) ?? -1;
   return i >= 0 ? `${Number(m[1])} ${MONTHS_EN[i]} · ${m[3].trim()}` : text;
+}
+
+/**
+ * The date of a public holiday entry ("14 Jul · Fête nationale" → 2026-07-14 in 2026): a real day ("31 Feb · …" refused), in
+ * `year` unless the entry names its year (the business year for an entry added in Settings, R-013); null when the entry is not
+ * "<date> · <name>". It is also the entry's code (`holidayCode`).
+ */
+export function realHolidayDate(text: string, year: number): string | null {
+  const iso = isoOfDisplayDate(text.split(' · ')[0], year);
+  if (!iso || !text.includes(' · ')) return null;
+  const d = new Date(iso + 'T00:00:00Z');
+  return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === iso ? iso : null;
+}
+
+/** Longest public holiday entry (the Settings lists' 120 characters). */
+export const HOLIDAY_ENTRY_MAX = 120;
+
+/**
+ * D9-04: the whole rule of a public holiday typed in Settings or sent by Matrix (keystone.pub_editer, migration 0078, which
+ * reproduces it in SQL — src/server/db/pub-editer-settings.test.ts runs the same cases through both): the entry as stored
+ * (`holidayEntry`), not empty, at most 120 characters, on a real date (`realHolidayDate`). Null when refused.
+ */
+export function parseHolidayEntry(raw: unknown, year: number): { label: string; date: string } | null {
+  if (typeof raw !== 'string') return null;
+  const label = holidayEntry(raw);
+  if (!label || label.length > HOLIDAY_ENTRY_MAX) return null;
+  const date = realHolidayDate(label, year);
+  return date ? { label, date } : null;
 }
 
 // ── Machine types ──────────────────────────────────────────────────────────────────────────────────────
