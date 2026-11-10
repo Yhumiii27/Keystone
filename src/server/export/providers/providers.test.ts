@@ -1,10 +1,9 @@
 // Export providers (chapter 4, exports feature): every screen of the registry has a provider; each one exports HLT-026 (or
 // its global table) for the portfolio director as a real Excel workbook and a CSV; the documents (purchase order, goods
 // receipt, account statement, status report, PV de réception) and the PDF reports carry their key figures; rights follow
-// the screens (masked rates, client restricted to its organisation's projects).
+// the screens (masked rates).
 import ExcelJS from 'exceljs';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { isOutside } from '@/components/app/shell/nav-model';
 import { PERSONA_BY_ROLE } from '@/config/personas';
 import { SCREENS, type RoleKey, type ScreenId } from '@/config/screens';
 import { setDb } from '@/server/db/client';
@@ -34,10 +33,10 @@ beforeAll(async () => {
 }, 60_000);
 
 describe('every screen has an export provider', () => {
-  it('registry covers the 62 screens, each with tables', () => {
+  it('registry covers the 61 screens, each with tables (D9-06: no client portal)', () => {
     const missing = SCREENS.filter((s) => !getExportProvider(s.id)?.table).map((s) => s.id);
     expect(missing).toEqual([]);
-    expect(SCREENS.length).toBe(62);
+    expect(SCREENS.length).toBe(61);
   });
 
   it.each(SCREENS.map((s) => s.id))('%s: Excel opens and the CSV has the main table (director, HLT-026)', async (screen) => {
@@ -62,21 +61,6 @@ describe('every screen has an export provider', () => {
     const sheets = await readXlsx(x.body);
     expect(sheets.at(-1)!.name).toBe('Export');
     for (const sh of sheets) for (const h of ['Hourly rate', 'Hourly rate (€)', 'Multiplier']) expect(sh.rows[0] ?? [], `${screen} · ${sh.name}`).not.toContain(h);
-  }, 30_000);
-
-  // A client passing another organisation's project on a global screen gets its own project's figures instead; outside
-  // their workspace a client gets 403 (P-1: "accès refusé pour le client").
-  it.each(SCREENS.filter((s) => s.scope !== 'project').map((s) => s.id))('%s: a client’s ?code=<other organisation> leaks nothing', async (screen) => {
-    const q = [queryOf(screen), 'code=NDC-031'].filter(Boolean).join('&');
-    if (isOutside('client', screen)) {
-      await expect(ctxOf(screen, 'client', q)).rejects.toMatchObject({ status: 403 });
-      return;
-    }
-    const sheets = await sheetsOf(screen, 'client', q);
-    for (const sh of sheets) for (const r of sh.rows) for (const c of r) expect(String(c ?? ''), `${screen} · ${sh.name}`).not.toMatch(/NDC-031|EWA-051|\bNDC\b/);
-    // Same figures as for the client's own project (labour cost, NCR counts, home tiles…): the foreign code is ignored.
-    const own = await sheetsOf(screen, 'client', [queryOf(screen), 'code=HLT-026'].filter(Boolean).join('&'));
-    expect(sheets.slice(0, -1)).toEqual(own.slice(0, -1));
   }, 30_000);
 
   it('the header menu offers exactly the formats of each provider (PDF only where there is a report)', () => {
@@ -183,49 +167,6 @@ describe('rights', () => {
     expect(text).not.toMatch(/\d\s?€|€\s?\d/);
   });
 
-  it('R-043 (P-10b): the client’s meetings export holds the external meetings only, without the client-questions bridge', async () => {
-    const d = await sheetsOf('meetings', 'director', 'code=HLT-026');
-    const c = await sheetsOf('meetings', 'client', 'code=HLT-026');
-    expect(d.map((s) => s.name)).toContain('Client questions');
-    expect(c.map((s) => s.name)).not.toContain('Client questions');
-    const types = new Set(col(c[0].rows, 'Type'));
-    expect(c[0].rows.length).toBeLessThan(d[0].rows.length);
-    expect(types.size).toBe(1);
-    const internal = col(d[0].rows, 'Meeting').find((n, i) => !types.has(col(d[0].rows, 'Type')[i]))!;
-    // An internal meeting asked by number falls back to the client's own (external) meetings — never its minutes.
-    const f = await runExport(await ctxOf('meetings', 'client', `code=HLT-026&meeting=${internal}`), 'pdf', { compressPdf: false });
-    const text = pdfTextLines(f.body).join('\n');
-    expect(text).not.toContain(String(internal));
-    expect(col(c[0].rows, 'Meeting').some((n) => text.includes(String(n)))).toBe(true);
-  });
-
-  it('a client exports only its organisation’s projects, and nothing outside their workspace (P-1)', async () => {
-    for (const screen of ['worldmap', 'overview', 'requests', 'task', 'mtypes', 'catalogue', 'eco', 'plan', 'budget'] as const)
-      await expect(ctxOf(screen, 'client', screen === 'task' ? 'task=T-2331' : 'code=HLT-026'), screen).rejects.toMatchObject({ status: 403 });
-    await expect(ctxOf('orders', 'client', 'code=NDC-031')).rejects.toMatchObject({ status: 403 });
-    await expect(ctxOf('trends', 'client', 'code=NDC-031')).rejects.toMatchObject({ status: 403 });
-    const [home] = await sheetsOf('home', 'client', '');
-    expect(home.rows.length).toBeGreaterThan(0);
-    const own = await sheetsOf('client', 'client', 'code=HLT-026&tab=invoices');
-    expect(own[0].name).toBe('Invoices');
-  });
-
-  it('the machine-type and ECO "Projects" columns keep the client filter (defence in depth behind P-1)', async () => {
-    const own = /^(HLT|PRS|QFR)-/;
-    // P-1 refuses these screens to the client; the providers still filter for a client context built directly.
-    const asClient = async (screen: 'mtypes' | 'eco') => {
-      const ctx = await ctxOf(screen, 'director', '');
-      return readXlsx((await runExport({ ...ctx, viewer: PERSONA_BY_ROLE.client }, 'xlsx')).body);
-    };
-    const [mt] = await asClient('mtypes');
-    const [mtd] = await sheetsOf('mtypes', 'director', '');
-    const codes = (rows: (string | number | boolean | null)[][]) => col(rows, 'Projects').flatMap((v) => String(v ?? '').split(' · ').filter(Boolean));
-    expect(codes(mtd.rows).some((c) => !own.test(c))).toBe(true);
-    expect(codes(mt.rows).every((c) => own.test(c))).toBe(true);
-    const [eco] = await asClient('eco');
-    expect(codes(eco.rows).every((c) => own.test(c) || /^(HLT|PRS|QFR)$/.test(c))).toBe(true);
-  });
-
   it('requests: the viewer’s own unless the screen shows them all', async () => {
     const [d] = await sheetsOf('requests', 'director', '');
     const [pm] = await sheetsOf('requests', 'pm', '');
@@ -243,13 +184,12 @@ describe('typed columns (real dates and percentages in Excel)', () => {
     const i = (ws.getRow(1).values as unknown[]).indexOf(header);
     return ws.getColumn(i).values.slice(2).filter((v) => v != null);
   };
-  it('requests start / due / sent, my projects milestone and finish, client milestones are dates; weights share is a percent', async () => {
+  it('requests start / due / sent, my projects milestone and finish are dates; weights share is a percent', async () => {
     for (const h of ['Start date', 'Due', 'Sent']) expect((await cellsOf('requests', '', 'Resource requests', h)).every((v) => v instanceof Date), h).toBe(true);
     const ms = await cellsOf('myprojects', '', 'My projects', 'Milestone date');
     expect(ms.length).toBeGreaterThan(0);
     expect(ms.every((v) => v instanceof Date)).toBe(true);
     expect((await cellsOf('myprojects', '', 'My projects', 'Forecast finish')).some((v) => v instanceof Date)).toBe(true);
-    for (const h of ['Baseline', 'Forecast']) expect((await cellsOf('client', 'code=HLT-026', 'Milestones', h)).every((v) => v instanceof Date), h).toBe(true);
     const share = await cellsOf('portfolio', '', 'Weights', 'Share');
     expect(share.length).toBeGreaterThan(0);
     expect(share.every((v) => typeof v === 'number' && v >= 0 && v <= 1)).toBe(true);
@@ -272,17 +212,6 @@ describe('PDF documents', () => {
     const fr = await pdfOf('schedule', 'director', 'code=HLT-026', 'fr');
     expect(fr.text).toContain('Planning — référence vs prévision');
     expect(fr.text).toContain('Jalons');
-  });
-
-  it('client portal "Schedule": the Gantt PDF without the internal indicators; another organisation’s project is refused', async () => {
-    const c = await pdfOf('client', 'client', 'code=HLT-026&variant=planning', 'en');
-    expect(c.file.fileName).toBe('planning-HLT-026-2026-10-09.pdf');
-    expect(c.text).toContain('Schedule — baseline vs forecast');
-    expect(c.text).not.toContain('SPI');
-    await expect(ctxOf('client', 'client', 'code=NDC-031&variant=planning')).rejects.toMatchObject({ status: 403 });
-    const [wp] = await sheetsOf('client', 'client', 'code=HLT-026&tab=planning');
-    expect(wp.name).toBe('Work packages');
-    expect(wp.rows[0]).not.toContain('Owner');
   });
 
   it('FR reports: indices with a decimal comma, float in jours, "Compte rendu" for the minutes', async () => {
@@ -341,12 +270,10 @@ describe('PDF documents', () => {
     expect(text).toContain('Quality control');
   });
 
-  it('account statement (billing report and client document) lists the invoices', async () => {
+  it('account statement (billing report) lists the invoices', async () => {
     const a = await pdfOf('billing', 'director', 'code=HLT-026');
     expect(a.text).toContain('Relevé de compte');
     expect(a.text).toContain('INV-2026-001');
-    const b = await pdfOf('client', 'client', 'code=HLT-026&variant=statement');
-    expect(b.text).toContain('INV-2026-001');
   });
 
   it('status reports: steering (trends) with the EVM indices, client without them', async () => {
@@ -357,7 +284,8 @@ describe('PDF documents', () => {
     expect(s.text).toContain('Top risks');
     const k = await pdfOf('trends', 'director', 'code=HLT-026&sections=kpis', 'en');
     expect(k.text).not.toContain('Top risks');
-    const c = await pdfOf('client', 'client', 'code=HLT-026&variant=status&period=quarter', 'en');
+    // D9-06: the client report is generated from Trends by the project team (the client portal's copy is gone).
+    const c = await pdfOf('trends', 'pm', 'code=HLT-026&variant=status&audience=client&period=quarter', 'en');
     expect(c.text).toContain('Q3 2026');
     expect(c.text).not.toContain('CPI');
     expect(c.text).toContain('Progress & milestones');

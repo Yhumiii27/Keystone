@@ -87,8 +87,6 @@ describe('/projects/[code]/pid', () => {
       expect([p.PageHeader.props.primary, p.PidTagDrawer.props.canEdit, (p.PidTagDrawer.props.view as PidTagDrawerView).candidates], role).toEqual([undefined, false, []]);
       expect(drawerHtml(p.PidTagDrawer), role).not.toContain('Map to a BOM reference');
     }
-    session.role = 'client'; // R-042 (P-1): sent home (was: the read-only page)
-    await expect(page({ tag: 'TT-102' })).rejects.toThrow('REDIRECT /');
   });
 
   it('URL state: filters, case-insensitive tag, unknown tag dropped, part drawer in place of the tag drawer', async () => {

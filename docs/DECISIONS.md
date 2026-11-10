@@ -409,3 +409,60 @@ Questionnaire https://claude.ai/artifact/4AAS3t3L6t8soKaQCNxRBh (`docs/decisions
 - **S-32 · Colonne « Qualité du planning » dans « Mes projets » (S-23)** : oui.
 - **S-33 · Alertes de la Vue d’ensemble** : le nombre affiché (8) suffit ; les alertes sont classées par urgence et importance, et non plus par type d’alerte.
 - **S-34 · Glissement fournisseur prévenu aux directeurs** : oui quand le glissement dure trop longtemps et que son impact sur le projet est important, selon des seuils réglables dans Paramètres.
+
+## Décisions en attente de la livraison 9 (réponses du 10/11/2026)
+
+Questionnaire https://claude.ai/artifact/8u6AejE5Fx9eHiMuedKKLt (`docs/decisions/questions-decisions-l9.json`). 12 réponses sur 38 ; les autres restent ouvertes.
+
+- **D9-01 · Les tailles de référence du classement des alertes du portefeuille conviennent-elles ?** (S-33 · S-34 · M-19 · R-139) : Oui, telles quelles ★
+- **D9-02 · La facturation en retard doit-elle passer en classe 1, avec les alertes qui touchent la date de fin ou le contrat ?** (S-33 · S-34 · M-19 · R-139) : Non, classe 2 (actuel) ★
+- **D9-03 · Relancer les directeurs quand un glissement fournisseur s’aggrave beaucoup dans le même épisode ?** (S-33 · S-34 · M-19 · R-139) : Non, une seule notification par épisode (actuel) ★
+- **D9-04 · Ouvrir plus tard d’autres données à la correction depuis Matrix (jours fériés, seuils de Paramètres) ?** (S-33 · S-34 · M-19 · R-139) : Ouvrir aussi les jours fériés et les seuils de Paramètres
+- **D9-05 · Afficher dans le fil d’activité les corrections faites depuis Matrix ?** (S-33 · S-34 · M-19 · R-139) : Non, le journal d’audit suffit (actuel) ★
+- **D9-06 · Dans l’aperçu « Voir comme le client », le directeur garde-t-il « Signaler un point » ?** (S-33 · S-34 · M-19 · R-139) : Autre réponse — *nous pouvons supprimer la vue et le profils client l'outil enverra des documents a signer par docusign si des points doivent être officielalisés avec les clients*
+- **D9-07 · Les autres rôles internes peuvent-ils encore ouvrir le portail client d’un projet par son adresse ?** (S-33 · S-34 · M-19 · R-139) : Non, les renvoyer vers la fiche du projet
+- **D9-08 · Réactiver la reprise des plannings existants (MS Project, Primavera P6) ?** (R-012 · R-060 · R-063 · R-065 · R-066 · R-091) : Autre réponse — *L'import sera soit en format MS Project, soit en format GanttProject*
+- **D9-09 · Qu’est-ce qui fait avancer la date de situation d’un projet ?** (R-012 · R-060 · R-063 · R-065 · R-066 · R-091) : Le chef de projet l’avance, Keystone la propose chaque vendredi ★
+- **D9-10 · Que doit enregistrer le gel hebdomadaire du vendredi ?** (R-012 · R-060 · R-063 · R-065 · R-066 · R-091) : CPI, SPI, EAC, marge, risques et avancement ★
+- **D9-11 · Une référence de planning proposée dont la demande de modification est rejetée : supprimée ou gardée ?** (R-012 · R-060 · R-063 · R-065 · R-066 · R-091) : Gardée, marquée « rejetée » ★
+- **D9-12 · Quand une ancienne demande est approuvée après une plus récente, quelle référence devient courante ?** (R-012 · R-060 · R-063 · R-065 · R-066 · R-091) : Garder la plus haute (BL3) ; « Re-baseline » passe par une demande après BL1 ★
+
+### Suite des réponses (10/11/2026, D9-13 à D9-38)
+
+- **D9-13 · Ajouter un éditeur d’exceptions de calendrier propre à un projet (jour ouvré exceptionnel, fermeture de chantier) ?** (R-012 · R-060 · R-063 · R-065 · R-066 · R-091) : Plus tard ★
+- **D9-14 · Rendre éditables les contraintes de date des activités (« pas avant », « au plus tard »…) ?** (R-012 · R-060 · R-063 · R-065 · R-066 · R-091) : Oui, type et date dans le Plan, par le chef de projet et le directeur ★
+- **D9-15 · Scénarios de rééquilibrage (what-if) : faut-il une approbation formelle d’un scénario avant « Appliquer » ?** (R-012 · R-060 · R-063 · R-065 · R-066 · R-091) : Non, les demandes créées suivent leur propre circuit (actuel) ★
+- **D9-16 · Brouillons de demandes de ressources : le chef de projet voit-il ceux que d’autres ont faits sur ses projets ?** (R-012 · R-060 · R-063 · R-065 · R-066 · R-091) : Oui, avec un filtre « Brouillons » ; celui qui envoie devient le demandeur ★
+- **D9-17 · Comment les devis fournisseurs entrent-ils dans une consultation créée dans Keystone ?** (R-100 · R-101) : Portail fournisseur (nouvel outil)
+- **D9-18 · Qui attribue les numéros d’articles ?** (R-100 · R-101) : Autre réponse — *La numérotation des articles est faite depuis un fichier xml qui est sur un serveur en local, nous ne savons pas si cela fonctionnerait depuis un serveur cloud. Il faudra prévoir la lecture de ce fichier xml en premier et faire les tests pour voir si on peut heberger cette donnée et la communiquer a 3DX*
+- **D9-19 · Quelles données financières d’un projet EPC2i la filiale voit-elle dans Arche ?** (R-189 · R-192 · R-056) : Côté vente seulement (actuel) ★
+- **D9-20 · Keystone doit-il lire les études de sécurité des procédés de Vigie (HazOp, AMDEC, PSSR) de ses projets ?** (R-189 · R-192 · R-056) : Autre réponse — *A discuter mais les études de sécurité sont faites par un service dédié (SSE Groupe) qui a ses propres outils.*
+- **D9-21 · Comment placer sur la carte un projet dont la ville n’est pas encore connue ?** (R-189 · R-192 · R-056) : Placer le projet au centre de son pays
+- **D9-22 · Si le portail client s’ouvre un jour aux clients externes, comment se connecteront-ils ?** (R-179 · R-142 · R-123 · R-059) : Ne jamais l’ouvrir : retirer le portail
+- **D9-23 · Le client voit-il le plan d’activités détaillé dans le portail, ou seulement le Gantt des lots ?** (R-179 · R-142 · R-123 · R-059) : Autre réponse — *Rien les clients ne voient pas keystone*
+- **D9-24 · Les PDF de planning doivent-ils aller jusqu’à la fin prévue et avoir une version interne avec les coûts ?** (R-179 · R-142 · R-123 · R-059) : Les deux : fin prévue et version interne avec coûts
+- **D9-25 · Qu’est-ce qu’une « décision client » ?** (R-179 · R-142 · R-123 · R-059) : Case « client présent » sur la réunion ★
+- **D9-26 · Parties prenantes : grille pouvoir / intérêt et « dernier contact » ?** (R-179 · R-142 · R-123 · R-059) : Autre réponse — *Le champs pouvoir/interet doit disparaitre, les parties prenantes doivent être définies par les roles et responsabilités uniquement*
+- **D9-27 · Où s’attribuent les rôles des utilisateurs (directeur, chef de projet, achats, Finance…) ?** (R-040 · R-022 · R-181) : Groupes Microsoft Entra, tenus par l’IT (actuel) ★
+- **D9-28 · Le numéro projet #000 : Keystone l’attribue-t-il, ou est-il saisi depuis la liste existante ?** (R-040 · R-022 · R-181) : Keystone l’attribue (actuel) ★
+- **D9-29 · Le code analytique XXX000 : Keystone le propose-t-il, ou est-il saisi depuis Sage ?** (R-040 · R-022 · R-181) : Saisi dans la fiche projet depuis Sage, Keystone propose une valeur ★
+- **D9-30 · Créer un projet dans Keystone doit-il ouvrir automatiquement son espace dans Codex ?** (R-040 · R-022 · R-181) : Codex lit les projets dans pub_projets (demande à Codex) ★ — *Quand les équipements standards seront définis et leurs jalons et livrables propre aussi, nous aurons une création automatique des documents obligatoires au projet des son ouverture (pas tous d'un coup, mais ceux nécessaires au premier jalon puis au passage du jalon création automatique des documents suivants)*
+- **D9-31 · P1 Relance fournisseurs et inspections usine : lancer cette proposition ?** (R-159 · R-160 · R-161 · R-162 · R-163 · R-164 · R-165 · R-166) : Lancer : inspections, FAT et bons de libération sur les commandes
+- **D9-32 · P2 Conformité CE et dossier technique machine : lancer cette proposition ?** (R-159 · R-160 · R-161 · R-162 · R-163 · R-164 · R-165 · R-166) : Lancer maintenant, avant janvier 2027
+- **D9-33 · P3 Réclamations contractuelles et pénalités de retard : lancer cette proposition ?** (R-159 · R-160 · R-161 · R-162 · R-163 · R-164 · R-165 · R-166) : Plus tard ★
+- **D9-34 · P4 Exposition de change et alertes de couverture : lancer cette proposition ?** (R-159 · R-160 · R-161 · R-162 · R-163 · R-164 · R-165 · R-166) : Lancer après la devise par contrat (R-075)
+- **D9-35 · P5 Missions et mobilisation internationale : lancer cette proposition ?** (R-159 · R-160 · R-161 · R-162 · R-163 · R-164 · R-165 · R-166) : Autre réponse — *Les voyages liés aux projets doivent être créés depuis le planning Keystone, la partie administrative et médicale doit rester dans Cursus (en fonction de la destination). Un voyage qui n'est pas lié a un projet doit pouvoir être créé depuis Cursus directement.*
+- **D9-36 · P6 Offres et chiffrage avant-vente : lancer cette proposition ?** (R-159 · R-160 · R-161 · R-162 · R-163 · R-164 · R-165 · R-166) : Autre réponse — *Je pense qu'il faut un logiciel dedié au catalogue, qui sera géré par EPC2i, qui servira au filiales pour prendre connaissance du catalogue et des options possibles par equipement et des characteristiques de chaque equipement. Ce logiciel publiera le catalogue dans Arche (pour le montage des CAPEX et les prix de ventes et délais standards) et dans Keystone (budgets standard, planning standard). Ce nouveau logiciel sera le module commercial qui servira a monter les projets commercialement*
+- **D9-37 · P7 Outillage et étalonnage : lancer cette proposition ?** (R-159 · R-160 · R-161 · R-162 · R-163 · R-164 · R-165 · R-166) : Autre réponse — *Les outillages utilisés par les projets sont des outillages mécaniques standard qui n'ont pas d'étallonage, seul les équiepemtns de labo en ont besoin.*
+- **D9-38 · P8 Application chantier hors ligne : lancer cette proposition ?** (R-159 · R-160 · R-161 · R-162 · R-163 · R-164 · R-165 · R-166) : Lancer
+
+**Conséquences retenues (lecture de Claude, 10/11/2026)** :
+- D9-06, D9-22, D9-23 : les clients ne voient pas Keystone — le portail client et le profil Client sont retirés (R-139, R-141, R-142, R-179 sans objet). Un point à officialiser avec un client passe par un document envoyé en signature (DocuSign, nouvel outil à cadrer avec la DSI).
+- D9-17 : portail fournisseur pour les devis = nouvel outil, à cadrer avant de construire.
+- D9-18 : numérotation des articles par un fichier XML sur un serveur local : lire ce fichier d’abord (fichier attendu), puis tester l’hébergement et l’échange avec 3DX.
+- D9-20 : les études de sécurité relèvent du service SSE Groupe et de ses outils : R-192 sans objet pour Keystone.
+- D9-30 : à terme, création automatique des documents obligatoires jalon par jalon, quand les équipements standards (jalons, livrables) seront définis (R-053).
+- D9-35 : un voyage lié à un projet se crée depuis le planning de Keystone ; l’administratif et le médical restent dans Cursus ; un voyage hors projet se crée dans Cursus.
+- D9-36 : un logiciel catalogue / module commercial dédié, géré par EPC2i, publiera le catalogue dans Arche et dans Keystone (budgets et plannings standards) : hors de Keystone.
+- D9-37 : P7 abandonnée (outillage mécanique sans étalonnage ; seuls les équipements de laboratoire en ont).
+

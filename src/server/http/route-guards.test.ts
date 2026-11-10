@@ -32,7 +32,7 @@ vi.mock('@/server/project-context', async (orig) => {
     // The director, on the project's team with the PM's rights (delivery 7 rights: R-041, R-050).
     getProjectContext: async () => ({
       viewer: PERSONA_BY_ROLE[state.role], canEdit: () => true,
-      access: { member: true, lead: true, pm: true, client: false, readOnly: false, refused: false },
+      access: { member: true, lead: true, pm: true, readOnly: false, refused: false },
     }),
   };
 });

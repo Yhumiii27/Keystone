@@ -15,7 +15,7 @@ import { readSession, type SessionData } from './session-cookie';
 export function viewerOfAccount(a: UserAccount, role: RoleKey): Persona {
   return {
     role, roles: a.roles, name: a.fullName ?? a.shortName, title: a.title, initials: a.initials, short: a.shortName, email: a.email,
-    organisation: a.organisation, department: a.department, personId: a.personId, userId: a.userId,
+    department: a.department, personId: a.personId, userId: a.userId,
   };
 }
 

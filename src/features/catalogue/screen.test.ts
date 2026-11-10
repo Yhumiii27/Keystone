@@ -83,7 +83,7 @@ describe('registry and navigation', () => {
     expect(roles.filter((r) => canSee(r, 'catalogue'))).toEqual(roles.filter((r) => canSee(r, 'mtypes')));
     expect(roles.filter((r) => canSee(r, 'catalogue')).sort()).toEqual(['director', 'englead', 'pm', 'quality']);
     expect([...D5_SCREEN_ROLES.catalogue]).toEqual(['director', 'pm', 'englead', 'quality']);
-    for (const r of ['finance', 'procurement', 'member', 'depthead', 'client'] as RoleKey[]) expect(ROLE_SCREENS[r], r).not.toContain('catalogue');
+    for (const r of ['finance', 'procurement', 'member', 'depthead'] as RoleKey[]) expect(ROLE_SCREENS[r], r).not.toContain('catalogue');
     for (const p of PERSONAS) {
       const sections = buildSidebar({ role: p.role as RoleKey, active: 'home', badges: {}, navOpen: { catalogue: true }, subs: {} }).sections;
       const sec = sections.find((s) => s.key === 'catalogue');
@@ -147,8 +147,6 @@ describe('/catalogue/machines', () => {
       expect(v.readNote, role).toBe(note ? 'Only the director and the engineering lead edit the machine catalogue' : null);
       expect(v.detail!.entry.versions.some((x) => x.canPublish || x.canRetire || x.canEdit || x.canDiscard), role).toBe(canEdit);
     }
-    session.role = 'client';
-    await expect(page()).rejects.toThrow('REDIRECT /');
   });
 
   it('the New catalogue entry form asks for the machine type (active types), preset by ?type=', async () => {

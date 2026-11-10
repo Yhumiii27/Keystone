@@ -10,57 +10,45 @@ import 'server-only';
 //   it (`canEditContract`); Finance reads Budget, Hours and Billing even on its teams (`financeReadOnly`).
 // - R-158: the Shipments are edited by the director, Logistics (every project) and the project's leads (`canEditShipments`);
 //   Logistics reads the BOM, Site, Schedule and Deliveries (`roleReadOnly`).
-// - R-042 (P-1, P-10a): a client is refused — sent to their home — on any screen outside their workspace and on another
-//   organisation's project, by these two helpers (so pages, Server Functions and Route Handlers that use them all refuse);
-//   internal roles keep the read-only view outside their workspace.
-import { notFound, redirect } from 'next/navigation';
+// - Every role reads a screen outside its workspace (banner, read-only). The client's refusals (R-042) went with the Client
+//   role (D9-06: clients never see Keystone).
+import { notFound } from 'next/navigation';
 import { cache } from 'react';
-import { screenHref, type ScreenId } from '@/config/screens';
+import type { ScreenId } from '@/config/screens';
 import { PROJECT_EDITABLE, isOutside } from '@/components/app/shell/nav-model';
 import {
-  canEditContract, canEditShipments, clientRefusedProject, clientRefusedScreen, projectAccess, roleReadOnly, type ProjectAccess, type TeamMember,
+  canEditContract, canEditShipments, projectAccess, roleReadOnly, type ProjectAccess, type TeamMember,
 } from '@/domain/rights';
 import { listProjectTeams } from '@/server/dal/project-team';
 import { getProject, listProjects, type ProjectRow } from '@/server/dal/projects';
 import { getViewer, type Viewer } from '@/server/session';
 
-/** Sends a client to their home (R-042: refusal of a screen or project outside their workspace). Never returns. */
-export function refuseClient(): never {
-  redirect(screenHref('home'));
-}
-
 /** The viewer's rights on a project, given every project's team (`listProjectTeams`). */
-export function accessOf(viewer: Viewer, p: Pick<ProjectRow, 'code' | 'pm' | 'client' | 'clientInternal' | 'pmPersonId'>, teams: Map<string, TeamMember[]>): ProjectAccess {
-  return projectAccess(viewer, { client: p.client, clientInternal: p.clientInternal, pm: p.pm, pmPersonId: p.pmPersonId, team: teams.get(p.code) ?? [] });
+export function accessOf(viewer: Viewer, p: Pick<ProjectRow, 'code' | 'pm' | 'pmPersonId'>, teams: Map<string, TeamMember[]>): ProjectAccess {
+  return projectAccess(viewer, { pm: p.pm, pmPersonId: p.pmPersonId, team: teams.get(p.code) ?? [] });
 }
 
 /** Rights resolver for an explicit viewer (exports, imports, tests): one read of the teams, then a pure function per project. */
-export async function projectAccessResolver(viewer: Viewer): Promise<(p: Pick<ProjectRow, 'code' | 'pm' | 'client' | 'clientInternal' | 'pmPersonId'>) => ProjectAccess> {
+export async function projectAccessResolver(viewer: Viewer): Promise<(p: Pick<ProjectRow, 'code' | 'pm' | 'pmPersonId'>) => ProjectAccess> {
   const teams = await listProjectTeams();
   return (p) => accessOf(viewer, p, teams);
 }
 
 /**
- * The project is "mine" (`isMineP`, R-041): the director → all; a client → the projects of their organisation; anybody else →
- * they are on its named team. `teams` = `listProjectTeams()`.
+ * The project is "mine" (`isMineP`, R-041): the director → all; anybody else → they are on its named team. `teams` = `listProjectTeams()`.
  */
-export function isMineProject(viewer: Viewer, p: Pick<ProjectRow, 'code' | 'pm' | 'client' | 'clientInternal' | 'pmPersonId'>, teams: Map<string, TeamMember[]>): boolean {
+export function isMineProject(viewer: Viewer, p: Pick<ProjectRow, 'code' | 'pm' | 'pmPersonId'>, teams: Map<string, TeamMember[]>): boolean {
   return accessOf(viewer, p, teams).member;
 }
 
-/** Codes of a client's organisation's projects (P-10a). */
-export async function clientProjectCodes(viewer: Viewer): Promise<Set<string>> {
-  return new Set((await listProjects()).filter((p) => !clientRefusedProject(viewer, p)).map((p) => p.code));
-}
-
 export interface ProjectScope {
-  /** Switcher pool: projects with data (a client: those of their organisation only — R-042). */
+  /** Switcher pool: projects with data. */
   pool: ProjectRow[];
   /** Projects of the pool the viewer is on the team of. */
   mineCount: number;
   /** "My projects | Whole portfolio" control available (`scopeAvail`): internal role ≠ director and 0 < mine < pool. */
   scopeAvail: boolean;
-  /** On the project's team (director: all; client: own organisation). */
+  /** On the project's team (director: all). */
   isMine: (p: ProjectRow) => boolean;
   /** PM rights on the project (PM of record, co-PM, deputy, director). */
   isLead: (p: ProjectRow) => boolean;
@@ -73,10 +61,10 @@ export interface ProjectScope {
 export const getProjectScope = cache(async (): Promise<ProjectScope> => {
   const [viewer, all, teams] = await Promise.all([getViewer(), listProjects(), listProjectTeams()]);
   const access = (p: ProjectRow) => accessOf(viewer, p, teams);
-  const pool = all.filter((p) => p.hasData && !access(p).refused);
+  const pool = all.filter((p) => p.hasData);
   const isMine = (p: ProjectRow) => access(p).member;
   const mineCount = pool.filter(isMine).length;
-  const scopeAvail = viewer.role !== 'director' && viewer.role !== 'client' && mineCount > 0 && mineCount < pool.length;
+  const scopeAvail = viewer.role !== 'director' && mineCount > 0 && mineCount < pool.length;
   return { pool, mineCount, scopeAvail, isMine, isLead: (p) => access(p).lead, readOnly: (p) => access(p).readOnly, access };
 });
 
@@ -88,10 +76,9 @@ export interface ScreenAccess {
   canEdit: boolean;
 }
 
-/** Access to a global (non-project) screen. A client outside their workspace is sent home (R-042). */
+/** Access to a global (non-project) screen. */
 export async function getScreenAccess(screen: ScreenId): Promise<ScreenAccess> {
   const viewer = await getViewer();
-  if (clientRefusedScreen(viewer.role, screen)) refuseClient();
   const outside = isOutside(viewer.role, screen);
   return { viewer, outside, canEdit: !outside };
 }
@@ -99,11 +86,11 @@ export async function getScreenAccess(screen: ScreenId): Promise<ScreenAccess> {
 export interface ProjectContext {
   project: ProjectRow;
   viewer: Viewer;
-  /** The viewer is on the project's named team (`isMineP`, R-041; director: all; client: own organisation). */
+  /** The viewer is on the project's named team (`isMineP`, R-041; director: all). */
   isMine: boolean;
   /** PM rights: PM of record, co-PM, deputy, or the director (L-4b, P-9a). */
   isLead: boolean;
-  /** Full rights on the project (team role, client contact…). */
+  /** Full rights on the project (team role…). */
   access: ProjectAccess;
   /** The project's named team (PM of record first). */
   team: TeamMember[];
@@ -114,15 +101,14 @@ export interface ProjectContext {
   /** Screen outside the viewer's workspace. */
   isOutside: (screen: ScreenId) => boolean;
   /**
-   * Edits allowed on `screen` for this project: not outside and not read-only (client/docs ignore read-only, line 5176); the
+   * Edits allowed on `screen` for this project: not outside and not read-only (docs ignore read-only, line 5176); the
    * Contract follows `canEditContract` (P-4) and Finance reads Budget, Hours and Billing (R-044).
    */
   canEdit: (screen?: ScreenId) => boolean;
 }
 
 /**
- * Loads a project and the viewer's access to it. Unknown code → notFound(). A client on another organisation's project, or on
- * a screen outside their workspace, is sent home (R-042). Projects without data are returned normally
+ * Loads a project and the viewer's access to it. Unknown code → notFound(). Projects without data are returned normally
  * (`project.hasData === false`): screens render their empty state.
  */
 export const getProjectContext = cache(async (code: string, screen?: ScreenId): Promise<ProjectContext> => {
@@ -130,7 +116,6 @@ export const getProjectContext = cache(async (code: string, screen?: ScreenId): 
   if (!project) notFound();
   const [viewer, teams] = await Promise.all([getViewer(), listProjectTeams()]);
   const access = accessOf(viewer, project, teams);
-  if (access.refused || (screen && clientRefusedScreen(viewer.role, screen))) refuseClient();
   const readOnly = access.readOnly;
   const out = (s: ScreenId) => isOutside(viewer.role, s);
   const canEdit = (s: ScreenId | undefined = screen) => {

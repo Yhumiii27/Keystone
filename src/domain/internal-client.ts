@@ -1,8 +1,7 @@
 // R-190 (Arche K-05): a client may be a group subsidiary — an internal client. Pure rules of the Contract screen's "Client" card
 // and of the creation of a project from a subsidiary's need (R-187). The database checks the same format
 // (clients_subsidiary_code_check) and that a subsidiary code is only on an internal client (clients_subsidiary_internal_check).
-// An internal client follows its projects in the CAPEX application, never in the client portal (R-179, I-2b): see
-// `clientRefusedProject` / `projectAccess` (src/domain/rights.ts).
+// An internal client follows its projects in the CAPEX application (R-179, I-2b); no client sees Keystone (D9-06).
 import type { RoleKey } from '@/config/screens';
 
 /** A subsidiary's code as Arche (pub_capex.filiale_code) and Matrix (pub_filiales.code, D21) publish it: three capitals. */

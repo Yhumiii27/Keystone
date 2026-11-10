@@ -167,6 +167,12 @@ const MESSAGES = {
     (p) => `Equipment ${p.ref} removed · ${p.equipment}`,
     (p) => `Équipement ${p.ref} retiré · ${p.equipment}`,
   ),
+  // R-160 (P2): the CE file of an equipment line (audit trail and activity feed); `fields` = the fields changed (EN keys).
+  'ce.fileUpdated': def(
+    { ref: 'ref', done: 'count', total: 'count' },
+    (p) => `CE file of ${p.ref} updated · readiness ${p.done}/${p.total}`,
+    (p, f) => `Dossier CE de ${p.ref} mis à jour · état ${f.count(p.done)}/${f.count(p.total)}`,
+  ),
   // R-186: the machine catalogue on the Machine types screen ("EMP-40T v2"; audit trail, activity feed on publish and retire).
   'catalogue.created': def(
     { ref: 'ref', label: 'data' },
@@ -293,6 +299,18 @@ const MESSAGES = {
     (p, f) => `Occurrence suivante ${p.task} créée depuis ${p.previous} · échéance le ${f.date(p.due)}`,
   ),
   'task.recurrenceEnded': def({ previous: 'ref' }, (p) => `Recurrence ended with ${p.previous}`, (p) => `Récurrence terminée avec ${p.previous}`),
+  // D9-09 (R-060): the project's data date moved by its PM or the director (Plan › Data date; audit trail and activity feed).
+  'plan.dataDateSet': def(
+    { from: 'label', to: 'date' },
+    (p) => `Data date · ${p.from} → ${p.to}`,
+    (p, f) => `Date de référence · ${/^\d{4}-\d{2}-\d{2}$/.test(p.from) ? f.date(p.from) : f.label(p.from)} → ${f.date(p.to)}`,
+  ),
+  // D9-10 (R-060): the Friday freeze of a project's week (job friday-freeze; audit trail, area Trends).
+  'trends.weekFrozen': def(
+    { week: 'ref', date: 'date' },
+    (p) => `Weekly snapshot frozen · ${p.week} · ${p.date}`,
+    (p, f) => `Instantané hebdomadaire figé · ${p.week} · ${f.date(p.date)}`,
+  ),
 } as const;
 
 export type MessageKey = keyof typeof MESSAGES;

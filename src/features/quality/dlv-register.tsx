@@ -82,7 +82,7 @@ export function DeliverablesRegister({ code, view, t }: { code: string; view: Dl
                     {r.action?.kind === 'move' && (
                       <DeliverableMoveButton code={code} number={r.number} to={r.action.to} label={r.action.label} variant={r.action.variant} place="row" restart={r.action.restart} />
                     )}
-                    {r.action?.kind === 'decide' && <DeliverableDecideRow code={code} number={r.number} />}
+                    {r.action?.kind === 'decide' && <DeliverableDecideRow code={code} number={r.number} context={r.title} />}
                   </div>
                 </td>
               </ClickableRow>

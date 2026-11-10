@@ -82,11 +82,6 @@ describe('/projects/[code]/bom', () => {
     if (code === 'HLT-026') expect(!!v.node!.raiseEco).toBe(editable);
   });
 
-  it('R-042 (P-1): the BOM is outside the client’s workspace — the client is sent home', async () => {
-    session.role = 'client';
-    await expect(page({}, 'HLT-026')).rejects.toThrow('REDIRECT /');
-  });
-
   it('R-046 (NEW-D2-1): prices and values are masked for the engineering lead and the quality manager', async () => {
     for (const [role, masked] of [['englead', true], ['quality', true], ['procurement', false], ['pm', false], ['director', false]] as const) {
       session.role = role;

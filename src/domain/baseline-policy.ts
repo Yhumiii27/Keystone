@@ -50,3 +50,16 @@ export const BL1_DELIVERABLE_MESSAGE = 'Set BL1 first (Plan › Set baseline, up
 /** A manual change of « Planning BL1 posé » the rule refuses: ticking it without BL1, unticking it while BL1 exists. */
 export const bl1TickRefused = (target: { stage: string; position: number; done: boolean }, bl1: boolean) =>
   target.stage === BL1_STAGE_DELIVERABLE.stage && target.position === BL1_STAGE_DELIVERABLE.position && target.done !== bl1;
+
+// ── Delivery 9 (D9-11, D9-12 — R-063, owner's answers of 10 Nov 2026) ───────────────────────────────────────────────
+
+/**
+ * D9-12: when a change request is approved, its proposed baseline becomes current only when it is the highest — the current
+ * baseline's number is not above it. An older request approved after a newer one (CR-009 / BL2 after CR-011 / BL3) keeps BL3
+ * current; BL2 is recorded as approved and superseded. `current` null = no current baseline: the approved one becomes current.
+ */
+export const approvedBaselineBecomesCurrent = (approved: string, current: string | null): boolean =>
+  current == null || !(baselineNumber(current) > baselineNumber(approved));
+
+/** D9-11: state of a proposed baseline whose change request is rejected — kept and marked, never current. */
+export const REJECTED_BASELINE_STATE = 'rejected' as const;

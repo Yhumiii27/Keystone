@@ -130,7 +130,7 @@ describe('draft resource requests (S-7)', () => {
     const onNdc = await createResourceRequest({ projectCode: 'NDC-031', title: 'Survey support', activityCode: 'A1250', contractRole: 'Surveyor', hours: 8, priority: 'low', draft: true }, PERSONA_BY_ROLE.director.name);
     expect([onHlt, onNdc]).toEqual(['RQ-047', 'RQ-048']);
 
-    for (const role of ['member', 'quality', 'client'] as const) {
+    for (const role of ['member', 'quality'] as const) {
       as(role);
       expect(await sendDraftRequestAction('RQ-045')).toEqual({ ok: false, error: NOT_SENDER });
       expect(await discardDraftRequestAction('RQ-045')).toEqual({ ok: false, error: NOT_SENDER });

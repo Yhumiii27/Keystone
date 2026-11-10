@@ -19,9 +19,11 @@ const G = demoNcrGolden(GOLD) as any;
 const LANGS: Lang[] = ['en', 'fr'];
 const DATA = ['HLT-026', 'NDC-031', 'RCF-019', 'ERP-202', 'WSA-044', 'MSR-012'];
 const S0: QualityState = { tab: 'ncr', filter: null, status: null, ncr: null, dlv: null };
-const DIRECTOR: QualityViewerCtx = { role: 'director', canEdit: true, isClientContact: false, vigie: true };
-const PM: QualityViewerCtx = { role: 'pm', canEdit: true, isClientContact: false, vigie: true };
-const CLIENT: QualityViewerCtx = { role: 'client', canEdit: true, isClientContact: true, vigie: false };
+const DIRECTOR: QualityViewerCtx = { role: 'director', canEdit: true, isLead: true };
+// D9-06: the project manager leads HLT-026 and records the client's decision on a submitted deliverable (the client no longer
+// sees Keystone); the prototype's PM could not — the golden values are adapted where a deliverable is submitted.
+const PM: QualityViewerCtx = { role: 'pm', canEdit: true, isLead: true };
+const MEMBER: QualityViewerCtx = { role: 'member', canEdit: true, isLead: false };
 
 /** Zero-padded prototype dates ("02 Sep", FR "02 sept.") are written "2 Sep" (as the Delivery 4 data layer). */
 const day = (s: string) => s.replace(/(^|· )0(\d)/g, '$1$2');
@@ -152,10 +154,7 @@ describe('NCR log — EN and FR', () => {
     expect([d29.partHref, d29.eco, d29.orders]).toEqual([null, null, []]);
   });
 
-  it('viewer rules: the client sees no step and no Vigie link; quality verifies; read-only viewers get nothing', async () => {
-    const c = await ncrTab('HLT-026', 'en', S0, CLIENT);
-    expect(c.rows.every((r) => r.action === null && r.vigieUrl === null)).toBe(true);
-    expect(c.mirrorNote).toBe(false);
+  it('viewer rules: quality verifies; read-only viewers get nothing', async () => {
     const ro = await ncrTab('HLT-026', 'en', S0, { ...PM, canEdit: false });
     expect(ro.rows.every((r) => r.action === null && r.vigieUrl)).toBe(true);
     const data = await screen('HLT-026');
@@ -184,10 +183,10 @@ describe('Deliverables register — EN and FR', () => {
     }
   });
 
-  it.each(LANGS)('%s: the client contact accepts or rejects the submitted deliverables; status chips and filters', async (lang) => {
-    const c = await dlvTab('HLT-026', lang, { ...S0, tab: 'dlv' }, CLIENT);
+  it.each(LANGS)('%s: the project manager records the client’s decision on the submitted deliverables (D9-06); status chips and filters', async (lang) => {
+    const c = await dlvTab('HLT-026', lang, { ...S0, tab: 'dlv' }, { ...PM, canEdit: true });
+    expect((await dlvTab('HLT-026', lang, { ...S0, tab: 'dlv' }, MEMBER)).rows.some((r) => r.action?.kind === 'decide')).toBe(false);
     expect(c.rows.map((r) => r.action?.kind === 'decide')).toEqual(G[lang].projects['HLT-026'].dlv.clientRows.map((r: any) => r.canAccept));
-    expect(c.rows.some((r) => r.action?.kind === 'move')).toBe(false);
     for (const [label, g] of Object.entries(G[lang].dlvFilters) as [string, any][]) {
       const status = (['planned', 'in_progress', 'internal_review', 'submitted', 'accepted', 'rejected'] as const)[
         ['Planned', 'In progress', 'Internal review', 'Submitted', 'Accepted', 'Rejected', 'Planifié', 'En cours', 'Revue interne', 'Soumis', 'Accepté', 'Refusé'].indexOf(label) % 6];
@@ -205,10 +204,10 @@ describe('Deliverables register — EN and FR', () => {
     expect([noRejected.rows.length, noRejected.empty]).toEqual([0, lang === 'en' ? 'No deliverable in this status' : 'Aucun livrable dans ce statut']);
   });
 
-  it.each(LANGS)('%s: deliverable drawers (steps, RACI-B, record, hint, actions) for the project team and the client', async (lang) => {
+  it.each(LANGS)('%s: deliverable drawers (steps, RACI-B, record, hint, actions) for the project manager', async (lang) => {
     const data = await screen('HLT-026');
     for (const d of data.deliverables) {
-      for (const [role, viewer] of [['pm', PM], ['client', CLIENT]] as const) {
+      for (const [role, viewer] of [['pm', PM]] as const) {
         const g = G[lang].dlvDrawers[d.number][role];
         const v = dlvDrawerView({ today: DEMO_TODAY_ISO, code: 'HLT-026', deliverable: d, state: { ...S0, tab: 'dlv', dlv: d.number }, viewer, documents: data.documents }, makeT(lang), lang);
         expect({
@@ -219,7 +218,8 @@ describe('Deliverables register — EN and FR', () => {
           steps: g.steps.map((s: any) => ({ label: s.label, reached: s.dot === 'var(--color-accent)' })),
           raci: g.raci.map((r: any) => ({ k: r.k, l: r.l, who: r.who })),
           meta: g.meta.map((m: any) => ({ k: m.k, v: d.number === 'D-021' && m.v === (lang === 'en' ? '14 Jan' : '14 janv.') ? (lang === 'en' ? '14 Jan ’27' : '14 janv. ’27') : fix(lang, m.v) })),
-          hint: g.hint, canSubmit: g.canSubmit, canAccept: g.canAccept,
+          // D9-06: the PM records the client's decision on a submitted deliverable — no hint, the decision is theirs.
+          hint: d.status === 'submitted' ? '' : g.hint, canSubmit: g.canSubmit, canAccept: d.status === 'submitted' ? true : g.canAccept,
         });
         expect(v.planHref).toBe('/projects/HLT-026/plan');
       }

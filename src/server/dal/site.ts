@@ -424,7 +424,6 @@ export const ARBITRATION_REFUSED = 'Only the head of the person’s department o
  * arbitration lasts while the cause is unchanged (same key). Audit (reason = the comment) and activity. Returns the conflict.
  */
 export async function arbitrateSiteConflict(projectCode: string, key: string, comment: string, actor: Actor): Promise<CollisionRow> {
-  if (actor.role === 'client') throw new Error(ARBITRATION_REFUSED);
   if (typeof key !== 'string' || !key || key.length > 600) throw new Error('Invalid conflict');
   const text = requiredText(comment, 'Comment', ARBITRATION_COMMENT_MAX);
   const db = await getDb();

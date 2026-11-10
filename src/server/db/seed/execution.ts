@@ -13,12 +13,29 @@ import {
   punchOwnerParty, punchSource, punchStatus, type PunchCategory, type PunchSource,
 } from '../codes';
 import {
-  closureItems, commissioningSteps, commissioningSystems, handoverItems, itpInspections, itpPlanSystems, itpPlans, lessonsLearned, projectEquipments, punchItems,
+  ceFiles, closureItems, commissioningSteps, commissioningSystems, handoverItems, itpInspections, itpPlanSystems, itpPlans, lessonsLearned, projectEquipments, punchItems,
   satisfactionScores,
 } from '../schema';
 import type { Tx } from '../types';
 import { must, newId, personIdOrNull, type SeedCtx } from './context';
 import { forwardIso, optionalIso } from './dates';
+
+/** R-160: the demonstration CE file (Harbor Line, main line). */
+export const DEMO_CE_FILE = {
+  project: 'HLT-026',
+  file: {
+    regime: 'machinery' as const, category: 'not_listed' as const, route: 'module_a' as const, riskAssessmentRef: null, instructionsRef: null,
+    standards: ['EN ISO 12100:2010', 'EN 60204-32:2008', 'EN 15011:2020'],
+    declarationSignatory: null, declarationOn: null, declarationRef: 'COC-HLT-012', ceMarkingOn: null,
+    ehsr: { '1.1': 'met', '1.2': 'met', '1.3': 'applies', '1.4': 'met', '1.5': 'applies', '1.6': 'met', '1.7': 'applies', '2': 'na', '5': 'na', '6': 'na' },
+    techFile: {
+      drawings: { status: 'done', deliverable: 'D-011', codexRef: null },
+      explanations: { status: 'done', deliverable: 'D-012', codexRef: null },
+      tests: { status: 'todo', deliverable: 'D-014', codexRef: null },
+      incorporated: { status: 'na', deliverable: null, codexRef: null },
+    },
+  },
+};
 
 type ItpRow = [string, string, string, string, string, string, string, string, string];
 type PunchRow = [string, string, string, string, string, string, string, string];
@@ -166,6 +183,12 @@ export async function seedExecution(tx: Tx, ctx: SeedCtx): Promise<void> {
       projectId, item, documentTypeCode: type, documentRef: doc || null, documentId: docId(doc || null), status: handoverItemStatus.code(status), position,
     })));
   }
+
+  // R-160 (P2, D9-32): Harbor Line's main line (EQ-01) has a CE file in progress — the screens and the portfolio card have
+  // something to show; EQ-02 has none yet (not started). The declaration reuses the handover dossier's COC-HLT-012.
+  const ceProject = ctx.projectByCode.get(DEMO_CE_FILE.project);
+  const ceLine = ceProject ? await lineId(tx, ceProject) : null;
+  if (ceProject && ceLine) await tx.insert(ceFiles).values({ projectId: ceProject, equipmentId: ceLine, ...DEMO_CE_FILE.file }).onConflictDoNothing();
 
   // Lessons learned, closure checklist, customer satisfaction.
   for (const [code, list] of Object.entries(PROTO.LESSONS as Record<string, [string, string, string, string, string, string, string][]>)) {

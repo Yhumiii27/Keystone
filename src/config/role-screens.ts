@@ -18,11 +18,10 @@ const base: Record<Exclude<RoleKey, 'director'>, ScreenId[]> = {
   // Deliveries; Settings for the Incoterms (edited by the director). No Contract, Budget or Billing: the contract's Incoterm is
   // shown on the Shipments screen; nothing financial beyond the shipment's customs values.
   logistics: ['home', 'shipments', 'bom', 'site', 'schedule', 'deliveries', 'settings', 'leave'],
-  client: ['home', 'myapprovals', 'client', 'trends', 'changes', 'quality'],
 };
 // Machine catalogue (owner, 25 Oct 2026): the roles of the Machine types screen (director, PM, engineering lead, quality); the
 // director and the engineering lead edit it (`canEditCatalogue`), the PM and quality read. Finance and procurement open it
-// read-only outside their workspace; the client is refused (R-042).
+// read-only outside their workspace.
 const ENG: ScreenId[] = ['eng', 'eng-process', 'eng-meca', 'eng-elec', 'eng-auto'];
 for (const k of ['pm', 'englead', 'quality'] as const) base[k].push(...ENG);
 base.pm.push('site', 'shipments', 'meetings', 'contract', 'billing', 'stakeholders', 'itp', 'interfaces', 'contingency', 'commissioning', 'rex', 'hours', 'fleet', 'sav');
@@ -41,15 +40,20 @@ base.member.push('shipments');
 // activities (OWN) but had no Plan; they now have it, read-only except the % complete of their own activities.
 base.member.push('plan');
 base.procurement.push('plan');
+// R-159 (P1, D9-31): quality follows the orders' inspections and issues their release notes on the Purchase orders screen (the
+// orders themselves read-only: `qualityReadOnly`, src/domain/rights.ts).
+base.quality.push('orders');
+// R-162 (P4, D9-34): Finance keeps the reference exchange rates and the hedging alert thresholds in Settings (the rest of Settings
+// stays the director's).
+base.finance.push('settings');
 // P-8b (R-089): an approved request for a contract role becomes a task for procurement to find and name the person — procurement
 // gets My work (and the task sheet) to work it. A consequence of the answer, listed for the owner to confirm.
 base.procurement.push('mywork');
-base.client.push('meetings', 'itp', 'commissioning');
 for (const k of Object.keys(base) as (keyof typeof base)[]) {
   base[k].push('docs');
-  if (k !== 'client') base[k].push('myprojects');
-  // R-203 (K-203): My dashboards for every internal role (a client is refused: its widgets read internal indicators).
-  if (k !== 'client') base[k].push('dashboards');
+  base[k].push('myprojects');
+  // R-203 (K-203): My dashboards for every role (every role is internal since D9-06).
+  base[k].push('dashboards');
   if (k === 'quality' || k === 'pm') base[k].push('doctypes');
 }
 

@@ -73,7 +73,7 @@ describe('R-108 link a tag to any catalogue article', () => {
   it('every persona: the P&ID editors link and add to the BOM; the others are refused, nothing written', async () => {
     const ref = await outsideBom('PT-201');
     const outcome: Record<string, string> = {};
-    for (const role of ['pm', 'depthead', 'member', 'procurement', 'client', 'quality']) {
+    for (const role of ['pm', 'depthead', 'member', 'procurement', 'quality']) {
       session.role = role;
       try {
         const r = await mapPidTagAction(HLT, 'PT-201', ref, { addToBom: true, quantity: '2' });
@@ -83,7 +83,7 @@ describe('R-108 link a tag to any catalogue article', () => {
       }
     }
     const read = 'This P&ID is read-only for you';
-    expect(outcome).toEqual({ pm: read, depthead: read, member: read, procurement: read, client: 'REDIRECT /', quality: `Tag linked · PT-201 → ${ref} · added to the BOM × 2` });
+    expect(outcome).toEqual({ pm: read, depthead: read, member: read, procurement: read, quality: `Tag linked · PT-201 → ${ref} · added to the BOM × 2` });
     const t = await tagRow('PT-201');
     expect(t.partRef).toBe(ref);
     expect(t.status).not.toBe('not_in_bom');

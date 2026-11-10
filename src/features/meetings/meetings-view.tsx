@@ -16,7 +16,7 @@ import { Table, Th } from '@/components/ds/Table';
 import { cx } from '@/components/ds/cx';
 import type { MeetingsView as ViewKey } from '@/domain/meetings';
 import type { T } from '@/i18n/translate';
-import { ActionRows, CarriedRows, MinutesEditor, OpenMinutesLink, PrevActionRows } from './minutes-client';
+import { ActionRows, CarriedRows, ClientPresentBox, MinutesEditor, OpenMinutesLink, PrevActionRows } from './minutes-client';
 import { type DetailView, type MeetingsScreenView } from './model';
 import { TranscriptBox, TranscriptImportPanel, type TranscriptAi } from './transcript-client';
 import s from './meetings.module.css';
@@ -74,6 +74,7 @@ export function MeetingsBody({ code, view, canEdit, canWrite = canEdit, pinned, 
                 <Link key={m.number} href={m.href} scroll={false} className={cx(s.card, m.selected && s.cardOn)} aria-current={m.selected ? 'true' : undefined}>
                   <span className={s.cardLine}>
                     <span className={s.cardTitle}>{m.title}</span>
+                    {m.clientPresent && <span className={cx('tag tag-outline', s.flexNone, s.tag10)}>{m.clientPresentLabel}</span>}
                     <span className={cx(m.typeClass, s.flexNone, s.tag10)}>
                       {m.typeLabel}
                     </span>
@@ -224,6 +225,8 @@ function MeetingDetail({ code, d, canEdit, canWrite, pinned, organizer, t, ai, r
         <span className={d.typeClass}>{d.typeLabel}</span>
         <span className={d.statusClass}>{d.statusLabel}</span>
       </div>
+      {/* D9-25: "Client present" — the decisions of a meeting the client attended are the project's client decisions. */}
+      <ClientPresentBox code={code} meeting={d.number} checked={d.clientPresent} label={d.clientPresentLabel} canEdit={canEdit} />
 
       <div className={s.block}>
         <span className={s.kicker}>{d.attendanceTitle}</span>

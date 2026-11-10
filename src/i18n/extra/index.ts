@@ -82,16 +82,19 @@ import d9Gantt from './d9-gantt.json';
 import d9RiskAnalysis from './d9-risk-analysis.json';
 import d9Shipments from './d9-shipments.json';
 import d9ShipmentsB from './d9-shipments-b.json';
+import d9ExpeditingFx from './d9-expediting-fx.json';
 import d9CapexNeeds from './d9-capex-needs.json';
 import d9InternalClient from './d9-internal-client.json';
 import d9MatrixSubsidiaries from './d9-matrix-subsidiaries.json';
 import d9CatalogueScreen from './d9-catalogue-screen.json';
 import d9Reminders from './d9-reminders.json';
 import d9UxA11y from './d9-ux-a11y.json';
+import d9Planning from './d9-planning.json';
 import d9Delegations from './d9-delegations.json';
 import d9Dashboards from './d9-dashboards.json';
 import d9Multilevel from './d9-multilevel.json';
 import d9VigieViews from './d9-vigie-views.json';
+import d9Noclient from './d9-noclient.json';
 import d9NotificationMail from './d9-notification-mail.json';
 import d9Concurrency from './d9-concurrency.json';
 import d9ScheduleQuality from './d9-schedule-quality.json';
@@ -99,6 +102,7 @@ import d9SQuality from './d9-s-quality.json';
 import d9SFollowup2 from './d9-s-followup2.json';
 import d9SAlerts from './d9-s-alerts.json';
 import d9RdRecurring from './d9-rd-recurring.json';
+import d9CeConformity from './d9-ce-conformity.json';
 
 export const EXTRA_FR: Record<string, string> = {
   ...common,
@@ -185,6 +189,7 @@ export const EXTRA_FR: Record<string, string> = {
   ...d9RiskAnalysis,
   ...d9Shipments,
   ...d9ShipmentsB,
+  ...d9ExpeditingFx,
   ...d9Reminders,
   ...d9UxA11y,
   ...d9Delegations,
@@ -195,7 +200,10 @@ export const EXTRA_FR: Record<string, string> = {
   ...d9SFollowup2,
   ...d9SAlerts,
   ...d9RdRecurring,
+  ...d9CeConformity,
   ...d9Dashboards,
   ...d9Multilevel,
   ...d9VigieViews,
+  ...d9Planning,
+  ...d9Noclient,
 };

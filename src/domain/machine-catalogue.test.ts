@@ -113,6 +113,6 @@ describe('catalogue choice of an equipment line', () => {
 
 describe('rights (choice 5)', () => {
   it('the director and the engineering lead edit the catalogue', () => {
-    expect(['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'finance', 'client'].filter(canEditCatalogue)).toEqual(['director', 'englead']);
+    expect(['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'finance'].filter(canEditCatalogue)).toEqual(['director', 'englead']);
   });
 });

@@ -2,7 +2,6 @@ import 'server-only';
 // People & organisation DAL (docs/spec/11 §3.1): persons, owners (OWN), departments, zones, countries, clients,
 // users (personas).
 import { asc, eq, isNotNull, or } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
 import { cache } from 'react';
 import { getDb } from '@/server/db/client';
 import type { ZoneCode } from '@/server/db/codes';
@@ -154,12 +153,11 @@ export interface UserRow {
 /** User accounts (R-039: one per person — the demo "View as" personas and the users who signed in with Entra ID). */
 export async function listUsers(): Promise<UserRow[]> {
   const db = await getDb();
-  const userClient = alias(clients, 'user_client');
   const rows = await db
-    .select({ personaRole: users.personaRole, roles: users.roles, fullName: persons.fullName, shortName: persons.shortName, title: users.title, client: userClient.name })
+    .select({ personaRole: users.personaRole, roles: users.roles, fullName: persons.fullName, shortName: persons.shortName, title: users.title, client: clients.name })
     .from(users)
     .innerJoin(persons, eq(persons.id, users.personId))
-    .leftJoin(userClient, eq(userClient.id, users.clientId))
+    .leftJoin(clients, eq(clients.id, persons.clientId))
     .orderBy(asc(users.sortOrder));
   return rows.map((r) => ({
     role: r.personaRole ?? r.roles[0] ?? '', roles: r.roles, name: r.fullName ?? r.shortName, shortName: r.shortName, title: r.title, client: r.client,

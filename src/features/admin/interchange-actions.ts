@@ -18,12 +18,12 @@ import { formatsOf, listExportProviders } from '@/server/export/registry';
 import '@/server/export/providers';
 import { applyImport, cancelImport, importTargets, previewTable, tableMapping, type ImportStep, type ImportViewer } from '@/server/interchange/jobs';
 import { importKindsOf } from '@/server/interchange/rights';
-import { getScreenAccess, projectAccessResolver } from '@/server/project-context';
+import { getScreenAccess } from '@/server/project-context';
 import { getViewer } from '@/server/session';
 
 async function importViewer(): Promise<ImportViewer> {
   const v = await getViewer();
-  return { name: v.name, short: v.short, role: v.role, personId: v.personId, organisation: v.organisation };
+  return { name: v.name, short: v.short, role: v.role, personId: v.personId };
 }
 
 const isId = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f-]{36}$/i.test(v);
@@ -63,7 +63,7 @@ export async function previewTableAction(jobId: unknown, mapping: unknown, sheet
   return previewTable(jobId, clean, typeof sheet === 'string' ? sheet.slice(0, 120) : null, await importViewer());
 }
 
-const DONE_SCREEN: Record<ImportKind, ScreenId> = { mspdi: 'plan', xer: 'plan', budget_lines: 'budget', bom: 'bom', parts: 'plm', assignments: 'plan' };
+const DONE_SCREEN: Record<ImportKind, ScreenId> = { mspdi: 'plan', xer: 'plan', gan: 'plan', budget_lines: 'budget', bom: 'bom', parts: 'plm', assignments: 'plan' };
 
 /** Explicit confirmation: writes the import (refused when the data changed since the preview — the new preview is returned). */
 export async function applyImportAction(jobId: unknown): Promise<ImportStep & { href?: string }> {
@@ -92,7 +92,7 @@ export interface ExportTarget {
 
 export interface ExportSetup {
   targets: ExportTarget[];
-  /** Projects with planning data the viewer may export (client: their organisation only). */
+  /** Projects with planning data the viewer may export. */
   projects: { code: string; label: string }[];
 }
 
@@ -100,8 +100,8 @@ export interface ExportSetup {
 export async function exportSetupAction(format: unknown): Promise<ExportSetup> {
   const viewer = await getViewer();
   const fmt = format === 'pdf' ? 'pdf' : format === 'xml' ? 'xml' : 'xlsx';
-  const [all, access] = await Promise.all([listProjects(), projectAccessResolver(viewer)]);
-  const projects = all.filter((p) => p.hasData && !access(p).refused).map((p) => ({ code: p.code, label: `${p.displayId} · ${p.name}` }));
+  const all = await listProjects();
+  const projects = all.filter((p) => p.hasData).map((p) => ({ code: p.code, label: `${p.displayId} · ${p.name}` }));
   if (fmt === 'xml') return { targets: [], projects };
   const targets = listExportProviders()
     .filter((p) => formatsOf(p).includes(fmt) && canSee(viewer.role, p.screen))

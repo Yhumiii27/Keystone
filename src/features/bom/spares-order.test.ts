@@ -108,9 +108,6 @@ describe('spares purchase order (E-3)', () => {
   });
 
   it('rights: BOM editors only (outside roles and other PMs’ projects are refused)', async () => {
-    // R-042 (P-1): the BOM is outside the client's workspace — refused (sent home).
-    session.role = 'client';
-    await expect(loadSparesOrderAction('HLT-026', null, null)).rejects.toThrow('REDIRECT /');
     session.role = 'pm';
     expect((await loadSparesOrderAction('HLT-026', null, null)).ok).toBe(true);
     // R-046 (NEW-D2-1): the engineering referent drafts spares orders without seeing the prices — none is sent to the browser.

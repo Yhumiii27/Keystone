@@ -6,7 +6,7 @@
 //  R-080 the cost note against the Settings threshold (C-1);
 //  R-077 invoicing blocked while a schedule group exceeds 100 % (C-7), planned milestones edited / removed (C-7a);
 //  R-054 « Planning BL1 posé » ticked by the real BL1 (L-2 "a").
-import { and, eq, inArray, isNotNull, isNull, ne, notInArray } from 'drizzle-orm';
+import { and, eq, inArray, isNull, notInArray } from 'drizzle-orm';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { CATEGORY_FROZEN_MESSAGE, BL1_DELIVERABLE_MESSAGE } from '@/domain/baseline-policy';
 import { INVOICE_BLOCKED_MESSAGE } from '@/domain/contract';
@@ -22,7 +22,7 @@ import { addProjectCostCategory, updateProjectCostCategory } from './budget-cate
 import { notifyChangeRequest } from './change-notices';
 import { postApprovedChange } from './change-posting';
 import { ChangeStepError, createChangeRequest, decideChangeStep, getChangeControl, listChangeRequestsAwaiting, submitChangeRequest } from './changes';
-import { getClientPortal } from './client';
+import { getClientReportData } from './client-report';
 import { MilestoneEditError, addPaymentMilestone, getContract, issueInvoice, removePaymentMilestone, updatePaymentMilestone } from './contract';
 import { costNote, getCostControl } from './cost';
 import { markBl1Deliverable, projectHasBl1 } from './lifecycle';
@@ -32,7 +32,8 @@ import { getSettings, resetSettings, setCcbThreshold } from './settings';
 
 const PM = 'Romain Aubert';
 const DIRECTOR = 'Marie Lefebvre';
-const CLIENT = 'Nadia Bensaïd';
+// D9-06: the client never sees Keystone — the PM of record records the client's decision.
+const CLIENT = PM;
 const DIRECTOR_ACTOR = { name: DIRECTOR, role: 'director' };
 
 const crOf = async (code: string, id: string) => (await getChangeControl(code))!.changeRequests.find((c) => c.id === id)!;
@@ -77,12 +78,12 @@ describe('R-069 — sequential chain, steps from the contractual impact and the 
     expect((await caught(decideChangeStep('HLT-026', 'CR-008', 'pm', 'ok', PM)) as ChangeStepError).code).toBe('not_pending');
     expect((await listChangeRequestsAwaiting('HLT-026', 'director')).map((c) => c.id)).toEqual(['CR-008']);
     expect((await listChangeRequestsAwaiting('HLT-026', 'client')).map((c) => c.id)).toEqual([]);
-    expect((await getClientPortal('HLT-026')).decisions.map((d) => d.id)).not.toContain('CR-008');
+    expect((await getClientReportData('HLT-026')).decisions.map((d) => d.id)).not.toContain('CR-008');
 
     expect(await decideChangeStep('HLT-026', 'CR-008', 'director', 'ok', DIRECTOR)).toBe('in_review');
     expect((await listChangeRequestsAwaiting('HLT-026', 'director')).map((c) => c.id)).toEqual([]);
     expect((await listChangeRequestsAwaiting('HLT-026', 'client')).map((c) => c.id)).toEqual(['CR-008']);
-    const portal = await getClientPortal('HLT-026');
+    const portal = await getClientReportData('HLT-026');
     expect(portal.decisions.map((d) => d.id)).toContain('CR-008');
     // The internal cost category never reaches the portal.
     expect(portal.decisions.every((d) => d.changeRequest == null || d.changeRequest.costCategoryCode === null)).toBe(true);
@@ -156,7 +157,7 @@ describe('R-015 (part) — bell notices of the change-request chain', () => {
     setDb(await openDatabase());
   }, 60_000);
 
-  const titles = async (role: 'pm' | 'director' | 'client' | 'quality', n: string) =>
+  const titles = async (role: 'pm' | 'director' | 'quality', n: string) =>
     (await notificationsFor(role)).filter((x) => x.title.endsWith(` · ${n}`)).map((x) => x.title);
 
   it('submitted → the current step’s approvers; each decision → the next ones; final → the requester; never the actor', async () => {
@@ -166,11 +167,12 @@ describe('R-015 (part) — bell notices of the change-request chain', () => {
     await decideChangeStep('HLT-026', n, 'pm', 'ok', PM);
     expect((await notifyChangeRequest('HLT-026', n, PM)).length).toBeGreaterThan(0);
     expect(await titles('director', n)).toEqual([`Change request awaiting your decision · ${n}`]);
-    expect(await titles('client', n)).toEqual([]);
+    expect(await titles('pm', n)).toEqual([]);
     await decideChangeStep('HLT-026', n, 'director', 'ok', DIRECTOR);
     await notifyChangeRequest('HLT-026', n, DIRECTOR);
-    expect(await titles('client', n)).toEqual([`Change request awaiting your decision · ${n}`]);
-    const bell = (await notificationsFor('client')).find((x) => x.title.endsWith(n))!;
+    // D9-06: the client's step goes to the PM of record, who records the client's signed decision.
+    expect(await titles('pm', n)).toEqual([`Change request awaiting your decision · ${n}`]);
+    const bell = (await notificationsFor('pm')).find((x) => x.title.endsWith(n))!;
     expect([bell.sub, bell.href]).toEqual(['Extra bollards', `/projects/HLT-026/changes?cr=${n}`]);
     await decideChangeStep('HLT-026', n, 'client', 'ok', CLIENT);
     await notifyChangeRequest('HLT-026', n, CLIENT);
@@ -178,28 +180,16 @@ describe('R-015 (part) — bell notices of the change-request chain', () => {
     expect(await titles('director', n)).toEqual([`Change request awaiting your decision · ${n}`, `Change request awaiting your decision · ${n}`]);
     await decideChangeStep('HLT-026', n, 'ccb', 'ok', DIRECTOR);
     await notifyChangeRequest('HLT-026', n, DIRECTOR);
-    expect(await titles('pm', n)).toEqual([`Change request approved · ${n}`]);
+    expect(await titles('pm', n)).toEqual([`Change request approved · ${n}`, `Change request awaiting your decision · ${n}`]); // newest first
     expect(await titles('quality', n)).toEqual([]);
   });
 
-  it('a rejection tells the requester; a client contact of another organisation never gets the notice', async () => {
+  it('a rejection tells the requester', async () => {
     const n = await newCr({ amountKeur: 5, contractImpact: 'price' });
     await decideChangeStep('HLT-026', n, 'pm', 'ok', PM);
     await decideChangeStep('HLT-026', n, 'director', 'rejected', DIRECTOR);
     expect(await notifyChangeRequest('HLT-026', n, DIRECTOR)).toHaveLength(1);
     expect(await titles('pm', n)).toEqual([`Change request rejected · ${n}`]);
-    expect(await titles('client', n)).toEqual([]);
-    // A project of another client organisation: its CR at the client's turn reaches nobody of the Port authority.
-    const db = await getDb();
-    const [hlt] = await db.select({ clientId: projects.clientId }).from(projects).where(eq(projects.code, 'HLT-026'));
-    const [other] = await db.select({ code: projects.code }).from(projects)
-      .where(and(isNotNull(projects.clientId), ne(projects.clientId, hlt.clientId!), inArray(projects.code, ['NDC-031', 'RCF-019', 'WSA-044', 'MSR-012', 'EWA-051'])));
-    expect(other).toBeTruthy();
-    const m = await createChangeRequest(other.code, { title: 'Other client', types: ['budget'], amountKeur: 5, scheduleDays: 0, contractImpact: 'price' }, PM);
-    await decideChangeStep(other.code, m, 'pm', 'ok', PM);
-    await decideChangeStep(other.code, m, 'director', 'ok', DIRECTOR);
-    await notifyChangeRequest(other.code, m, DIRECTOR);
-    expect(await titles('client', m)).toEqual([]);
   });
 
   it('an unknown request or project notifies nobody and never throws', async () => {
@@ -314,7 +304,7 @@ describe('R-077 — invoicing blocked above 100 %, planned milestones edited and
     expect(((await caught(updatePaymentMilestone('HLT-026', invoiced.number, patch, PM_ACTOR))) as MilestoneEditError).code).toBe('not_planned');
     expect(((await caught(removePaymentMilestone('HLT-026', invoiced.number, PM_ACTOR))) as MilestoneEditError).code).toBe('not_planned');
     expect(((await caught(removePaymentMilestone('HLT-026', 'M99', PM_ACTOR))) as MilestoneEditError).code).toBe('unknown');
-    for (const actor of [{ name: 'Julien Wagner', role: 'member' }, { name: CLIENT, role: 'client' }, { name: 'Gabriel Comte', role: 'quality' }]) {
+    for (const actor of [{ name: 'Julien Wagner', role: 'member' }, { name: 'Gabriel Comte', role: 'quality' }]) {
       expect([actor.role, ((await caught(removePaymentMilestone('HLT-026', b, actor))) as MilestoneEditError).code]).toEqual([actor.role, 'not_allowed']);
     }
     expect(((await caught(updatePaymentMilestone('HLT-026', b, { ...patch, sharePct: 101 }, PM_ACTOR))) as Error).message).toBe('Invalid share');

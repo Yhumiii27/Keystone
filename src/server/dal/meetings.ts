@@ -126,6 +126,8 @@ export interface MeetingRow {
   seriesLabel: string;
   type: MeetingType;
   typeLabel: string;
+  /** D9-25: the client attended (its decisions are client decisions). */
+  clientPresent: boolean;
   startsOn: string;
   /** "29 Sep 2026". */
   dateText: string;
@@ -205,7 +207,7 @@ export async function listMeetings(projectCode: string): Promise<MeetingRow[]> {
     const tr = trs.find((t) => t.meetingId === m.id);
     return {
       number: m.number, projectCode: code, title: m.title, series: m.series, seriesLabel: meetingSeries.label(m.series), type: m.type, typeLabel: meetingType.label(m.type),
-      startsOn: m.startsOn, dateText: displayOfIso(m.startsOn), monthIndex: monthIndexOfIso(m.startsOn), time: m.startTime, durationMin: m.durationMin,
+      clientPresent: m.clientPresent, startsOn: m.startsOn, dateText: displayOfIso(m.startsOn), monthIndex: monthIndexOfIso(m.startsOn), time: m.startTime, durationMin: m.durationMin,
       durationText: durationText(m.durationMin), location: m.location, organizer: m.organizerName, organizerPersonId: m.organizerPersonId,
       syncedFromOutlook: !!m.externalCalendarId, status: m.status, statusLabel: meetingStatus.label(m.status),
       minutesNumber: m.minutesNumber, minutesIndexed: !!docNumber, minutesSentOn: m.minutesSentOn, sentText: m.minutesSentOn ? shortDateOfIso(m.minutesSentOn) : '',
@@ -314,6 +316,8 @@ export interface NewMeeting {
   invitees: string[];
   /** One point per line. */
   agenda: string[];
+  /** D9-25: the client attends (default false). */
+  clientPresent?: boolean;
 }
 
 /**
@@ -339,7 +343,7 @@ export async function createMeeting(projectCode: string, input: NewMeeting, acto
     const [m] = await tx
       .insert(meetings)
       .values({
-        projectId: p.id, number, title, series: input.series, type: input.type, startsOn: input.date, startTime: hhmm, startsAt: parisInstant(input.date, hhmm),
+        projectId: p.id, number, title, series: input.series, type: input.type, clientPresent: !!input.clientPresent, startsOn: input.date, startTime: hhmm, startsAt: parisInstant(input.date, hhmm),
         durationMin: 60, location: input.location?.trim() || 'Teams', organizerPersonId: actor?.id ?? null, organizerName: actor?.shortName ?? actorName,
         status: 'scheduled', sortOrder: createdSortOrder(number),
       })
@@ -348,7 +352,7 @@ export async function createMeeting(projectCode: string, input: NewMeeting, acto
     await tx.insert(meetingParticipants).values(invitees.map((name, position) => ({ meetingId: m.id, position, personId: people[position]?.id ?? null, name })));
     const points = input.agenda.map((x) => x.trim()).filter(Boolean);
     if (points.length) await tx.insert(meetingAgendaPoints).values(points.map((t, position) => ({ meetingId: m.id, position, title: t })));
-    await audit(tx, actorName, number, `created · ${title} · ${displayOfIso(input.date)} ${hhmm}`, p.id, m.id);
+    await audit(tx, actorName, number, `created · ${title} · ${displayOfIso(input.date)} ${hhmm}${input.clientPresent ? ' · client present' : ''}`, p.id, m.id);
     return number;
   });
 }
@@ -391,6 +395,23 @@ export async function toggleMeetingAction(meetingNumber: string, point: number, 
     await tx.update(meetingLines).set({ done, doneAt: done ? new Date() : null }).where(eq(meetingLines.id, row.l.id));
     await audit(tx, actorName, meetingNumber, `action ${done ? 'closed' : 'reopened'} · ${row.l.text}`, m.projectId, m.id);
     return done;
+  });
+}
+
+/**
+ * D9-25 (owner, 10 Nov 2026): ticks or clears "Client present" on a meeting — its decisions are then the project's client
+ * decisions. Idempotent (nothing written when the box already has the value asked for). Returns the stored value.
+ */
+export async function setMeetingClientPresent(meetingNumber: string, clientPresent: boolean, actorName: string): Promise<boolean> {
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const m = await loadMeeting(tx, meetingNumber);
+    if (m.clientPresent === clientPresent) return clientPresent;
+    await tx.update(meetings).set({ clientPresent, updatedAt: new Date() }).where(eq(meetings.id, m.id));
+    await audit(tx, actorName, meetingNumber, `client present: ${m.clientPresent ? 'yes' : 'no'} → ${clientPresent ? 'yes' : 'no'}`, m.projectId, m.id, {
+      before: { clientPresent: m.clientPresent }, after: { clientPresent },
+    });
+    return clientPresent;
   });
 }
 
@@ -445,7 +466,7 @@ export async function sendMinutes(meetingNumber: string, actorName: string, onDa
     for (const x of parts)
       if (!isOrganizer(x)) await tx.update(meetingParticipants).set({ minutesRecipient: true, minutesReadOn: null }).where(eq(meetingParticipants.id, x.id));
     const actions = await tx
-      .select({ l: meetingLines, clientId: persons.clientId, external: users.isExternal, userClientId: users.clientId })
+      .select({ l: meetingLines, clientId: persons.clientId, external: users.isExternal })
       .from(meetingLines)
       .innerJoin(meetingAgendaPoints, eq(meetingAgendaPoints.id, meetingLines.agendaPointId))
       .leftJoin(persons, eq(persons.id, meetingLines.ownerPersonId))
@@ -462,10 +483,10 @@ export async function sendMinutes(meetingNumber: string, actorName: string, onDa
     const day = workdayOffsetOf(businessDay);
     const today = isoOfDayOffset(day);
     const defaultDue = isoOfDayOffset(day + 3);
-    for (const { l, clientId, external, userClientId } of actions) {
+    for (const { l, clientId, external } of actions) {
       if (l.taskId) continue;
       // Internal: a known person outside any client organisation who is not an external user (S-12 a).
-      const owner = l.ownerPersonId ? { personId: l.ownerPersonId, internal: !clientId && !external && !userClientId } : null;
+      const owner = l.ownerPersonId ? { personId: l.ownerPersonId, internal: !clientId && !external } : null;
       const target = followUpTarget({ ownerName: l.ownerName ?? '', owner, stakeholders: register, pmPersonId: p.pmPersonId });
       if (!target) continue;
       const { start, due } = minutesTaskDates(l.dueDate, today, defaultDue);

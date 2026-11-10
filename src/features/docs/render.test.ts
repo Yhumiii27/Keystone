@@ -195,7 +195,11 @@ describe('document record drawer (showDoc, docVals) — EN and FR', () => {
       // Client row: the project's own client contact (NDC-031: Infrastructure BU, no Keystone contact).
       const dist = g.dist.map((x: any) => ({
         to: number.endsWith('NDC-031') ? x.to.replace(/Port authority · N\. Bensaïd|Autorité portuaire · N\. Bensaïd/, 'Infrastructure BU') : x.to,
-        sub: `· rev ${x.rev} · ${x.date}`, ack: x.ack, ackClass: x.cls,
+        sub: `· rev ${x.rev} · ${x.date}`,
+        // D9-06: no acknowledgement in Keystone any more (the client has no portal) — a pending one reads "Sent to the client".
+        ...(/^(Acknowledgment pending|Accusé de réception en attente)$/.test(x.ack)
+          ? { ack: lang === 'fr' ? 'Envoyé au client' : 'Sent to the client', ackClass: 'tag tag-neutral' }
+          : { ack: x.ack, ackClass: x.cls }),
       }));
       expect(d.distribution, number).toEqual(dist);
       // D-2 = a (R-127): no download log in Keystone (the prototype's g.dl): a link to the history in Codex instead.

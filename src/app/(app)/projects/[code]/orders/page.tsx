@@ -9,7 +9,9 @@
 // Projects without orders show the empty list (never Harbor Line's orders).
 import { PageHeader } from '@/components/app/shell/page-header';
 import { isPoStatus } from '@/domain/orders';
-import { canEditSupplierSchedule, canSeeSupplierPrices, canTieSupplierSchedule } from '@/domain/rights';
+import { canEditExpediting, canEditSupplierSchedule, canIssueRelease, canSeeSupplierPrices, canTieSupplierSchedule } from '@/domain/rights';
+import { ExpeditingSection } from '@/features/expediting/expediting-section';
+import { expeditingView } from '@/features/expediting/model';
 import { supplierSchedulesView } from '@/features/supplier-schedules/model';
 import { SupplierScheduleSection } from '@/features/supplier-schedules/supplier-schedule-section';
 import { ordersView } from '@/features/orders/model';
@@ -49,12 +51,30 @@ export default async function OrdersPage({ params, searchParams }: { params: Pro
     />
   ) : undefined;
 
+  // R-159 (P1): the order's expediting — fabrication progress, supplier inspections and FAT, release note (procurement and quality
+  // edit, quality issues the release note; the PMs read).
+  const expediting = po ? await expeditingView(projectCode, po, data.orders.find((o) => o.number === po)?.supplier ?? null, data.today) : null;
+  const outsideOrders = ctx.isOutside('orders');
+  const drawerExtra = expediting || supplierSchedule ? (
+    <>
+      {expediting && (
+        <ExpeditingSection
+          code={projectCode}
+          view={expediting}
+          canEdit={!outsideOrders && canEditExpediting(ctx.viewer.role)}
+          canRelease={!outsideOrders && canIssueRelease(ctx.viewer.role)}
+        />
+      )}
+      {supplierSchedule}
+    </>
+  ) : undefined;
+
   const primary = canEdit && view.shortfall ? <CreateDraftsButton code={projectCode} place="header" afterHref={view.afterDraftsHref} /> : undefined;
 
   return (
     <>
       <PageHeader screen="orders" projectCode={projectCode} primary={primary} />
-      <OrdersBody view={view} canEdit={canEdit} t={t} supplierSchedule={supplierSchedule} />
+      <OrdersBody view={view} canEdit={canEdit} t={t} supplierSchedule={drawerExtra} />
     </>
   );
 }

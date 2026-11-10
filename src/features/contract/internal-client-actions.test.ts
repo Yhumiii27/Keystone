@@ -18,14 +18,12 @@ vi.mock('@/server/project-context', () => ({
   getProjectContext: async () => ({ viewer: { name: viewer.name, role: viewer.role }, access: { lead: viewer.lead }, canEdit: () => viewer.edit }),
 }));
 
-import { projectAccess } from '@/domain/rights';
 import { I18nProvider } from '@/i18n/client';
 import { makeT, type Lang } from '@/i18n/translate';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { withoutK14Demo } from '@/test/k14';
 import { clients, projects } from '@/server/db/schema';
-import { resolveCurrentProject } from '@/server/dal/current-project';
 import { getProjectClient, listSubsidiaries, markNeedSubsidiaryClient } from '@/server/dal/internal-client';
 import { listActivity, listAudit } from '@/server/dal/notifications';
 import { listProjects } from '@/server/dal/projects';
@@ -33,7 +31,6 @@ import { setInternalClientAction } from './actions';
 import { ProjectClientCard } from './contract-view';
 
 const REFUSED = { error: 'Only the director sets whether the client is a group subsidiary' };
-const PORT = { role: 'client' as const, short: 'Client', name: 'Client', personId: null, organisation: 'Port authority' };
 
 const shared = async () => {
   const db = await getDb();
@@ -90,15 +87,12 @@ describe('setInternalClientAction (R-190)', () => {
     expect((await db.execute(sql`select code3, filiale_code from pub_clients where name = 'Port authority'`)).rows).toEqual([{ code3: 'APM', filiale_code: 'APM' }]);
   });
 
-  it('the client portal is closed to an internal client (R-179, I-2b): no project, no current project', async () => {
+  it('an internal client goes back to external; the database refuses a code on an external client (R-179)', async () => {
     const hlt = (await listProjects()).find((p) => p.code === 'HLT-026')!;
     expect(hlt.clientInternal).toBe(true);
-    expect(projectAccess(PORT, { ...hlt, team: [] })).toMatchObject({ refused: true, member: false });
-    expect(await resolveCurrentProject('HLT-026', PORT)).toBeNull();
-    // Back to external: the portal finds its project again; the database refuses a code on an external client.
+    // D9-06: no client portal any more — the former checks of the portal's access are gone.
     expect(await setInternalClientAction('HLT-026', false, '')).toEqual({ ok: true });
     expect((await listProjects()).find((p) => p.code === 'HLT-026')!.clientInternal).toBeUndefined();
-    expect(await resolveCurrentProject('HLT-026', PORT)).toBe('HLT-026');
     expect((await listAudit())[0]).toMatchObject({ change: 'Client Port authority marked external' });
     const db = await getDb();
     // D21: the subsidiary's code is reserved to it — the former client's code3 is removed with the subsidiary code.

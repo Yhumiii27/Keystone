@@ -147,17 +147,12 @@ describe('R-118 · "Confirm" and "Client confirms" act on the line the page show
     const out: Record<string, string> = {};
     for (const role of ROLES) {
       as(role);
-      if (role === 'client') {
-        await expect(confirmEquipmentAction(HLT, old.position, old.stamp)).rejects.toThrow('REDIRECT /');
-        out[role] = 'sent home';
-        continue;
-      }
       out[role] = errorOf(await confirmEquipmentAction(HLT, old.position, old.stamp));
     }
     expect(out).toEqual({
       director: STALE, pm: STALE, member: STALE, depthead: 'The site is read-only for you', englead: 'The site is read-only for you',
       quality: 'The site is read-only for you', procurement: 'The site is read-only for you', finance: 'The site is read-only for you',
-      logistics: 'The site is read-only for you', client: 'sent home',
+      logistics: 'The site is read-only for you',
     });
     expect((await site()).equipment.find((e) => e.position === old.position)).toMatchObject({ name: 'New generator', status: 'pending' });
     // The writer re-checks the stamp in its transaction.

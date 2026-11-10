@@ -130,8 +130,6 @@ describe('project team Server Functions', () => {
     }
     as('member', 'fr');
     expect(await removeTeamMemberAction('HLT-026', jw)).toEqual({ error: 'Seuls le chef de projet et le directeur modifient l’équipe projet' });
-    as('client');
-    await expect(addTeamMemberAction('HLT-026', { person: jw, role: 'pm' })).rejects.toThrow('REDIRECT /');
     expect(await roleOn('HLT-026', 'Julien Wagner')).toBe('team');
   });
 

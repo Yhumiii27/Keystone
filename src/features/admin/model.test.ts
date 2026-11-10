@@ -337,10 +337,12 @@ describe('Activity, integrations & audit view model', () => {
     expect((await plumbing('en', { role: 'pm' })).kpis[2]).toEqual({ ...kpis(G.en.plumbing.kpisByRole.pm)[2] });
   });
 
-  it('D-7b: the import cards are hidden while imports are off; the export cards stay', async () => {
+  it('D9-08: only the MS Project XML and GanttProject import cards; none while imports are off; the export cards stay', async () => {
     const formats = await listImportFormats();
-    expect(visibleImportFormats(formats).map((f) => f.name)).toEqual(['Export — MS Project XML', 'Export — Excel', 'Export — PDF']);
-    expect(visibleImportFormats(formats, true)).toHaveLength(6);
+    const exports = ['Export — MS Project XML', 'Export — Excel', 'Export — PDF'];
+    expect(visibleImportFormats(formats).map((f) => f.name)).toEqual(['MS Project XML', 'GanttProject', ...exports]);
+    expect(visibleImportFormats(formats, false).map((f) => f.name)).toEqual(exports);
+    expect(visibleImportFormats(formats, true, ['mspdi', 'xer', 'gan', 'budget_lines', 'bom', 'parts', 'assignments'])).toHaveLength(7);
   });
 
   it.each(['en', 'fr'] as const)('%s: D-7a — a connector disabled by IT is listed as Disabled (calm tone), without "Sync now"', async (lang) => {

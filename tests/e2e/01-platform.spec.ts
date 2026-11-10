@@ -39,7 +39,7 @@ const GLOBAL = [
   '/resources/skills', '/resources/leave', '/resources/rates', '/admin/settings', '/admin/machine-types', '/admin/document-types', '/admin/integrations', '/catalogue/machines',
 ];
 const PROJECT = [
-  'client', 'documents', 'contract', 'billing', 'plan', 'schedule', 'budget', 'hours', 'contingency', 'resources', 'meetings', 'stakeholders', 'interfaces',
+  'documents', 'contract', 'billing', 'plan', 'schedule', 'budget', 'hours', 'contingency', 'resources', 'meetings', 'stakeholders', 'interfaces',
   'engineering', 'engineering/process', 'engineering/mechanical', 'engineering/electrical', 'engineering/automation', 'pid', 'bom', 'risks', 'changes',
   'quality', 'itp', 'site', 'shipments', 'commissioning', 'trends', 'closure', 'orders', 'deliveries',
 ];

@@ -74,10 +74,6 @@ describe('Settings › supplier slip escalation (S-34)', () => {
   it('the director only; whole days in range; audit with before / after and activity', async () => {
     for (const p of PERSONAS) {
       as(p.role);
-      if (p.role === 'client') {
-        await expect(setSupplierSlipEscalationAction('days', '15')).rejects.toThrow('REDIRECT /');
-        continue;
-      }
       const r = await setSupplierSlipEscalationAction('days', '15');
       if (p.role === 'director') expect(r).toEqual({ ok: true });
       else expect([p.role, 'error' in r]).toEqual([p.role, true]);

@@ -50,6 +50,21 @@ export function healthIndex(p: HealthInput): number | null {
 }
 
 /** Thresholds that can be used: anything invalid (not numbers in ]0, 2], off ≥ risk) falls back to the defaults. */
+/** Refusal of a health threshold out of ]0, 2] (EN source, the key named). */
+export const healthThresholdRange = (key: string) => `Invalid threshold ${key}`;
+/** Refusal of "Off track below" not under "At risk below". */
+export const HEALTH_THRESHOLD_ORDER_ERROR = '"Off track below" must be lower than "At risk below"';
+
+/**
+ * D9-04: the rule of the Settings health thresholds (Settings and keystone.pub_editer, migration 0078 — same cases in
+ * src/server/db/pub-editer-settings.test.ts): each a number in ]0, 2], "Off track below" strictly under "At risk below".
+ * The refusal, or null when `next` is valid.
+ */
+export function healthThresholdsRefusal(next: { risk: unknown; off: unknown }): string | null {
+  for (const [k, v] of Object.entries(next)) if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0 || v > 2) return healthThresholdRange(k);
+  return (next.off as number) >= (next.risk as number) ? HEALTH_THRESHOLD_ORDER_ERROR : null;
+}
+
 export function usableThresholds(t: Partial<HealthThresholds> | null | undefined): HealthThresholds {
   const ok = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 2;
   if (!t || !ok(t.risk) || !ok(t.off) || t.off >= t.risk) return { ...DEFAULT_HEALTH_THRESHOLDS };

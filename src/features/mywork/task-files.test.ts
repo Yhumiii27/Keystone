@@ -50,7 +50,6 @@ import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { listAudit } from '@/server/dal/notifications';
 import { listTaskFiles } from '@/server/dal/task-files';
-import { listTasks } from '@/server/dal/tasks';
 import { resetRateLimits } from '@/server/http/request-guard';
 import { setFilesRoot } from '@/server/storage/files';
 import { removeTaskFileAction } from './actions';
@@ -141,21 +140,11 @@ describe('task attachments (R-8)', () => {
     expect(r.status).toBe(404);
   });
 
-  it('downloads: everyone who opens the sheet, never a client (P-1, R-042: the task sheet is outside their workspace); seed files have no content', async () => {
+  it('downloads: everyone who opens the sheet (D9-06: no client viewer any more); seed files have no content', async () => {
     const stored = (await listTaskFiles('T-2314')).find((f) => f.hasFile)!;
     const seed = (await listTaskFiles('T-2314')).find((f) => !f.hasFile)!;
     state.role = 'quality';
     expect((await download('T-2314', stored.id)).status).toBe(200);
-    state.role = 'client';
-    expect((await download('T-2314', stored.id)).status).toBe(403); // Harbor Line is the client's project, the task sheet is not theirs
-    const other = (await listTasks()).find((t) => !['HLT-026', 'PRS-038', 'QFR-015'].includes(t.project.code))!;
-    expect(other).toBeDefined();
-    state.role = 'director';
-    const res = await upload(other.id, pdf('Other.pdf'));
-    const { id } = (await res.json()) as { id: string };
-    state.role = 'client';
-    const r = await download(other.id, id);
-    expect([r.status, await r.text()]).toEqual([403, 'You cannot open this file']);
     state.role = 'director';
     expect((await download('T-2314', seed.id)).status).toBe(404);
     expect((await download('T-2314', 'not-an-id')).status).toBe(404);

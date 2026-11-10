@@ -1,0 +1,423 @@
+{
+ "title": "Décisions en attente — livraison 9",
+ "updated": "2026-11-09",
+ "intro": "Questions laissées ouvertes par les derniers lots (alertes du portefeuille, édition depuis Matrix, aperçu client) et par les points du « reste à développer » qui attendent un choix de votre part, plus les propositions P1 à P8. Le choix « recommandé » est le fonctionnement actuel ou ma proposition ; dix recommandations (D9-09, D9-12, D9-14, D9-16, D9-21, D9-24, D9-25, D9-26, D9-29, D9-30) font évoluer Keystone, les autres ne changent rien. Ne sont pas posées ici les questions qui attendent des données et non un choix (données attendues : standards par type de machine R-053, matrice RACI R-058, extractions et procédures Finance et Sage R-078, R-082, R-092, R-093, R-094, R-182, échantillons R-107, listes R-178 et R-141).",
+ "sections": [
+  {
+   "id": "suites",
+   "title": "Suites des derniers lots",
+   "item": "S-33 · S-34 · M-19 · R-139",
+   "questions": [
+    {
+     "id": "D9-01",
+     "q": "Les tailles de référence du classement des alertes du portefeuille conviennent-elles ?",
+     "context": "Depuis S-33, une alerte compte à 100 % de son ampleur à partir de 60 jours ouvrés de marge négative, 20 % de dépassement du budget, 60 jours de facturation en retard, 3 jalons en retard, 5 personnes surchargées ou 30 jours d’approbation en attente. Ces tailles décident de l’ordre dans une même classe et donc des 8 alertes affichées. Les rendre réglables ajoute une carte dans Paramètres (directeur seul).",
+     "default": "Oui, telles quelles",
+     "alts": [
+      "Les rendre réglables dans Paramètres",
+      "Les changer (préciser lesquelles en note)"
+     ]
+    },
+    {
+     "id": "D9-02",
+     "q": "La facturation en retard doit-elle passer en classe 1, avec les alertes qui touchent la date de fin ou le contrat ?",
+     "context": "Aujourd’hui elle est en classe 2 (argent non encaissé), derrière tout projet hors trajectoire ou en glissement du chemin critique. En classe 1, une facture très en retard pourrait passer devant un glissement de planning.",
+     "default": "Non, classe 2 (actuel)",
+     "alts": [
+      "Oui, classe 1",
+      "Classe 1 seulement au-delà de 60 jours de retard"
+     ]
+    },
+    {
+     "id": "D9-03",
+     "q": "Relancer les directeurs quand un glissement fournisseur s’aggrave beaucoup dans le même épisode ?",
+     "context": "S-34 prévient les directeurs une seule fois par épisode (glissement d’au moins 10 jours ouvrés qui recule la fin du projet d’au moins 5 jours ouvrés). L’acheteur et le chef de projet continuent de recevoir chaque palier. Une relance ajouterait une notification aux directeurs à chaque aggravation importante.",
+     "default": "Non, une seule notification par épisode (actuel)",
+     "alts": [
+      "Oui, à chaque nouveau recul de 5 jours ouvrés de la fin du projet",
+      "Oui, quand le recul de la fin du projet double"
+     ]
+    },
+    {
+     "id": "D9-04",
+     "q": "Ouvrir plus tard d’autres données à la correction depuis Matrix (jours fériés, seuils de Paramètres) ?",
+     "context": "La fonction keystone.pub_editer ouvre une liste fermée : listes des Paramètres, emplacements, clients, fournisseurs, noms des personnes et des projets. Les jours fériés (ajout et correction) et les seuils (santé, DCMA, dérive…) restent dans Keystone, car leurs règles sont en TypeScript et devraient être recopiées en SQL.",
+     "default": "Non, liste actuelle",
+     "alts": [
+      "Ouvrir aussi les jours fériés",
+      "Ouvrir aussi les jours fériés et les seuils de Paramètres"
+     ]
+    },
+    {
+     "id": "D9-05",
+     "q": "Afficher dans le fil d’activité les corrections faites depuis Matrix ?",
+     "context": "Aujourd’hui elles ne figurent que dans le journal d’audit (domaine « Matrix », personne et motif). Le fil d’activité montrerait aussi aux équipes qu’un client, un fournisseur ou un nom de projet a été corrigé par la DSI.",
+     "default": "Non, le journal d’audit suffit (actuel)",
+     "alts": [
+      "Oui, une ligne dans le fil d’activité"
+     ]
+    },
+    {
+     "id": "D9-06",
+     "q": "Dans l’aperçu « Voir comme le client », le directeur garde-t-il « Signaler un point » ?",
+     "context": "P-11 demande un aperçu en lecture seule, mais ce bouton est aujourd’hui le seul moyen interne d’enregistrer un point soulevé par le client (I-2b : pas de compte client). Le retirer rend l’aperçu strictement en lecture seule ; il faudrait alors un autre endroit pour saisir les points du client.",
+     "default": "Garder « Signaler un point » pour le directeur (actuel)",
+     "alts": [
+      "Le retirer : aperçu strictement en lecture seule"
+     ]
+    },
+    {
+     "id": "D9-07",
+     "q": "Les autres rôles internes peuvent-ils encore ouvrir le portail client d’un projet par son adresse ?",
+     "context": "Seuls le directeur et les responsables du projet ont l’entrée « Voir comme le client ». Les autres rôles internes peuvent encore ouvrir le portail par lien, en lecture seule hors de leur espace (P-1).",
+     "default": "Oui, en lecture seule (actuel)",
+     "alts": [
+      "Non, les renvoyer vers la fiche du projet"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "planning",
+   "title": "Planning",
+   "item": "R-012 · R-060 · R-063 · R-065 · R-066 · R-091",
+   "questions": [
+    {
+     "id": "D9-08",
+     "q": "Réactiver la reprise des plannings existants (MS Project, Primavera P6) ?",
+     "context": "Les importeurs sont construits et testés mais coupés depuis votre réponse D-7b (« ne rien traiter pour le moment »), alors que S-9b prévoit un import unique au démarrage. Les réactiver demande encore le choix du projet dans un fichier P6 à plusieurs projets et une procédure de reprise par projet.",
+     "default": "Plus tard (D-7b)",
+     "alts": [
+      "Oui, les plannings MS Project et P6 seulement",
+      "Oui, plannings et tables Excel / CSV"
+     ]
+    },
+    {
+     "id": "D9-09",
+     "q": "Qu’est-ce qui fait avancer la date de situation d’un projet ?",
+     "context": "Aujourd’hui la date de situation est la date du jour : la colonne du projet existe mais rien ne l’écrit. Une date tenue par projet fige l’avancement et les coûts à une date choisie jusqu’au prochain point.",
+     "default": "Le chef de projet l’avance, Keystone la propose chaque vendredi",
+     "alts": [
+      "Une tâche automatique chaque vendredi",
+      "« Replanifier » l’avance à la date du jour",
+      "Garder la date du jour (actuel)"
+     ]
+    },
+    {
+     "id": "D9-10",
+     "q": "Que doit enregistrer le gel hebdomadaire du vendredi ?",
+     "context": "L’historique des Tendances et de la valeur acquise vient aujourd’hui seulement du jeu de démonstration, contraire à A-15 (données réelles seulement). Le gel enregistrerait chaque vendredi un instantané par projet.",
+     "default": "CPI, SPI, EAC, marge, risques et avancement",
+     "alts": [
+      "Les mêmes, plus le planning complet (dates de chaque activité)",
+      "Seulement CPI, SPI et EAC"
+     ]
+    },
+    {
+     "id": "D9-11",
+     "q": "Une référence de planning proposée dont la demande de modification est rejetée : supprimée ou gardée ?",
+     "context": "Une demande de modification qui change le planning propose une nouvelle référence (BL2, BL3…). Aujourd’hui la règle n’est pas tranchée (S-3).",
+     "default": "Gardée, marquée « rejetée »",
+     "alts": [
+      "Supprimée"
+     ]
+    },
+    {
+     "id": "D9-12",
+     "q": "Quand une ancienne demande est approuvée après une plus récente, quelle référence devient courante ?",
+     "context": "Exemple : CR-009 (BL2) approuvée après CR-011 (BL3). Aujourd’hui la dernière approuvée devient courante, donc BL2 remplace BL3. Le même choix fixe si « Re-baseline » de l’écran Planning passe, après BL1, par une demande de modification comme le Plan.",
+     "default": "Garder la plus haute (BL3) ; « Re-baseline » passe par une demande après BL1",
+     "alts": [
+      "La dernière approuvée l’emporte (actuel)"
+     ]
+    },
+    {
+     "id": "D9-13",
+     "q": "Ajouter un éditeur d’exceptions de calendrier propre à un projet (jour ouvré exceptionnel, fermeture de chantier) ?",
+     "context": "Les fermetures communes passent par Paramètres › Jours fériés. Les exceptions d’un seul calendrier n’arrivent que par les imports, coupés. L’éditeur serait réservé au chef de projet et au directeur.",
+     "default": "Plus tard",
+     "alts": [
+      "Oui, dans le Plan du projet",
+      "Oui, dans Paramètres"
+     ]
+    },
+    {
+     "id": "D9-14",
+     "q": "Rendre éditables les contraintes de date des activités (« pas avant », « au plus tard »…) ?",
+     "context": "Le moteur de planning les gère, mais un nouveau projet ne peut pas en avoir : elles ne viennent que de la démonstration ou des imports. La spécification les demande, le prototype ne les a pas.",
+     "default": "Oui, type et date dans le Plan, par le chef de projet et le directeur",
+     "alts": [
+      "Plus tard"
+     ]
+    },
+    {
+     "id": "D9-15",
+     "q": "Scénarios de rééquilibrage (what-if) : faut-il une approbation formelle d’un scénario avant « Appliquer » ?",
+     "context": "Aujourd’hui « Appliquer » crée des demandes de ressources en brouillon (S-7, R-3), sans approbation du scénario. Restent aussi ouverts : ignorer un levier déjà demandé ailleurs (proposé : oui), et un horizon au-delà de 8 semaines (proposé : non).",
+     "default": "Non, les demandes créées suivent leur propre circuit (actuel)",
+     "alts": [
+      "Oui, approbation du directeur avant « Appliquer »"
+     ]
+    },
+    {
+     "id": "D9-16",
+     "q": "Brouillons de demandes de ressources : le chef de projet voit-il ceux que d’autres ont faits sur ses projets ?",
+     "context": "Les achats peuvent créer un brouillon (depuis « Appliquer ») mais pas l’envoyer. Aujourd’hui chacun ne voit que ses propres brouillons. La personne qui envoie un brouillon deviendrait le demandeur.",
+     "default": "Oui, avec un filtre « Brouillons » ; celui qui envoie devient le demandeur",
+     "alts": [
+      "Non, chacun ses brouillons (actuel)"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "achats",
+   "title": "Achats et Sage",
+   "item": "R-100 · R-101",
+   "questions": [
+    {
+     "id": "D9-17",
+     "q": "Comment les devis fournisseurs entrent-ils dans une consultation créée dans Keystone ?",
+     "context": "Une consultation ne reçoit aujourd’hui aucun devis : elle ne peut être ni comparée ni attribuée, et le délai moyen reste vide. Vous deviez vous renseigner (SC-7a).",
+     "default": "Saisie par l’acheteur dans Keystone",
+     "alts": [
+      "Import depuis Sage X3",
+      "Portail fournisseur (nouvel outil)",
+      "Plus tard"
+     ]
+    },
+    {
+     "id": "D9-18",
+     "q": "Qui attribue les numéros d’articles ?",
+     "context": "Aujourd’hui un article se crée dans Keystone et l’ingénierie le valide (E-1a). Vous pensez que les numéros PLM viennent de SolidWorks 3DEXPERIENCE (A-1b, à confirmer avec l’ingénierie). Si oui, Keystone reprend les articles en lecture et n’ajoute que ses propres données.",
+     "default": "Garder la création dans Keystone jusqu’à la confirmation de l’ingénierie",
+     "alts": [
+      "SolidWorks 3DEXPERIENCE, repris en lecture",
+      "SolidWorks PDM, repris en lecture"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "capex",
+   "title": "Portefeuille et CAPEX",
+   "item": "R-189 · R-192 · R-056",
+   "questions": [
+    {
+     "id": "D9-19",
+     "q": "Quelles données financières d’un projet EPC2i la filiale voit-elle dans Arche ?",
+     "context": "La vue pub_avancement_projets publie le côté vente seulement : contrat, avenants signés et facturé en k€, sans coût interne, taux, EAC ni marge (P-05, testé). Ajouter les coûts ou la marge exposerait les marges d’EPC2i aux filiales.",
+     "default": "Côté vente seulement (actuel)",
+     "alts": [
+      "Ajouter le reste à facturer",
+      "Ajouter aussi les coûts et la marge"
+     ]
+    },
+    {
+     "id": "D9-20",
+     "q": "Keystone doit-il lire les études de sécurité des procédés de Vigie (HazOp, AMDEC, PSSR) de ses projets ?",
+     "context": "Vigie tient désormais ces études avec le code projet Keystone (vue vigie.pub_etudes_securite, déjà lue par Arche). Les lire demande un lien Matrix ; bloquer la mise en service avec produit tant qu’une réserve bloquante reste ouverte serait une nouvelle règle.",
+     "default": "Plus tard",
+     "alts": [
+      "Les afficher dans le projet, sans bloquer",
+      "Les afficher et bloquer la mise en service avec produit"
+     ]
+    },
+    {
+     "id": "D9-21",
+     "q": "Comment placer sur la carte un projet dont la ville n’est pas encore connue ?",
+     "context": "Le pays et la ville sont saisis à la création, mais une ville inconnue n’a pas de coordonnées et le projet manque sur la carte du monde. Un service de géocodage est un nouvel outil externe.",
+     "default": "Table des villes dans Paramètres, tenue par la direction",
+     "alts": [
+      "Service de géocodage (à faire valider par la DSI)",
+      "Placer le projet au centre de son pays"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "client",
+   "title": "Portail et relation client",
+   "item": "R-179 · R-142 · R-123 · R-059",
+   "questions": [
+    {
+     "id": "D9-22",
+     "q": "Si le portail client s’ouvre un jour aux clients externes, comment se connecteront-ils ?",
+     "context": "Le portail est gardé en réserve, sans compte client externe (L9-X2). Le choix ne sert qu’à son ouverture et ne change rien aujourd’hui.",
+     "default": "Plus tard, à l’ouverture du portail",
+     "alts": [
+      "Invités Microsoft Entra (B2B)",
+      "Lien de connexion envoyé par e-mail",
+      "Ne jamais l’ouvrir : retirer le portail"
+     ]
+    },
+    {
+     "id": "D9-23",
+     "q": "Le client voit-il le plan d’activités détaillé dans le portail, ou seulement le Gantt des lots ?",
+     "context": "Aujourd’hui le portail montre le Gantt des lots (S-9a). Sans compte client externe, la question ne vaut que pour l’aperçu interne et une ouverture future.",
+     "default": "Gantt des lots seulement (actuel)",
+     "alts": [
+      "Aussi le plan d’activités détaillé"
+     ]
+    },
+    {
+     "id": "D9-24",
+     "q": "Les PDF de planning doivent-ils aller jusqu’à la fin prévue et avoir une version interne avec les coûts ?",
+     "context": "Le Gantt PDF reprend les 13 mois de l’écran. Une version interne du plan avec les coûts serait réservée aux rôles qui voient les coûts.",
+     "default": "Gantt PDF jusqu’à la fin prévue, sans version avec coûts",
+     "alts": [
+      "Les deux : fin prévue et version interne avec coûts",
+      "Garder 13 mois (actuel)"
+     ]
+    },
+    {
+     "id": "D9-25",
+     "q": "Qu’est-ce qu’une « décision client » ?",
+     "context": "Aujourd’hui c’est toute décision d’une réunion externe, revues fournisseurs comprises (D-5). Une case « client présent » sur la réunion ne compterait que les réunions avec le client.",
+     "default": "Case « client présent » sur la réunion",
+     "alts": [
+      "Toute réunion externe (actuel)"
+     ]
+    },
+    {
+     "id": "D9-26",
+     "q": "Parties prenantes : grille pouvoir / intérêt et « dernier contact » ?",
+     "context": "Les champs influence, intérêt et attitude existent mais ne sont ni remplis ni affichés, et le dernier contact est figé à la création (S-13a, « À discuter » sans note).",
+     "default": "Grille, dernier contact déduit des réunions Keystone",
+     "alts": [
+      "Grille, dernier contact lu dans les e-mails Microsoft 365",
+      "Registre simple, date de dernier contact saisie à la main",
+      "Plus tard"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "plateforme",
+   "title": "Plateforme et droits",
+   "item": "R-040 · R-022 · R-181",
+   "questions": [
+    {
+     "id": "D9-27",
+     "q": "Où s’attribuent les rôles des utilisateurs (directeur, chef de projet, achats, Finance…) ?",
+     "context": "Aujourd’hui ils viennent des rôles et groupes Microsoft Entra, tenus par l’IT. Un écran d’administration des utilisateurs dans Keystone est un nouvel écran, absent du prototype.",
+     "default": "Groupes Microsoft Entra, tenus par l’IT (actuel)",
+     "alts": [
+      "Écran d’administration dans Keystone (directeur)",
+      "Les deux : Entra par défaut, écran pour les exceptions"
+     ]
+    },
+    {
+     "id": "D9-28",
+     "q": "Le numéro projet #000 : Keystone l’attribue-t-il, ou est-il saisi depuis la liste existante ?",
+     "context": "Aujourd’hui Keystone attribue le numéro suivant (#045, #046…) à la création (NEW-SYS-1, à confirmer de votre côté). S’il vient d’une liste tenue ailleurs, la fiche projet le demanderait et refuserait un doublon.",
+     "default": "Keystone l’attribue (actuel)",
+     "alts": [
+      "Saisi dans la fiche projet, doublon refusé"
+     ]
+    },
+    {
+     "id": "D9-29",
+     "q": "Le code analytique XXX000 : Keystone le propose-t-il, ou est-il saisi depuis Sage ?",
+     "context": "Aujourd’hui Keystone le déduit du client (LOG001, LOG002…). Vous pensez qu’il est créé dans Sage et donc imposé ; il faudrait alors le saisir (ou le lire dans les extractions Sage) et le rapprocher du #000 dans la fiche projet.",
+     "default": "Saisi dans la fiche projet depuis Sage, Keystone propose une valeur",
+     "alts": [
+      "Lu dans les extractions Sage",
+      "Keystone le calcule (actuel)"
+     ]
+    },
+    {
+     "id": "D9-30",
+     "q": "Créer un projet dans Keystone doit-il ouvrir automatiquement son espace dans Codex ?",
+     "context": "Keystone crée le chantier Cursus (NEW-CURSUS-1). Vigie lit déjà les projets de Keystone par sa vue pub_projets et n’a plus rien à créer. Pour Codex, il faudrait une API de création ou que Codex lise la même vue (demande à déposer).",
+     "default": "Codex lit les projets dans pub_projets (demande à Codex)",
+     "alts": [
+      "Keystone crée l’espace par l’API de Codex",
+      "Plus tard"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "propositions",
+   "title": "Propositions P1–P8",
+   "item": "R-159 · R-160 · R-161 · R-162 · R-163 · R-164 · R-165 · R-166",
+   "questions": [
+    {
+     "id": "D9-31",
+     "q": "P1 Relance fournisseurs et inspections usine : lancer cette proposition ?",
+     "context": "Les plannings fournisseurs par commande, leur avancement et l’alerte de glissement existent depuis R-204. Manquent les jalons d’inspection et FAT fournisseurs liés aux commandes et les bons de libération.",
+     "default": "Plus tard",
+     "alts": [
+      "Lancer : inspections, FAT et bons de libération sur les commandes"
+     ]
+    },
+    {
+     "id": "D9-32",
+     "q": "P2 Conformité CE et dossier technique machine : lancer cette proposition ?",
+     "context": "Le règlement Machines (UE) 2023/1230 s’applique à partir du 20 janv. 2027. Aujourd’hui seuls existent un type de livrable « Certificats » et une ligne du dossier de transfert, sans outil.",
+     "default": "Plus tard",
+     "alts": [
+      "Lancer maintenant, avant janvier 2027"
+     ]
+    },
+    {
+     "id": "D9-33",
+     "q": "P3 Réclamations contractuelles et pénalités de retard : lancer cette proposition ?",
+     "context": "Le contrat ne porte qu’un texte « Pénalités de retard ». La proposition ajoute un registre des réclamations chiffrées et des pénalités calculées depuis le planning.",
+     "default": "Plus tard",
+     "alts": [
+      "Lancer"
+     ]
+    },
+    {
+     "id": "D9-34",
+     "q": "P4 Exposition de change et alertes de couverture : lancer cette proposition ?",
+     "context": "Vous avez retenu en C-9 la devise par contrat et par commande avec consolidation en euros, pas le module complet. P4 ajouterait cours de référence, exposition par projet et alertes de couverture.",
+     "default": "Plus tard",
+     "alts": [
+      "Lancer après la devise par contrat (R-075)"
+     ]
+    },
+    {
+     "id": "D9-35",
+     "q": "P5 Missions et mobilisation internationale : lancer cette proposition ?",
+     "context": "Cursus gère les déplacements et les frais ; Keystone affiche déjà le plan de rotation, les visas et vaccins lus dans Cursus, et demande les voyages à Cursus.",
+     "default": "Plus tard",
+     "alts": [
+      "Abandonner : laisser les missions à Cursus",
+      "Lancer dans Keystone"
+     ]
+    },
+    {
+     "id": "D9-36",
+     "q": "P6 Offres et chiffrage avant-vente : lancer cette proposition ?",
+     "context": "Le chiffrage partirait des standards par type de machine, que vous devez fournir (R-053). Sans eux, l’outil n’a pas de base.",
+     "default": "Plus tard, après les standards par type de machine",
+     "alts": [
+      "Lancer dès maintenant"
+     ]
+    },
+    {
+     "id": "D9-37",
+     "q": "P7 Outillage et étalonnage : lancer cette proposition ?",
+     "context": "Keystone n’a que la liste des équipements d’un chantier. Vigie suit déjà la métrologie (contrôles d’étalonnage par équipement).",
+     "default": "Plus tard",
+     "alts": [
+      "Abandonner : l’étalonnage reste dans Vigie",
+      "Lancer : parc d’outillage et affectation aux chantiers dans Keystone"
+     ]
+    },
+    {
+     "id": "D9-38",
+     "q": "P8 Application chantier hors ligne : lancer cette proposition ?",
+     "context": "Votre réponse X-4 a retenu la tablette en ligne, pas l’application hors ligne. P8 ajouterait la saisie sans réseau et la synchronisation des rapports, photos et réceptions.",
+     "default": "Plus tard",
+     "alts": [
+      "Lancer"
+     ]
+    }
+   ]
+  }
+ ]
+}

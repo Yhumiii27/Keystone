@@ -1,0 +1,18 @@
+/* R-159 — expediting section of the order drawer. Nocturne tokens only. */
+.section { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--color-neutral-900); min-width: 0; }
+.head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.kicker { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-400); }
+.muted { font-size: 12.5px; color: var(--color-neutral-400); }
+.sub { display: block; font-size: 11.5px; color: var(--color-neutral-400); }
+.subhead { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-neutral-500); }
+.buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.scroll { overflow-x: auto; min-width: 0; }
+.code { color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+.nowrap { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.late { color: var(--color-accent-300); font-size: 12.5px; }
+.lateRow td:first-child { box-shadow: inset 2px 0 0 var(--color-accent-500); }
+.warnIcon { vertical-align: -2px; margin-right: 4px; }
+.rowActions { display: flex; gap: 4px; align-items: center; justify-content: flex-end; white-space: nowrap; }
+.link { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--color-accent-300); margin-right: 8px; }
+.release { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; min-width: 0; }
+.flag { display: flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--color-accent-300); }

@@ -38,7 +38,9 @@ function registerOf(state: any): Meeting[] {
     const tr = (PROTO.MTG_TRANSCRIPTS as Record<string, string>)[m.id];
     const analysed = !!state.mtg?.analysed?.[m.id];
     return {
-      number: m.id, title: m.title, series: meetingSeries.code(m.series), type: meetingType.code(m.type), status: meetingStatus.code(m.status),
+      number: m.id, title: m.title, series: meetingSeries.code(m.series), type: meetingType.code(m.type),
+      // D9-25: the prototype's external meetings were the client meetings (the demo seed marks them client present).
+      clientPresent: meetingType.code(m.type) === 'external', status: meetingStatus.code(m.status),
       dateText: m.date, monthIndex: mIdx(m.date)!, time: m.time, durationText: m.dur, location: m.loc, organizer: m.organizer,
       minutesNumber: m.doc || null, minutesIndexed: !!m.doc, sentText: m.sent ?? '',
       participants: m.invited.map((name: string) => ({
@@ -193,8 +195,10 @@ describe('meetings domain — input parsing', () => {
     expect(parseInvitees(' R. Aubert, L. Fabre ;J. Wagner,, R. Aubert ')).toEqual(['R. Aubert', 'L. Fabre', 'J. Wagner']);
     expect(parseNewMeeting({ title: ' Weekly  site meeting #25 ', type: 'internal', series: 'weekly_site', date: '6 oct. 2026', time: '', loc: '', invited: 'R. Aubert, L. Fabre', agenda: 'Safety\n\n Steel ' }, 2026)).toEqual({
       ok: true,
-      value: { title: 'Weekly site meeting #25', type: 'internal', series: 'weekly_site', date: '2026-10-06', time: '09:00', location: 'Teams', invitees: ['R. Aubert', 'L. Fabre'], agenda: ['Safety', 'Steel'] },
+      value: { title: 'Weekly site meeting #25', type: 'internal', series: 'weekly_site', date: '2026-10-06', time: '09:00', location: 'Teams', invitees: ['R. Aubert', 'L. Fabre'], agenda: ['Safety', 'Steel'], clientPresent: false },
     });
+    // D9-25: the "Client present" box.
+    expect(parseNewMeeting({ title: 'Kick-off', date: '6 Oct 2026', invited: 'x', client: 'yes' }, 2026)).toMatchObject({ ok: true, value: { clientPresent: true } });
     expect(parseNewMeeting({ title: '', date: '6 Oct 2026', invited: 'x' }, 2026)).toEqual({ ok: false, error: 'Title is required' });
     expect(parseNewMeeting({ title: 'x', date: '32 Oct', invited: 'x' }, 2026)).toEqual({ ok: false, error: 'Enter a valid date (e.g. 6 Oct 2026)' });
     expect(parseNewMeeting({ title: 'x', date: '6 Oct', time: '25:00', invited: 'x' }, 2026)).toEqual({ ok: false, error: 'Enter a valid time (e.g. 09:00)' });

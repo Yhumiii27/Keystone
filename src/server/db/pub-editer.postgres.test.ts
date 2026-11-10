@@ -50,16 +50,14 @@ describe.skipIf(!ADMIN_URL)('M-19 keystone.pub_editer on a PostgreSQL server (KE
     }
   });
 
-  it('lives in `keystone`, SECURITY DEFINER, search_path keystone then pg_temp, EXECUTE revoked from PUBLIC', async () => {
+  it('lives in `keystone`, SECURITY DEFINER, search_path keystone then pg_temp, EXECUTE revoked from PUBLIC (helpers of 0076 and 0078 too)', async () => {
     const rows = await run(`
-      select n.nspname, p.prosecdef, p.proconfig, p.proacl is not null as has_acl,
+      select p.proname, n.nspname, p.prosecdef, p.proconfig, p.proacl is not null as has_acl,
              exists (select from aclexplode(p.proacl) a where a.grantee = 0 and a.privilege_type = 'EXECUTE') as public_execute
-      from pg_proc p join pg_namespace n on n.oid = p.pronamespace where p.proname in ('pub_editer', 'ks_edit_text', 'ks_edit_slug') order by p.proname`, { database: name });
-    expect(rows).toEqual([
-      { nspname: 'keystone', prosecdef: false, proconfig: ['search_path=keystone, pg_temp'], has_acl: true, public_execute: false },
-      { nspname: 'keystone', prosecdef: false, proconfig: ['search_path=keystone, pg_temp'], has_acl: true, public_execute: false },
-      { nspname: 'keystone', prosecdef: true, proconfig: ['search_path=keystone, pg_temp'], has_acl: true, public_execute: false },
-    ]);
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace where p.proname = 'pub_editer' or p.proname like 'ks\\_edit\\_%' order by p.proname`, { database: name });
+    const helpers = ['ks_edit_holiday_date', 'ks_edit_holiday_entry', 'ks_edit_holiday_label', 'ks_edit_js_len', 'ks_edit_js_parse_int', 'ks_edit_js_trim', 'ks_edit_number', 'ks_edit_slug', 'ks_edit_text'];
+    const row = (proname: string, prosecdef: boolean) => ({ proname, nspname: 'keystone', prosecdef, proconfig: ['search_path=keystone, pg_temp'], has_acl: true, public_execute: false });
+    expect(rows).toEqual([...helpers.map((h) => row(h, false)), row('pub_editer', true)]);
   });
 
   it('a role without the Matrix link may not run it', async () => {
@@ -86,6 +84,27 @@ describe.skipIf(!ADMIN_URL)('M-19 keystone.pub_editer on a PostgreSQL server (KE
     // A refusal reaches the caller as raised: SQLSTATE and French message.
     await expect(run(`select keystone.pub_editer('users', 'corriger', '{"id": "00000000-0000-0000-0000-000000000000"}', '{"roles": "{director}"}', 'Camille', 'essai')`, { database: name, user: caller }))
       .rejects.toMatchObject({ code: 'P0K01', message: expect.stringContaining('Table « users » non modifiable depuis Matrix') });
+  });
+
+  it('D9-04: with EXECUTE, the caller corrects a Settings threshold and a public holiday; the audit row names the connection', async () => {
+    const [{ row }] = await run<{ row: { value: Record<string, unknown> } }>(
+      `select keystone.pub_editer('app_settings', 'corriger', '{"key": "schedule.dcma"}', '{"highFloatDays": "30", "cpliMin": "0,9"}', 'Camille Admin-IT', 'Seuils du PMO') as row`,
+      { database: name, user: caller },
+    );
+    expect(row.value).toMatchObject({ highFloatDays: 30, cpliMin: 0.9, beiMin: 0.95 });
+    const [a] = await run(`select actor_name, change, area, entity_type, before, after from keystone.audit_entries where area = 'Matrix' and entity_type = 'app_setting' order by occurred_at desc limit 1`, { database: name });
+    expect(a).toEqual({
+      actor_name: 'Camille Admin-IT', change: `Matrix (${caller}) · cpliMin: 0.95 → 0.9 · highFloatDays: 44 → 30`, area: 'Matrix', entity_type: 'app_setting',
+      before: { cpliMin: 0.95, highFloatDays: 44 }, after: { cpliMin: 0.9, highFloatDays: 30 },
+    });
+    await expect(run(`select keystone.pub_editer('app_settings', 'corriger', '{"key": "forecast.drift"}', '{"cpiHigh": 0.99}', 'Camille', 'essai')`, { database: name, user: caller }))
+      .rejects.toMatchObject({ code: 'P0K03' });
+    const [{ row: h }] = await run<{ row: Record<string, unknown> }>(
+      `select keystone.pub_editer('reference_values', 'ajouter', null, '{"list_key": "holidays", "label": "2 nov. · Défunts"}', 'Camille Admin-IT', 'Jour chômé') as row`,
+      { database: name, user: caller },
+    );
+    const [{ y }] = await run<{ y: number }>(`select extract(year from (now() at time zone 'Europe/Paris'))::int as y`, { database: name });
+    expect(h).toMatchObject({ list_key: 'holidays', label: '2 Nov · Défunts', code: `${y}-11-02`, active: true });
   });
 
   it('nothing of Keystone in `public`', async () => {

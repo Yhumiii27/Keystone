@@ -82,9 +82,9 @@ export type TagTone = 'accent' | 'outline' | 'neutral';
 /** crTag (4594): Approved → neutral · Rejected → outline · In review → accent · Draft → outline. */
 export const CR_STATUS_TONE: Record<ChangeStatus, TagTone> = { approved: 'neutral', rejected: 'outline', in_review: 'accent', draft: 'outline' };
 
-/** Baseline state tag (blRows 4605): Current → accent · Proposed → outline · Superseded → neutral. */
-export const BASELINE_TONE: Record<BaselineState, TagTone> = { current: 'accent', proposed: 'outline', superseded: 'neutral' };
-export const BASELINE_STATE_LABEL: Record<BaselineState, string> = { current: 'Current', proposed: 'Proposed', superseded: 'Superseded' };
+/** Baseline state tag (blRows 4605): Current → accent · Proposed → outline · Superseded → neutral; D9-11: Rejected → outline. */
+export const BASELINE_TONE: Record<BaselineState, TagTone> = { current: 'accent', proposed: 'outline', superseded: 'neutral', rejected: 'outline' };
+export const BASELINE_STATE_LABEL: Record<BaselineState, string> = { current: 'Current', proposed: 'Proposed', superseded: 'Superseded', rejected: 'Rejected' };
 
 /** Drawer state tag of a step (crVals.chain 4609). */
 export function stepState(decision: StepDecision | null): { label: string; tone: TagTone } | null {
@@ -147,10 +147,12 @@ export const withDerivedStatus = <C extends ChangeRequestLike>(crs: C[]): C[] =>
 // ── Who decides (crRoleKey 4596) ────────────────────────────────────────────────────────────────────
 
 /**
- * Persona that records each step. pm / director / client as in the prototype; the change control board has no
- * persona (07 OQ2, 00 §7.16), so its decision is recorded by the portfolio director after the board meeting.
+ * Persona that records each step. pm / director as in the prototype; the change control board has no persona (07 OQ2,
+ * 00 §7.16), so its decision is recorded by the portfolio director after the board meeting. D9-06 (owner, 10 Nov 2026):
+ * clients never see Keystone — the client's decision, signed outside Keystone, is recorded by the project manager (the
+ * project's PMs and deputies, with the date and the reference of the signed document).
  */
-export const STEP_DECIDER: Record<ChangeStep, RoleKey> = { pm: 'pm', director: 'director', client: 'client', ccb: 'director' };
+export const STEP_DECIDER: Record<ChangeStep, RoleKey> = { pm: 'pm', director: 'director', client: 'pm', ccb: 'director' };
 
 /** Steps a role may decide. */
 export const stepsOfRole = (role: RoleKey): ChangeStep[] => CR_STEPS.filter((s) => STEP_DECIDER[s] === role);
@@ -253,18 +255,17 @@ export function holdsStep(cr: Pick<ChainCarrier, 'chain'>, step: ChangeStep, who
 
 // ── Notifications (delivery 8, R-015 part — X-6a) ───────────────────────────────────────────────────────
 
-/** People the chain notifies (person ids): the PM of record, the portfolio directors, the project's client contacts, the requester. */
+/** People the chain notifies (person ids): the PM of record, the portfolio directors, the requester. */
 export interface ChainPeople {
   pm: string | null;
   directors: readonly string[];
-  clientContacts: readonly string[];
   requester: string | null;
 }
 
 /**
  * The bell notice of a request after it is submitted or a step is decided (X-6a: to the approver, not a whole role): in review →
  * the approvers of its current step (PM: the PM of record — routing unchanged, notes-rights Q4; director and change control board:
- * the portfolio directors, P-6a; client: the client contacts of the project's organisation); approved or rejected → the
+ * the portfolio directors, P-6a; client: the PM of record, who records the client's signed decision — D9-06); approved or rejected → the
  * requester. Never the actor. Fixed English title (translated by the bell), the typed title goes in the sub-line. Null when
  * nobody is to be told.
  */
@@ -280,7 +281,7 @@ export function crNoticeOf(
     const step = currentStep(cr.chain);
     if (!step) return null;
     title = `Change request awaiting your decision · ${cr.id}`;
-    to = step === 'pm' ? [people.pm] : step === 'client' ? [...people.clientContacts] : [...people.directors];
+    to = step === 'pm' || step === 'client' ? [people.pm] : [...people.directors];
   } else return null;
   const toPersonIds = [...new Set(to.filter((p): p is string => !!p && p !== actorPersonId))];
   return toPersonIds.length ? { title, toPersonIds } : null;
@@ -304,7 +305,8 @@ export function crHint(cr: Pick<ChangeRequestLike, 'status'> & Partial<Pick<Chan
   if (cr.status === 'draft') return 'Submit the request to start the approval chain.';
   if (cr.status !== 'in_review') return '';
   const mine = stepsOfRole(role);
-  if (!mine.length) return 'Switch to Project manager, Portfolio director or Client (bottom-left) to decide.';
+  // D9-06: no Client role any more — the PM records the client's step.
+  if (!mine.length) return 'Switch to Project manager or Portfolio director (bottom-left) to decide.';
   const chain = cr.chain ?? [];
   const current = currentStep(chain);
   const waiting = mine.some((s) => s !== current && chain.find((c) => c.step === s)?.decision === 'pending');

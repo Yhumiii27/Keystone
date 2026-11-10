@@ -197,7 +197,7 @@ describe('A-2 / L-3 — the New project wizard instantiates the machine-type tem
 describe('P-14 — machine-type edits are gated server-side (mtCanEdit: director, PM, engineering lead, quality)', () => {
   it('refuses the other roles in every writer', async () => {
     const { removeRexReference, setMachineTypeCostCategories, setMachineTypeItpSystems, setMachineTypePhases, updateMachineType } = await import('./mtypes');
-    for (const role of ['depthead', 'procurement', 'member', 'client']) {
+    for (const role of ['depthead', 'procurement', 'member']) {
       const actor = { role, name: 'Someone' };
       await expect(updateMachineType('EMP', { label: 'x' }, actor)).rejects.toThrow(/outside your workspace/);
       await expect(setMachineTypePhases('EMP', ['x'], actor)).rejects.toThrow(/outside your workspace/);

@@ -49,7 +49,7 @@ function parts(tree: unknown): Record<string, El> {
   return out;
 }
 const page = async (sp: Record<string, string> = {}, code = 'HLT-026') => parts(await SitePage({ params: Promise.resolve({ code }), searchParams: Promise.resolve(sp) }));
-const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'];
+const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'];
 /** R-041 (P-2): workspace personas not on the project's named team. */
 const OFF_TEAM: Record<string, string[]> = { 'HLT-026': ['depthead'], 'NDC-031': ['depthead', 'englead', 'quality'] };
 
@@ -89,10 +89,6 @@ describe('/projects/[code]/site', () => {
   it.each(['HLT-026', 'NDC-031'])('%s: primary and edit rights per persona (prototype hasPrimary; none without a site sheet)', async (code) => {
     for (const role of ROLES) {
       session.role = role;
-      if (role === 'client') {
-        await expect(page({}, code)).rejects.toThrow('REDIRECT /'); // R-042 (P-1): Site is outside the client's workspace
-        continue;
-      }
       const p = await page({}, code);
       const g = (GOLDEN as any).header[code][role];
       const hasSheet = code === 'HLT-026';

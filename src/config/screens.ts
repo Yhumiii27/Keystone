@@ -6,10 +6,11 @@
 
 // R-044 (P-4, P-12 c, C-9): 'finance' — contract, billing (read), the rate grid and the budget rate.
 // R-158 (owner's decision 7, 25 Oct 2026): 'logistics' — prepares and follows the shipments (Shipments screen, every project).
-export type RoleKey = 'director' | 'pm' | 'depthead' | 'member' | 'englead' | 'quality' | 'procurement' | 'finance' | 'logistics' | 'client';
+export type RoleKey = 'director' | 'pm' | 'depthead' | 'member' | 'englead' | 'quality' | 'procurement' | 'finance' | 'logistics';
+// D9-06 / D9-22 / D9-23 (owner, 10 Nov 2026): clients never see Keystone — the Client role and its portal are removed.
 
 export type ScreenId =
-  | 'home' | 'myprojects' | 'client' | 'mywork' | 'task' | 'myapprovals' | 'dashboards' | 'docs'
+  | 'home' | 'myprojects' | 'mywork' | 'task' | 'myapprovals' | 'dashboards' | 'docs'
   | 'overview' | 'projects' | 'pfplan' | 'worldmap' | 'portfolio' | 'cash'
   | 'contract' | 'billing' | 'plan' | 'schedule' | 'budget' | 'hours' | 'contingency' | 'presources'
   | 'meetings' | 'stakeholders' | 'interfaces'
@@ -45,7 +46,6 @@ export const SCREENS: ScreenDef[] = [
   // Fixed entries
   S({ id: 'home', title: 'Home', navLabel: 'Home', nav: 'fixed', scope: 'global', slug: '', built: true }),
   S({ id: 'myprojects', title: 'My projects', navLabel: 'My projects', nav: 'fixed', scope: 'global', slug: 'my/projects', built: true }),
-  S({ id: 'client', title: 'My project — client view', navLabel: 'My project', nav: 'fixed', scope: 'project', slug: 'client', built: true }),
   S({ id: 'mywork', title: 'My work', navLabel: 'My tasks', nav: 'fixed', scope: 'global', slug: 'my/tasks', built: true }),
   S({ id: 'task', title: 'Task', scope: 'global', slug: 'my/tasks/[taskId]', built: true }),
   S({ id: 'myapprovals', title: 'My approvals', navLabel: 'My approvals', nav: 'fixed', scope: 'global', slug: 'my/approvals', built: true }),
@@ -138,8 +138,8 @@ export const SECTIONS: { key: SectionKey; label: string }[] = [
   { key: 'admin', label: 'Administration' },
 ];
 
-/** Fixed entries order (docs/spec/01 §4.3). `client` replaces `myprojects` for the client role. */
-export const FIXED_ORDER: ScreenId[] = ['home', 'myprojects', 'client', 'mywork', 'myapprovals', 'dashboards', 'docs'];
+/** Fixed entries order (docs/spec/01 §4.3; the client portal entry was removed, D9-06). */
+export const FIXED_ORDER: ScreenId[] = ['home', 'myprojects', 'mywork', 'myapprovals', 'dashboards', 'docs'];
 
 /** Default project (prototype `state.project`). */
 export const DEFAULT_PROJECT = 'HLT-026';

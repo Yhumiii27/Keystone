@@ -68,11 +68,10 @@ export const getNavOpen = cache(async (): Promise<Record<string, boolean>> => {
 
 /**
  * Current project of the global pages (R-011): the last project used when it still exists, else the prototype's default
- * project when the database has it (demo), else the first project of the register; null when there is no project yet. A
- * client only gets a project of their organisation.
+ * project when the database has it (demo), else the first project of the register; null when there is no project yet.
  */
 export const getCurrentProject = cache(async (): Promise<string | null> =>
-  resolveCurrentProject((await cookies()).get(COOKIE.project)?.value ?? null, await getViewer()),
+  resolveCurrentProject((await cookies()).get(COOKIE.project)?.value ?? null),
 );
 
 /**

@@ -53,8 +53,8 @@ export function parseCrActivities(text: unknown): Parsed<CrActivityInput[]> {
 /** The links of a request are edited while it is open (Draft or In review); decided requests are frozen. */
 export const crActivitiesEditable = (status: ChangeStatus) => status === 'draft' || status === 'in_review';
 
-/** Who edits the links: viewers who may edit the request's project, except the client (the plan is internal). */
-export const canEditCrActivities = (viewer: { role: string }, canEditProject: boolean) => canEditProject && viewer.role !== 'client';
+/** Who edits the links: viewers who may edit the request's project (D9-06: no client viewer any more). */
+export const canEditCrActivities = (viewer: { role: string }, canEditProject: boolean) => canEditProject;
 
 /** A link the next "Reschedule" applies: its request approved, a new duration given, not applied yet. */
 export const isPendingDuration = (l: { newDurationDays: number | null; appliedAt: unknown }, status: ChangeStatus) =>

@@ -1,5 +1,5 @@
 import 'server-only';
-// Schedule import (chapter 4, S-9): plans and writes an MS Project / P6 schedule read by ./mspdi.ts or ./xer.ts into Keystone —
+// Schedule import (chapter 4, S-9): plans and writes an MS Project / GanttProject / P6 schedule read by ./mspdi.ts, ./gan.ts or ./xer.ts into Keystone —
 // a NEW project (identity, WBS, activities, logic, calendars, baselines, project header, milestones, schedule bars, assignments)
 // or an EXISTING one (UPDATE mode: matching on UID or Activity ID). `planScheduleImport` is the dry run: it reads the database,
 // never writes, and returns the preview rows (OK / warning / error), the summary and the blocking problems (circular logic).
@@ -52,6 +52,8 @@ export interface ScheduleImportOptions {
 }
 
 const UNGROUPED = '__ungrouped__';
+/** Name of the file's tool in baseline comments and the project note. */
+const FORMAT_NAME: Record<ImportedSchedule['format'], string> = { mspdi: 'MS Project', xer: 'Primavera P6', gan: 'GanttProject' };
 const ACTIVITY_CODE_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,39}$/;
 
 interface PlannedCalendar {
@@ -755,7 +757,7 @@ async function writeBaselines(
       .values({
         projectId, code, name: n === 0 ? 'Imported baseline' : `Imported baseline ${n}`, setOn, bacKeur: costs.length ? round2(costs.reduce((x, y) => x + y, 0)) : proj.budget,
         finishDate: finishes[finishes.length - 1] ?? setOn, state: opts.mode === 'update' ? 'proposed' : n === 0 ? 'current' : 'superseded', source: 'import',
-        comment: `${s.format === 'mspdi' ? 'MS Project' : 'Primavera P6'} · Baseline ${n}`, dataDate: s.statusDate ?? null, createdByPersonId: actorId, createdByName: who, position: position++,
+        comment: `${FORMAT_NAME[s.format]} · Baseline ${n}`, dataDate: s.statusDate ?? null, createdByPersonId: actorId, createdByName: who, position: position++,
       })
       .returning({ id: baselines.id });
     const rows = values.map(({ p, b: v }, i) => ({
@@ -808,7 +810,7 @@ async function writeProjectHeader(tx: Tx, s: ImportedSchedule, projectId: string
     floatText: `${minus(float)} days`, floatShort: `${minus(float)} d`, critText: `${critPkgs} of ${pkgs.length} packages critical`, milesText: `${done.length} of ${miles.length}`,
     milesSub: `Complete · ${onDate} on baseline date`, baselineSet: bl1?.setOn ? longDateText(bl1.setOn) : '—', reconOrigKeur: budget, reconChangesKeur: 0, reconCrCount: 0,
     reconPendingKeur: 0, reconPendingSub: '—', contingencyKeur: 0, contingencyUsedKeur: 0, ordersPlacedKeur: null,
-    note: `Imported from ${s.format === 'mspdi' ? 'MS Project' : 'Primavera P6'}`,
+    note: `Imported from ${FORMAT_NAME[s.format]}`,
   });
   if (miles.length) {
     // R-189: the CAPEX milestone codes the name rule gives without ambiguity (src/domain/capex-milestones.ts).

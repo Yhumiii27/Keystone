@@ -2,7 +2,7 @@
 // the registry without loading the Phosphor components (their CommonJS build needs the client React).
 import type { Icon } from '@phosphor-icons/react';
 import {
-  ArrowsLeftRight, Blueprint, Books, Buildings, CalendarCheck, CalendarDots, Certificate, ChartBarHorizontal,
+  ArrowsLeftRight, Blueprint, Books, CalendarCheck, CalendarDots, Certificate, ChartBarHorizontal,
   ChartLine, ChartLineUp, ChatsCircle, CheckSquare, ClipboardText, ClockCountdown, Coins, Cpu, CraneTower, Cube,
   CurrencyEur, Database, FileText, FlowArrow, FolderUser, Folders, Gauge, Gear, GearSix, GitBranch, GitPullRequest,
   GlobeHemisphereWest, GraduationCap, Handshake, HardHat, House, Key, Lightning, ListChecks, Package, PaperPlaneTilt, PiggyBank,
@@ -14,7 +14,6 @@ import type { ScreenId } from './screens';
 export const SCREEN_ICONS: Partial<Record<ScreenId, Icon>> = {
   home: House,
   myprojects: FolderUser,
-  client: Buildings,
   mywork: CheckSquare,
   myapprovals: Stamp,
   dashboards: Gauge,

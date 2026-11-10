@@ -37,12 +37,10 @@ export function NcrLog({ code, view, t }: { code: string; view: NcrTabView; t: T
         title={t('Non-conformance log')}
         hint={t('Raised from site inspections, goods receipts, surveys and audits')}
         actions={
-          view.mirrorNote ? (
-            <span className={s.mirror}>
-              <ArrowsClockwise aria-hidden />
-              {t('Mirrored from Vigie — NCRs are managed in Vigie')}
-            </span>
-          ) : undefined
+          <span className={s.mirror}>
+            <ArrowsClockwise aria-hidden />
+            {t('Mirrored from Vigie — NCRs are managed in Vigie')}
+          </span>
         }
         scroll
       >

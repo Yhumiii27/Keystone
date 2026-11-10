@@ -35,12 +35,11 @@ export default async function ChangesPage({ params, searchParams }: { params: Pr
   const [{ code }, sp] = await Promise.all([params, searchParams]);
   const ctx = await getProjectContext(code, 'changes');
   const projectCode = ctx.project.code;
-  const internal = ctx.viewer.role !== 'client';
   const [i18n, cc, wbs, baselines, blRows, crLinks, planActs, threshold, cost] = await Promise.all([
     getI18n(), getChangeControl(projectCode), getWbs(projectCode), getBaselineRegister(projectCode), listProjectBaselines(projectCode),
     listCrActivityLinks(projectCode), listIssueActivityOptions(projectCode), ccbThreshold(),
-    // R-081: the project's cost categories are internal cost data — never read for the client.
-    internal ? getCostControl(projectCode) : Promise.resolve(null),
+    // R-081: the project's cost categories (internal cost data).
+    getCostControl(projectCode),
   ]);
   if (!cc) notFound();
   const { lang } = i18n;
@@ -50,15 +49,13 @@ export default async function ChangesPage({ params, searchParams }: { params: Pr
   const categoryLabel = (c: { code: string; name: string }) => `${c.code} · ${dataText(c.name, lang)}`;
   const categories = cost?.categories ?? [];
   const costCategoryOf: Record<string, string> = {};
-  if (internal) {
-    for (const cr of cc.changeRequests) {
-      const cat = cr.costCategoryCode ? categories.find((c) => c.code === cr.costCategoryCode) : undefined;
-      if (cr.costCategoryCode) costCategoryOf[cr.id] = cat ? categoryLabel(cat) : cr.costCategoryCode;
-    }
+  for (const cr of cc.changeRequests) {
+    const cat = cr.costCategoryCode ? categories.find((c) => c.code === cr.costCategoryCode) : undefined;
+    if (cr.costCategoryCode) costCategoryOf[cr.id] = cat ? categoryLabel(cat) : cr.costCategoryCode;
   }
 
-  // Internal ids never reach the islands; the cost category only for the project team (R-081).
-  const crs = withDerivedStatus(cc.changeRequests).map((c) => ({ ...c, requestedByPersonId: null, costCategoryCode: internal ? c.costCategoryCode : null }));
+  // Internal ids never reach the islands.
+  const crs = withDerivedStatus(cc.changeRequests).map((c) => ({ ...c, requestedByPersonId: null }));
   // NEW-D2-2 (R-062): plan activities each request touches; the project team edits them, the client does not see them.
   const actsByCr: Record<string, { code: string; label: string; duration: string }[]> = {};
   const fr = (x: string) => (lang === 'fr' ? x.replace(/(\d+)d\b/g, '$1 j') : x);
@@ -68,7 +65,7 @@ export default async function ChangesPage({ params, searchParams }: { params: Pr
   }
   const crActivities = {
     byCr: actsByCr, options: planActs.map((a) => ({ value: a.code, label: `${a.code} · ${dataText(a.name, lang)}` })),
-    canEdit: canEditCrActivities(ctx.viewer, canEdit), visible: ctx.viewer.role !== 'client',
+    canEdit: canEditCrActivities(ctx.viewer, canEdit), visible: true,
   };
   const filter = parseCrFilter(first(sp.filter));
   const crParam = first(sp.cr)?.toUpperCase();
@@ -115,7 +112,7 @@ export default async function ChangesPage({ params, searchParams }: { params: Pr
         budgetHref={screenHref('budget', { code: projectCode })}
         crActivities={crActivities}
         ccbThresholdKeur={threshold}
-        costCategoryOf={internal ? costCategoryOf : undefined}
+        costCategoryOf={costCategoryOf}
         lang={lang}
         t={t}
       />

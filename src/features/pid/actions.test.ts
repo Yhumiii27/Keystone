@@ -51,11 +51,7 @@ beforeEach(() => {
 });
 
 describe('permission gate', () => {
-  it('outside viewers (pm, procurement, member; the client is sent home) and malformed requests are refused; nothing is written', async () => {
-    // R-042 (P-1): the client is sent home (was: the read-only refusal).
-    session.role = 'client';
-    await expect(mapPidTagAction(HLT, 'TT-102', 'EL-SWG-11KV')).rejects.toThrow('REDIRECT /');
-    await expect(applyPidImportAction(HLT, req('Tag,Description\nX-1,x'))).rejects.toThrow('REDIRECT /');
+  it('outside viewers (pm, procurement, member) and malformed requests are refused; nothing is written', async () => {
     for (const role of ['pm', 'procurement', 'member']) {
       session.role = role;
       expect(await mapPidTagAction(HLT, 'TT-102', 'EL-SWG-11KV'), role).toEqual({ error: 'This P&ID is read-only for you' });

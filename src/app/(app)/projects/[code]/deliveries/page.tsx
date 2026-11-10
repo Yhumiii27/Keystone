@@ -16,6 +16,7 @@ import { PhotoGallery } from '@/features/photos/photo-gallery';
 import { photoViews } from '@/features/photos/model';
 import { businessToday } from '@/server/clock';
 import { getDeliveriesScreen } from '@/server/dal/deliveries';
+import { deliveriesWithoutRelease } from '@/server/dal/expediting';
 import { legacyReceiptPhotoCount, listProjectPhotos } from '@/server/dal/photos';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
@@ -37,7 +38,9 @@ export default async function DeliveriesPage({ params, searchParams }: { params:
   // R-096: the Vigie supplier NCR links are for internal viewers (the client never sees purchasing records, P-10b).
   const today = await businessToday();
   const year = yearOfIso(today);
-  const view = deliveriesView(projectCode, data, { status, receipt: receiptParam }, t, lang, year, { vigieLinks: ctx.viewer.role !== 'client' });
+  // R-159: deliveries of an order under inspection received or announced without its release note (flag, not a block).
+  const noRelease = await deliveriesWithoutRelease(projectCode, today);
+  const view = deliveriesView(projectCode, data, { status, receipt: receiptParam }, t, lang, year, { vigieLinks: true, noRelease });
   const registerForms = canEdit
     ? Object.fromEntries(data.receipts.filter((r) => r.status === 'announced').map((r) => [r.number, registerFormDef(r, today, t, lang)]))
     : {};
@@ -52,9 +55,9 @@ export default async function DeliveriesPage({ params, searchParams }: { params:
     />
   ) : undefined;
 
-  // R-126: photos of the open receipt (the client, outside this screen, never sees purchasing records — P-10b).
+  // R-126: photos of the open receipt.
   let photos;
-  if (view.drawer && ctx.viewer.role !== 'client') {
+  if (view.drawer) {
     const [byReceipt, legacy] = await Promise.all([listProjectPhotos(projectCode, 'goods_receipt'), legacyReceiptPhotoCount(view.drawer.id)]);
     photos = (
       <PhotoGallery

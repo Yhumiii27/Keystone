@@ -58,7 +58,7 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
   const [i18n, data, settings, jar] = await Promise.all([getI18n(), getPlanData(projectCode), getPlanSettings(projectCode), cookies()]);
   const { lang } = i18n;
   const t = planT(i18n.t, lang);
-  // Edits: not outside the workspace, on the project's team, never the client (`planRO`, R-041). P-9a (R-061): the structure
+  // Edits: not outside the workspace, on the project's team (`planRO`, R-041). P-9a (R-061): the structure
   // (WBS, durations, budgets, links, to-dos) and the scheduling decisions (Reschedule, Set baseline, Baseline / Calendar chips,
   // removal) are the project's PMs' and the director's; an activity's owner enters only its % complete.
   const canEdit = canEditPlan(ctx);
@@ -244,6 +244,8 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
           calendar={calendarChip}
           baseline={baselineChip}
           dataDate={dataDateText}
+          dataDateDefault={settings?.proposedDataDate ?? settings?.storedDataDate ?? dataDate}
+          dataDateProposed={settings?.proposedDataDate ? t(longDateText(settings.proposedDataDate)) : undefined}
           nextBaseline={nextBaselineCode(baselineCodes)}
           defaultEstimateClass={stageEstimateClass(ctx.project.stage)}
           baselineChangeRequestHref={canSnapshotFreely(baselineCodes) ? undefined : `${screenHref('changes', { code: projectCode })}?new=1&baseline=1`}

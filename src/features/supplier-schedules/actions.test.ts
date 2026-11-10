@@ -34,13 +34,13 @@ const as = (role: string, lead: boolean, edit = true) => Object.assign(viewer, {
 beforeAll(async () => setDb(await openDatabase()), 120_000);
 
 describe('pure rights over the personas (R-204)', () => {
-  it('supplier schedule: the leads (any role but the client) and procurement, on orders they may edit; ties: the leads only', () => {
+  it('supplier schedule: the leads (any role) and procurement, on orders they may edit; ties: the leads only', () => {
     for (const p of PERSONAS) {
       expect([p.role, canEditSupplierSchedule(p.role, { lead: false }, true)]).toEqual([p.role, p.role === 'procurement']);
-      expect([p.role, canEditSupplierSchedule(p.role, { lead: true }, true)]).toEqual([p.role, p.role !== 'client']);
+      expect([p.role, canEditSupplierSchedule(p.role, { lead: true }, true)]).toEqual([p.role, true]);
       expect([p.role, canEditSupplierSchedule(p.role, { lead: true }, false)]).toEqual([p.role, false]);
       expect([p.role, canTieSupplierSchedule(p.role, { lead: false }, true)]).toEqual([p.role, false]);
-      expect([p.role, canTieSupplierSchedule(p.role, { lead: true }, true)]).toEqual([p.role, p.role !== 'client']);
+      expect([p.role, canTieSupplierSchedule(p.role, { lead: true }, true)]).toEqual([p.role, true]);
       expect([p.role, canTieSupplierSchedule(p.role, { lead: true }, false)]).toEqual([p.role, false]);
     }
   });
@@ -76,9 +76,6 @@ describe('supplier schedule Server Functions (R-204)', () => {
     expect(await createSupplierScheduleAction('HLT-026', 'PO-1063', false)).toEqual(SCHEDULE_ONLY);
     as('finance', false);
     expect(await recordSupplierProgressAction('HLT-026', 'PO-1071', 'F10', { pct: '0' })).toEqual(SCHEDULE_ONLY);
-    as('client', true);
-    expect(await createSupplierScheduleAction('HLT-026', 'PO-1063', false)).toEqual(SCHEDULE_ONLY);
-    expect(await addSupplierTieAction('HLT-026', 'PO-1071', { supplier: 'F20', activity: 'A1420', direction: 'to_project', lag: '0' })).toEqual(TIES_ONLY);
     as('procurement', false, false);
     expect(await createSupplierScheduleAction('HLT-026', 'PO-1063', false)).toEqual(SCHEDULE_ONLY);
     expect((await listSupplierSchedules('HLT-026')).some((x) => x.poNumber === 'PO-1063')).toBe(false);

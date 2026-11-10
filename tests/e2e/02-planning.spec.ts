@@ -93,7 +93,7 @@ test('a new baseline after BL1 goes through a change request; approved by the ch
   await expect(toast(page)).toContainText(/(CR-\d+) · Change request submitted for review · BL3 proposed/);
   const number = /(CR-\d+)/.exec((await toast(page).textContent()) ?? '')![1];
 
-  const approve = async (role: 'pm' | 'client' | 'director', step: string) => {
+  const approve = async (role: 'pm' | 'director', step: string) => {
     await viewAs(context, role);
     await page.goto(`/projects/HLT-026/changes?cr=${number}`);
     await page.getByRole('button', { name: `Approve · ${step}` }).click();
@@ -102,13 +102,19 @@ test('a new baseline after BL1 goes through a change request; approved by the ch
   // R-069 (P-6b): the chain is decided in order; 0 k€ is not above the board threshold (50 k€), so no board step (P-6c).
   await approve('pm', 'Project manager');
   await approve('director', 'Portfolio director');
-  await approve('client', 'Client / sponsor');
+  // D9-06: the client never sees Keystone — the PM records the client's approval with the signed document's reference.
+  await viewAs(context, 'pm');
+  await page.goto(`/projects/HLT-026/changes?cr=${number}`);
+  await page.getByRole('button', { name: 'Record approval · Client / sponsor' }).click();
+  const signed = page.getByRole('dialog', { name: /Record client approval/ });
+  await signed.getByLabel('Reference of the signed document').fill('AV-HLT-E2E');
+  await signed.getByRole('button', { name: 'Record approval' }).click();
+  await expect(toast(page)).toContainText('Client approval recorded');
   await page.goto('/projects/HLT-026/changes');
   await expect(page.getByRole('row', { name: new RegExp(`^${number} New baseline BL3 .* Approved$`) })).toBeVisible();
   await expect(page.getByRole('row', { name: /^BL3 BL3 — CR-\d+ .* Current$/ })).toBeVisible();
   await expect(page.getByRole('row', { name: /^BL1 .* Superseded$/ })).toBeVisible();
-  // The Plan's Baseline tile: BL3 with its 21-activity snapshot — seen by the PM (the client, last in the chain since P-6b, is
-  // sent home from the Plan, R-042).
+  // The Plan's Baseline tile: BL3 with its 21-activity snapshot.
   await viewAs(context, 'pm');
   await page.goto(`${PLAN}?view=structure`);
   await expect(page.locator('main')).toContainText(/Set .+ · 21 activities/);

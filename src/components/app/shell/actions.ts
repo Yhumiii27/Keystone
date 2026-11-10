@@ -13,8 +13,8 @@ import type { SearchHitView } from './types';
  */
 export async function searchAction(query: string, code: string): Promise<SearchHitView[]> {
   if (typeof query !== 'string' || typeof code !== 'string') return [];
-  const [{ t, lang }, viewer] = await Promise.all([getI18n(), getViewer()]);
-  const hits = await searchShell(query.slice(0, 120), code.slice(0, 32), viewer);
+  const { t, lang } = await getI18n();
+  const hits = await searchShell(query.slice(0, 120), code.slice(0, 32));
   return hits.map((h) => searchHitView(h, t, lang));
 }
 

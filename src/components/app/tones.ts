@@ -147,7 +147,6 @@ export const STATUS_TONES = {
   /** Client invoices / payment milestones (4686). */
   clientInvoice: T({ invoiced: 'accent', paid: 'neutral' }, 'outline'),
   /** Client issues (4688). */
-  clientIssue: T({ open: 'accent', closed: 'neutral' }, 'outline'),
   /** Connectors (4714). */
   connector: T({ warning: 'accent', ok: 'neutral' }, 'outline'),
   /** Site status stTag (4743): Cursus visa/vaccination/clearance/verdict, equipment confirmations, prerequisites, HSE. */

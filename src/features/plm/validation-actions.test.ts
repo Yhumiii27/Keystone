@@ -60,7 +60,7 @@ describe('R-102 rules', () => {
   });
 
   it('who validates (E-1a: engineering lead; director by default) and who completes the record', () => {
-    expect(['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'].filter((r) => canValidatePart('not_validated', r))).toEqual(['director', 'englead']);
+    expect(['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'].filter((r) => canValidatePart('not_validated', r))).toEqual(['director', 'englead']);
     for (const s of ['validated', 'outdated', 'obsolete'] as const) expect(canValidatePart(s, 'englead'), s).toBe(false);
     expect(canCompletePartRecord('not_validated', 'procurement', true)).toBe(true);
     expect(canCompletePartRecord('not_validated', 'procurement', false)).toBe(false);
@@ -132,14 +132,14 @@ describe('R-102 Server Functions', () => {
     const SAME = 'HST-BRK-DSC · Nothing to change';
     expect(complete).toEqual({
       director: CHANGED, pm: SAME, depthead: 'The parts catalogue is read-only for you', member: 'The parts catalogue is read-only for you', englead: SAME, quality: SAME,
-      procurement: SAME, client: 'NEXT_REDIRECT',
+      procurement: SAME,
       // R-044 (roles-rates-hr lot): Finance, the 9th persona, reads the catalogue only; so does Logistics (R-158).
       finance: 'The parts catalogue is read-only for you', logistics: 'The parts catalogue is read-only for you',
     });
     expect(validate).toEqual({
       director: 'Export restriction not confirmed', pm: 'Only the engineering lead or the director validates a part', depthead: 'The parts catalogue is read-only for you',
       member: 'The parts catalogue is read-only for you', englead: 'Export restriction not confirmed', quality: 'Only the engineering lead or the director validates a part',
-      procurement: 'Only the engineering lead or the director validates a part', client: 'NEXT_REDIRECT',
+      procurement: 'Only the engineering lead or the director validates a part',
       finance: 'The parts catalogue is read-only for you', logistics: 'The parts catalogue is read-only for you',
     });
     const [audit] = await listAudit({ limit: 1 });

@@ -104,7 +104,6 @@ describe('scoring and ranking (logic 4497–4503)', () => {
       .toEqual([0.25, 0.4, 1, 0, null, null, null, null, 0.333]);
     expect([validScore('3'), validScore(5), validScore('1'), validScore('0'), validScore('6'), validScore('2.5'), validScore(''), validScore('4,0')]).toEqual([3, 5, 1, null, null, null, null, 4]);
     expect(canSeeMargins('pm')).toBe(true);
-    expect(canSeeMargins('client')).toBe(false);
   });
 });
 

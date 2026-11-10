@@ -1,7 +1,8 @@
 'use client';
 // Client islands of Quality — NCR & deliverables: the progress the viewer records on a Vigie NCR (log "→ <step>", drawer
 // "Move to <step>", the quality manager's verification), the deliverable steps (Start, To internal review, Submit to
-// client), the client's Accept (PV) / Reject (row) and "Reject with comments" (dialog), and "Link a Codex document".
+// client), the client's decision recorded by the project's leads — "Record acceptance" / "Record rejection" (dialogs with the
+// date and the signed document's reference, D9-06) — and "Link a Codex document".
 // The Server Functions (./actions.ts) re-check everything; the page refreshes on revalidation. Clicks inside a register
 // row do not open the drawer (ClickableRow ignores buttons).
 import { ArrowCounterClockwise, ArrowRight, Check, Link as LinkIcon, PaperPlaneTilt, Plus } from '@phosphor-icons/react/dist/ssr';
@@ -11,9 +12,10 @@ import type { FormDef } from '@/components/app/form-def';
 import { Button } from '@/components/ds/Button';
 import { useToast } from '@/components/ds/Toast';
 import type { NcrStatus, ProducerTarget } from '@/domain/quality';
+import { useToday } from '@/components/app/clock';
 import { useI18n } from '@/i18n/client';
 import {
-  advanceNcrAction, createDeliverableAction, decideDeliverableAction, linkDeliverableDocumentAction, moveDeliverableAction, rejectDeliverableWithCommentsAction, verifyNcrAction,
+  advanceNcrAction, createDeliverableAction, linkDeliverableDocumentAction, moveDeliverableAction, recordClientDecisionAction, verifyNcrAction,
   type QualityResult,
 } from './actions';
 
@@ -105,52 +107,58 @@ export function DeliverableMoveButton({
   );
 }
 
-/** Register row: "Accept" (primary, check) + "Reject" (ghost) — the project's client contact on a submitted deliverable. */
-export function DeliverableDecideRow({ code, number }: Target) {
+/** D9-06: the client's decision recorded by the project's lead — the PV is signed outside Keystone (DocuSign planned). */
+const clientDecisionForm = (decision: 'accepted' | 'rejected', today: string): FormDef => ({
+  title: decision === 'accepted' ? 'Record client acceptance (PV)' : 'Record client rejection',
+  submit: decision === 'accepted' ? 'Record acceptance' : 'Record rejection',
+  fields: [
+    { id: 'on', label: 'Date of the client’s decision', type: 'date', defaultValue: today, required: true },
+    {
+      id: 'reference', label: 'Reference of the signed document', type: 'text', required: decision === 'accepted',
+      placeholder: decision === 'accepted' ? 'PV-HLT-014' : 'Letter of comments (optional)',
+    },
+    ...(decision === 'rejected' ? [{ id: 'comments', label: 'Comments', type: 'textarea' as const, placeholder: 'comments issued' }] : []),
+  ],
+});
+
+/**
+ * "Record acceptance" (primary, check) + "Record rejection" (ghost or secondary): each opens its dialog (date, reference of the
+ * signed document, comments for a rejection). `place` = the register row or the drawer (button sizes).
+ */
+function ClientDecisionButtons({ code, number, context, place }: Target & { context: string; place: 'row' | 'drawer' }) {
   const { t } = useI18n();
-  const { pending, run } = useRun();
-  const decide = (decision: 'accepted' | 'rejected') => run(() => decideDeliverableAction({ projectCode: code, number, decision }));
+  const today = useToday();
+  const [open, setOpen] = useState<'accepted' | 'rejected' | null>(null);
   return (
     <>
-      <Button variant="primary" size="row" icon={Check} disabled={pending} aria-label={`${t('Accept')} ${number}`} onClick={() => decide('accepted')}>
-        {t('Accept')}
+      <Button variant="primary" size={place === 'row' ? 'row' : 'sm'} icon={Check} aria-label={`${t('Record acceptance')} ${number}`} onClick={() => setOpen('accepted')}>
+        {t('Record acceptance')}
       </Button>
-      <Button variant="ghost" size="compact" disabled={pending} aria-label={`${t('Reject')} ${number}`} onClick={() => decide('rejected')}>
-        {t('Reject')}
+      <Button variant={place === 'row' ? 'ghost' : 'secondary'} size={place === 'row' ? 'compact' : 'sm'} aria-label={`${t('Record rejection')} ${number}`} onClick={() => setOpen('rejected')}>
+        {t('Record rejection')}
       </Button>
+      {open && (
+        <FormDialog
+          {...clientDecisionForm(open, today)}
+          translate
+          open
+          onClose={() => setOpen(null)}
+          context={`${number} · ${context}`}
+          onSubmit={(values) => recordClientDecisionAction(code, number, open, values)}
+        />
+      )}
     </>
   );
 }
 
-const REJECT_FORM: FormDef = {
-  title: 'Reject with comments',
-  submit: 'Reject',
-  fields: [{ id: 'comments', label: 'Comments', type: 'textarea', placeholder: 'comments issued' }],
-};
+/** Register row: the client's decision on a submitted deliverable, recorded by the project's lead (D9-06). */
+export function DeliverableDecideRow({ code, number, context }: Target & { context: string }) {
+  return <ClientDecisionButtons code={code} number={number} context={context} place="row" />;
+}
 
-/** Drawer: "Accept (PV)" (primary, check) + "Reject with comments" (secondary, opens the comments dialog). */
+/** Drawer: the client's decision on a submitted deliverable, recorded by the project's lead (D9-06). */
 export function DeliverableDecideDrawer({ code, number, context }: Target & { context: string }) {
-  const { t } = useI18n();
-  const { pending, run } = useRun();
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <Button variant="primary" size="sm" icon={Check} disabled={pending} aria-label={`${t('Accept (PV)')} ${number}`} onClick={() => run(() => decideDeliverableAction({ projectCode: code, number, decision: 'accepted' }))}>
-        {t('Accept (PV)')}
-      </Button>
-      <Button variant="secondary" size="sm" disabled={pending} aria-label={`${t('Reject with comments')} ${number}`} onClick={() => setOpen(true)}>
-        {t('Reject with comments')}
-      </Button>
-      <FormDialog
-        {...REJECT_FORM}
-        translate
-        open={open}
-        onClose={() => setOpen(false)}
-        context={`${number} · ${context}`}
-        onSubmit={(values) => rejectDeliverableWithCommentsAction(code, number, values)}
-      />
-    </>
-  );
+  return <ClientDecisionButtons code={code} number={number} context={context} place="drawer" />;
 }
 
 /** "Link a Codex document": picks the issued document among the project's Codex records. */

@@ -5,9 +5,10 @@ import 'server-only';
 //
 // Rights are checked at every step (./rights.ts): the viewer's role, project ownership for the PM, and the job's author (a job
 // is continued only by the persona who started it). D-7b: while IMPORTS_ENABLED (src/domain/ch4-defaults.ts) is off, every step
-// is refused (cancelling a job stays possible). Messages are EN source sentences (./messages.ts); the screen translates them.
+// is refused (cancelling a job stays possible). D9-08: only the kinds of ENABLED_IMPORT_KINDS (MS Project XML and GanttProject)
+// are accepted; the others are refused at every step. Messages are EN source sentences (./messages.ts); the screen translates them.
 import type { RoleKey } from '@/config/screens';
-import { IMPORTS_ENABLED, IMPORTS_OFF_MESSAGE } from '@/domain/ch4-defaults';
+import { ENABLED_IMPORT_KINDS, IMPORTS_ENABLED, IMPORTS_OFF_MESSAGE, IMPORT_KIND_OFF_MESSAGE } from '@/domain/ch4-defaults';
 import { getDb } from '@/server/db/client';
 import type { ImportJobStatus, ImportKind, ImportMode, ImportRowAction, ImportRowStatus } from '@/server/db/codes';
 import { importKind } from '@/server/db/codes';
@@ -19,6 +20,7 @@ import { readXlsx } from '@/server/export/xlsx';
 import { FileRejectedError, readStoredFile, setFileOwner, storeFile } from '@/server/storage/files';
 import { SCAN_MESSAGES, scanUpload } from '@/server/storage/scan';
 import { fmt } from './messages';
+import { looksLikeGan, parseGan } from './gan';
 import { parseMspdi } from './mspdi';
 import { INTERCHANGE_DEFAULTS } from './defaults';
 import { canImport } from './rights';
@@ -35,16 +37,15 @@ export interface ImportViewer {
   name: string;
   short: string;
   role: RoleKey;
-  /** The viewer's person (signed-in users) and client organisation — the project team rights (R-041). */
+  /** The viewer's person (signed-in users) — the project team rights (R-041). */
   personId?: string | null;
-  organisation?: string | null;
 }
 
 /** The viewer's rights on a project for the import rules (R-041). */
 async function importRel(viewer: ImportViewer): Promise<(p: ProjectRow) => { member: boolean; lead: boolean }> {
   const teams = await listProjectTeams();
-  const v = { role: viewer.role, name: viewer.name, short: viewer.short, personId: viewer.personId ?? null, organisation: viewer.organisation ?? null };
-  return (p) => projectAccess(v, { client: p.client, clientInternal: p.clientInternal, pm: p.pm, pmPersonId: p.pmPersonId, team: teams.get(p.code) ?? [] });
+  const v = { role: viewer.role, name: viewer.name, short: viewer.short, personId: viewer.personId ?? null };
+  return (p) => projectAccess(v, { pm: p.pm, pmPersonId: p.pmPersonId, team: teams.get(p.code) ?? [] });
 }
 
 /** One preview row as the dialog shows it. */
@@ -98,11 +99,11 @@ export type ImportStep =
 /** Rows sent to the dialog (the full preview stays in import_job_rows). */
 export const PREVIEW_ROWS = 400;
 
-const SCHEDULE_KINDS: readonly ImportKind[] = ['mspdi', 'xer'];
+const SCHEDULE_KINDS: readonly ImportKind[] = ['mspdi', 'xer', 'gan'];
 const isScheduleKind = (k: ImportKind) => SCHEDULE_KINDS.includes(k);
 
 export interface StartImportInput {
-  /** 'schedule' = MS Project or P6 (detected from the file), else a table kind. */
+  /** 'schedule' = MS Project, GanttProject or P6 (detected from the file), else a table kind. */
   kind: 'schedule' | TableKind;
   mode: ImportMode;
   projectCode: string | null;
@@ -119,6 +120,7 @@ export interface StartImportInput {
 /** May the viewer import `kind` into `projectCode`? EN refusal or null. */
 async function refusal(viewer: ImportViewer, kind: ImportKind, mode: ImportMode, projectCode: string | null): Promise<string | null> {
   if (!IMPORTS_ENABLED) return IMPORTS_OFF_MESSAGE;
+  if (!ENABLED_IMPORT_KINDS.includes(kind)) return IMPORT_KIND_OFF_MESSAGE;
   let rel: { member: boolean; lead: boolean } | null = null;
   if (projectCode) {
     const p = await getProject(projectCode);
@@ -128,15 +130,16 @@ async function refusal(viewer: ImportViewer, kind: ImportKind, mode: ImportMode,
   return canImport(viewer.role, kind, rel) ? null : 'You may not import this file into this project';
 }
 
-/** Detects MS Project XML vs P6 XER from the content (the drop zone may be the other card's). */
+/** Detects MS Project XML, GanttProject or P6 XER from the content (the drop zone may be another card's). */
 function scheduleKindOf(name: string, text: string): ImportKind | null {
   if (/^﻿?ERMHDR\t/.test(text)) return 'xer';
+  if (looksLikeGan(name, text.slice(0, 4096))) return 'gan';
   if (/<Project[\s>]/.test(text.slice(0, 4096)) || /\.xml$/i.test(name)) return 'mspdi';
   return null;
 }
 
 function parseSchedule(kind: ImportKind, text: string): ImportedSchedule {
-  return kind === 'xer' ? parseXer(text) : parseMspdi(text);
+  return kind === 'xer' ? parseXer(text) : kind === 'gan' ? parseGan(text) : parseMspdi(text);
 }
 
 const scheduleOptionsOf = (job: ImportJobView): ScheduleImportOptions => ({
@@ -220,7 +223,7 @@ export async function startImport(input: StartImportInput, viewer: ImportViewer)
   if (input.kind === 'schedule') {
     // Either schedule card accepts both formats (the kind is detected from the content), so the message names both.
     const k = scheduleKindOf(input.fileName, decodeText(input.data.subarray(0, 8192)));
-    if (!k) return { ok: false, error: 'The file is neither an MS Project XML file (MSPDI) nor a Primavera P6 XER file' };
+    if (!k) return { ok: false, error: 'The file is neither an MS Project XML file (MSPDI) nor a GanttProject file (.gan)' };
     kind = k;
   } else if (isTableKind(input.kind)) kind = input.kind;
   else return { ok: false, error: 'Invalid request' };

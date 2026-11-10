@@ -58,9 +58,4 @@ describe('relation targets (R-128)', () => {
     expect((await getDocumentRecord(qms.number))!.links.map((l) => l.target)).toEqual([null]);
     expect((await links(qms.number)).find((l) => l.ref === 'PO-1082')!.href).toBeNull();
   });
-
-  it('a client’s drawer keeps every relation inert (internal screens send the client home, P-1)', async () => {
-    const client = { short: 'N. Bensaïd', role: 'client' };
-    expect(await links('PID-HLT-026', 'HLT-026', client)).toEqual([{ kind: 'Deliverable', ref: 'D-016', href: null }]);
-  });
 });

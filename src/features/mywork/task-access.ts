@@ -3,8 +3,8 @@ import 'server-only';
 // the task, the viewer and whether they may act. Rules: src/features/mywork/permissions.ts.
 import { listTasks, type TaskRow } from '@/server/dal/tasks';
 import { getScreenAccess } from '@/server/project-context';
-import { getViewer, type Viewer } from '@/server/session';
-import { canAttachTaskFiles, canDownloadTaskFiles } from './permissions';
+import type { Viewer } from '@/server/session';
+import { canAttachTaskFiles } from './permissions';
 
 const TASK_RE = /^T-\d{1,6}$/;
 
@@ -17,8 +17,6 @@ export type TaskFileGate =
 export async function taskFileGate(taskId: unknown, need: 'view' | 'edit'): Promise<TaskFileGate> {
   const id = typeof taskId === 'string' ? decodeURIComponent(taskId).toUpperCase() : '';
   if (!TASK_RE.test(id)) return { ok: false, status: 404, error: 'Unknown task' };
-  // R-042 (P-1): the task sheet is outside the client's workspace — a client gets 403 (not the screens' redirect home).
-  if (!canDownloadTaskFiles(await getViewer())) return { ok: false, status: 403, error: 'You cannot open this file' };
   const { viewer, outside } = await getScreenAccess('task');
   const [task] = await listTasks({ number: id });
   if (!task) return { ok: false, status: 404, error: 'Unknown task' };

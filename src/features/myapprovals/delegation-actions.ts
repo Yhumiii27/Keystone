@@ -16,7 +16,7 @@ import { decideReceiptFromInboxAction } from '@/features/deliveries/actions';
 import { decideDocumentFromInboxAction } from '@/features/docs/actions';
 import { decideEcoApprovalAction } from '@/features/eco/actions';
 import { decidePurchaseOrderAction } from '@/features/orders/actions';
-import { decideDeliverableAction, verifyNcrAction } from '@/features/quality/actions';
+import { verifyNcrAction } from '@/features/quality/actions';
 import { decideDrawDownAction } from '@/features/risks/actions';
 import { getOwnApprovalInbox } from '@/server/approvals';
 import { businessToday } from '@/server/clock';
@@ -49,7 +49,7 @@ function refused(e: unknown, where: string): DelegationResult {
 /** Declares a substitute for the viewer's approvals over a period (first and last day included). */
 export async function declareDelegationAction(input: { substituteUserId: string; startsOn: string; endsOn: string; note?: string }): Promise<DelegationResult> {
   const { canEdit, viewer } = await getScreenAccess('myapprovals');
-  if (!canEdit || viewer.role === 'client') return { ok: false, error: DELEGATION_ERRORS.approver };
+  if (!canEdit) return { ok: false, error: DELEGATION_ERRORS.approver };
   const substituteUserId = str(input?.substituteUserId, 64);
   if (!UUID_RE.test(substituteUserId)) return { ok: false, error: DELEGATION_ERRORS.external };
   const approverUserId = await viewerUserId(viewer);
@@ -66,7 +66,7 @@ export async function declareDelegationAction(input: { substituteUserId: string;
 /** Cancels a delegation (its approver, or the portfolio director), with an optional reason. */
 export async function cancelDelegationAction(input: { id: string; reason?: string }): Promise<DelegationResult> {
   const { canEdit, viewer } = await getScreenAccess('myapprovals');
-  if (!canEdit || viewer.role === 'client') return { ok: false, error: 'You cannot change this delegation' };
+  if (!canEdit) return { ok: false, error: 'You cannot change this delegation' };
   const id = str(input?.id, 64);
   if (!UUID_RE.test(id)) return { ok: false, error: INVALID };
   try {
@@ -99,9 +99,6 @@ async function record(decision: ApprovalDecision, ok: boolean, note: string | un
     case 'ncr-verification':
       r = await verifyNcrAction({ projectCode: decision.projectCode, number: decision.number, decision: ok ? 'approved' : 'rejected' });
       break;
-    case 'deliverable':
-      r = await decideDeliverableAction({ projectCode: decision.projectCode, number: decision.number, decision: ok ? 'accepted' : 'rejected' });
-      break;
     case 'resource-request':
       r = await decideResourceRequestAction({ number: decision.number, decision: ok ? 'ok' : 'rejected', note });
       break;
@@ -128,7 +125,7 @@ const projectOf = (d: ApprovalDecision): string | undefined => ('projectCode' in
  */
 export async function decideOnBehalfAction(input: { delegationId: string; decision: ApprovalDecision; ok: boolean; note?: string }): Promise<DelegationResult> {
   const { canEdit, viewer } = await getScreenAccess('myapprovals');
-  if (!canEdit || viewer.role === 'client') return { ok: false, error: NOT_ALLOWED };
+  if (!canEdit) return { ok: false, error: NOT_ALLOWED };
   const delegationId = str(input?.delegationId, 64);
   const decision = input?.decision;
   if (!UUID_RE.test(delegationId) || !decision || typeof decision !== 'object' || typeof input.ok !== 'boolean') return { ok: false, error: INVALID };
@@ -140,7 +137,7 @@ export async function decideOnBehalfAction(input: { delegationId: string; decisi
     return { ok: false, error: NOT_ACTIVE };
   }
   const approver = await approverViewerOf(d.approverUserId);
-  if (!approver || approver.role === 'client') return { ok: false, error: NOT_ACTIVE };
+  if (!approver) return { ok: false, error: NOT_ACTIVE };
   // The item must wait for the approver themselves (their own queue, the same routing as their inbox).
   const own = await getOwnApprovalInbox(approver, { projectCode: projectOf(decision) });
   const key = decisionKey(decision);

@@ -1,8 +1,7 @@
 // R-126 (X-15 "split", SC-4a "a"): photos of goods receipts, site daily reports and punch items stored by Keystone. Pure
 // rules, then the upload / image Route Handlers and the remove Server Function on the seeded in-memory database with files
-// in a temporary folder and the real project context: rights of the 8 personas per screen (Deliveries, Site, ITP), the
-// client (sees only the ITP punch list's photos of their project, never adds), a PM on another project, type / content /
-// size / count limits, the CSRF guard, the receipt's photo count, the audit trail and the galleries' render.
+// in a temporary folder and the real project context: rights of the 8 personas per screen (Deliveries, Site, ITP), a PM on
+// another project, type / content / size / count limits, the CSRF guard, the receipt's photo count, the audit trail and the galleries' render.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -31,7 +30,7 @@ import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { GET } from '@/app/api/photos/[id]/route';
 import { POST } from '@/app/api/photos/route';
-import { MAX_PHOTOS_PER_OWNER, clientSeesPhotos, parsePhotoOwner, photoScreenOf, type PhotoOwnerKey } from '@/domain/photos';
+import { MAX_PHOTOS_PER_OWNER, parsePhotoOwner, photoScreenOf, type PhotoOwnerKey } from '@/domain/photos';
 import { I18nProvider } from '@/i18n/client';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
@@ -43,7 +42,7 @@ import { removePhotoAction } from './actions';
 import { photoViews } from './model';
 import { PhotoGallery } from './photo-gallery';
 
-const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'] as const;
+const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'] as const;
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
 const JPG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 16, 74, 70, 73, 70]);
 const RECEIPT: PhotoOwnerKey = { kind: 'goods_receipt', code: 'HLT-026', ref: 'BL-2026-0521' };
@@ -91,12 +90,11 @@ describe('R-126 rules', () => {
     // A-6 'a' (R-117): a punch item is found by its number — the register is optional (and never trusted, photos/access.ts).
     expect(parsePhotoOwner({ kind: 'punch_item', code: 'HLT-026', ref: 'P-02' })).toEqual({ ...ITP_PUNCH, register: null });
     expect([RECEIPT, REPORT, ITP_PUNCH, SITE_PUNCH].map(photoScreenOf)).toEqual(['deliveries', 'site', 'itp', 'site']);
-    expect([RECEIPT, REPORT, ITP_PUNCH, SITE_PUNCH].map(clientSeesPhotos)).toEqual([false, false, true, false]);
   });
 });
 
 describe('R-126 upload, image, remove', () => {
-  it('who may add, per screen (8 personas): Deliveries, Site, ITP punch list — never the client', async () => {
+  it('who may add, per screen (8 personas): Deliveries, Site, ITP punch list', async () => {
     const add = async (o: PhotoOwnerKey) => {
       const out: Record<string, number> = {};
       for (const role of ROLES) {
@@ -105,10 +103,10 @@ describe('R-126 upload, image, remove', () => {
       }
       return out;
     };
-    expect(await add(RECEIPT)).toEqual({ director: 200, pm: 200, depthead: 403, member: 403, englead: 403, quality: 200, procurement: 200, client: 403 });
+    expect(await add(RECEIPT)).toEqual({ director: 200, pm: 200, depthead: 403, member: 403, englead: 403, quality: 200, procurement: 200 });
     // R-041: the department head is not on HLT-026's team, so the project is read-only for them.
-    expect(await add(REPORT)).toEqual({ director: 200, pm: 200, depthead: 403, member: 200, englead: 403, quality: 403, procurement: 403, client: 403 });
-    expect(await add(ITP_PUNCH)).toEqual({ director: 200, pm: 200, depthead: 403, member: 403, englead: 200, quality: 200, procurement: 403, client: 403 });
+    expect(await add(REPORT)).toEqual({ director: 200, pm: 200, depthead: 403, member: 200, englead: 403, quality: 403, procurement: 403 });
+    expect(await add(ITP_PUNCH)).toEqual({ director: 200, pm: 200, depthead: 403, member: 403, englead: 200, quality: 200, procurement: 403 });
     // A PM on another PM's project (read-only there); an unknown record of that project is 404.
     session.role = 'pm';
     const [ndc] = await listReceipts('NDC-031');
@@ -135,7 +133,7 @@ describe('R-126 upload, image, remove', () => {
     expect((await image(r.id!, '?download=1')).headers.get('content-disposition')).toMatch(/^attachment;/);
   });
 
-  it('who may see: internal viewers; the client only the ITP punch list of their project', async () => {
+  it('who may see: every viewer (D9-06: no client persona)', async () => {
     const [receipt] = (await listProjectPhotos('HLT-026', 'goods_receipt')).get('BL-2026-0521')!;
     const [report] = (await listProjectPhotos('HLT-026', 'daily_report')).get('DR-001')!;
     const [punch] = (await listProjectPhotos('HLT-026', 'punch_item')).get('P-02')!;
@@ -148,9 +146,9 @@ describe('R-126 upload, image, remove', () => {
       return out;
     };
     const internal = { director: 200, pm: 200, depthead: 200, member: 200, englead: 200, quality: 200, procurement: 200 };
-    expect(await see(receipt.id)).toEqual({ ...internal, client: 403 });
-    expect(await see(report.id)).toEqual({ ...internal, client: 403 });
-    expect(await see(punch.id)).toEqual({ ...internal, client: 200 });
+    expect(await see(receipt.id)).toEqual(internal);
+    expect(await see(report.id)).toEqual(internal);
+    expect(await see(punch.id)).toEqual(internal);
     expect((await image('00000000-0000-0000-0000-000000000000')).status).toBe(404);
     expect((await image('nope')).status).toBe(404);
   });
@@ -173,7 +171,7 @@ describe('R-126 upload, image, remove', () => {
   it('"Remove photo": the screen’s editors only; the file, its receipt attachment and the count go; audited', async () => {
     const [first] = (await listProjectPhotos('HLT-026', 'goods_receipt')).get('BL-2026-0521')!;
     const count = (await getReceipt('BL-2026-0521'))!.photoCount;
-    for (const role of ['depthead', 'member', 'englead', 'client']) {
+    for (const role of ['depthead', 'member', 'englead']) {
       session.role = role;
       expect(await removePhotoAction(first.id)).toEqual({ ok: false, error: 'Photos are read-only for you' });
     }

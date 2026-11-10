@@ -9,6 +9,10 @@ export const MESSAGES = [
   'The file is not an MS Project XML file (MSPDI)',
   'The file is not a Primavera P6 XER file',
   'The file is neither an MS Project XML file (MSPDI) nor a Primavera P6 XER file',
+  // D9-08 (delivery 9): MS Project and GanttProject only.
+  'The file is not a GanttProject file',
+  'The file is neither an MS Project XML file (MSPDI) nor a GanttProject file (.gan)',
+  'This import format is not available',
   'Imports are not available for now',
   'The file contains a DOCTYPE declaration, which is not accepted',
   'The file could not be read',
@@ -51,6 +55,11 @@ export const MESSAGES = [
   'P6 baselines are separate projects — none is imported',
   'Resource assignments are imported on the activities ({0})',
   'Activity owners are not in the file — set them on the Plan',
+  'Custom columns are not imported',
+  'Links to or from summary tasks are not imported ({0})',
+  'Yearly holidays are repeated over the years of the schedule ({0})',
+  'Baselines beyond the eleventh are not imported ({0})',
+  'Resource holidays are not imported',
   // Schedule rows
   'Name is missing',
   'Duplicate UID {0}',

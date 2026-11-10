@@ -1,6 +1,6 @@
 {
  "generated": "2026-10-10",
- "updated": "2026-11-07",
+ "updated": "2026-11-10",
  "branch": "main-2a2fep",
  "history": [
   {
@@ -294,6 +294,18 @@
   {
    "date": "2026-11-07",
    "text": "Demandes M-19 (fonction keystone.pub_editer, liste fermée de tables) et Vigie D12/D13 (connecteur Vigie par vues et fonctions pub_) traitées."
+  },
+  {
+   "date": "2026-11-10",
+   "text": "Questionnaire des décisions en attente (38 réponses) appliqué : portail client retiré, planning (import MS Project / GanttProject, date de situation, gel du vendredi, références), P1, P2, P4 et P8 lancées, P7 abandonnée ; nouveaux points R-212 à R-215."
+  },
+  {
+   "date": "2026-11-10",
+   "text": "D9-30 : demande déposée chez Codex (lire les projets dans keystone.pub_projets), Yhumiii27/Codex#28."
+  },
+  {
+   "date": "2026-11-10",
+   "text": "Lots intégrés : planning (D9-08 à D9-12), corrections Matrix des fériés et seuils (D9-04), portail client retiré (D9-06, D9-25, D9-26), P1 inspections et FAT, P4 change, P2 conformité CE."
   }
  ],
  "items": [
@@ -639,7 +651,9 @@
     "DECISIONS.md:132 S-9b et :211 D-7b, tous deux « Bloquant production »"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 9",
+    "note": " 10 nov. 2026 (D9-08) : import MS Project (XML) et GanttProject (.gan) rouvert, aperçu puis confirmation auditée (notes-d9-planning.md). Reste : procédure de reprise et fichiers réels des projets actifs."
    }
   },
   {
@@ -2011,7 +2025,9 @@
     "src/domain/team.ts:26 isStaleContact est calculé sur PG_NOW figé ; grep influence/interest/attitude dans src/features et src/domain : aucun affichage"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": " 10 nov. 2026 (D9-26) : grille pouvoir / intérêt retirée, parties prenantes par rôles et responsabilités."
    }
   },
   {
@@ -2043,7 +2059,9 @@
     "docs/decisions/questions.json S-4 option a : « Les retards, les échéances et l’horodatage suivent l’horloge réelle »"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": " 10 nov. 2026 (D9-09, D9-10) : le CP avance la date de référence, proposée chaque vendredi ; gel hebdomadaire CPI, SPI, EAC, marge, risques, avancement (migration 0079)."
    }
   },
   {
@@ -2130,7 +2148,9 @@
     "DELIVERY-6.md:356 et :368 (§8) listent ces deux questions S-3"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": " 10 nov. 2026 (D9-11, D9-12) : référence rejetée gardée « rejetée » ; la plus haute reste courante ; Re-baseline après BL1 par demande de modification."
    }
   },
   {
@@ -3174,7 +3194,8 @@
     "docs/DELIVERY-6.md:362 « Supplier quotes have no writer in Keystone »"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "a_faire",
+    "note": " 10 nov. 2026 (D9-17) : portail fournisseur (nouvel outil, R-213) à cadrer."
    }
   },
   {
@@ -3205,7 +3226,8 @@
     "docs/DELIVERY-6.md §5 : A-1b non appliqué"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "a_faire",
+    "note": " 10 nov. 2026 (D9-18) : numérotation par un fichier XML sur un serveur local — lire ce fichier d’abord (fichier attendu), puis tester l’hébergement et l’échange avec 3DX."
    }
   },
   {
@@ -3829,7 +3851,9 @@
     "docs/DELIVERY-6.md:106 et :359 question D-5 ouverte"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": " 10 nov. 2026 (D9-25) : case « client présent » sur la réunion."
    }
   },
   {
@@ -4285,9 +4309,9 @@
     "grep 'Voir comme le client' / screenHref('client') : aucun lien interne vers le portail"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8",
-    "note": "Livraison 8 : « Voir comme le client » pour le directeur et les responsables du projet (P-11 a) ; question ouverte sur « Signaler un problème » du directeur."
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Livraison 8 : « Voir comme le client » pour le directeur et les responsables du projet (P-11 a) ; question ouverte sur « Signaler un problème » du directeur. 10 nov. 2026 (D9-06, D9-22, D9-23) : les clients ne voient pas Keystone — portail et profil Client retirés (lot « d9-noclient » en cours). 10 nov. 2026 (D9-06) : portail client et profil Client retirés ; décision client saisie par les responsables avec la référence du document signé (migration 0083)."
    }
   },
   {
@@ -4342,7 +4366,8 @@
     "src/features/rexclient/rex-view.tsx:96-113 affichage seul (« Survey not received yet »)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "a_faire",
+    "note": " 10 nov. 2026 : sans objet (portail client retiré, D9-22)."
    }
   },
   {
@@ -4367,7 +4392,8 @@
     "docs/DELIVERY-6.md §8 ligne S-9a : question toujours ouverte"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "a_faire",
+    "note": " 10 nov. 2026 : sans objet (portail client retiré, D9-23)."
    }
   },
   {
@@ -4863,7 +4889,9 @@
     "grep -i expedit|release note|factory acceptance dans src : seulement l’étape de cycle de vie FAT et des transcriptions de réunion"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "note": " 10 nov. 2026 (D9-31) : lancée — lot « d9-p1p4 » en cours. 10 nov. 2026 (P1) : relance de fabrication, inspections et FAT par commande, bons de libération, alerte des commandes longues (migration 0080, notes-d9-p1p4.md).",
+    "delivery": "Livraison 9"
    }
   },
   {
@@ -4888,7 +4916,9 @@
     "Aucune table d’analyse de risques, d’exigences essentielles ou de dossier technique (liste des tables pgTable dans src/server/db/schema) ; grep 2023/1230|2006/42|technical file|risk assessment : aucun résultat"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "note": " 10 nov. 2026 (D9-32) : lancée avant janvier 2027 — lot « d9-p2ce » en cours. 10 nov. 2026 (P2) : dossier CE par ligne d’équipement, listes annexes III et IV dans Paramètres, avertissement à la livraison, liste portefeuille après le 20 janv. 2027 (migrations 0081-0082, notes-d9-p2ce.md). Contenu des listes à valider par le QHSE.",
+    "delivery": "Livraison 9"
    }
   },
   {
@@ -4914,7 +4944,8 @@
     "Aucune table de réclamation contractuelle ni de pénalité dans la liste des tables du schéma"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "a_faire",
+    "note": " 10 nov. 2026 (D9-33) : plus tard."
    }
   },
   {
@@ -4940,7 +4971,9 @@
     "docs/DECISIONS.md:148 C-9 (Bloquant production) : « Devise par contrat et commande, consolidation en euros » (option b, pas c = P4)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "note": " 10 nov. 2026 (D9-34) : lancée — lot « d9-p1p4 » en cours. 10 nov. 2026 (P4) : cours de référence datés, exposition de change par projet, alertes de couverture (migration 0080).",
+    "delivery": "Livraison 9"
    }
   },
   {
@@ -4966,7 +4999,7 @@
    ],
    "progress": {
     "state": "a_faire",
-    "note": "Livraison 8 : la saisie des rotations existe désormais dans la fiche chantier (R-118) ; le reste de la proposition attend sa validation."
+    "note": "Livraison 8 : la saisie des rotations existe désormais dans la fiche chantier (R-118) ; le reste de la proposition attend sa validation. 10 nov. 2026 (D9-35) : voyage lié à un projet créé depuis le planning de Keystone, administratif et médical dans Cursus — à cadrer avec Cursus."
    }
   },
   {
@@ -4992,7 +5025,8 @@
     "Aucune table d’offre client, de marge d’offre ni de conversion offre → BL1"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "a_faire",
+    "note": " 10 nov. 2026 (D9-36) : remplacée par un logiciel catalogue / module commercial dédié, géré par EPC2i, qui publiera le catalogue dans Arche et Keystone (hors Keystone)."
    }
   },
   {
@@ -5015,7 +5049,8 @@
     "src/server/db/schema/site.ts:40-55 site_equipment (name, source shipped/local_rental/client, statut de confirmation) : pas de parc d’outillage ni d’échéance d’étalonnage"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "a_faire",
+    "note": " 10 nov. 2026 (D9-37) : abandonnée — outillage mécanique sans étalonnage ; seuls les équipements de laboratoire en ont."
    }
   },
   {
@@ -5041,7 +5076,8 @@
     "docs/decisions/questions.json X-4 : option retenue « Ordinateur + tablette… en ligne », option « le chantier attendra l’appli P8 » non retenue"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "a_faire",
+    "note": " 10 nov. 2026 (D9-38) : lancée — lot à venir."
    }
   },
   {
@@ -5095,7 +5131,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "Livraison 8",
-    "note": "Livraison 8, lot journal d’audit : table en ajout seul (déclencheurs), utilisateur, avant / après, motif, 4 colonnes de plus dans l’export CSV ISO. Reste : remplir avant / après / motif dans les autres écritures (balayage après la livraison) et REVOKE quand l’hébergement est choisi (I-1a). 2 nov. 2026 : lot « audit » lancé (avant / après et motif dans les écritures restantes). Fait le 2 nov. 2026 (docs/delivery-9/notes-r168-audit.md) : ~120 écritures portent avant / après (champs modifiés seulement, changedValues) et motif ; garde-fou src/server/audit-coverage.test.ts (exceptions listées : créations, événements, système). Reste : REVOKE quand l’hébergement est choisi (I-1a)."
+    "note": "Livraison 8, lot journal d’audit : table en ajout seul (déclencheurs), utilisateur, avant / après, motif, 4 colonnes de plus dans l’export CSV ISO. Reste : remplir avant / après / motif dans les autres écritures (balayage après la livraison) et REVOKE quand l’hébergement est choisi (I-1a). 2 nov. 2026 : lot « audit » lancé (avant / après et motif dans les écritures restantes). Fait le 2 nov. 2026 (docs/delivery-9/notes-r168-audit.md) : ~120 écritures portent avant / après (champs modifiés seulement, changedValues) et motif ; garde-fou src/server/audit-coverage.test.ts (exceptions listées : créations, événements, système). Reste : REVOKE quand l’hébergement est choisi (I-1a). 10 nov. 2026 (D9-04) : pub_editer ouvre aussi les jours fériés et les seuils de Paramètres (migration 0078)."
    }
   },
   {
@@ -5419,7 +5455,7 @@
    "verdict": "ajout_critique",
    "progress": {
     "state": "a_faire",
-    "note": " 25 oct. 2026 (responsable produit) : tout ce à quoi la filiale (client interne) accédait dans Keystone remonte désormais dans Arche par les vues pub_, plus dans Keystone ; le portail Keystone ne concerne plus que les clients externes."
+    "note": " 25 oct. 2026 (responsable produit) : tout ce à quoi la filiale (client interne) accédait dans Keystone remonte désormais dans Arche par les vues pub_, plus dans Keystone ; le portail Keystone ne concerne plus que les clients externes. 10 nov. 2026 : sans objet (portail client retiré, D9-22)."
    }
   },
   {
@@ -5758,7 +5794,7 @@
    ],
    "progress": {
     "state": "a_faire",
-    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire."
+    "note": "Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. 10 nov. 2026 (D9-20) : sans objet pour Keystone — les études de sécurité relèvent du service SSE Groupe et de ses outils."
    }
   },
   {
@@ -6214,6 +6250,90 @@
     "state": "fait",
     "delivery": "Livraison 9",
     "note": "3 nov. 2026 : filtre « Sous garantie », groupe « Sous garantie » après « Pipeline » (projets à l’étape Garantie), vignette « Projets sous garantie » ; « Projets en cours » ne les compte plus ; aussi dans l’export du planning. Tests dorés adaptés (src/test/pf1.ts)."
+   }
+  },
+  {
+   "id": "R-212",
+   "verdict": "ajout_critique",
+   "title": "Envoyer en signature électronique (DocuSign) les documents à officialiser avec un client",
+   "description": "Le responsable produit (10 nov. 2026, D9-06) : les clients ne voient pas Keystone ; un point à officialiser avec un client (PV, décision) part en signature par DocuSign. Nouvel outil : compte DocuSign d’EPC2i et accord de la DSI ; document signé rangé dans Codex.",
+   "category": "plateforme_production",
+   "kind": "decision_a_appliquer",
+   "priority": "prochaine_etape",
+   "status": "bloque_attente_proprietaire",
+   "waiting_on": "Cadrage avec le responsable produit et la DSI (compte DocuSign, documents concernés)",
+   "effort": "M",
+   "sources": [
+    "Questionnaire des décisions en attente (10 nov. 2026)"
+   ],
+   "evidence": [],
+   "progress": {
+    "state": "a_faire",
+    "delivery": "Livraison 9",
+    "note": ""
+   }
+  },
+  {
+   "id": "R-213",
+   "verdict": "ajout_critique",
+   "title": "Portail fournisseur pour recevoir les devis des consultations",
+   "description": "Le responsable produit (10 nov. 2026, D9-17) : les devis des consultations arrivent par un portail fournisseur. Nouvel outil, à cadrer (accès des fournisseurs, sécurité, lien avec Sage X3).",
+   "category": "plateforme_production",
+   "kind": "decision_a_appliquer",
+   "priority": "prochaine_etape",
+   "status": "bloque_attente_proprietaire",
+   "waiting_on": "Cadrage avec le responsable produit et la DSI",
+   "effort": "M",
+   "sources": [
+    "Questionnaire des décisions en attente (10 nov. 2026)"
+   ],
+   "evidence": [],
+   "progress": {
+    "state": "a_faire",
+    "delivery": "Livraison 9",
+    "note": ""
+   }
+  },
+  {
+   "id": "R-214",
+   "verdict": "ajout_critique",
+   "title": "Lire le fichier XML de numérotation des articles et l’échanger avec 3DX",
+   "description": "Le responsable produit (10 nov. 2026, D9-18) : la numérotation des articles vient d’un fichier XML sur un serveur local. Lire ce fichier d’abord, puis tester s’il peut être hébergé et communiqué à 3DX depuis le serveur.",
+   "category": "plateforme_production",
+   "kind": "decision_a_appliquer",
+   "priority": "prochaine_etape",
+   "status": "bloque_attente_proprietaire",
+   "waiting_on": "Fichier XML de numérotation fourni par l’ingénierie",
+   "effort": "M",
+   "sources": [
+    "Questionnaire des décisions en attente (10 nov. 2026)"
+   ],
+   "evidence": [],
+   "progress": {
+    "state": "a_faire",
+    "delivery": "Livraison 9",
+    "note": ""
+   }
+  },
+  {
+   "id": "R-215",
+   "verdict": "ajout_critique",
+   "title": "Créer depuis le planning les voyages liés à un projet (Cursus pour l’administratif et le médical)",
+   "description": "Le responsable produit (10 nov. 2026, D9-35) : un voyage lié à un projet se crée depuis le planning de Keystone ; l’administratif et le médical restent dans Cursus selon la destination ; un voyage hors projet se crée dans Cursus.",
+   "category": "plateforme_production",
+   "kind": "decision_a_appliquer",
+   "priority": "prochaine_etape",
+   "status": "bloque_attente_proprietaire",
+   "waiting_on": "Fonction ou API de Cursus pour recevoir le voyage ; cadrage avec Cursus",
+   "effort": "M",
+   "sources": [
+    "Questionnaire des décisions en attente (10 nov. 2026)"
+   ],
+   "evidence": [],
+   "progress": {
+    "state": "a_faire",
+    "delivery": "Livraison 9",
+    "note": ""
    }
   }
  ]

@@ -20,7 +20,7 @@ describe('parseInternalClient (R-190)', () => {
 
   it('the director only', () => {
     expect(canSetInternalClient('director')).toBe(true);
-    for (const r of ['pm', 'finance', 'client', 'member'] as const) expect(canSetInternalClient(r), r).toBe(false);
+    for (const r of ['pm', 'finance', 'member'] as const) expect(canSetInternalClient(r), r).toBe(false);
   });
 
   it('the client of a need is the subsidiary by its code or by Arche’s name', () => {

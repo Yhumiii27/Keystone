@@ -39,7 +39,7 @@ Keystone PM is EPC2i's project and portfolio management tool. It is a Next.js 16
 | Cursus | People's site clearances and Go/No-Go; timesheets (hours are no longer in Lucca) |
 | Codex | Documents (Keystone keeps the index and links) |
 | CAPEX app (name to choose) | Subsidiaries' CAPEX, DIG-PRODI phases and gates, living dossiers, machine needs (demand side), ramp-up |
-| Keystone | Deliverables and client PV acceptance, ITP and punch list, site readiness and daily reports, commissioning, lessons learned (REX), installed base and claims, client portal, administration |
+| Keystone | Deliverables and client PV acceptance, ITP and punch list, site readiness and daily reports, commissioning, lessons learned (REX), installed base and claims, administration |
 
 - **Cross-repo rules (owner, 22 Oct 2026).** This chat owns `Yhumiii27/Keystone` only; Matrix, Cursus, Arche, Crucible, Vigie, Codex are read-only sources. Other apps file requests to Keystone in `REQUESTS.md` (repo root): at the start of each session read it and report the OPEN entries to the owner; handle them only after the owner's approval. The only write allowed elsewhere is a new entry in another repo's `REQUESTS.md` (or the status of an entry Keystone created), and only after presenting a detailed note (target repo, exact request, why, what happens without it) and getting the owner's explicit « validé ».
 - **Exchanges with the other tools (Matrix M-17, 30 Oct 2026, and M-18, 1 Nov 2026; `docs/delivery-9/notes-m17-m18.md`).** Matrix decides every access between tools; PostgreSQL applies it.
@@ -52,13 +52,13 @@ Keystone PM is EPC2i's project and portfolio management tool. It is a Next.js 16
 ## Conventions
 
 - **Must read first:** `docs/ARCHITECTURE.md`, then the spec in `docs/spec/`: 00 overview and open questions §10, 01–10 by module, 11 data model, 12 coverage.
-- **Routing:** `src/config/screens.ts` holds the 62 screens (Shipments, R-158, is the 61st; My dashboards, R-203, the 62nd). Use `screenHref`, `canSee` and `ROLE_SCREENS`. The registry imports no component (icons are in `src/config/screen-icons.ts`) so server code and `tsx` scripts can load it; server rules take `canSee` from `src/config/role-screens.ts`.
+- **Routing:** `src/config/screens.ts` holds the 61 screens (Shipments, R-158, and My dashboards, R-203, included; the client portal was removed, D9-06: clients never see Keystone). Use `screenHref`, `canSee` and `ROLE_SCREENS`. The registry imports no component (icons are in `src/config/screen-icons.ts`) so server code and `tsx` scripts can load it; server rules take `canSee` from `src/config/role-screens.ts`.
 - **Viewer:** `getViewer()` (`src/server/session.ts`). `KEYSTONE_AUTH=demo` (default, tests and development): the "View as" cookie (`ks-role`) picks a persona. `KEYSTONE_AUTH=entra`: Microsoft Entra ID sign-in (R-038), the user's roles and person from the database; `ks-role` is ignored.
-- **Project rights (R-041):** `getProjectContext` / `projectAccessResolver` (`src/server/project-context.ts`) over `projectAccess` (`src/domain/rights.ts`): `isLead` for PM rights (PM of record, co-PM, deputy, director), `isMine` for team members; a client is sent home outside their workspace (`refuseClient`).
+- **Project rights (R-041):** `getProjectContext` / `projectAccessResolver` (`src/server/project-context.ts`) over `projectAccess` (`src/domain/rights.ts`): `isLead` for PM rights (PM of record, co-PM, deputy, director), `isMine` for team members; a role is sent home outside its workspace.
 - **Typed text (R-148):** what people typed (names, titles, notes) is shown with `dataText` / `projectLabelText` / `fieldsText` (`src/i18n/data-text.ts`), never through `t()`, which is for Keystone's own vocabulary.
 - **French completeness (R-184):** every new `t()` literal needs a French entry that differs from the English, a FR rule, or a reviewed place on `src/i18n/same-in-french.json` (`src/i18n/completeness.test.ts`); one French translation per key across the dictionaries (`src/i18n/extra/dictionaries.test.ts` lists the deliberate overrides).
 - **Audit trail (R-168):** `audit_entries` is append-only (database trigger) — never update or delete audit rows, in code or tests; date a test row with `writeAudit({ occurredAt })`.
-- **Personas:** ten, Finance (R-044) and Logistics (R-158: edits the Shipments of every project, reads the BOM, Site, Schedule and Deliveries) included; persona tests loop over `PERSONAS` (`src/config/personas.ts`).
+- **Personas:** nine (the Client persona and role were removed, D9-06: clients never see Keystone), Finance (R-044) and Logistics (R-158: edits the Shipments of every project, reads the BOM, Site, Schedule and Deliveries) included; persona tests loop over `PERSONAS` (`src/config/personas.ts`).
 - **Data access:**
   - DAL in `src/server/dal/`, Drizzle schema in `src/server/db/schema/`.
   - Migrations in `drizzle/`: generate a new one with `npm run db:generate` and never edit an existing one.

@@ -121,6 +121,16 @@ function FormBody({ fields, submit, kind = 'create', note, onClose, onSubmit, in
         return <Input id={id} type="date" value={v} aria-required={f.required || undefined} onChange={(e) => set(f.id, e.target.value)} />;
       case 'number':
         return <Input id={id} type="number" value={v} placeholder={ph} aria-required={f.required || undefined} onChange={(e) => set(f.id, e.target.value)} />;
+      case 'checkbox':
+        return (
+          <input
+            id={id}
+            type="checkbox"
+            className={s.checkbox}
+            checked={v === 'yes'}
+            onChange={(e) => set(f.id, e.target.checked ? 'yes' : '')}
+          />
+        );
       case 'textarea':
         return <Textarea id={id} short value={v} placeholder={ph} aria-required={f.required || undefined} onChange={(e) => set(f.id, e.target.value)} />;
       case 'select':

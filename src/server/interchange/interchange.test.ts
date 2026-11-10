@@ -1,7 +1,7 @@
 // Schedule and table imports / MSPDI export on a seeded in-memory database (chapter 4, S-9): new-project and update imports
 // of the synthetic fixtures (tests/fixtures/ch4), round trips export → import, dry runs that write nothing, the stale-preview
 // guard, circular logic, rights per role, and the Excel / CSV imports of budget lines, BOM, parts and resource assignments.
-// D-7b: imports are off in the app (IMPORTS_ENABLED, src/domain/ch4-defaults.ts); these tests turn the flag on.
+// D9-08: only MS Project and GanttProject imports are enabled in the app (ENABLED_IMPORT_KINDS); these tests enable every kind.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -9,7 +9,7 @@ import ExcelJS from 'exceljs';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/domain/ch4-defaults', async (orig) => ({ ...(await orig<typeof import('@/domain/ch4-defaults')>()), IMPORTS_ENABLED: true }));
+vi.mock('@/domain/ch4-defaults', async (orig) => ({ ...(await orig<typeof import('@/domain/ch4-defaults')>()), IMPORTS_ENABLED: true, ENABLED_IMPORT_KINDS: ['mspdi', 'xer', 'gan', 'budget_lines', 'bom', 'parts', 'assignments'] }));
 import { PERSONA_BY_ROLE } from '@/config/personas';
 import { CATEGORY_FROZEN_MESSAGE } from '@/domain/baseline-policy';
 import { getDb, setDb } from '@/server/db/client';
@@ -238,7 +238,7 @@ describe('rights', () => {
   it('per role and project ownership', async () => {
     const xml = fixture('sample.mspdi.xml');
     expect(await startImport({ kind: 'schedule', mode: 'update', projectCode: 'NDC-031', fileName: 'x.xml', data: xml }, PM)).toEqual({ ok: false, error: 'You may not import this file into this project' });
-    for (const role of ['member', 'client', 'englead', 'quality'] as const)
+    for (const role of ['member', 'englead', 'quality'] as const)
       expect((await startImport({ kind: 'schedule', mode: 'new', projectCode: null, fileName: 'x.xml', data: xml }, viewer(role))).ok, role).toBe(false);
     expect((await startImport({ kind: 'bom', mode: 'update', projectCode: 'HLT-026', fileName: 'bom.csv', data: fixture('bom.en.csv') }, viewer('englead'))).ok).toBe(true);
     expect((await startImport({ kind: 'bom', mode: 'update', projectCode: 'HLT-026', fileName: 'bom.csv', data: fixture('bom.en.csv') }, PM)).ok).toBe(false);
@@ -254,9 +254,9 @@ describe('rights', () => {
     expect(r).toEqual({ ok: false, error: 'File type not accepted' });
     const x = await startImport({ kind: 'schedule', mode: 'new', projectCode: null, fileName: 'x.xml', data: new TextEncoder().encode('<html/>') }, DIRECTOR);
     expect(x).toEqual({ ok: false, error: 'The file is not an MS Project XML file (MSPDI)' });
-    // Either schedule card accepts both formats: an unrecognised file names both (it said "MS Project XML" on the P6 card).
+    // Either schedule card accepts every schedule format: an unrecognised file names the enabled ones (D9-08: MS Project, GanttProject).
     const y = await startImport({ kind: 'schedule', mode: 'new', projectCode: null, fileName: 'plan.txt', data: new TextEncoder().encode('hello') }, DIRECTOR);
-    expect(y).toEqual({ ok: false, error: 'The file is neither an MS Project XML file (MSPDI) nor a Primavera P6 XER file' });
+    expect(y).toEqual({ ok: false, error: 'The file is neither an MS Project XML file (MSPDI) nor a GanttProject file (.gan)' });
   });
 });
 

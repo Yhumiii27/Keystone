@@ -247,12 +247,12 @@ describe('ECO progress sent to Vigie (outbox)', () => {
   });
 
   it('the connector\'s Change-orders roles are the screen registry\'s', () => {
-    const roles: RoleKey[] = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'];
+    const roles: RoleKey[] = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'];
     expect(roles.filter((r) => canSee(r, 'eco'))).toEqual(ECO_SCREEN_ROLES);
   });
 
   it('step advancement: Start impact analysis (Draft), one at a time; Submit needs the interchangeability decided in Vigie; outside viewers refused', async () => {
-    await expect(recordEcoProgress('ECO-2026-017', { step: 'impact_analysis' }, { name: 'Nadia Bensaïd', role: 'client' })).rejects.toThrow(/outside your workspace/);
+    await expect(recordEcoProgress('ECO-2026-017', { step: 'impact_analysis' }, { name: 'Julien Wagner', role: 'member' })).rejects.toThrow(/outside your workspace/);
     await expect(recordEcoProgress('ECO-2026-017', { step: 'in_approval' }, { name: 'Fabien Bertrand', role: 'procurement' })).rejects.toThrow(/cannot move from Draft to In approval/);
     await recordEcoProgress('ECO-2026-017', { step: 'impact_analysis' }, { name: 'Fabien Bertrand', role: 'procurement' });
     const e = (await listEcos({ numbers: ['ECO-2026-017'] }))[0];

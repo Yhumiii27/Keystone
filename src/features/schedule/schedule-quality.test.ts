@@ -80,10 +80,6 @@ describe('Schedule quality (R-206)', () => {
   it('every persona who sees the schedule gets the cards; a client is sent home', async () => {
     for (const p of PERSONAS) {
       as(p.role);
-      if (p.role === 'client') {
-        await expect(pageBody('HLT-026')).rejects.toThrow(/REDIRECT/);
-        continue;
-      }
       const body = await pageBody('HLT-026');
       expect(isValidElement(body.props.quality), p.role).toBe(true);
     }

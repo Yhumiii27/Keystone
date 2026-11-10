@@ -62,15 +62,15 @@ beforeAll(async () => {
 }, 60_000);
 
 describe('R-149 — @mentions in task comments', () => {
-  it('mentionable: the internal personas with an active account (never the client)', async () => {
+  it('mentionable: the internal personas with an active account (D9-06: the client is no persona any more)', async () => {
     const names = (await listMentionablePersons()).map((p) => p.fullName);
-    for (const p of PERSONAS.filter((x) => x.role !== 'client')) expect(names).toContain(p.name);
+    for (const p of PERSONAS) expect(names).toContain(p.name);
     expect(names).not.toContain('Nadia Bensaïd');
   });
 
-  it('the person mentioned gets exactly one unread mention opening the task; author, client and unknown names get nothing', async () => {
+  it('the person mentioned gets exactly one unread mention opening the task; author and unknown names get nothing', async () => {
     as('member'); // Julien Wagner, on his own task
-    const before = { director: (await listNotifications('director')).length, member: (await listNotifications('member')).length, client: (await listNotifications('client')).length };
+    const before = { director: (await listNotifications('director')).length, member: (await listNotifications('member')).length };
     const text = '@marie lefebvre can you confirm the crane slot? cc @J. Wagner @N. Bensaïd @Nobody Here mail x@M. Lefebvre';
     expect(await addTaskCommentAction({ taskId: 'T-2305', text })).toEqual({ ok: true });
     const m = await mentionsOf('director', 'T-2305');
@@ -81,7 +81,6 @@ describe('R-149 — @mentions in task comments', () => {
     });
     expect((await listNotifications('director')).length).toBe(before.director + 1);
     expect((await listNotifications('member')).length).toBe(before.member); // the author
-    expect((await listNotifications('client')).length).toBe(before.client); // a client is never mentionable
     // The comment is there, as typed; one audit line names the people told.
     expect((await getTask('T-2305'))!.comments.at(-1)).toMatchObject({ author: 'Julien Wagner', text });
     expect((await auditOf('T-2305')).slice(-2)).toEqual([

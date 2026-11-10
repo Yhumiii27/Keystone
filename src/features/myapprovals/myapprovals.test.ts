@@ -23,7 +23,7 @@ import { makeT, type Lang } from '@/i18n/translate';
 import { getApprovalInbox } from '@/server/approvals';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
-import { getChangeControl } from '@/server/dal/changes';
+import { decideChangeStep, getChangeControl } from '@/server/dal/changes';
 import { listAudit } from '@/server/dal/notifications';
 import { decideChangeRequestAction } from './actions';
 import { daysFr, inboxT } from './i18n';
@@ -52,7 +52,8 @@ describe('My approvals feature', () => {
     const html = await render('director', 'fr');
     const txt = text(html);
     for (const s of [
-      'En attente de ma part', 'En tant que Directrice de portefeuille', 'Commande d’achat · Demande de modification · Facture — rapprochement 3 voies',
+      // D9-06: + the deliverables waiting for the client's decision the director may record.
+      'En attente de ma part 7', 'En tant que Directrice de portefeuille', 'Commande d’achat · Demande de modification · Acceptation de livrable · Facture — rapprochement 3 voies',
       'Plus ancienne', '10 sept.', 'Soumise le', 'Décidées cette semaine', 'Piste d’audit conservée par élément',
       'Nature', 'Tous', 'Facture — rapprochement 3 voies', 'En attente de ma décision',
       'Demandes de ressources, commandes, ECO, livraisons, demandes de modification et livrables — à décider ici ou sur leur page',
@@ -71,10 +72,11 @@ describe('My approvals feature', () => {
 
   it('renders in English, filtered, without inline buttons when the viewer may not decide', async () => {
     const txt = text(await render('director', 'en', { filter: 'invoice' }));
-    expect(txt).toContain('Waiting for me 5 As Portfolio director');
+    expect(txt).toContain('Waiting for me 7 As Portfolio director'); // D9-06: + D-014, D-016
     expect(txt).toContain('Halvorsen Cranes · €1,286,400');
     expect(txt).not.toContain('PO-1082 ');
-    const ro = await render('client', 'en', { canDecide: false });
+    // D9-06: the PM's deliverables waiting for the client's signed PV have no inline decision (the drawer records it).
+    const ro = await render('pm', 'en', { canDecide: false });
     expect(text(ro)).toContain('Test & inspection reports · Accept by 2 Oct');
     expect(ro).not.toContain('>Approve<');
   });
@@ -112,10 +114,8 @@ describe('My approvals feature', () => {
     session.role = 'pm'; // the PM step of CR-008 is already approved; the director step is not his
     expect(await decideChangeRequestAction({ ...input, step: 'pm' })).toEqual({ ok: false, error: 'This decision is not waiting for you any more' });
     expect(await decideChangeRequestAction(input)).toEqual({ ok: false, error: 'This decision is not waiting for you any more' });
-    session.role = 'client';
-    expect(await decideChangeRequestAction(input)).toEqual({ ok: false, error: 'This decision is not waiting for you any more' });
-    // R-069 (P-6b): the client's own step waits for the director's.
-    expect(await decideChangeRequestAction({ ...input, step: 'client' })).toEqual({ ok: false, error: 'Not yours to decide yet' });
+    // D9-06: the client's step is recorded on Change control with its signed document, never decided inline here.
+    expect(await decideChangeRequestAction({ ...input, step: 'client' })).toEqual({ ok: false, error: 'Invalid request' });
     session.role = 'director';
     expect(await decideChangeRequestAction({ ...input, step: 'ccb' })).toEqual({ ok: false, error: 'Not yours to decide yet' });
     expect((await getChangeControl('HLT-026'))!.changeRequests.find((c) => c.id === 'CR-008')!.chain.map((s) => s.decision)).toEqual(['ok', 'pending', 'pending', 'pending']);
@@ -127,14 +127,15 @@ describe('My approvals feature', () => {
     expect(await decideChangeRequestAction({ projectCode: 'HLT-026', number: 'CR-008', step: 'director', decision: 'ok' })).toEqual({ ok: false, error: 'This decision is not waiting for you any more' });
     // Deviation P-6b (R-069): the board's step waits for the client — not in the director's queue yet; nobody else may record it.
     expect(text(await render('director', 'en'))).not.toContain('Budget · Schedule · +€85k · -12 d · Change control board');
-    expect(text(await render('client', 'en'))).toContain('CR-008');
+    // D9-06: the client step reaches the PM, recorded on Change control (no inline decision in My approvals).
+    expect(text(await render('pm', 'en'))).toContain('CR-008');
     session.role = 'pm';
     expect(await decideChangeRequestAction({ projectCode: 'HLT-026', number: 'CR-008', step: 'ccb', decision: 'ok' })).toEqual({ ok: false, error: 'This decision is not waiting for you any more' });
-    session.role = 'client';
-    expect(await decideChangeRequestAction({ projectCode: 'HLT-026', number: 'CR-008', step: 'client', decision: 'rejected' })).toEqual({ ok: true, status: 'Rejected' });
+    expect(await decideChangeRequestAction({ projectCode: 'HLT-026', number: 'CR-008', step: 'client', decision: 'rejected' })).toEqual({ ok: false, error: 'Invalid request' });
+    await decideChangeStep('HLT-026', 'CR-008', 'client', 'rejected', 'Romain Aubert', 'Client decision of 2026-09-25 · LTR-1');
     const cr = (await getChangeControl('HLT-026'))!.changeRequests.find((c) => c.id === 'CR-008')!;
     expect([cr.status, ...cr.chain.map((s) => `${s.step}:${s.decision}:${s.decidedBy ?? ''}`)]).toEqual([
-      'rejected', 'pm:ok:', 'director:ok:Marie Lefebvre', 'client:rejected:Nadia Bensaïd', 'ccb:pending:',
+      'rejected', 'pm:ok:', 'director:ok:Marie Lefebvre', 'client:rejected:Romain Aubert', 'ccb:pending:',
     ]);
     const txt = text(await render('director', 'en'));
     expect(txt).not.toContain('CR-008');

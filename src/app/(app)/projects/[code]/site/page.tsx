@@ -73,9 +73,9 @@ export default async function SitePage({ params, searchParams }: { params: Promi
     />
   ) : undefined;
 
-  // R-126: photos on the Daily execution tab (internal viewers; the client never sees the site's records — P-10b).
+  // R-126: photos on the Daily execution tab.
   let photos;
-  if (view.tab === 'exec' && data && ctx.viewer.role !== 'client') {
+  if (view.tab === 'exec' && data) {
     const [reports, punch] = await Promise.all([listProjectPhotos(projectCode, 'daily_report'), listProjectPhotos(projectCode, 'punch_item')]);
     const views = (m: Map<string, Parameters<typeof photoViews>[0]>) => Object.fromEntries([...m].map(([k, v]) => [k, photoViews(v)]));
     // R-117: an item raised by an inspection (listed with "All") follows Inspections & punch list's rights.

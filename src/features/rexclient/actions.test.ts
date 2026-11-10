@@ -1,7 +1,6 @@
-// Lessons learned & closure and client portal Server Functions against an in-memory database: permission gates (read-only
-// project, outside the workspace, the project's client contact only for decisions and acknowledgements), input parsing,
-// stale-state refusals, numbering (LL-10…, CI-08 / CI-09 / CI-10 — never "CI-010") and the viewer as the actor (no fixed
-// "N. Bensaïd · 25 Sep" stamps). Session and project context are mocked.
+// Lessons learned & closure Server Functions against an in-memory database: permission gates (read-only project, outside the
+// workspace), input parsing, stale-state refusals, numbering (LL-10…) and the viewer as the actor. Session and project context
+// are mocked. D9-06: the client portal's Server Functions and their cases were removed (clients never see Keystone).
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const viewer = { name: 'Marie Lefebvre', role: 'director', canEdit: true, isMine: true, outside: false };
@@ -22,22 +21,12 @@ vi.mock('@/server/project-context', () => ({
 
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
-import { DEMO_TODAY_ISO as STATUS_ISO } from '@/domain/clock'; // R-013: the business date of the demo data set (the prototype's status date)
-import { decideChangeStep, listChangeRequestDetails } from '@/server/dal/changes';
-import { listClientIssues } from '@/server/dal/client';
-import { listSharedDocuments } from '@/server/dal/documents';
 import { listAudit } from '@/server/dal/notifications';
-import { getDeliverable } from '@/server/dal/quality';
 import { getRex } from '@/server/dal/rex';
-import {
-  acknowledgeSharedDocumentAction, addLessonAction, advanceLessonAction, cycleClosureAction, decideClientChangeAction, decideClientDeliverableAction,
-  downloadStatusReportAction, raiseClientIssueAction,
-} from './actions';
+import { addLessonAction, advanceLessonAction, cycleClosureAction } from './actions';
 
 const as = (role: string, name: string, o: Partial<typeof viewer> = {}) => Object.assign(viewer, { role, name, canEdit: true, isMine: true, outside: false }, o);
-const CLIENT = () => as('client', 'Nadia Bensaïd');
 const lesson = async (n: string) => (await getRex('HLT-026')).lessons.find((l) => l.number === n)!;
-const clientStep = async (cr: string) => (await listChangeRequestDetails('HLT-026')).find((c) => c.id === cr)!.chain.find((s) => s.step === 'client')!.decision;
 
 beforeAll(async () => {
   setDb(await openDatabase());
@@ -99,82 +88,5 @@ describe('lessons learned & closure Server Functions', () => {
     expect(await cycleClosureAction('HLT-026', 0, 'in_progress')).toEqual({ ok: true });
     expect(await cycleClosureAction('HLT-026', 0, 'done')).toEqual({ ok: true });
     expect(await item()).toBe('not_started');
-  });
-});
-
-describe('client portal Server Functions', () => {
-  it('outside the workspace: read-only', async () => {
-    as('pm', 'Romain Aubert', { outside: true });
-    const ro = { error: 'The client portal is read-only for you' };
-    expect(await decideClientChangeAction('HLT-026', 'CR-008', 'ok')).toEqual(ro);
-    expect(await raiseClientIssueAction('HLT-026', 'x')).toEqual(ro);
-    expect(await acknowledgeSharedDocumentAction('HLT-026', 'PID-HLT-026')).toEqual(ro);
-    expect(await downloadStatusReportAction('HLT-026', {})).toEqual(ro);
-  });
-
-  it('only the project’s client decides and acknowledges (the director previews; another project’s client cannot)', async () => {
-    const no = { error: 'Only the project’s client decides here' };
-    expect(await decideClientChangeAction('HLT-026', 'CR-008', 'ok')).toEqual(no);
-    expect(await decideClientDeliverableAction('HLT-026', 'D-014', 'accepted')).toEqual(no);
-    expect(await acknowledgeSharedDocumentAction('HLT-026', 'PID-HLT-026')).toEqual({ error: 'Only the client can acknowledge receipt' });
-    as('client', 'Nadia Bensaïd', { isMine: false });
-    expect(await decideClientDeliverableAction('NDC-031', 'D-112', 'accepted')).toEqual(no);
-    expect(await clientStep('CR-008')).toBe('pending');
-    expect((await getDeliverable('HLT-026', 'D-014'))!.status).toBe('submitted');
-  });
-
-  it('the client approves CR-008, accepts D-014 and rejects D-016; decided items cannot be decided again', async () => {
-    CLIENT();
-    expect(await decideClientChangeAction('HLT-026', 'CR-008', 'maybe' as never)).toEqual({ error: 'Invalid request' });
-    expect(await decideClientChangeAction('HLT-026', 'CR-999', 'ok')).toEqual({ error: 'Unknown change request' });
-    expect(await decideClientChangeAction('HLT-026', 'CR-004', 'ok')).toEqual({ error: 'This decision is no longer pending' });
-    // R-069 (P-6b): the client decides after the portfolio director.
-    expect(await decideClientChangeAction('HLT-026', 'CR-008', 'ok')).toEqual({ error: 'Not yours to decide yet' });
-    expect(await clientStep('CR-008')).toBe('pending');
-    await decideChangeStep('HLT-026', 'CR-008', 'director', 'ok', 'Marie Lefebvre');
-    expect(await decideClientChangeAction('HLT-026', 'CR-008', 'ok')).toEqual({ ok: true });
-    expect(await clientStep('CR-008')).toBe('ok');
-    expect(await decideClientChangeAction('HLT-026', 'CR-008', 'rejected')).toEqual({ error: 'This decision is no longer pending' });
-
-    expect(await decideClientDeliverableAction('HLT-026', 'D-014', 'accepted')).toEqual({ ok: true });
-    expect(await getDeliverable('HLT-026', 'D-014')).toMatchObject({ status: 'accepted', acceptedOn: STATUS_ISO, acceptanceText: '25 Sep · N. Bensaïd' });
-    expect(await decideClientDeliverableAction('HLT-026', 'D-016', 'rejected')).toEqual({ ok: true });
-    expect(await getDeliverable('HLT-026', 'D-016')).toMatchObject({ status: 'rejected', acceptanceText: '25 Sep · comments issued' });
-    expect(await decideClientDeliverableAction('HLT-026', 'D-014', 'rejected')).toEqual({ error: 'This decision is no longer pending' });
-    expect(await decideClientDeliverableAction('HLT-026', 'D-999', 'accepted')).toEqual({ error: 'Unknown deliverable' });
-    expect(await decideClientDeliverableAction('HLT-026', 'CR-008', 'accepted')).toEqual({ error: 'Invalid request' });
-  });
-
-  it('"Raise issue": CI-08, CI-09, CI-10 (not "CI-010"), raised today by the viewer; blank text refused', async () => {
-    CLIENT();
-    expect(await raiseClientIssueAction('HLT-026', '   ')).toEqual({ error: 'Describe the issue or request' });
-    expect(await raiseClientIssueAction('HLT-026', ' Crane test witness slot ')).toEqual({ ok: true, number: 'CI-08' });
-    expect(await raiseClientIssueAction('HLT-026', 'Spare parts list format')).toEqual({ ok: true, number: 'CI-09' });
-    as('director', 'Marie Lefebvre');
-    expect(await raiseClientIssueAction('HLT-026', 'Training dates')).toEqual({ ok: true, number: 'CI-10' });
-    const issues = await listClientIssues('HLT-026');
-    expect(issues.slice(0, 3).map((i) => [i.number, i.title, i.raisedOn, i.raisedBy, i.status])).toEqual([
-      ['CI-10', 'Training dates', STATUS_ISO, 'Marie Lefebvre', 'open'],
-      ['CI-09', 'Spare parts list format', STATUS_ISO, 'Nadia Bensaïd', 'open'],
-      ['CI-08', 'Crane test witness slot', STATUS_ISO, 'Nadia Bensaïd', 'open'],
-    ]);
-    as('client', 'Nadia Bensaïd', { isMine: false });
-    expect(await raiseClientIssueAction('NDC-031', 'Not my project')).toEqual({ error: 'Only the project’s client raises issues here' });
-  });
-
-  it('"Acknowledge receipt" of a shared document; unknown or other projects’ documents refused', async () => {
-    CLIENT();
-    expect(await acknowledgeSharedDocumentAction('HLT-026', 'PID-NDC-031')).toEqual({ error: 'Unknown document' });
-    expect(await acknowledgeSharedDocumentAction('HLT-026', 'PID-HLT-026')).toEqual({ ok: true });
-    expect((await listSharedDocuments('HLT-026')).find((d) => d.number === 'PID-HLT-026')!.acknowledged).toBe(true);
-    expect(await acknowledgeSharedDocumentAction('HLT-026', 'PID-HLT-026')).toEqual({ ok: true });
-  });
-
-  it('"Download status report": recorded, toast "Report downloaded"; invalid choices refused', async () => {
-    CLIENT();
-    expect(await downloadStatusReportAction('HLT-026', { period: 'quarter', format: 'pptx' })).toEqual({ toast: 'Report downloaded' });
-    expect((await listAudit())[0]).toMatchObject({ who: 'Nadia Bensaïd', object: 'Status report' });
-    expect(await downloadStatusReportAction('HLT-026', { format: 'docx' })).toEqual({ error: 'Unknown format' });
-    expect(await downloadStatusReportAction('HLT-026', { period: 'Q3 2026' })).toEqual({ error: 'Unknown period' });
   });
 });

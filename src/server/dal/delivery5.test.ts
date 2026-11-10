@@ -18,7 +18,7 @@ import {
 } from '@/server/db/codes';
 import { openDatabase } from '@/server/db/open';
 import { withoutK14Demo } from '@/test/k14';
-import { getClientPortal } from './client';
+import { getClientReportData } from './client-report';
 import { getContract } from './contract';
 import { claimCostsByMachine, listClaims, listInterventions, savNavBadge } from './claims';
 import { commissioningBlockingRefs, getCommissioning } from './commissioning';
@@ -52,7 +52,8 @@ const day = (s: string) => s.replace(/(^|· )0(\d)/g, '$1$2');
 const d = (iso: string | null) => (iso ? shortDateOfIso(iso) : '—');
 const kv = (ks: any[]) => ks.map((k: any) => [k.value, k.sub]);
 const actor = (role: RoleKey, name: string) => ({ role, name });
-const CLIENT = actor('client', 'Nadia Bensaïd');
+// D9-06: the project's PM records the client's decision on the deliverables (the prototype's client contact).
+const PM = actor('pm', 'Romain Aubert');
 const QUALITY = actor('quality', 'Gabriel Comte');
 
 beforeAll(async () => {
@@ -61,14 +62,14 @@ beforeAll(async () => {
 
 describe('workspace roles (D5_SCREEN_ROLES mirrors ROLE_SCREENS)', () => {
   it('every Delivery 5 screen has the same role list as src/config/screens.ts', () => {
-    // R-044 Finance has no Delivery 5 screen; R-158 Logistics reads the Site and the Settings (in their lists).
-    const roles: RoleKey[] = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'finance', 'logistics', 'client'];
+    // R-044 Finance has no Delivery 5 screen but Settings (R-162); R-158 Logistics reads the Site and the Settings (in their lists).
+    const roles: RoleKey[] = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'finance', 'logistics'];
     for (const [screen, list] of Object.entries(D5_SCREEN_ROLES)) {
       expect(roles.filter((r) => canSee(r, screen as ScreenId)), screen).toEqual([...list]);
     }
     for (const s of ['eng-process', 'eng-meca', 'eng-elec', 'eng-auto'] as ScreenId[]) expect(roles.filter((r) => canSee(r, s))).toEqual([...D5_SCREEN_ROLES.eng]);
     expect(Object.keys(D5_SCREEN_ROLES).sort()).toEqual(([
-      'catalogue', 'client', 'commissioning', 'eng', 'fleet', 'itp', 'mtypes', 'pid', 'plumbing', 'quality', 'rex', 'sav', 'settings', 'site',
+      'catalogue', 'commissioning', 'eng', 'fleet', 'itp', 'mtypes', 'pid', 'plumbing', 'quality', 'rex', 'sav', 'settings', 'site', // D9-06: no 'client'
     ] as D5Screen[]).sort());
   });
 });
@@ -148,13 +149,13 @@ describe('quality — NCRs (Vigie mirror) and deliverables (07 §2.3)', () => {
     expect(dl.find((x) => x.number === 'D-014')).toMatchObject({ submittedOn: '2026-09-22', acceptanceDueOn: '2026-10-02' });
   });
 
-  it('My approvals: the client contact gets D-014 and D-016; quality has no NCR in verification at seed; others get nothing', async () => {
-    const q = await deliverableAcceptanceQueue('HLT-026', CLIENT);
+  it('My approvals: the PM gets D-014 and D-016 (the client\'s decision to record, D9-06); quality has no NCR in verification at seed; others get nothing', async () => {
+    const q = await deliverableAcceptanceQueue('HLT-026', PM);
     expect(q.map((x) => ({ kind: 'Deliverable acceptance', id: x.number, title: x.title, sub: `${x.typeLabel} · ${x.acceptanceText}`, when: d(x.dueOn), who: x.raci[0].name })))
       .toEqual(G.approvals.client);
     expect(await ncrVerificationQueue('HLT-026', QUALITY)).toEqual(G.approvals.quality);
-    expect(await deliverableAcceptanceQueue('HLT-026', actor('pm', 'Romain Aubert'))).toEqual([]);
-    expect(await deliverableAcceptanceQueue('NDC-031', CLIENT)).toEqual([]);
+    expect(await deliverableAcceptanceQueue('HLT-026', actor('member', 'Julien Wagner'))).toEqual([]);
+    expect(await deliverableAcceptanceQueue('NDC-031', PM)).toEqual([]);
   });
 
   it('badges and supplier references: open critical NCRs per project; goods-receipt NCRs with their parts', async () => {
@@ -428,11 +429,11 @@ describe('site — readiness, mobilisation, execution (10 §3)', () => {
   });
 });
 
-// ── Client portal ──────────────────────────────────────────────────────────────────────────────────────
+// ── Client status report (the former client portal's data, D9-06) ─────────────────────────────────────
 
-describe('client portal (03 §8)', () => {
-  it('HLT-026: decisions waiting, decided, invoices, contract summary, issues and shared documents', async () => {
-    const c = await getClientPortal('HLT-026');
+describe('client status report data (03 §8)', () => {
+  it('HLT-026: decisions waiting, decided, invoices, contract summary (D9-06: the issues and shared documents went with the portal)', async () => {
+    const c = await getClientReportData('HLT-026');
     const g = G.client;
     expect(c.decisions.map((x) => x.changeRequest
       ? { kind: 'Change request', id: x.id, title: x.title, sub: `${x.changeRequest.typesLabel}${x.changeRequest.amount ? ` · ${f(x.changeRequest.amount, true)} on contract` : ''}${x.changeRequest.days ? ` · ${x.changeRequest.days > 0 ? '+' : ''}${x.changeRequest.days} d on handover` : ''}`, when: x.changeRequest.date, approveLabel: 'Approve' }
@@ -454,19 +455,10 @@ describe('client portal (03 §8)', () => {
     expect(c.invoices.map((i) => i.invoiceNumber)).toEqual(['INV-2026-001', 'INV-2026-002', 'INV-2026-003', null, null, null]);
     expect(c.contract).toEqual({ valueKeur: contract.valueKeur, invoicedKeur: contract.invoicedKeur, paidKeur: contract.paidKeur, approvedChangesKeur: 200, currency: 'EUR' });
     expect(f(c.contract!.approvedChangesKeur, true)).toBe(g.invKpis[3][1]);
-    expect(c.issues.map((i) => ({ id: i.number, title: i.title, when: `Raised ${d(i.raisedOn)}`, status: i.statusLabel, resp: i.response }))).toEqual(g.issues);
-    expect(c.documents.map((x) => ({ id: x.number, title: x.title, rev: x.revision, status: x.statusLabel, ack: x.acknowledged }))).toEqual(g.docs.map((x: any) => pickKeys(x, ['id', 'title', 'rev', 'status', 'ack'])));
-    // L-9 (R-138): the categories are computed from the shared documents of the Codex index (the prototype's 5 typed
-    // CLIENT_DOCS rows are gone): every shared file is in exactly one category.
-    expect(c.documentCategories.reduce((a, x) => a + x.fileCount, 0)).toBe(c.documents.length);
-    expect(c.documentCategories.map((x) => x.key)).toEqual(HLT_DOC_CATEGORIES.map(([k]) => k));
-    expect(c.documentCategories.map((x) => x.fileCount)).toEqual(HLT_DOC_CATEGORIES.map(([, n]) => n));
   });
 });
 
 const pickKeys = (o: any, ks: string[]) => Object.fromEntries(ks.map((k) => [k, o[k]]));
-/** HLT-026's client document categories on the seed (L-9, R-138): key and file count. */
-const HLT_DOC_CATEGORIES: [string, number][] = [['minutes', 1], ['hse', 1], ['accepted', 1], ['eng', 2], ['client', 1], ['purchasing', 1]];
 
 // ── Engineering ────────────────────────────────────────────────────────────────────────────────────────
 

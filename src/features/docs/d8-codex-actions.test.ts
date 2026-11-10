@@ -10,18 +10,16 @@ vi.mock('@/server/session', async () => {
   const { makeT } = await import('@/i18n/translate');
   return { getI18n: async () => ({ lang: 'en', t: makeT('en') }) };
 });
-vi.mock('@/server/project-context', async () => {
-  const { listProjects } = await import('@/server/dal/projects');
+vi.mock('@/server/project-context', () => {
   return {
     getProjectContext: async (code: string) => ({
       project: { code },
-      viewer: { name: viewer.name, short: viewer.short, role: viewer.role, organisation: viewer.role === 'client' ? 'Port authority' : null },
+      viewer: { name: viewer.name, short: viewer.short, role: viewer.role, organisation: null },
       canEdit: () => true,
       outside: false,
       isMine: viewer.isMine,
       access: { member: viewer.isMine },
     }),
-    clientProjectCodes: async () => new Set((await listProjects()).filter((p) => p.client === 'Port authority').map((p) => p.code)),
   };
 });
 
@@ -51,14 +49,8 @@ describe('downloads: the Codex hand-off (D-2 = a, R-127)', () => {
     const audit = (await listAudit({ projectCode: 'HLT-026' })).length;
     const shared = await logDownloadAction('HLT-026', 'PID-HLT-026', 'PDF');
     const internal = await logDownloadAction('HLT-026', 'LST-INS-026', 'Native');
-    if (p.role === 'client') {
-      // P-10a / P-10b: the shared record of their own project only, and no Codex link (no Codex access).
-      expect(shared).toEqual({ ok: true, toast: DOWNLOAD_IN_CODEX, link: null });
-      expect(internal).toEqual({ error: 'Unknown document' });
-    } else {
-      expect(shared).toEqual({ ok: true, toast: DOWNLOAD_IN_CODEX, link: { href: 'http://localhost:3100/?document=PID-HLT-026&revision=D', label: 'Open Codex' } });
-      expect(internal).toMatchObject({ ok: true, link: { href: expect.stringContaining('document=LST-INS-026'), label: 'Open Codex' } });
-    }
+    expect(shared).toEqual({ ok: true, toast: DOWNLOAD_IN_CODEX, link: { href: 'http://localhost:3100/?document=PID-HLT-026&revision=D', label: 'Open Codex' } });
+    expect(internal).toMatchObject({ ok: true, link: { href: expect.stringContaining('document=LST-INS-026'), label: 'Open Codex' } });
     // Nothing is written: no download log, no audit row, no revalidation.
     expect((await listAudit({ projectCode: 'HLT-026' })).length).toBe(audit);
     expect(revalidatePath).not.toHaveBeenCalled();
@@ -108,13 +100,8 @@ describe('deposit hand-off with Codex connected (A-15, R-033): refused with an "
     const before = (await listVaultDocuments()).length;
     const r = await depositInCodexAction({ project: 'HLT-026', type: 'CER', title: 'Mill certificate' });
     const rev = await depositInCodexAction({ project: 'HLT-026', revisionOf: 'GA-HLT-026' });
-    if (p.role === 'client') {
-      // NEW-D3-1 (R-047): deposits are the internal team's — refused before the connector rule.
-      expect([r, rev]).toEqual([{ error: 'Only the project’s internal team deposits documents in Codex' }, { error: 'Only the project’s internal team deposits documents in Codex' }]);
-    } else {
-      expect(r).toEqual({ error: 'Codex is connected — deposit the document in Codex', link: { href: 'http://localhost:3100/?project=HLT-026', label: 'Open Codex' } });
-      expect(rev).toEqual({ error: 'Codex is connected — deposit the document in Codex', link: { href: 'http://localhost:3100/?document=GA-HLT-026', label: 'Open Codex' } });
-    }
+    expect(r).toEqual({ error: 'Codex is connected — deposit the document in Codex', link: { href: 'http://localhost:3100/?project=HLT-026', label: 'Open Codex' } });
+    expect(rev).toEqual({ error: 'Codex is connected — deposit the document in Codex', link: { href: 'http://localhost:3100/?document=GA-HLT-026', label: 'Open Codex' } });
     expect((await listVaultDocuments()).length).toBe(before);
     expect((await getDocumentRecord('GA-HLT-026'))!.status).not.toBe('draft');
   });

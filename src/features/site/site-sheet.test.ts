@@ -72,17 +72,12 @@ describe('R-118 · who prepares and fills the site sheet (9 personas)', () => {
     const out: Record<string, string> = {};
     for (const role of ROLES) {
       as(role);
-      if (role === 'client') {
-        await expect(addSiteLineAction(HLT, 'equipment', { name: 'x' })).rejects.toThrow('REDIRECT /');
-        out[role] = 'sent home';
-        continue;
-      }
       out[role] = errorOf(await addSiteLineAction(HLT, 'equipment', { name: `Échafaudage (${role})`, source: 'local_rental', note: 'Devis' }));
     }
     expect(out).toEqual({
       director: 'ok', pm: 'ok', depthead: 'The site is read-only for you', member: 'Only the project’s leads prepare and fill the site sheet',
       englead: 'The site is read-only for you', quality: 'The site is read-only for you', procurement: 'The site is read-only for you',
-      finance: 'The site is read-only for you', logistics: 'The site is read-only for you', client: 'sent home',
+      finance: 'The site is read-only for you', logistics: 'The site is read-only for you',
     });
     const s = await site();
     expect(s.equipment.slice(8).map((e) => [e.position, e.name, e.source, e.status, e.note])).toEqual([
@@ -95,7 +90,7 @@ describe('R-118 · who prepares and fills the site sheet (9 personas)', () => {
 
   it('what the page offers: the leads get the entry; the others none; "Prepare the site" only at the stage window', async () => {
     const offered: Record<string, unknown> = {};
-    for (const role of ROLES.filter((r) => r !== 'client')) {
+    for (const role of ROLES) {
       as(role);
       const v = await pageView(HLT);
       offered[role] = !!v.entry && v.ready!.equip.every((e) => !!e.entry) && v.team!.rotation.every((r) => !!r.entry);
@@ -156,8 +151,6 @@ describe('R-118 · who prepares and fills the site sheet (9 personas)', () => {
     expect(errorOf(await prepareSiteAction('NDC-031', SHEET))).toBe('The site is read-only for you');
     as('member');
     expect(errorOf(await prepareSiteAction('PRS-038', SHEET))).toBe('The site is read-only for you');
-    as('client');
-    await expect(prepareSiteAction('PRS-038', SHEET)).rejects.toThrow('REDIRECT /');
     expect(await rows(`SELECT count(*)::int AS n FROM site_sheets`)).toEqual([{ n: 1 }]);
   });
 
@@ -363,7 +356,6 @@ describe('R-118 · lines: next position, stale forms, kept lines', () => {
     const eqLine = { kind: 'equipment' as const, value: { name: 'x', source: 'shipped' as const, note: '' } };
     await expect(addSiteLine(HLT, eqLine, { name: 'Julien Wagner', role: 'member' })).rejects.toThrow('Only the project’s leads prepare and fill the site sheet');
     await expect(addSiteLine(HLT, eqLine, { name: 'Marion Kerviel', role: 'depthead' })).rejects.toThrow('Only the project’s leads prepare and fill the site sheet');
-    await expect(addSiteLine(HLT, eqLine, { name: 'Nadia Bensaïd', role: 'client' })).rejects.toThrow('Site is outside your workspace');
     await expect(addSiteLine(HLT, eqLine, { name: 'Gabriel Comte', role: 'quality' })).rejects.toThrow('Site is outside your workspace');
     await expect(removeSiteLine(HLT, 'equipment', 2, 'nope', { name: 'Romain Aubert', role: 'pm' })).rejects.toThrow('This line has changed');
     await expect(updateSiteSheet(HLT, 'nope', { ...s.sheet, startOn: s.sheet.startOn, endOn: s.sheet.endOn } as never, { name: 'Romain Aubert', role: 'pm' }))

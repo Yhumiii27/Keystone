@@ -148,6 +148,8 @@ describe('reminder jobs: once per morning', () => {
       ['deadline-reminders', '06:30'], ['scheduled-reports', '06:30'],
       // R-015, R-036: the indicator alerts and the notification digest.
       ['indicator-alerts', '06:30'], ['notification-digest', '06:30'],
+      // R-060 (D9-09, D9-10): the Friday freeze and the data date proposal.
+      ['friday-freeze', '06:30'],
     ]);
     expect(entries.find((e) => e.name === 'vigie-outbox')).toMatchObject({ everyMs: 300_000, dailyAt: null });
   });

@@ -35,7 +35,7 @@ import { deliveredView } from './delivered';
 
 /** The prototype's today for after-sales dates (NOW_ISO, 30 Sep 2026): the pure rules take it explicitly since R-013. */
 const NOW = '2026-09-30';
-const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'] as const;
+const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'] as const;
 const EDIT = { cover: 'warranty', owner: 'T. Kerbrat', cost: '8', next: 'Replace brake disc', eco: '', diagnosis: 'Worn brake disc lining' };
 
 describe('R-143 / R-144 rules', () => {
@@ -123,13 +123,12 @@ describe('R-143 / R-144 Server Functions', () => {
     const outcome: Record<string, string> = {};
     for (const role of ROLES) {
       session.role = role;
-      // R-042: the client is sent home from a screen outside their workspace (redirect), not answered.
       const r: { toast?: string; error?: string } = await updateClaimAction('WC-016', { ...EDIT, cover: 'extended_warranty', next: `By ${role}`, diagnosis: '' })
         .then((x) => x as { toast?: string; error?: string }, (e: Error) => ({ error: e.message }));
       outcome[role] = r.toast ? 'ok' : r.error!;
     }
     const ro = 'Warranty claims are read-only for you';
-    expect(outcome).toEqual({ director: 'ok', pm: 'ok', depthead: ro, member: ro, englead: ro, quality: 'ok', procurement: 'ok', client: 'NEXT_REDIRECT' });
+    expect(outcome).toEqual({ director: 'ok', pm: 'ok', depthead: ro, member: ro, englead: ro, quality: 'ok', procurement: 'ok' });
     expect((await getClaim('WC-016'))!.nextStep).toBe('By procurement');
     session.role = 'member';
     expect(await closeClaimAction('WC-014', 'diagnosed')).toEqual({ ok: false, error: ro });
@@ -209,7 +208,8 @@ describe('R-143 / R-144 Server Functions', () => {
     session.role = 'quality';
     // R-013: delivered on the business date (25 Sep 2026 on the demo data set, not the prototype's 30 Sep).
     expect(await registerMachinesAction({ project: 'RCF-019', count: '2', name: 'Overhead crane 10 t', site: 'Lyon · clinic', delivered: '25 Sep 2026', warranty: '24 Sep 2028' })).toEqual({
-      toast: 'MCH-050, MCH-051 · Machines registered with their as-built configuration',
+      // R-160 (P2): RCF-019's line has no CE file — the machines are registered, with the warning.
+      toast: 'MCH-050, MCH-051 · Machines registered with their as-built configuration · CE file incomplete · EQ-01 · the handover is not blocked',
     });
     const m = (await getMachine('MCH-051'))!;
     expect([m.name, m.projectCode, m.deliveredOn, m.warrantyEndOn, m.warrantyStatus, m.site, m.parts.length]).toEqual(['Overhead crane 10 t #2', 'RCF-019', '2026-09-25', '2028-09-24', 'in_warranty', 'Lyon · clinic', 5]);

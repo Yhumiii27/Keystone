@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { and, eq, sql } from 'drizzle-orm';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
-import { activities, contracts, costCategories, paymentMilestones, projects, risks, warrantyClaims } from '@/server/db/schema';
+import { activities, ceFiles, contracts, costCategories, paymentMilestones, projects, risks, warrantyClaims } from '@/server/db/schema';
 import { StaleRecordError, assertRecordFresh, bumpVersion, tokenOf } from './record-version';
 import { listRisks, updateRisk } from './risks';
 
@@ -48,9 +48,9 @@ describe('row version trigger', () => {
   it('every versioned table has the trigger', async () => {
     const db = await getDb();
     const r = await db.execute<{ t: string }>(sql`select event_object_table as t from information_schema.triggers where trigger_name like '%_row_version' order by 1`);
-    expect([...new Set(r.rows.map((x) => x.t))]).toEqual(['activities', 'contracts', 'cost_categories', 'payment_milestones', 'risks', 'warranty_claims']);
+    expect([...new Set(r.rows.map((x) => x.t))]).toEqual(['activities', 'ce_files', 'contracts', 'cost_categories', 'payment_milestones', 'risks', 'warranty_claims']);
     // The tables named here are the ones the writers check (VersionedTable): keep both lists in step.
-    for (const t of [activities, contracts, costCategories, paymentMilestones, risks, warrantyClaims]) expect(t.version.name).toBe('version');
+    for (const t of [activities, ceFiles, contracts, costCategories, paymentMilestones, risks, warrantyClaims]) expect(t.version.name).toBe('version');
   });
 });
 

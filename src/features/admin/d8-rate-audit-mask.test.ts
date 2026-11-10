@@ -68,12 +68,6 @@ describe('R-046 — rate values on Activity & integrations, for the 9 personas',
   for (const persona of PERSONAS)
     it(persona.role, async () => {
       session.role = persona.role;
-      if (persona.role === 'client') {
-        // R-042 (P-1): outside the client's workspace — sent home; no export.
-        await expect(view({})).rejects.toThrow('REDIRECT /');
-        await expect(buildExportContext({ screen: 'plumbing', viewer: persona, lang: 'en', params: new URLSearchParams() })).rejects.toMatchObject({ status: 403 });
-        return;
-      }
       const sees = canSeeRates(persona.role);
       const feed = (await view({})).activity.map((a) => a.what);
       const trail = (await view({ view: 'audit' })).audit.filter((a) => a.object === 'Rate card').map((a) => a.change);

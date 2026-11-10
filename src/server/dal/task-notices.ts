@@ -5,7 +5,7 @@ import 'server-only';
 // (createNotification has its own transaction): a failure is logged and never undoes the write. Titles are fixed English
 // templates translated by t() in the bell; the typed text (comment excerpt, task title) goes in the sub-line, shown with
 // fieldsText (R-148). The actor is never told about their own action.
-import { and, eq, inArray, isNull, not, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { MentionCandidate } from '@/domain/mentions';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import { persons, projects, tasks, users } from '@/server/db/schema';
@@ -26,7 +26,7 @@ export async function listMentionablePersons(q?: Q): Promise<MentionCandidate[]>
     .select({ key: persons.id, fullName: persons.fullName, shortName: persons.shortName })
     .from(persons)
     .innerJoin(users, eq(users.personId, persons.id))
-    .where(and(eq(users.active, true), eq(users.isExternal, false), isNull(users.clientId), isNull(persons.clientId), not(sql`'client' = any(${users.roles})`)));
+    .where(and(eq(users.active, true), eq(users.isExternal, false), isNull(persons.clientId)));
   return rows;
 }
 

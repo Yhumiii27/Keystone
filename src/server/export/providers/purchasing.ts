@@ -22,7 +22,7 @@ import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook, PdfDocument } from '../types';
 import { col, compact, filterLine, kpiSheet, param, pricedPdf, pricedWorkbook, projectRef, sheet, sum, tableBlock, todayIso } from './common';
 import { amountsCol, commonCurrency, moneyCol } from './currency-columns';
-import { currentProjectCode, projectFilter } from './scope';
+import { currentProjectCode } from './scope';
 import { dataText } from '@/i18n/data-text';
 
 // ── Sourcing, invoices & suppliers ───────────────────────────────────────────────────────────────────────────────────
@@ -31,21 +31,21 @@ async function procurementWorkbook(ctx: ExportContext): Promise<ExportWorkbook> 
   const raw = param(ctx, 'tab');
   const tab = isSourcingTab(raw) ? raw : 'rfq';
   // A client's `?code=` falls back to one of their own projects (never another organisation's NCR counts).
-  const current = await currentProjectCode(ctx, DEFAULT_PROJECT);
-  const [rfqs, invoices, card, visible] = await Promise.all([listRfqs(), listSupplierInvoices(), getSupplierScorecard(current), projectFilter(ctx)]);
+  const current = currentProjectCode(ctx, DEFAULT_PROJECT);
+  const [rfqs, invoices, card] = await Promise.all([listRfqs(), listSupplierInvoices(), getSupplierScorecard(current)]);
   const filter = parseInvoiceFilter(param(ctx, 'status') ?? undefined, invoices);
   const rfq = sheet(t('Requests for quotation'), [
     col('number', t('RFQ'), 'text', 10), col('title', t('Title'), 'text', 36), col('project', t('Project'), 'text', 10), col('part', t('Part'), 'text', 16), col('qty', t('Quantity'), 'number', 8),
     col('due', t('Reply due'), 'date'), col('status', t('Status'), 'text', 14), col('rule', t('Award rule'), 'text', 18), col('owner', t('Owner'), 'text', 16),
     col('suppliers', t('Invited suppliers'), 'text', 36), col('best', t('Best unit price'), 'money_eur'), col('awarded', t('Awarded to'), 'text', 18), col('po', t('Purchase order'), 'text', 10),
-  ], rfqs.filter((r) => visible(r.projectCode)).map((r) => ({
+  ], rfqs.map((r) => ({
     number: r.number, title: dataText(r.title, ctx.lang), project: r.projectCode ?? '', part: r.partRef ?? '', qty: r.quantity, due: r.replyDueOn, status: t(r.statusLabel), rule: t(r.awardRuleLabel), owner: r.owner,
     suppliers: r.invitedSuppliers.join(' · '), best: r.bestUnitPriceEur, awarded: r.awardedTo ?? '', po: r.purchaseOrderNumber ?? '',
   })));
   const quotes = sheet(t('Quotes'), [
     col('rfq', t('RFQ'), 'text', 10), col('supplier', t('Supplier'), 'text', 20), col('unit', t('Unit price'), 'money_eur'), col('total', t('Total'), 'money_eur'), col('lead', t('Lead time (weeks)'), 'integer'),
     col('terms', t('Payment terms'), 'text', 14), col('grade', t('Grade'), 'text', 6), col('score', t('Score'), 'number', 8, { decimals: 1 }), col('awarded', t('Awarded'), 'boolean'),
-  ], rfqs.filter((r) => visible(r.projectCode)).flatMap((r) => r.quotes.map((q) => ({
+  ], rfqs.flatMap((r) => r.quotes.map((q) => ({
     rfq: r.number, supplier: q.supplier, unit: q.unitPriceEur, total: q.totalEur, lead: q.leadWeeks, terms: dataText(q.paymentTerms, ctx.lang), grade: q.grade, score: q.score, awarded: q.awarded,
   }))));
   // C-9: amounts in each invoice's currency — € columns when they are all in euros, else plain numbers and a Currency column.
@@ -57,7 +57,7 @@ async function procurementWorkbook(ctx: ExportContext): Promise<ExportWorkbook> 
     col('project', t('Project'), 'text', 10), ...(icur ? [] : [col('currency', t('Currency'), 'text', 8)]), amt('amount', t('Amount')), amt('invoiced', t('Invoiced amount')), amt('poAmount', t('PO amount')),
     amt('grAmount', t('Receipt amount')), amt('gap', t('Gap')), col('matchPo', t('PO match'), 'text', 14), col('matchGr', t('Receipt match'), 'text', 14),
     col('date', t('Invoice date'), 'date'), col('due', t('Due date'), 'date'), col('status', t('Status'), 'text', 16), col('blocking', t('Blocking reason'), 'text', 30), col('x3', 'X3', 'text', 12),
-  ], invoices.filter((i) => (filter === 'all' || i.status === filter) && visible(i.projectCode)).map((i) => ({
+  ], invoices.filter((i) => filter === 'all' || i.status === filter).map((i) => ({
     number: i.number, supplier: i.supplier, po: i.poNumber ?? '', receipt: i.receiptNumber ?? '', project: i.projectCode ?? '', currency: i.currency, amount: i.amountEur, invoiced: i.invoicedAmountEur,
     poAmount: i.poAmountEur, grAmount: i.receiptAmountEur, gap: i.gapEur, matchPo: t(i.matchLabels.po), matchGr: t(i.matchLabels.gr), date: i.invoiceDate, due: i.dueDate,
     status: t(i.statusLabel), blocking: i.blockingReason ? t(i.blockingReason) : '', x3: i.x3ApRef ?? '',
@@ -235,11 +235,11 @@ async function receiptDocument(ctx: ExportContext): Promise<PdfDocument | null> 
 // ── Stock & storages ─────────────────────────────────────────────────────────────────────────────────────────────────
 async function stockWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
-  const [rows, moves, visible] = await Promise.all([listStock(), listStockMovements({ limit: 1000 }), projectFilter(ctx)]);
+  const [rows, moves] = await Promise.all([listStock(), listStockMovements({ limit: 1000 })]);
   const loc = param(ctx, 'loc');
   const location = loc && rows.some((r) => r.location === loc) ? loc : null;
   const q = (param(ctx, 'q') ?? '').slice(0, 120);
-  const shown = filterStockLines(rows, { location, q }).filter((r) => visible(r.reservedForProject));
+  const shown = filterStockLines(rows, { location, q });
   const positions: ExportSheet = sheet(t('Stock positions'), [
     col('ref', t('Reference'), 'text', 16), col('name', t('Article'), 'text', 34), col('location', t('Location'), 'text', 28), col('type', t('Location type'), 'text', 18),
     col('onHand', t('On hand'), 'number', 9), col('reserved', t('Reserved'), 'number', 9), col('project', t('Reserved for'), 'text', 10), col('available', t('Available'), 'number', 9),

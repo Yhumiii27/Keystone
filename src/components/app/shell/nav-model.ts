@@ -86,8 +86,8 @@ export function swapProjectInPath(pathname: string, code: string, search?: strin
 
 /** Project-scoped screens (`showProjectPicker`, line 5175). */
 export const PROJECT_SCREENS: ScreenId[] = SCREENS.filter((s) => s.scope === 'project').map((s) => s.id);
-/** Project screens whose primary action is hidden in project read-only mode (line 5176: picker list minus client, docs). */
-export const PROJECT_EDITABLE: ScreenId[] = PROJECT_SCREENS.filter((id) => id !== 'client' && id !== 'docs');
+/** Project screens whose primary action is hidden in project read-only mode (line 5176: picker list minus docs). */
+export const PROJECT_EDITABLE: ScreenId[] = PROJECT_SCREENS.filter((id) => id !== 'docs');
 
 /** `outside` (line 5153): the screen is not in the role's workspace (task counts as mywork). */
 export const isOutside = (role: RoleKey, id: ScreenId) => !canSee(role, id);
@@ -173,11 +173,8 @@ export function buildSidebar({ role, active, badges, navOpen, subs }: SidebarInp
   const entry = (s: ScreenDef): NavEntry => ({ id: s.id, label: s.navLabel ?? s.title, badge: badges[s.id] ?? '', active: isActive(s.id) });
   const gate = (s: ScreenDef) => canSee(role, s.id);
 
-  // Fixed entries: navHome (client role: My project instead of My projects) + navWork + navDocs.
-  const fixedDefs = FIXED_ORDER.map((id) => SCREEN_BY_ID[id]).filter((s) =>
-    role === 'client' ? s.id !== 'myprojects' : s.id !== 'client',
-  );
-  const fixed = fixedDefs.filter(gate).map(entry);
+  // Fixed entries: navHome + navWork + navDocs (the client's "My project" entry went with the Client role, D9-06).
+  const fixed = FIXED_ORDER.map((id) => SCREEN_BY_ID[id]).filter(gate).map(entry);
 
   const sections: NavSectionModel[] = [];
   const searchable: SearchEntry[] = fixed.map((e) => ({ ...e, section: '' }));
@@ -231,7 +228,7 @@ export function buildSidebar({ role, active, badges, navOpen, subs }: SidebarInp
   if (active && isOutside(role, active)) {
     const navId: ScreenId = active === 'task' ? 'mywork' : active;
     const def = SCREEN_BY_ID[navId];
-    const inNavs = def.navLabel && (def.nav !== 'fixed' || fixedDefs.some((s) => s.id === navId));
+    const inNavs = def.navLabel && (def.nav !== 'fixed' || FIXED_ORDER.includes(navId));
     const e: NavEntry = inNavs
       ? { id: navId, label: def.navLabel!, badge: '', active: true }
       : { id: navId, label: def.title, synthetic: true, badge: '', active: true };

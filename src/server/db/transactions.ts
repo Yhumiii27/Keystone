@@ -48,7 +48,7 @@ export const NUMBERING_CONSTRAINTS: ReadonlySet<string> = new Set([
   'payment_milestones_project_id_number_unique', 'itp_inspections_plan_id_number_unique', 'lessons_learned_project_id_number_unique',
   'project_interfaces_project_id_number_unique', 'punch_items_project_id_number_unique', 'purchase_orders_number_unique', 'rfqs_number_unique',
   'deliverables_project_id_number_unique', 'interventions_number_unique', 'machines_number_unique', 'warranty_claims_number_unique',
-  'daily_reports_project_id_number_unique', 'client_issues_project_id_number_unique',
+  'daily_reports_project_id_number_unique',
 ]);
 
 /** SQLSTATE of a database error, looking through Drizzle's DrizzleQueryError and `cause` chains; null when none. */

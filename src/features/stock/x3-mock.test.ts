@@ -89,7 +89,7 @@ describe('R-034 on a demo database: the X3 actions are simulated and say so', ()
     expect(outcome).toEqual({
       director: 'Simulated import (Sage X3 not connected)', pm: 'Simulated import (Sage X3 not connected)', depthead: 'Stock is read-only for you',
       member: 'Stock is read-only for you', englead: 'Stock is read-only for you', quality: 'Simulated import (Sage X3 not connected)',
-      procurement: 'Simulated import (Sage X3 not connected)', client: 'NEXT_REDIRECT',
+      procurement: 'Simulated import (Sage X3 not connected)',
       // R-044 (roles-rates-hr lot): Finance, the 9th persona, reads Stock only.
       finance: 'Stock is read-only for you', logistics: 'Stock is read-only for you',
     });

@@ -15,6 +15,8 @@ vi.mock('@/domain/ch4-defaults', async (orig) => {
   const actual = await orig<typeof import('@/domain/ch4-defaults')>();
   return {
     ...actual,
+    // D9-08: only MS Project and GanttProject are enabled in the app; these tests also exercise the other importers.
+    ENABLED_IMPORT_KINDS: ['mspdi', 'xer', 'gan', 'budget_lines', 'bom', 'parts', 'assignments'],
     get IMPORTS_ENABLED() {
       return flags.imports;
     },
@@ -80,7 +82,7 @@ beforeEach(() => {
 describe('import dialogs', () => {
   it('offer each role its kinds and projects', async () => {
     const director = await importSetupAction();
-    expect(director.kinds).toEqual(['mspdi', 'xer', 'budget_lines', 'bom', 'parts', 'assignments']);
+    expect(director.kinds).toEqual(['mspdi', 'xer', 'gan', 'budget_lines', 'bom', 'parts', 'assignments']);
     expect(director.selfManager).toBeNull();
     expect(director.managers.map((m) => m.name)).toContain('S. Perrin');
     as('pm');
@@ -89,7 +91,10 @@ describe('import dialogs', () => {
     expect(pm.projects.mspdi.map((p) => p.code)).toEqual(['HLT-026']);
     expect(pm.projects.bom).toEqual([]);
     as('englead');
-    expect((await importSetupAction()).kinds).toEqual(['bom', 'parts']);
+    // D9-08: the schedules are offered to every internal role — imported only into the projects it leads.
+    const englead = await importSetupAction();
+    expect(englead.kinds).toEqual(['mspdi', 'xer', 'gan', 'bom', 'parts']);
+    expect(englead.projects.gan).toEqual([]);
   });
 
   it('upload route → preview → confirmation, with revalidation and the Plan link', async () => {
@@ -141,16 +146,7 @@ describe('exports', () => {
     const db = await getDb();
     expect((await db.select().from(connectors).where(eq(connectors.name, 'MS Project')))[0].lastVolume).toBe('HLT-026 exported · BL1');
     expect((await db.select().from(auditEntries).where(eq(auditEntries.objectRef, 'HLT-026'))).some((a) => a.change.startsWith('MS Project XML exported'))).toBe(true);
-    as('client');
-    expect((await exportMspdi(new Request('http://localhost/x'), { params: Promise.resolve({ code: 'NDC-031' }) })).status).toBe(403);
-    // P-1 (security review): the file carries costs and resources and lives outside the client's workspace — refused even on
-    // the client's own project.
-    expect((await exportMspdi(new Request('http://localhost/x'), { params: Promise.resolve({ code: 'HLT-026' }) })).status).toBe(403);
     expect((await exportMspdi(new Request('http://localhost/x'), { params: Promise.resolve({ code: 'XXX-999' }) })).status).toBe(404);
-    // The client sees their organisation's projects only (HLT-026, and the project imported above for "Port authority").
-    const mine = (await exportSetupAction('xml')).projects.map((p) => p.code);
-    expect(mine).toContain('HLT-026');
-    expect(mine).not.toContain('NDC-031');
   });
 });
 

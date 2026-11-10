@@ -1,25 +1,11 @@
-// Delivery 7 scenarios: the client sent home outside their workspace and on another organisation's project (R-042); the
-// tablet layout's drawer menu (R-146); an ITP result recorded by quality (R-112) and a punch-item photo stored by Keystone
-// (R-126: added by the team, seen by the client on their own project's punch list, refused to them in writing); a
+// Delivery 7 scenarios: the tablet layout's drawer menu (R-146); an ITP result recorded by quality (R-112) and a punch-item
+// photo stored by Keystone (R-126: added by the team; D9-06: no client viewer any more); a
 // contingency draw-down linked to a change request, validated by the portfolio director in My approvals (C-4, R-071).
 import { expect, test } from '@playwright/test';
 import { toast, viewAs, watch } from './helpers';
 
 // A 1 × 1 PNG.
 const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c63000100000500010d0a2db40000000049454e44ae426082', 'hex');
-
-test('client: sent home outside the workspace and from another organisation’s project (R-042)', async ({ page, context }) => {
-  await viewAs(context, 'client');
-  const w = watch(page);
-  await page.goto('/projects/HLT-026/budget');
-  await expect(page).toHaveURL(/\/$/);
-  await page.goto('/projects/NDC-031/client');
-  await expect(page).toHaveURL(/\/$/);
-  // Their own project's portal stays open.
-  await page.goto('/projects/HLT-026/client');
-  await expect(page).toHaveURL(/\/projects\/HLT-026\/client/);
-  w.check();
-});
 
 test('tablet: the sidebar is a drawer behind the Menu button; Escape closes it (R-146)', async ({ page, context }) => {
   await viewAs(context, 'pm');
@@ -45,7 +31,7 @@ test('tablet: the sidebar is a drawer behind the Menu button; Escape closes it (
   w.check();
 });
 
-test('ITP: quality records an inspection result (R-112); a punch photo is stored, shown to the client, never added by them (R-126)', async ({ page, context }) => {
+test('ITP: quality records an inspection result (R-112); a punch photo is stored (R-126)', async ({ page, context }) => {
   await viewAs(context, 'quality');
   const w = watch(page);
   await page.goto('/projects/HLT-026/itp');
@@ -77,9 +63,6 @@ test('ITP: quality records an inspection result (R-112); a punch photo is stored
   expect([img.status(), img.headers()['content-type']]).toEqual([200, 'image/png']);
   expect(Buffer.compare(await img.body(), PNG)).toBe(0);
 
-  await viewAs(context, 'client');
-  expect((await page.request.get(`/api/photos/${id}`)).status()).toBe(200);
-  expect((await upload()).status()).toBe(403);
   w.check();
 });
 

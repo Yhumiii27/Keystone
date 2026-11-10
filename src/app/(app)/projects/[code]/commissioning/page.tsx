@@ -5,10 +5,13 @@
 // commissioning plan it offers the inspection template's systems (the prototype's `ITPSYS`) and the plan is recorded
 // while the screen keeps its empty panel. Hidden when the screen is outside the viewer's workspace or the project is
 // read-only for them, and refused server-side.
+// R-160 (P2, D9-32): under the dossier, the CE conformity card (one CE file per equipment line, Regulation (EU) 2023/1230);
+// `?ce=EQ-01` opens a line's file.
 import type { ReactNode } from 'react';
 import { PageHeader } from '@/components/app/shell/page-header';
 import { canSee, screenHref } from '@/config/screens';
 import { defaultSatDate } from '@/domain/itpcom';
+import { CeConformityCard } from '@/features/ce/ce-card';
 import { ItpFormButton } from '@/features/itpcom/add-buttons';
 import { CommissioningBody } from '@/features/itpcom/commissioning-view';
 import { localizeForm, planSatFormDef } from '@/features/itpcom/forms';
@@ -22,8 +25,11 @@ import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { projectLabelText } from '@/i18n/data-text';
 
-export default async function CommissioningPage({ params }: { params: Promise<{ code: string }> }) {
+export default async function CommissioningPage({ params, searchParams }: { params: Promise<{ code: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const { code } = await params;
+  // R-160: `?ce=EQ-01` opens the CE file of that equipment line under the CE conformity card.
+  const ceParam = searchParams ? (await searchParams).ce : undefined;
+  const ceRef = typeof ceParam === 'string' && /^EQ-\d{2,}$/.test(ceParam) ? ceParam : null;
   const ctx = await getProjectContext(code, 'commissioning');
   const projectCode = ctx.project.code;
   // R-117 (A-6 'a'): "Blocking A" counts the category-A items of every origin (one punch list per project).
@@ -52,6 +58,8 @@ export default async function CommissioningPage({ params }: { params: Promise<{ 
         })}
         t={t}
       />
+      {/* R-160 (P2, D9-32): the CE file of each equipment line, its readiness and the handover warning (never a block). */}
+      <CeConformityCard ctx={ctx} selected={ceRef} />
     </>
   );
 }

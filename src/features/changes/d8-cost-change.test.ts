@@ -33,7 +33,7 @@ import { getChangeControl } from '@/server/dal/changes';
 import { getCostControl } from '@/server/dal/cost';
 import { notificationsFor } from '@/server/dal/shell';
 import { getProjectContext } from '@/server/project-context';
-import { createChangeRequestAction, decideChangeStepAction } from './actions';
+import { createChangeRequestAction, decideChangeStepAction, recordClientChangeStepAction } from './actions';
 import { newChangeRequestForm, translatedChangeRequestForm } from './forms';
 
 // Every persona, Finance (R-044) included.
@@ -60,8 +60,8 @@ describe('R-069 / R-081 — "New change request" for the 9 personas', () => {
         // R-042 (P-1): a viewer refused on the project is sent home by the context itself.
         expect(String(e)).toMatch(/REDIRECT/);
       }
-      // Change control is edited by the director, the project's PM and its client contact (the others read it or are outside).
-      expect([role, editor]).toEqual([role, ['director', 'pm', 'client'].includes(role)]);
+      // Change control is edited by the director and the project's PM (the others read it or are outside; D9-06: no client).
+      expect([role, editor]).toEqual([role, ['director', 'pm'].includes(role)]);
       if (!editor) {
         const r = await createChangeRequestAction('HLT-026', { ...FORM, cat: 'C02' }).catch((e: unknown) => ({ error: String(e) }));
         expect([role, r.error]).toEqual([role, expect.stringMatching(/^(Change control is read-only for you|Error: REDIRECT .*)$/)]);
@@ -70,13 +70,6 @@ describe('R-069 / R-081 — "New change request" for the 9 personas', () => {
       // The contractual impact is required (P-6c).
       expect(await createChangeRequestAction('HLT-026', { ...FORM, impact: '' })).toEqual({ error: 'Choose the contractual impact' });
       expect(await createChangeRequestAction('HLT-026', { ...FORM, impact: 'both' })).toEqual({ error: 'Choose the contractual impact' });
-      if (role === 'client') {
-        // R-081: the cost category is the team's internal data — the client raises a request without one.
-        expect(await createChangeRequestAction('HLT-026', { ...FORM, cat: 'C02' })).toEqual({ error: 'Only the project team links a cost category to a change request' });
-        const r = await createChangeRequestAction('HLT-026', FORM);
-        expect((await crOf(numberOf(r.toast)))).toMatchObject({ contractImpact: 'price', costCategoryCode: null, status: 'in_review' });
-        return;
-      }
       expect(await createChangeRequestAction('HLT-026', { ...FORM, cat: 'C77' })).toEqual({ error: 'Unknown cost category' });
       expect(await createChangeRequestAction('HLT-026', { ...FORM, cat: "C02'; --" })).toEqual({ error: 'Unknown cost category' });
       const c2 = await category('C02');
@@ -90,14 +83,18 @@ describe('R-069 / R-081 — "New change request" for the 9 personas', () => {
 });
 
 describe('R-069 / R-015 — the chain decided in order, notices after each decision, the category posted at approval', () => {
-  it('a later step is "Not yours to decide yet"; PM → director → client approves; C02 takes the amount', async () => {
+  it('a later step is "Not yours to decide yet"; PM → director → the client\'s approval recorded by the PM (D9-06); C02 takes the amount', async () => {
     session.role = 'pm';
     const n = numberOf((await createChangeRequestAction('HLT-026', { ...FORM, title: 'Mooring bollards', amt: '30', cat: 'C02' })).toast);
     const before = (await category('C02')).budget;
-    session.role = 'client';
-    expect(await decideChangeStepAction('HLT-026', n, 'client', 'ok')).toEqual({ error: 'Not yours to decide yet' });
+    // D9-06: the client step is recorded by the PM from the client's signed decision (date, reference), never with the inline buttons.
+    expect(await decideChangeStepAction('HLT-026', n, 'client', 'ok')).toEqual({ error: 'Record the client’s decision with its signed document' });
+    session.role = 'director';
+    expect(await recordClientChangeStepAction('HLT-026', n, 'ok', { on: '2026-09-25', reference: 'AV-1' })).toEqual({ error: 'This approval step is not yours to decide' });
+    session.role = 'pm';
+    expect(await recordClientChangeStepAction('HLT-026', n, 'ok', { on: '2026-09-25', reference: 'AV-1' })).toEqual({ error: 'Not yours to decide yet' });
     session.lang = 'fr';
-    expect(await decideChangeStepAction('HLT-026', n, 'client', 'ok')).toEqual({ error: makeT('fr')('Not yours to decide yet') });
+    expect(await recordClientChangeStepAction('HLT-026', n, 'ok', { on: '2026-09-25', reference: 'AV-1' })).toEqual({ error: makeT('fr')('Not yours to decide yet') });
     expect(makeT('fr')('Not yours to decide yet')).toBe('Pas encore à vous de décider');
     session.lang = 'en';
     session.role = 'director';
@@ -109,18 +106,21 @@ describe('R-069 / R-015 — the chain decided in order, notices after each decis
     expect((await notificationsFor('director')).map((x) => x.title)).toContain(`Change request awaiting your decision · ${n}`);
     session.role = 'director';
     expect(await decideChangeStepAction('HLT-026', n, 'director', 'ok')).toEqual({ ok: true });
-    expect((await notificationsFor('client')).map((x) => x.title)).toContain(`Change request awaiting your decision · ${n}`);
+    // D9-06: the client step reaches the PM of record, who records the client's signed decision.
+    expect((await notificationsFor('pm')).map((x) => x.title)).toContain(`Change request awaiting your decision · ${n}`);
     // The persona not concerned is never told.
     expect((await notificationsFor('quality')).map((x) => x.title).filter((x) => x.endsWith(n))).toEqual([]);
-    session.role = 'client';
-    expect(await decideChangeStepAction('HLT-026', n, 'client', 'ok')).toEqual({ ok: true });
+    session.role = 'pm';
+    expect(await recordClientChangeStepAction('HLT-026', n, 'ok', { on: '2026-09-25', reference: '' })).toEqual({ error: 'Enter the reference of the signed document' });
+    expect(await recordClientChangeStepAction('HLT-026', n, 'ok', { on: '2026-09-25', reference: 'AV-HLT-004' })).toEqual({ toast: 'Client approval recorded' });
     const cr = await crOf(n);
+    expect(cr.chain.find((s) => s.step === 'client')?.comment).toBe('Client decision of 2026-09-25 · AV-HLT-004');
     expect([cr.status, cr.chain.map((s) => s.decision)]).toEqual(['approved', ['ok', 'ok', 'ok', 'na']]);
     expect((await category('C02')).budget).toBe(before + 30);
-    // The requester (the PM of record) hears of the final decision.
-    expect((await notificationsFor('pm')).map((x) => x.title)).toContain(`Change request approved · ${n}`);
+    // The requester (the PM of record) recorded the final step himself: never told of his own decision (D9-06).
+    expect((await notificationsFor('pm')).map((x) => x.title)).not.toContain(`Change request approved · ${n}`);
     // Stale click on a decided request.
-    expect(await decideChangeStepAction('HLT-026', n, 'client', 'rejected')).toEqual({ error: 'This approval step is no longer pending' });
+    expect(await recordClientChangeStepAction('HLT-026', n, 'rejected', { on: '2026-09-25' })).toEqual({ error: 'This approval step is no longer pending' });
   });
 
   it('an internal change ("None (internal)") never waits for the client', async () => {
@@ -131,8 +131,8 @@ describe('R-069 / R-015 — the chain decided in order, notices after each decis
     session.role = 'director';
     expect(await decideChangeStepAction('HLT-026', n, 'director', 'ok')).toEqual({ ok: true });
     expect((await crOf(n)).status).toBe('approved');
-    session.role = 'client';
-    expect(await decideChangeStepAction('HLT-026', n, 'client', 'ok')).toEqual({ error: 'This approval step is no longer pending' });
+    session.role = 'pm';
+    expect(await recordClientChangeStepAction('HLT-026', n, 'ok', { on: '2026-09-25', reference: 'AV-1' })).toEqual({ error: 'This approval step is no longer pending' });
   });
 });
 

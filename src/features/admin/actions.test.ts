@@ -46,10 +46,7 @@ beforeEach(() => {
 });
 
 describe('Settings Server Functions', () => {
-  it('refuses viewers outside the workspace (member), in their language; the client is sent home (R-042, P-1)', async () => {
-    as('client');
-    await expect(addSettingsEntryAction('skills', 'Welding')).rejects.toThrow('NEXT_REDIRECT');
-    await expect(resetSettingsAction()).rejects.toThrow('NEXT_REDIRECT');
+  it('refuses viewers outside the workspace (member), in their language', async () => {
     for (const role of ['member'] as RoleKey[]) {
       as(role);
       expect(await addSettingsEntryAction('skills', 'Welding')).toEqual({ error: 'Settings are read-only for you' });
@@ -158,9 +155,7 @@ describe('Settings Server Functions', () => {
 });
 
 describe('Machine types Server Functions', () => {
-  it('refuses viewers outside the workspace (depthead, member, procurement): mtCanEdit; the client is sent home (R-042, P-1)', async () => {
-    as('client');
-    await expect(updateMachineTypeAction('EMP', { active: false })).rejects.toThrow('NEXT_REDIRECT');
+  it('refuses viewers outside the workspace (depthead, member, procurement): mtCanEdit', async () => {
     for (const role of ['depthead', 'member', 'procurement'] as RoleKey[]) {
       as(role);
       expect(await updateMachineTypeAction('EMP', { active: false })).toEqual({ error: 'Machine types are read-only for you' });
@@ -230,10 +225,7 @@ describe('Machine types Server Functions', () => {
 });
 
 describe('Activity & integrations Server Functions and the audit export', () => {
-  it('refuses viewers outside the workspace (every role but director and PM); the client is sent home (R-042, P-1)', async () => {
-    as('client');
-    await expect(syncConnectorAction('Lucca')).rejects.toThrow('NEXT_REDIRECT');
-    await expect(exportAudit(new Request('http://localhost/admin/integrations/audit.csv'))).rejects.toThrow('NEXT_REDIRECT');
+  it('refuses viewers outside the workspace (every role but director and PM)', async () => {
     for (const role of ['depthead', 'member', 'englead', 'quality', 'procurement'] as RoleKey[]) {
       as(role);
       expect(await syncConnectorAction('Lucca')).toEqual({ error: 'Activity & integrations is read-only for you' });

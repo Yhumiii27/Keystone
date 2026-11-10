@@ -125,16 +125,12 @@ describe('R-067 — "Send minutes" tasks (S-12 a) and R-015 notices', () => {
     expect(m.agenda[0].lines[4].activity).toBe('A1250');
   });
 
-  it('the client never sees the internal task numbers of an external meeting; the team does', async () => {
+  it('the team sees the task numbers of an external meeting (D9-06: no client view any more)', async () => {
     const ms = await listMeetings(HLT);
     const q = { view: 'meetings' as const, filter: 'all' as const, meeting: number };
     const team = meetingsScreenView({ code: HLT, meetings: ms, questions: [], query: q, today: DEMO_TODAY_ISO }, makeT('en'), 'en');
-    const client = meetingsScreenView({ code: HLT, meetings: ms, questions: [], query: q, today: DEMO_TODAY_ISO, client: true }, makeT('en'), 'en');
     expect(team.detail!.agenda[0].lines.every((l) => l.taskNumber && l.taskHref)).toBe(true);
     expect(team.detail!.agenda[0].lines[4].meta).toBe('J. Wagner · — · A1250');
-    expect(client.detail!.agenda[0].lines.every((l) => l.taskNumber === null && l.taskHref === null)).toBe(true);
-    expect(client.detail!.agenda[0].lines[4].meta).toBe('J. Wagner · —');
-    expect(client.actions.every((a) => a.taskHref === null)).toBe(true);
   });
 
   it('stale: the minutes already sent refuse a new line, with or without activity', async () => {

@@ -37,7 +37,7 @@ const as = (role: RoleKey, lang: 'en' | 'fr' = 'en') => {
 };
 const HLT = 'HLT-026';
 /** Workspace of Inspections & punch list and on HLT-026's named team (or the director; the client of its organisation). */
-const EDITORS: RoleKey[] = ['director', 'pm', 'englead', 'quality', 'client'];
+const EDITORS: RoleKey[] = ['director', 'pm', 'englead', 'quality'];
 const READ_ONLY = 'This inspection plan is read-only for you';
 const item = async (n: string, code = HLT) => (await listPunchItems(code)).find((p) => p.number === n);
 
@@ -47,7 +47,7 @@ beforeAll(async () => {
 beforeEach(() => vi.mocked(revalidatePath).mockClear());
 
 describe('R-117 · "Add punch item" on the single list, 9 personas', () => {
-  it('editors add an item of either origin, numbered over the project (P-11…, R-158 lot B: the demo reception raised P-10); the others read; the client never records an NCR', async () => {
+  it('editors add an item of either origin, numbered over the project (P-11…, R-158 lot B: the demo reception raised P-10); the others read (D9-06: no client persona)', async () => {
     const added: Record<string, string> = {};
     for (const role of ROLES) {
       as(role);
@@ -59,25 +59,23 @@ describe('R-117 · "Add punch item" on the single list, 9 personas', () => {
       expect([role, r]).toEqual([role, { toast: 'Punch item added' }]);
       added[role] = (await listPunchItems(HLT)).at(-1)!.number;
     }
-    expect(Object.values(added)).toEqual(['P-11', 'P-12', 'P-13', 'P-14', 'P-15']);
+    expect(Object.values(added)).toEqual(['P-11', 'P-12', 'P-13', 'P-14']);
     expect(revalidatePath).toHaveBeenCalledWith('/projects/HLT-026', 'layout');
     const rows = await listPunchItems(HLT, 'site');
     expect(rows.filter((p) => p.description.startsWith('Item by')).map((p) => [p.description, p.origin, p.ownerParty, p.ownerName, p.owner, p.ncrNumber, p.category])).toEqual([
       ['Item by director', 'site', 'client', null, 'Client', 'EV-2026-031', 'B'], ['Item by pm', 'site', 'client', null, 'Client', 'EV-2026-031', 'B'],
       ['Item by englead', 'site', 'client', null, 'Client', 'EV-2026-031', 'B'], ['Item by quality', 'site', 'client', null, 'Client', 'EV-2026-031', 'B'],
-      // P-10b: whatever the client's request says, no NCR number is recorded from the client.
-      ['Item by client', 'site', 'client', null, 'Client', null, 'B'],
     ]);
     const [audit] = await listAudit({ projectCode: HLT, limit: 1 });
-    expect([audit.who, audit.object, audit.change]).toEqual(['Nadia Bensaïd', 'P-15', 'punch item added · Site · B · Item by client']);
+    expect([audit.who, audit.object, audit.change]).toEqual(['Gabriel Comte', 'P-14', 'punch item added · Site · B · Item by quality']);
   });
 
   it('defaults: origin Inspection, party Keystone, the first TEAM owner; "—" leaves the party as owner', async () => {
     as('quality');
     expect(await addPunchItemAction(HLT, { item: 'Default origin' })).toEqual({ toast: 'Punch item added' });
-    expect(await item('P-16')).toMatchObject({ origin: 'itp', ownerParty: 'keystone', ownerName: 'A. Ollivier', ncrNumber: null, category: 'A', status: 'open' });
+    expect(await item('P-15')).toMatchObject({ origin: 'itp', ownerParty: 'keystone', ownerName: 'A. Ollivier', ncrNumber: null, category: 'A', status: 'open' });
     expect(await addPunchItemAction(HLT, { item: 'Party only', owner: '—', party: 'keystone' })).toEqual({ toast: 'Punch item added' });
-    expect(await item('P-17')).toMatchObject({ ownerName: null, owner: 'Keystone' });
+    expect(await item('P-16')).toMatchObject({ ownerName: null, owner: 'Keystone' });
   });
 
   it('malformed input and unknown values are refused, translated; nothing is written', async () => {
@@ -100,11 +98,8 @@ describe('R-117 · "Add punch item" on the single list, 9 personas', () => {
     as('pm');
     expect(await addPunchItemAction('RCF-019', { item: 'x' })).toEqual({ error: READ_ONLY });
     await expect(addPunchItem('RCF-019', { description: 'x', category: 'C', source: 'site_walk' }, { name: 'Romain Aubert', role: 'pm' })).rejects.toThrow(/read-only/);
-    await expect(addPunchItem(HLT, { description: 'x', category: 'C', source: 'site_walk' }, { name: 'Somebody Else', role: 'client' })).rejects.toThrow(/read-only/);
+    await expect(addPunchItem(HLT, { description: 'x', category: 'C', source: 'site_walk' }, { name: 'Julien Wagner', role: 'member' })).rejects.toThrow(/outside your workspace/);
     await expect(addPunchItem(HLT, { description: 'x', category: 'C', source: 'site_walk', origin: 'nope' as never }, { name: 'Marie Lefebvre', role: 'director' })).rejects.toThrow(/Invalid origin/);
-    // A client's NCR is dropped by the writer as well.
-    expect(await addPunchItem(HLT, { description: 'By the client', category: 'C', source: 'client_inspection', ncrNumber: 'EV-2026-099' }, { name: 'Nadia Bensaïd', role: 'client' })).toMatch(/^P-\d+$/);
-    expect((await listPunchItems(HLT)).at(-1)!.ncrNumber).toBeNull();
   });
 });
 
@@ -158,7 +153,7 @@ describe('R-117 · the screen and the export', () => {
     ]);
   });
 
-  it('the ITP export lists every origin with its origin; the client gets no NCR column (P-10b)', async () => {
+  it('the ITP export lists every origin with its origin (D9-06: no client copy any more)', async () => {
     const sheetOf = async (role: RoleKey, query = '') => {
       const ctx = await buildExportContext({ screen: 'itp', viewer: PERSONA_BY_ROLE[role], lang: 'en', params: new URLSearchParams(`code=HLT-026&view=punch${query}`), now: new Date('2026-10-09T08:00:00Z') });
       return (await readXlsx((await runExport(ctx, 'xlsx')).body))[0];
@@ -169,9 +164,6 @@ describe('R-117 · the screen and the export', () => {
     expect(internal.rows.find((r) => r[0] === 'P-06')!.slice(0, 4)).toEqual(['P-06', 'Massif poste 7 — reprise implantation tiges', 'Site', 'Common']);
     expect(internal.rows.find((r) => r[0] === 'P-09')![3]).toBe('EQ-02');
     expect(internal.rows.find((r) => r[0] === 'P-06')![7]).toBe('EV-2026-029');
-    const client = await sheetOf('client');
-    expect(client.rows[0]).not.toContain('NCR');
-    expect(client.rows.flat().join(' ')).not.toContain('EV-2026-031');
     expect((await sheetOf('quality', '&origin=itp')).rows.slice(1).every((r) => r[2] === 'Inspection')).toBe(true);
   });
 });

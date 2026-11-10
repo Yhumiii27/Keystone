@@ -19,7 +19,7 @@ import { vigieCoactivityUrl, vigieHseListUrl, vigieHseUrl, vigieNcrListUrl, vigi
 import { cursusRequestId, getCursusConnector, httpCursusConnector, recordsOfPayload, resetCursusRefreshThrottle } from '@/server/integrations/cursus/connector';
 import { cursusChantierUrl } from '@/server/integrations/cursus/links';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
-import { raiseClientIssue, getClientPortal } from './client';
+import { getClientReportData } from './client-report';
 import { listClaims, openClaim } from './claims';
 import { getCommissioning, planSat } from './commissioning';
 import { closeEngCheck, confirmEngInput, freezeEngDeliverable, generateEngOutput, getEngineeringRegister, importEngList, proposeEngRelease, validateEngRelease } from './engineering';
@@ -45,7 +45,6 @@ const A = {
   englead: { role: 'englead', name: 'Antoine Girard' },
   quality: { role: 'quality', name: 'Gabriel Comte' },
   procurement: { role: 'procurement', name: 'Fabien Bertrand' },
-  client: { role: 'client', name: 'Nadia Bensaïd' },
 } as const;
 const HLT = 'HLT-026';
 
@@ -140,27 +139,29 @@ describe('deliverables — producer steps and client acceptance (PV)', () => {
     await moveDeliverable(HLT, 'D-018', 'in_progress', A.pm);
     await expect(moveDeliverable(HLT, 'D-018', 'submitted', A.pm)).rejects.toThrow(/cannot move/);
     await moveDeliverable(HLT, 'D-018', 'internal_review', A.englead);
-    await expect(moveDeliverable(HLT, 'D-018', 'submitted', A.client)).rejects.toThrow(/client accepts or rejects/);
     await moveDeliverable(HLT, 'D-018', 'submitted', A.pm);
     expect(await getDeliverable(HLT, 'D-018')).toMatchObject({ status: 'submitted', submittedOn: '2026-09-25', acceptanceDueOn: '2026-10-05', acceptanceText: 'Accept by 5 Oct' });
     expect(await lastAudit()).toMatchObject({ who: 'Romain Aubert', object: 'D-018', change: 'status: Internal review → Submitted', area: 'Deliverables' });
   });
 
-  it('only the client contact of the project decides; accept stamps the viewer, reject records the comments', async () => {
-    await expect(decideDeliverable(HLT, 'D-014', 'accepted', A.pm)).rejects.toThrow(/Only the client/);
-    await expect(decideDeliverable(HLT, 'D-014', 'accepted', A.director)).rejects.toThrow(/Only the client/);
-    await expect(decideDeliverable('NDC-031', 'D-112', 'accepted', A.client)).rejects.toThrow(/Only the client/);
-    expect((await deliverableAcceptanceQueue(HLT, A.client)).map((d) => d.number)).toEqual(['D-014', 'D-016', 'D-018']);
-    await decideDeliverable(HLT, 'D-014', 'accepted', A.client);
-    expect(await getDeliverable(HLT, 'D-014')).toMatchObject({ status: 'accepted', acceptedOn: '2026-09-25', acceptedBy: 'N. Bensaïd', acceptanceText: '25 Sep · N. Bensaïd' });
-    await decideDeliverable(HLT, 'D-016', 'rejected', A.client, 'Load case 4 missing');
+  // D9-06: the client no longer sees Keystone — the project's leads record the client's decision with the signed PV.
+  it('only the project’s leads record the client’s decision; accept stamps the PV reference, reject records the comments', async () => {
+    await expect(decideDeliverable(HLT, 'D-014', 'accepted', A.quality, { reference: 'PV-HLT-014' })).rejects.toThrow(/Only the project manager/);
+    await expect(decideDeliverable('NDC-031', 'D-112', 'accepted', A.pm, { reference: 'PV-NDC-112' })).rejects.toThrow(/Only the project manager/);
+    await expect(decideDeliverable(HLT, 'D-014', 'accepted', A.pm)).rejects.toThrow(/reference of the signed acceptance/);
+    await expect(decideDeliverable(HLT, 'D-014', 'accepted', A.pm, { reference: 'PV-HLT-014', on: '2026-09-30' })).rejects.toThrow(/after the status date/);
+    expect((await deliverableAcceptanceQueue(HLT, A.quality)).map((d) => d.number)).toEqual([]);
+    expect((await deliverableAcceptanceQueue(HLT, A.pm)).map((d) => d.number)).toEqual(['D-014', 'D-016', 'D-018']);
+    await decideDeliverable(HLT, 'D-014', 'accepted', A.pm, { reference: 'PV-HLT-014' });
+    expect(await getDeliverable(HLT, 'D-014')).toMatchObject({ status: 'accepted', acceptedOn: '2026-09-25', acceptedBy: 'R. Aubert', acceptanceRef: 'PV-HLT-014', acceptanceText: '25 Sep · PV-HLT-014' });
+    await decideDeliverable(HLT, 'D-016', 'rejected', A.pm, { comments: 'Load case 4 missing' });
     expect(await getDeliverable(HLT, 'D-016')).toMatchObject({ status: 'rejected', reviewComments: 'Load case 4 missing', acceptanceText: '25 Sep · comments issued' });
-    await expect(decideDeliverable(HLT, 'D-016', 'accepted', A.client)).rejects.toThrow(/not submitted/);
-    expect(await deliverableDecidedCount(A.client)).toBe(2);
-    const portal = await getClientPortal(HLT);
+    await expect(decideDeliverable(HLT, 'D-016', 'accepted', A.pm, { reference: 'PV-HLT-016' })).rejects.toThrow(/not submitted/);
+    expect(await deliverableDecidedCount(A.pm)).toBe(2);
+    const report = await getClientReportData(HLT);
     // P-6b (delivery 8, R-069): CR-008 waits for the director before it reaches the client.
-    expect(portal.decisions.map((d) => d.id)).toEqual(['D-018']);
-    expect(portal.decided.map((d) => d.id)).toEqual(['CR-004', 'CR-006', 'D-011', 'D-012', 'D-014', 'D-015', 'D-016']);
+    expect(report.decisions.map((d) => d.id)).toEqual(['D-018']);
+    expect(report.decided.map((d) => d.id)).toEqual(['CR-004', 'CR-006', 'D-011', 'D-012', 'D-014', 'D-015', 'D-016']);
   });
 
   it('links the issued Codex record', async () => {
@@ -352,21 +353,6 @@ describe('site — readiness, daily reports, Cursus', () => {
   });
 });
 
-describe('client portal — issues', () => {
-  it('CI-08, CI-09, CI-10 (never "CI-010"), newest first; only the project’s client or the director', async () => {
-    expect(await raiseClientIssue(HLT, 'Dust on berth 4 during grinding', A.client)).toBe('CI-08');
-    expect(await raiseClientIssue(HLT, 'Weekly photo report format', A.client)).toBe('CI-09');
-    expect(await raiseClientIssue(HLT, 'Access badge renewals', A.director)).toBe('CI-10');
-    await expect(raiseClientIssue(HLT, 'x', A.pm)).rejects.toThrow(/outside your workspace/);
-    await expect(raiseClientIssue('NDC-031', 'x', A.client)).rejects.toThrow(/Only the project’s client/);
-    const p = await getClientPortal(HLT);
-    expect(p.issues.slice(0, 4).map((i) => [i.number, i.status, i.raisedBy, i.response])).toEqual([
-      ['CI-10', 'open', 'Marie Lefebvre', 'Acknowledged — response within 2 working days'], ['CI-09', 'open', 'Nadia Bensaïd', 'Acknowledged — response within 2 working days'],
-      ['CI-08', 'open', 'Nadia Bensaïd', 'Acknowledged — response within 2 working days'], ['CI-04', 'closed', 'Nadia Bensaïd', 'Noise barrier + shifted window 06:00–20:00'],
-    ]);
-  });
-});
-
 describe('engineering register', () => {
   it('confirm an input, resolve / send back checks, generate an output (Blocked refused)', async () => {
     await expect(confirmEngInput(HLT, 'meca', 'PID-HLT-026', A.englead)).resolves.toBeUndefined();
@@ -508,7 +494,7 @@ describe('Delivery 5 backfill (database seeded before migration 0004)', () => {
       'deliverable_raci', 'deliverables', 'vigie_ncr_progress', 'vigie_ncrs', 'vigie_hse_items', 'punch_items', 'itp_inspections', 'itp_plans', 'commissioning_steps', 'commissioning_systems',
       'handover_items', 'sat_plans', 'lessons_learned', 'closure_items', 'satisfaction_scores', 'interventions', 'warranty_claims', 'machine_part_revisions', 'machines', 'daily_reports',
       'mission_cost_lines', 'site_conflict_arbitrations', 'site_collisions', 'site_rotations', 'site_prerequisites', 'site_equipment', 'site_sheets', 'cursus_requests', 'cursus_sync_runs', 'cursus_clearances',
-      'client_issues', 'eng_imports', 'eng_changes', 'eng_outputs', 'eng_checks', 'eng_consistency_rules', 'eng_inputs', 'eng_disciplines', 'eng_import_tools',
+      'eng_imports', 'eng_changes', 'eng_outputs', 'eng_checks', 'eng_consistency_rules', 'eng_inputs', 'eng_disciplines', 'eng_import_tools',
       'eng_column_mappings', 'eng_import_deltas', 'pid_validation_steps', 'pid_tags', 'pid_sheets', 'machine_type_phases', 'machine_type_cost_categories', 'machine_type_itp_systems',
       'connector_sync_runs', 'connectors', 'import_formats', 'app_settings', 'reference_values',
     ];

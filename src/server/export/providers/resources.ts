@@ -18,7 +18,6 @@ import { yearOfIso } from '@/domain/clock';
 import { loadWindow, parseLoadViewParam, parseLoadWeekParam, type LoadView, type LoadWindow } from '@/domain/load-window';
 import { weekLoad, weekSplitText, type WeekProjectHours } from '@/domain/load-week';
 import { col, compact, filterLine, isoOf, kpiSheet, param, sheet } from './common';
-import { projectFilter } from './scope';
 import { canViewDepartmentApprovals } from '@/domain/rights';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { dataText } from '@/i18n/data-text';
@@ -121,10 +120,10 @@ async function projectResourcesWorkbook(ctx: ExportContext): Promise<ExportWorkb
 async function requestsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t, viewer } = ctx;
   const all = viewer.role === 'director' || ctx.outside;
-  const [rows, visible] = await Promise.all([listResourceRequests(all ? {} : { requestedBy: viewer.short }), projectFilter(ctx)]);
+  const rows = await listResourceRequests(all ? {} : { requestedBy: viewer.short });
   const s = param(ctx, 'status');
   const filter = isRequestFilter(s) ? s : null;
-  const shown = rows.filter((r) => matchesRequestFilter(r.status, filter) && visible(r.projectCode));
+  const shown = rows.filter((r) => matchesRequestFilter(r.status, filter));
   const label = REQUEST_FILTERS.find((f) => f.value === filter)?.label;
   return {
     title: t('Resource requests'),
@@ -144,15 +143,15 @@ async function approvalsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | n
   if (!name) return null;
   // P-8a (R-048): a department head exports the departments they head only.
   if (!canViewDepartmentApprovals(ctx.viewer.role, (await getApproverIdentity(ctx.viewer)).departments, name)) return null;
-  const [data, visible] = await Promise.all([getApprovalsScreenData(name), projectFilter(ctx)]);
+  const data = await getApprovalsScreenData(name);
   if (!data) return null;
   const people = data.pool.people.filter((p) => p.department === name);
   return {
     title: `${t('Approvals')} — ${t(name)}`,
     filters: [`${t('Department')}: ${t(name)}`],
     sheets: [
-      requestSheet(ctx, t('Pending'), data.pending.filter((r) => visible(r.projectCode))),
-      requestSheet(ctx, t('Decided'), data.decided.filter((r) => visible(r.projectCode))),
+      requestSheet(ctx, t('Pending'), data.pending),
+      requestSheet(ctx, t('Decided'), data.decided),
       loadSheet(ctx, t('Team load'), data.pool.weeks, people),
       kpiSheet(ctx, [
         { label: t('Pending'), value: String(data.department.pending) }, { label: t('Capacity (h)'), value: data.department.capacityH != null ? String(data.department.capacityH) : '—' },
@@ -168,7 +167,7 @@ async function approvalsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | n
 async function whatIfWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   const { t } = ctx;
   const project = await getProject(param(ctx, 'project') ?? 'HLT-026');
-  if (!project || (ctx.viewer.role === 'client' && !(await projectFilter(ctx))(project.code))) return null;
+  if (!project) return null;
   // Owner answers 17 Oct 2026: the horizon of the page (`?week=`, the 8-week window), as on screen.
   const w = await getWhatIf(project.code, windowOf(ctx, '8w').start);
   if (!w) return null;

@@ -38,6 +38,8 @@
 | `suppliers` | `name`, `x3_code` | `name`, `x3_code` | non (ni archivage ni suppression dans Keystone) | Doublon refusé ; un nom « Keystone … » est un atelier interne (`is_internal`, comme `parts.ts`) ; le nom d’un atelier ne se corrige pas et « Keystone … » est réservé |
 | `persons` | non (annuaire de Cursus, première connexion) | `full_name`, `initials`, `job_title` | non | Nom complet d’une personne reprise de l’annuaire de Cursus (matricule posé) : refusé, à corriger dans Cursus ; initiales obligatoires (5 caractères au plus) |
 | `projects` | non (assistant « Nouveau projet ») | `name`, `short_name` | non (annulation par le cycle de vie) | Nom obligatoire (200 caractères au plus), nom court facultatif (80) |
+| `reference_values` liste `holidays` (jours fériés) — **D9-04, migration 0078** | `list_key` = `holidays`, `label` | `label` | oui : **désactivation** | Règle des Paramètres (`parseHolidayEntry`) : « 14 Jul · Fête nationale », mois français converti, date réelle, 120 caractères ; code = la date dans l’année d’affaires (date réelle à Paris) sauf année écrite ; un seul jour férié actif par date ; une correction garde l’année de l’entrée et change le code ; date tenue par un jour férié retiré : refus |
+| `app_settings` — **D9-04, migration 0078** ; clé `{"key": "<paramètre>"}` | non | les seuils du paramètre (valeurs `{"<seuil>": <valeur>}`) | non | `health.thresholds` (`risk`, `off` : ]0, 2], off < risk), `hours.variance` (`pct` entier 1–50), `change.ccbThreshold` (`keur` 0–1 000 000, arrondi au centième), `schedule.dcma` (15 seuils, bornes et entiers de `DCMA_THRESHOLD_FIELDS`, « 0,95 » admis, arrondi au millième), `forecast.drift` (13 seuils de `DRIFT_THRESHOLD_FIELDS`, paires ordonnées), `purchasing.supplierSlip` (`days` entier 1–60), `purchasing.supplierSlipEscalation` (`days` 1–120, `impactDays` 1–60, entiers) |
 
 Colonnes sensibles (RGPD), refusées même si elles sont nommées et jamais renvoyées : `persons.email`, `persons.matricule`,
 `persons.rate_role_id` (rôle de taux, lié à la valorisation des heures), et toute colonne dont le nom évoque un secret
@@ -51,10 +53,9 @@ emplacement 120, noms 200, code Sage 40, nom court de projet 80).
 
 - Comptes, rôles et droits (`users`, équipes de projet, délégations), journal d’audit et fil d’activité, connecteurs et leur
   configuration, files d’envoi (outbox) et miroirs des autres outils (Vigie, Cursus, Codex, Arche, Matrix) : jamais.
-- `app_settings` (seuils de santé, de DCMA, de dérive, CCB…) : valeurs JSON validées en TypeScript (`src/server/dal/settings.ts`
-  et ses modules de domaine) ; non reproduites en SQL, donc refusées.
-- Jours fériés (`reference_values` liste `holidays`) : le code est la date de l’année d’affaires, calculée par Keystone
-  (`holidayCode`, horloge métier R-013) ; ajout et correction refusés, retrait (désactivation) admis.
+- ~~`app_settings`~~ et ~~jours fériés~~ : ouverts par D9-04 (10/11/2026, migration `0078_pub_editer_settings`, voir
+  `notes-d9-matrix.md`). Restent fermés dans `app_settings` : les valeurs par défaut de « Réinitialiser » (`settings.defaults`),
+  les préférences de rappel et tout autre paramètre.
 - Catégories de coût et compétences : reconnues par leur **libellé** dans les budgets et la matrice des compétences ; corriger
   le libellé couperait le lien ; ajout et retrait admis.
 - Statuts de projet : ce sont les étapes du cycle de vie ; libellé non corrigé ici, pas de nouvelle étape.

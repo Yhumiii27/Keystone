@@ -76,8 +76,6 @@ describe('equipment Server Functions (R-185)', () => {
     expect(await removeEquipmentAction('HLT-026', 'EQ-02')).toEqual(REFUSED);
     Object.assign(viewer, { role: 'pm', lead: true, edit: false });
     expect(await updateEquipmentAction('HLT-026', 'EQ-02', line())).toEqual(REFUSED);
-    Object.assign(viewer, { role: 'client', lead: true, edit: true });
-    expect(await addEquipmentAction('HLT-026', line())).toEqual(REFUSED);
     expect((await listProjectEquipments('HLT-026'))).toHaveLength(2);
   });
 

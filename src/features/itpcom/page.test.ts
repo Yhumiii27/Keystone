@@ -52,7 +52,7 @@ function parts(tree: unknown): Record<string, El> {
 }
 const itp = async (sp: Record<string, string> = {}, code = 'HLT-026') => parts(await ItpPage({ params: Promise.resolve({ code }), searchParams: Promise.resolve(sp) }));
 const cm = async (code = 'HLT-026') => parts(await CommissioningPage({ params: Promise.resolve({ code }) }));
-const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'];
+const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'];
 /** R-041 (P-2): workspace personas not on the project's named team (Harbor Line has the seeded referents). */
 const OFF_TEAM: Record<string, string[]> = { 'HLT-026': [], 'NDC-031': ['englead', 'quality'] };
 const G = GOLDEN as any;
@@ -108,11 +108,6 @@ describe('/projects/[code]/itp', () => {
   it.each(['HLT-026', 'NDC-031'])('%s: primary and row steps per persona (prototype hasPrimary)', async (code) => {
     for (const role of ROLES) {
       session.role = role;
-      // R-042 (P-10a): the client persona (Harbor Line's organisation) is sent home from another organisation's project.
-      if (role === 'client' && code !== 'HLT-026') {
-        await expect(itp({}, code)).rejects.toThrow('REDIRECT /');
-        continue;
-      }
       for (const view of ['plan', 'punch']) {
         const p = await itp({ view }, code);
         const g = G.header.itp[code][role];
@@ -134,7 +129,7 @@ describe('/projects/[code]/itp', () => {
 describe('/projects/[code]/commissioning', () => {
   it('HLT-026: header with "Plan SAT" (run form, defaults from the plan and the client contacts), the grid', async () => {
     const p = await cm();
-    expect(Object.keys(p)).toEqual(['PageHeader', 'CommissioningBody']);
+    expect(Object.keys(p)).toEqual(['PageHeader', 'CommissioningBody', 'CeConformityCard']); // R-160: the CE conformity card
     expect(p.PageHeader.props).toMatchObject({ screen: 'commissioning', projectCode: 'HLT-026' });
     const primary = p.PageHeader.props.primary as El;
     expect(primary.props).toMatchObject({ kind: 'sat', code: 'HLT-026', label: 'Plan SAT' });
@@ -148,10 +143,6 @@ describe('/projects/[code]/commissioning', () => {
   it.each(['HLT-026', 'NDC-031'])('%s: primary per persona (prototype hasPrimary)', async (code) => {
     for (const role of ROLES) {
       session.role = role;
-      if (role === 'client' && code !== 'HLT-026') {
-        await expect(cm(code)).rejects.toThrow('REDIRECT /'); // R-042 (P-10a)
-        continue;
-      }
       const p = await cm(code);
       const g = G.header.commissioning[code][role];
       expect([role, !!p.PageHeader.props.primary]).toEqual([role, g.hasPrimary && !OFF_TEAM[code].includes(role)]); // R-041 (P-2)

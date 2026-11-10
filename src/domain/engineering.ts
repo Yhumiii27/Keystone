@@ -104,9 +104,9 @@ export const isDeliverableStep = (v: unknown): v is DeliverableStep => v === 'fr
 
 /**
  * Who validates a release (09 OQ11; the prototype had no role check): the portfolio director, or the project's PMs — PM of
- * record, co-PMs and deputies (R-041, L-4b) — whatever their active role; never a client.
+ * record, co-PMs and deputies (R-041, L-4b) — whatever their active role.
  */
-export const canValidateRelease = (viewer: { role: string }, leadsProject: boolean) => viewer.role === 'director' || (viewer.role !== 'client' && leadsProject);
+export const canValidateRelease = (viewer: { role: string }, leadsProject: boolean) => viewer.role === 'director' || leadsProject;
 
 /** Notes written on a check closed in Keystone (`resolve` / `sendBack` 4789) or by an import (`finish` 4813). */
 export const CHECK_NOTE = {

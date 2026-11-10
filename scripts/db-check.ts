@@ -61,7 +61,7 @@ import { getSupplierScorecard, listStorageLocations } from '@/server/dal/supplie
 import { getVigieEcoConnector } from '@/server/integrations/vigie/eco-connector';
 import { getVigieQualityConnector } from '@/server/integrations/vigie/quality-connector';
 import { getCursusConnector } from '@/server/integrations/cursus/connector';
-import { getClientPortal, raiseClientIssue } from '@/server/dal/client';
+import { getClientReportData } from '@/server/dal/client-report';
 import { listClaims, listInterventions, openClaim } from '@/server/dal/claims';
 import { getCommissioning } from '@/server/dal/commissioning';
 import { getEngineeringRegister } from '@/server/dal/engineering';
@@ -101,7 +101,8 @@ const D2_COUNTS: Record<string, number> = {
   leave_entries: 12, public_holidays: 11, hours_imports: 1, hours_lines: 10, unassigned_hours: 2,
   whatif_levers: 5, whatif_auto_levers: 9, whatif_contexts: 1, whatif_scenarios: 2, whatif_scenario_levers: 10,
   // L9-X3: + one activity event and two audit rows per shipping document the demo files in Codex (3).
-  notifications: 10, notification_recipients: 24, activity_events: 12 + 3, audit_entries: 8 + 6,
+  // D9-06: n1 no longer reaches the client (23 recipients).
+  notifications: 10, notification_recipients: 23, activity_events: 12 + 3, audit_entries: 8 + 6,
 };
 
 /**
@@ -154,7 +155,6 @@ const D5_COUNTS: Record<string, number> = {
   commissioning_systems: 7 + 1, commissioning_steps: 35 + 5, handover_items: 8, sat_plans: 0 + 1, lessons_learned: 4, closure_items: 10, satisfaction_scores: 5,
   machines: 8 + 1, machine_part_revisions: 31, warranty_claims: 8, interventions: 6, site_sheets: 1, site_equipment: 8, site_prerequisites: 6, site_rotations: 6,
   site_collisions: 4, site_conflict_arbitrations: 0, mission_cost_lines: 6, daily_reports: 2, cursus_clearances: 5, cursus_requests: 0, cursus_sync_runs: 1, cursus_events: 0,
-  client_issues: 3,
   eng_disciplines: 4, eng_inputs: 12, eng_consistency_rules: 6, eng_checks: 10, eng_outputs: 6, eng_changes: 4, eng_import_tools: 4,
   eng_column_mappings: 6, eng_import_deltas: 4, eng_imports: 0, pid_sheets: 1, pid_tags: 24, pid_validation_steps: 5, machine_type_phases: 28,
   // app_settings: the health thresholds and, since delivery 7, the seed record "keystone.seed" (R-011, A-15), the "Reset to
@@ -514,9 +514,10 @@ async function main() {
   const people = await listPeople();
   check('PMs cited by projects resolve to persons', PROTO_GEN.initialProjects.every((p) => people.some((x) => x.shortName === p.pm)));
   check('Marion Kerviel heads Engineering', (await getPersonByName('M. Kerviel'))?.department === 'Engineering');
-  // R-044: the prototype's 8 personas, then the Finance persona (Léa Marchand, not in the prototype); R-158: the Logistics persona.
-  check('10 users (personas)', same((await listUsers()).map((u) => [u.role, u.name, u.title]), [
-    ...Object.entries(PROTO.PERSONAS as Record<string, [string, string]>).map(([r, [n, t]]) => [r, n, t]), ['finance', 'Léa Marchand', 'Cost controller'],
+  // R-044: the prototype's personas, then the Finance persona (Léa Marchand, not in the prototype); R-158: the Logistics persona.
+  // D9-06: the prototype's client persona is no user any more (clients never see Keystone).
+  check('9 users (personas)', same((await listUsers()).map((u) => [u.role, u.name, u.title]), [
+    ...Object.entries(PROTO.PERSONAS as Record<string, [string, string]>).filter(([r]) => r !== 'client').map(([r, [n, t]]) => [r, n, t]), ['finance', 'Léa Marchand', 'Cost controller'],
     ['logistics', 'Camille Verdier', 'Logistics coordinator'],
   ]));
   check('zones + bounds', same((await listZones()).map((z) => [z.code, z.label, z.manager]), PROTO.ZONES) && same(Object.fromEntries((await listZones()).map((z) => [z.code, z.bounds])), PROTO.ZONE_BOUNDS));
@@ -542,8 +543,9 @@ async function main() {
   check('generated risk registers (NDC-031 EMV 53/26/20/16, owner S. Perrin)', same((await listRisks('NDC-031')).map((r) => [r.id, r.emv, r.ownerShort]), [['R-01', 53, 'S. Perrin'], ['R-02', 26, 'S. Perrin'], ['R-03', 20, 'S. Perrin'], ['R-04', 16, 'S. Perrin']]));
   const chg = await getChangeControl('HLT-026');
   // R-169: the CCB step names the portfolio director who records the decision (was the prototype's "Monthly · next 8 Oct").
+  // D9-06: the client step is recorded by the PM of record (the client signs outside Keystone).
   check('change register = HLT_CRS_X + CR-005, approver chain follows the project', chg?.changeRequests.length === 6
-    && same(chg.changeRequests[3].chain.map((c) => c.approver), ['Romain Aubert', 'Marie Lefebvre', 'Nadia Bensaïd', 'Marie Lefebvre']));
+    && same(chg.changeRequests[3].chain.map((c) => c.approver), ['Romain Aubert', 'Marie Lefebvre', 'Romain Aubert', 'Marie Lefebvre']));
   const tr = await getTrends('HLT-026');
   check('HLT_SNAPS reproduced, next status report 2 Oct', same(tr?.series, PROTO.HLT_SNAPS) && tr?.nextReport?.text === '2 Oct');
   const cg = await getContingency('HLT-026');
@@ -608,7 +610,8 @@ async function main() {
   check('what-if levers derived from the HLT-026 assignments (23, A1250 first), scenarios A/B', wi?.levers.length === 23
     && same(wi.levers.slice(0, 3).map((l) => l.code), ['extra_resource:A1250:julien-wagner', 'overtime:A1250:steel-erection-crew', 'extra_resource:A1250:steel-erection-crew'])
     && same(wi.scenarios.map((x) => x.name), ['A', 'B']));
-  check('unread notifications per role 3/4/1/2/1/1/1/1', same(await Promise.all(['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'].map(countUnreadNotifications)), [3, 4, 1, 2, 1, 1, 1, 1]));
+  // D9-06: no client persona any more.
+  check('unread notifications per role 3/4/1/2/1/1/1', same(await Promise.all(['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'].map(countUnreadNotifications)), [3, 4, 1, 2, 1, 1, 1]));
   // L9-X3: without the rows of the shipping documents the demo files in Codex.
   check('ACTIVITY and AUDIT reproduced', same((await listActivity()).filter((a) => !isL9X3Activity(a)).map((a) => [a.when, a.who, a.what, a.kind]), PROTO.ACTIVITY)
     && same((await listAudit()).filter((a) => !isL9X3Audit(a)).map((a) => [a.when, a.who, a.object, a.change, a.area]), PROTO.AUDIT));
@@ -892,10 +895,11 @@ async function delivery5Reads() {
       Math.round(site.missionCosts.reduce((a, m) => a + m.actualKeur, 0) * 10) / 10, site.hse.filter((h) => h.status === 'pending').length], [false, 5, 4, 3, 1, 6, 7, 98.3, 11.3, 2]));
   check('no site sheet, commissioning, ITP, REX, register or P&ID on NDC-031 / EWA-051', (await getSite('NDC-031')) === null && (await getCommissioning('EWA-051')) === null
     && (await getItpPlan('NDC-031')) === null && (await getRex('EWA-051')).lessons.length === 0 && (await getEngineeringRegister('NDC-031')) === null && (await getPidValidation('EWA-051')) === null);
-  const cp = await getClientPortal('HLT-026');
-  // Delivery 8 (R-069, P-6b): CR-008 reaches the client once the portfolio director approved it — not in the seed.
-  check('client portal HLT-026: waiting D-014, D-016 (CR-008 waits for the director) · 5 decided · 2 open issues · 7 shared documents',
-    same([cp.decisions.map((d) => d.id), cp.decided.length, cp.issues.filter((i) => i.status !== 'closed').length, cp.documents.length], [['D-014', 'D-016'], 5, 2, 7]));
+  const cp = await getClientReportData('HLT-026');
+  // Delivery 8 (R-069, P-6b): CR-008 reaches the client once the portfolio director approved it — not in the seed. D9-06: the
+  // client report's data (the client issues and the shared documents went with the portal).
+  check('client report HLT-026: waiting D-014, D-016 (CR-008 waits for the director) · 5 decided',
+    same([cp.decisions.map((d) => d.id), cp.decided.length], [['D-014', 'D-016'], 5]));
   const eng = (await getEngineeringRegister('HLT-026'))!;
   // E-5 (Delivery 7, R-105): LST-IO-026 rev B (Frozen) is the reference, no longer outdated.
   check('engineering HLT-026: 4 blocking · 3 outdated inputs · 5 / 13 released · 2 / 6 outputs ready',
@@ -916,8 +920,9 @@ async function delivery5Reads() {
   check('connectors: 8 + Vigie (live: 6 ECOs · 15 NCRs · 5 HSE items) + Arche · Cursus live · 1 warning · 5 events today · 8 + 4 audit entries · 6 formats',
     same([conns.length, conns.find((c) => c.name === 'Vigie')!.lastVolume, conns.find((c) => c.name === 'Cursus')!.lastVolume, conns.filter((c) => c.status === 'warning').map((c) => c.name), pc.eventsToday,
       pc.auditLast7Days, (await listImportFormats()).length], [10, '6 ECOs · 15 NCRs · 5 HSE items', '5 people · HLT-026', ['Outlook / Exchange'], 5, 8 + 4, 6])); // L9-X3: + the 4 audit rows of the 21 Sep filings
-  check('My approvals: client contact D-014, D-016 · quality no NCR in verification',
-    same([(await deliverableAcceptanceQueue('HLT-026', { name: 'Nadia Bensaïd', role: 'client' })).map((d) => d.number), (await ncrVerificationQueue('HLT-026', { name: 'Gabriel Comte', role: 'quality' })).length],
+  // D9-06: the PM records the client's decision on the submitted deliverables.
+  check('My approvals: PM D-014, D-016 · quality no NCR in verification',
+    same([(await deliverableAcceptanceQueue('HLT-026', { name: 'Romain Aubert', role: 'pm' })).map((d) => d.number), (await ncrVerificationQueue('HLT-026', { name: 'Gabriel Comte', role: 'quality' })).length],
       [['D-014', 'D-016'], 0]));
 }
 
@@ -927,21 +932,21 @@ async function delivery5Writes() {
   const pm = { name: 'Romain Aubert', role: 'pm' };
   const r = await advanceNcr('HLT-026', 'EV-2026-028', pm);
   check('EV-2026-028 → Root cause recorded, pending sync with Vigie (Vigie status unchanged)', r.syncStatus === 'pending' && (await getNcr('HLT-026', 'EV-2026-028'))?.status === 'containment');
-  await decideDeliverable('HLT-026', 'D-014', 'accepted', { name: 'Nadia Bensaïd', role: 'client' });
-  check('D-014 accepted by the client contact (PV): "25 Sep · N. Bensaïd"', (await listDeliverables('HLT-026')).find((d) => d.number === 'D-014')?.acceptanceText === '25 Sep · N. Bensaïd');
+  // D9-06: the PM records the client's acceptance with the signed PV's reference.
+  await decideDeliverable('HLT-026', 'D-014', 'accepted', pm, { reference: 'PV-HLT-014' });
+  check('D-014 accepted by the client, recorded by the PM (PV): "25 Sep · PV-HLT-014"', (await listDeliverables('HLT-026')).find((d) => d.number === 'D-014')?.acceptanceText === '25 Sep · PV-HLT-014');
   const numbers = [
     await addPunchItem('HLT-026', { description: 'Check', category: 'C', source: 'site_walk' }, pm),
     await addLesson('HLT-026', { theme: 'site', whatHappened: 'Check', recommendation: 'Check', appliesTo: 'Other' }, pm),
     await addMachine({ name: 'Check crane', machineType: 'EMP', client: 'Port authority', site: 'Le Havre · quay 5' }, pm),
     await openClaim({ machineNumber: 'MCH-050', issue: 'Check', severity: 'minor', coverage: 'warranty', owner: 'T. Kerbrat' }, pm),
-    await raiseClientIssue('HLT-026', 'Check', { name: 'Nadia Bensaïd', role: 'client' }),
     await saveDailyReport('HLT-026', { date: '2026-09-30', weather: 'clear', progress: 'Check' }, pm),
   ];
   // R-158 lot B: the next punch item is P-11 (the demo reception raised P-10).
-  check('numbering: P-11 · LL-10 · MCH-050 · WC-020 · CI-08 · DR-003', same(numbers, ['P-11', 'LL-10', 'MCH-050', 'WC-020', 'CI-08', 'DR-003']), numbers);
+  check('numbering: P-11 · LL-10 · MCH-050 · WC-020 · DR-003', same(numbers, ['P-11', 'LL-10', 'MCH-050', 'WC-020', 'DR-003']), numbers);
   const rem = await remindInCursus('HLT-026', 'Thomas Kerbrat', pm);
   check('Cursus reminder for T. Kerbrat pending sync with Cursus (mock)', rem.syncStatus === 'pending');
-  check('audit rows appended (9 writes)', (await listAudit()).length === before + 9, [before, (await listAudit()).length]);
+  check('audit rows appended (8 writes)', (await listAudit()).length === before + 8, [before, (await listAudit()).length]);
 }
 
 async function chapter4Reads() {

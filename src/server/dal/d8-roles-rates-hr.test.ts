@@ -54,9 +54,9 @@ beforeAll(async () => {
 describe('R-044 · the Finance persona', () => {
   it('a 9th demo user: Léa Marchand, role finance, Controls & planning, sign-in e-mail on the person', async () => {
     const u = (await listUsers()).find((x) => x.role === 'finance');
-    expect(u).toMatchObject({ name: 'Léa Marchand', roles: ['finance'], title: 'Cost controller', client: null });
-    // R-158: ten with the Logistics persona.
-    expect((await listUsers()).length).toBe(10);
+    expect(u).toMatchObject({ name: 'Léa Marchand', roles: ['finance'], title: 'Cost controller' });
+    // R-158: + the Logistics persona; D9-06: the client persona is gone — nine users.
+    expect((await listUsers()).length).toBe(9);
     const [p] = await db.select({ email: persons.email }).from(persons).where(eq(persons.fullName, 'Léa Marchand'));
     expect(p.email).toBe('lea.marchand@epc2i.fr');
   });
@@ -103,12 +103,6 @@ describe('Server Functions × 9 personas', () => {
     const audits = (await listAudit()).length;
     for (const role of ROLES) {
       as(role);
-      if (role === 'client') {
-        // R-042 (P-1): Rate cards are outside the client's workspace — sent home.
-        await expect(setBaseRateAction('Planner', 74, '2026-09-25')).rejects.toThrow('REDIRECT /');
-        await expect(addRateRoleAction({ role: 'X', rate: '1', from: '25 Sep 2026' })).rejects.toThrow('REDIRECT /');
-        continue;
-      }
       const ok = role === 'director' || role === 'finance';
       expect([role, await setBaseRateAction('Planner', 74, '2026-09-25')]).toEqual([role, ok ? { ok: true, value: 74 } : { error: RATES_EDIT_REFUSED }]);
       expect([role, await setMultiplierAction('ot', 1.25, '2026-09-25')]).toEqual([role, ok ? { ok: true, value: 1.25 } : { error: RATES_EDIT_REFUSED }]);
@@ -160,8 +154,8 @@ describe('Server Functions × 9 personas', () => {
   it('budget rate (C-9, R-044): the director and Finance; the others refused before any validation', async () => {
     for (const role of ROLES) {
       as(role);
-      const r = role === 'client' ? await setBudgetRateAction('HLT-026', 'usd', '1').catch((e: Error) => e.message) : await setBudgetRateAction('HLT-026', 'usd', '1');
-      const want = role === 'client' ? 'REDIRECT /' : role === 'director' || role === 'finance' ? { error: 'Unknown currency' } : { error: 'Only the portfolio director and Finance set the budget rate' };
+      const r = await setBudgetRateAction('HLT-026', 'usd', '1');
+      const want = role === 'director' || role === 'finance' ? { error: 'Unknown currency' } : { error: 'Only the portfolio director and Finance set the budget rate' };
       expect([role, r]).toEqual([role, want]);
     }
   });
@@ -178,12 +172,8 @@ describe('Server Functions × 9 personas', () => {
   it('Settings › hours-variance threshold (R-088, A-14): the director only; range and format checked; audit and activity; Reset restores 10', async () => {
     for (const role of ROLES) {
       as(role);
-      if (role === 'client') {
-        await expect(setHoursVarianceAction('7')).rejects.toThrow('REDIRECT /');
-        continue;
-      }
       const r = await setHoursVarianceAction('7');
-      const want = role === 'director' ? { ok: true } : { error: ['pm', 'depthead', 'englead', 'quality', 'procurement', 'logistics'].includes(role) ? 'Settings are edited by the portfolio director' : 'Settings are read-only for you' };
+      const want = role === 'director' ? { ok: true } : { error: ['pm', 'depthead', 'englead', 'quality', 'procurement', 'finance', 'logistics'].includes(role) ? 'Settings are edited by the portfolio director' : 'Settings are read-only for you' };
       expect([role, r]).toEqual([role, want]);
     }
     expect(await readHoursVariance()).toBe(7);

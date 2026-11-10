@@ -7,7 +7,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 // D-7b: imports are off in the app (IMPORTS_ENABLED); this test imports, so it turns the flag on.
-vi.mock('@/domain/ch4-defaults', async (orig) => ({ ...(await orig<typeof import('@/domain/ch4-defaults')>()), IMPORTS_ENABLED: true }));
+vi.mock('@/domain/ch4-defaults', async (orig) => ({ ...(await orig<typeof import('@/domain/ch4-defaults')>()), IMPORTS_ENABLED: true, ENABLED_IMPORT_KINDS: ['mspdi', 'xer', 'gan', 'budget_lines', 'bom', 'parts', 'assignments'] }));
 
 const session = { role: 'director' as string, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/navigation', () => ({
@@ -46,7 +46,7 @@ import { applyImport, startImport, type ImportViewer } from './jobs';
 type PageFn = (props: { params: Promise<{ code: string }>; searchParams: Promise<Record<string, string>> }) => Promise<unknown>;
 const SCREENS = [
   'plan', 'schedule', 'budget', 'trends', 'resources', 'changes', 'risks', 'contingency', 'hours', 'meetings', 'stakeholders', 'bom', 'quality', 'itp', 'site',
-  'closure', 'contract', 'billing', 'documents', 'engineering', 'interfaces', 'commissioning', 'deliveries', 'orders', 'client', 'pid',
+  'closure', 'contract', 'billing', 'documents', 'engineering', 'interfaces', 'commissioning', 'deliveries', 'orders', 'pid',
 ];
 const viewer = (role: keyof typeof PERSONA_BY_ROLE): ImportViewer => ({ name: PERSONA_BY_ROLE[role].name, short: PERSONA_BY_ROLE[role].short, role });
 let filesDir = '';

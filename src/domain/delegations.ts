@@ -42,7 +42,7 @@ export const isDelegationActive = (d: DelegationPeriod, today: string) => delega
 /** Two periods share at least one day. */
 export const periodsOverlap = (a: { startsOn: string; endsOn: string }, b: { startsOn: string; endsOn: string }) => a.startsOn <= b.endsOn && b.startsOn <= a.endsOn;
 
-/** A user that may stand in or delegate: an active internal account (never a client or an external user). */
+/** A user that may stand in or delegate: an active internal account (never an external user). */
 export interface DelegationUser {
   userId: string;
   active: boolean;
@@ -50,8 +50,8 @@ export interface DelegationUser {
   external: boolean;
 }
 
-/** Internal account: not external, not a client organisation's user, at least one non-client role. */
-export const isInternalUser = (u: Pick<DelegationUser, 'roles' | 'external'>) => !u.external && u.roles.some((r) => r !== 'client');
+/** Internal account: not external, with at least one Keystone role (D9-06: no client role any more). */
+export const isInternalUser = (u: Pick<DelegationUser, 'roles' | 'external'>) => !u.external && u.roles.length > 0;
 
 /** EN source messages of the refusals (shown with toast showEn / t()). */
 export const DELEGATION_ERRORS = {

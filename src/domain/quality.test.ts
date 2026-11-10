@@ -93,7 +93,6 @@ describe('NCR log (Vigie NCRs) — ncrKpis / ncrChips / ncrRows / ncrVals', () =
     const ver = { ...byId('EV-2026-026'), status: 'verification' as const };
     expect([ncrActionFor(ver, EDITOR), ncrActionFor(ver, { role: 'quality', canEdit: true }), ncrActionFor(ver, { role: 'quality', canEdit: false })]).toEqual([null, { kind: 'verify' }, null]);
     expect([awaitsVerification(ver), awaitsVerification({ ...ver, requestedStatus: 'closed' })]).toEqual([true, false]);
-    expect(ncrActionFor(byId('EV-2026-030'), { role: 'client', canEdit: true })).toBeNull();
     expect(ncrActionFor(byId('EV-2026-030'), { role: 'pm', canEdit: false })).toBeNull();
     expect(ncrActionFor({ ...byId('EV-2026-030'), requestedStatus: 'containment' }, EDITOR)).toBeNull();
   });
@@ -135,17 +134,19 @@ describe('Deliverables register — dlvKpis / dlvChips / dlvRows / dlvVals', () 
     expect(deliverableChips(ds).map((c) => ({ label: c.label, count: c.count }))).toEqual(G.projects[code].dlv.chips);
   });
 
-  it.each(DATA)('%s: row tags and actions — the project team (Start / To internal review / Submit) and the client contact (Accept / Reject)', (code) => {
+  it.each(DATA)('%s: row tags and actions — the project team (Start / To internal review / Submit) and the client\'s decision recorded by the project\'s lead', (code) => {
     const ds = deliverablesOf(code);
-    const team = { role: 'pm', canEdit: true, isClientContact: false };
-    const client = { role: 'client', canEdit: true, isClientContact: true };
+    // D9-06 (owner, 10 Nov 2026): clients never see Keystone — the project's lead records the client's acceptance or rejection
+    // where the prototype's client contact clicked ("Accept" / "Reject"): `lead` takes the prototype's client rows.
+    const team = { role: 'pm', canEdit: true, isLead: false };
+    const client = { role: 'pm', canEdit: true, isLead: true };
     expect(ds.map((d) => {
       const a = deliverableActionFor(d, team);
       return { id: d.number, tagClass: deliverableTagOf(d.status), canStart: a?.kind === 'move' && a.to !== 'submitted', canSubmit: a?.kind === 'move' && a.to === 'submitted', start: a?.kind === 'move' && a.to !== 'submitted' ? a.label : null };
     })).toEqual(G.projects[code].dlv.rows.map((r: any) => ({ id: r.id, tagClass: r.tagClass, canStart: r.canStart, canSubmit: r.canSubmit, start: r.canStart ? r.nextLabel : null })));
     expect(ds.map((d) => deliverableActionFor(d, client)?.kind === 'decide')).toEqual(G.projects[code].dlv.clientRows.map((r: any) => r.canAccept));
-    // The client never produces; the team never accepts; read-only viewers get nothing.
-    expect(ds.some((d) => deliverableActionFor(d, client)?.kind === 'move')).toBe(false);
+    // The lead also produces (the team's steps); the rest of the team never records the client's decision; read-only viewers get nothing.
+    expect(ds.filter((d) => d.status !== 'submitted').every((d) => deliverableActionFor(d, client)?.kind === deliverableActionFor(d, team)?.kind)).toBe(true);
     expect(ds.some((d) => deliverableActionFor(d, team)?.kind === 'decide')).toBe(false);
     expect(ds.every((d) => deliverableActionFor(d, { ...team, canEdit: false }) === null && deliverableActionFor(d, { ...client, canEdit: false }) === null)).toBe(true);
   });
@@ -161,8 +162,9 @@ describe('Deliverables register — dlvKpis / dlvChips / dlvRows / dlvVals', () 
       expect(deliverableSteps(d.status).map((s, i) => ({ label: s.label, dot: s.reached ? QUALITY_COLOR.accent : QUALITY_COLOR.dotOff, color: s.reached ? QUALITY_COLOR.text : QUALITY_COLOR.labelOff, line: i < 4 })))
         .toEqual(g.pm.steps);
       expect(RACI_ORDER.map((k) => ({ k, l: RACI_LABEL[k] }))).toEqual(g.pm.raci.map((r: any) => ({ k: r.k, l: r.l })));
-      expect(deliverableHint(d, { role: 'pm', canEdit: true, isClientContact: false })).toBe(g.pm.hint);
-      expect(deliverableHint(d, { role: 'client', canEdit: true, isClientContact: true })).toBe(g.client.hint);
+      // D9-06: the hint names the project manager who records the client's decision (was "Switch to the Client role…").
+      expect(deliverableHint(d, { role: 'pm', canEdit: true, isLead: false })).toBe(g.pm.hint ? 'The project manager records the client’s decision once the PV is signed.' : '');
+      expect(deliverableHint(d, { role: 'pm', canEdit: true, isLead: true })).toBe(g.client.hint);
     }
     expect(deliverableSteps('rejected').every((s) => !s.reached)).toBe(true);
   });
@@ -180,10 +182,11 @@ describe('Deliverables register — dlvKpis / dlvChips / dlvRows / dlvVals', () 
       .toEqual(['in_progress', 'internal_review', 'submitted', null, 'in_progress']);
   });
 
-  it('My approvals "Deliverable acceptance": the client contact’s items (apprItems 4727)', () => {
+  // D9-06: the items go to the project's leads, who open the deliverable to record the client's decision (no inline decision).
+  it('My approvals "Deliverable acceptance": the leads’ items (apprItems 4727)', () => {
     const items = deliverableAcceptanceItems(deliverablesOf('HLT-026'), 'HLT-026', { deliverable: (n) => `/d/${n}` }, 2026);
     expect(items.map((i) => ({ kind: 'Deliverable acceptance', id: i.id, title: i.title, sub: i.sub, when: i.when, who: i.who }))).toEqual(G.approvals.client);
-    expect(items[0]).toMatchObject({ kind: 'deliverable', whenIso: '2026-09-25', href: '/d/D-014', decision: { mode: 'deliverable', projectCode: 'HLT-026', number: 'D-014' } });
+    expect(items[0]).toMatchObject({ kind: 'deliverable', whenIso: '2026-09-25', href: '/d/D-014', decision: null });
   });
 
   it('Codex deposit type proposed per deliverable type', () => {

@@ -45,8 +45,6 @@ describe('setProjectCategoryAction (R-196)', () => {
     expect(await setProjectCategoryAction('HLT-026', 'rd')).toEqual(REFUSED);
     Object.assign(viewer, { role: 'pm', lead: true, edit: false });
     expect(await setProjectCategoryAction('HLT-026', 'rd')).toEqual(REFUSED);
-    Object.assign(viewer, { role: 'client', lead: true, edit: true });
-    expect(await setProjectCategoryAction('HLT-026', 'rd')).toEqual(REFUSED);
     expect(await getProjectCategory('HLT-026')).toBe('client');
   });
 

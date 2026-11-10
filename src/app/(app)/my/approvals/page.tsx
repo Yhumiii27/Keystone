@@ -19,7 +19,7 @@ export default async function MyApprovalsPage({ searchParams }: { searchParams: 
   return (
     <>
       <PageHeader screen="myapprovals" />
-      <MyApprovalsBody view={view} t={t} lang={lang} canDecide={access.canEdit} delegation={access.viewer.role === 'client' ? null : <DelegationCard panel={delegation} />}
+      <MyApprovalsBody view={view} t={t} lang={lang} canDecide={access.canEdit} delegation={<DelegationCard panel={delegation} />}
         banner={<DelegationBanner panel={delegation} />}
       />
     </>

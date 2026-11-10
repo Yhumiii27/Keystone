@@ -108,9 +108,10 @@ export const milestoneStatus = codec<MilestoneStatus, string>([
 /** R-188: estimate class of a budget version (DIG-PRODI ±50 % / ±30 % / +10 −5 %; rules in src/domain/estimate-class.ts). */
 export type EstimateClass = 'E50' | 'E30' | 'E10';
 
-export type BaselineState = 'superseded' | 'current' | 'proposed';
+/** D9-11 (R-063): `rejected` = proposed by a change request that was rejected — kept, marked, never current. */
+export type BaselineState = 'superseded' | 'current' | 'proposed' | 'rejected';
 export const baselineState = codec<BaselineState, string>([
-  ['superseded', 'Superseded'], ['current', 'Current'], ['proposed', 'Proposed'],
+  ['superseded', 'Superseded'], ['current', 'Current'], ['proposed', 'Proposed'], ['rejected', 'Rejected'],
 ]);
 
 /** PIPE_PLAN windows (3665). */
@@ -1038,10 +1039,6 @@ export const interventionStatus = codec<InterventionStatus, string>([['planned',
 export type InterventionType = 'corrective' | 'diagnosis' | 'preventive';
 export const interventionType = codec<InterventionType, string>([['corrective', 'Corrective'], ['diagnosis', 'Diagnosis'], ['preventive', 'Preventive']]);
 
-/** Client portal issues (CLIENT_ISSUES 3544). */
-export type ClientIssueStatus = 'open' | 'in_progress' | 'closed';
-export const clientIssueStatus = codec<ClientIssueStatus, string>([['open', 'Open'], ['in_progress', 'In progress'], ['closed', 'Closed']]);
-
 /** Cursus approvals per person (SITE_DOCS 3574) — approvals and dates only, never personal data. */
 export type CursusVisa = 'not_required' | 'approved' | 'pending';
 export const cursusVisa = codec<CursusVisa, string>([['not_required', 'Not required'], ['approved', 'Approved'], ['pending', 'Pending']]);
@@ -1133,6 +1130,8 @@ export const APP_SETTING_DCMA = 'schedule.dcma';
 export const APP_SETTING_DRIFT = 'forecast.drift';
 /** S-31: the supplier schedule slip threshold { days } (default and bounds: src/domain/supplier-slip-alerts.ts). */
 export const APP_SETTING_SUPPLIER_SLIP = 'purchasing.supplierSlip';
+/** R-162 (P4): the FX hedging alert thresholds { exposureKeur, driftPct } (defaults and bounds: src/domain/fx-exposure.ts). */
+export const APP_SETTING_FX_ALERTS = 'finance.fxAlerts';
 /** S-34: the escalation of a supplier slip to the directors { days, impactDays } (src/domain/supplier-slip-alerts.ts). */
 export const APP_SETTING_SUPPLIER_SLIP_ESCALATION = 'purchasing.supplierSlipEscalation';
 
@@ -1146,17 +1145,17 @@ export const slugOf = (label: string) =>
  * Delivery 5 tests assert both lists agree). The director sees every screen.
  */
 export const D5_SCREEN_ROLES = {
-  quality: ['director', 'pm', 'englead', 'quality', 'client'],
-  itp: ['director', 'pm', 'englead', 'quality', 'client'],
-  commissioning: ['director', 'pm', 'englead', 'quality', 'client'],
+  quality: ['director', 'pm', 'englead', 'quality'],
+  itp: ['director', 'pm', 'englead', 'quality'],
+  commissioning: ['director', 'pm', 'englead', 'quality'],
   rex: ['director', 'pm', 'englead', 'quality'],
   fleet: ['director', 'pm', 'quality', 'procurement'],
   sav: ['director', 'pm', 'quality', 'procurement'],
   site: ['director', 'pm', 'depthead', 'member', 'logistics'],
   pid: ['director', 'englead', 'quality'],
   eng: ['director', 'pm', 'englead', 'quality'],
-  client: ['director', 'client'],
-  settings: ['director', 'pm', 'depthead', 'englead', 'quality', 'procurement', 'logistics'],
+  // R-162 (P4): Finance has Settings (reference exchange rates, hedging thresholds).
+  settings: ['director', 'pm', 'depthead', 'englead', 'quality', 'procurement', 'finance', 'logistics'],
   mtypes: ['director', 'pm', 'englead', 'quality'],
   catalogue: ['director', 'pm', 'englead', 'quality'],
   plumbing: ['director', 'pm'],
@@ -1191,9 +1190,9 @@ export type ScheduleRunOutcome = 'ok' | 'cycle' | 'error';
 export type StoredFilePurpose = 'attachment' | 'transcript' | 'import' | 'export' | 'photo';
 
 /** Import jobs (S-9 and the Excel / CSV table imports of /admin/integrations). */
-export type ImportKind = 'mspdi' | 'xer' | 'budget_lines' | 'bom' | 'parts' | 'assignments';
+export type ImportKind = 'mspdi' | 'xer' | 'gan' | 'budget_lines' | 'bom' | 'parts' | 'assignments';
 export const importKind = codec<ImportKind, string>([
-  ['mspdi', 'MS Project XML'], ['xer', 'Primavera P6 XER'], ['budget_lines', 'Budget lines'], ['bom', 'Bill of materials'], ['parts', 'Parts catalogue'],
+  ['mspdi', 'MS Project XML'], ['xer', 'Primavera P6 XER'], ['gan', 'GanttProject'], ['budget_lines', 'Budget lines'], ['bom', 'Bill of materials'], ['parts', 'Parts catalogue'],
   ['assignments', 'Resource assignments'],
 ]);
 /** 'new' = create (a new project for schedules), 'update' = match existing rows (UID / Activity ID / reference). */

@@ -193,13 +193,16 @@ describe('table helpers', () => {
 
 describe('import rights and messages', () => {
   it('follows the chapter-4 rights table', () => {
-    expect(importKindsOf('director')).toEqual(['mspdi', 'xer', 'budget_lines', 'bom', 'parts', 'assignments']);
-    expect(importKindsOf('pm')).toEqual(['mspdi', 'xer', 'budget_lines', 'assignments']);
-    expect(importKindsOf('englead')).toEqual(['bom', 'parts']);
-    expect(importKindsOf('procurement')).toEqual(['bom', 'parts']);
-    expect(importKindsOf('depthead')).toEqual(['assignments']);
-    expect(importKindsOf('client')).toEqual([]);
-    expect(importKindsOf('member')).toEqual([]);
+    // D9-08: MS Project and GanttProject only; a schedule is offered to every internal role — it imports into the projects it
+    // leads (deputy or co-PM), a new project stays the director's and the PMs'.
+    expect(importKindsOf('director')).toEqual(['mspdi', 'gan']);
+    expect(importKindsOf('pm')).toEqual(['mspdi', 'gan']);
+    expect(importKindsOf('englead')).toEqual(['mspdi', 'gan']);
+    expect(importKindsOf('depthead')).toEqual(['mspdi', 'gan']);
+    expect(importKindsOf('member')).toEqual(['mspdi', 'gan']);
+    expect([canImport('englead', 'gan', { member: true, lead: true }), canImport('englead', 'gan', { member: true, lead: false }), canImport('englead', 'gan', null), canImport('pm', 'gan', null)])
+      .toEqual([true, false, false, true]);
+    expect(canImport('director', 'mspdi', { member: true, lead: true })).toBe(true);
     // R-041 (P-2): on an existing project, the schedule needs the PM rights and the other kinds the project team; a head of
     // department staffs every project (assignments on any project), a PM only their teams'.
     const lead = { member: true, lead: true };
@@ -208,8 +211,8 @@ describe('import rights and messages', () => {
     expect([canImport('pm', 'mspdi', lead), canImport('pm', 'mspdi', member), canImport('pm', 'mspdi', null), canImport('depthead', 'assignments', member), canImport('depthead', 'assignments', none)])
       .toEqual([true, false, true, true, true]);
     expect([canImport('pm', 'assignments', member), canImport('pm', 'assignments', none)]).toEqual([true, false]);
-    expect([canImport('englead', 'bom', member), canImport('englead', 'bom', none), canImport('englead', 'parts', null), canImport('client', 'bom', lead)]).toEqual([true, false, true, false]);
-    expect(Object.keys(CARD_KINDS)).toEqual(['MS Project XML', 'Excel / CSV', 'Primavera P6 XER']);
+    expect([canImport('englead', 'bom', member), canImport('englead', 'bom', none), canImport('englead', 'parts', null)]).toEqual([true, false, true]);
+    expect(Object.keys(CARD_KINDS)).toEqual(['MS Project XML', 'GanttProject', 'Excel / CSV', 'Primavera P6 XER']);
   });
 
   it('every message template has a French entry and translates with its arguments', () => {

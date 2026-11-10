@@ -1,7 +1,6 @@
 // Who sees and edits what on My work / Task (docs/spec/10 §6.1, §7.1; 00 §8.3 "?person= for managers";
 // 00 §7.16 / 10 OQ17: My work shows the viewer, not a fixed Hélène Sauvage). Pure — used by pages, islands, actions.
 import type { RoleKey } from '@/config/screens';
-import { clientRefusedScreen } from '@/domain/rights';
 
 // Someone else's My work (`?person=`, R-049 / R-9 answer b): by hierarchy and projects — src/domain/rights.ts
 // `canViewPersonWork`, applied by src/server/dal/mywork-data.ts `myWorkAccess` (page, task back link, export).
@@ -28,9 +27,3 @@ export const canCommentTask = (outside: boolean) => !outside;
  * read it).
  */
 export const canAttachTaskFiles = canEditTask;
-
-/**
- * Chapter 4 (R-8 default) and R-042 (P-1): who may download a task's files — whoever may open the task sheet (internal
- * viewers outside their workspace read it); never a client, the task sheet being outside the client's workspace.
- */
-export const canDownloadTaskFiles = (viewer: { role: RoleKey }) => !clientRefusedScreen(viewer.role, 'task');

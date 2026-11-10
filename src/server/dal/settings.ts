@@ -18,6 +18,7 @@ import {
 } from '@/server/db/codes';
 import { SETTINGS_CARDS } from '@/domain/admin';
 import { DEFAULT_CCB_THRESHOLD_KEUR, isCcbThreshold } from '@/domain/change-control';
+import { healthThresholdsRefusal } from '@/domain/health';
 import { isHoursVariancePct } from '@/domain/hr';
 import { DCMA_STANDARD, DCMA_THRESHOLD_FIELDS, DCMA_THRESHOLD_RANGE, parseDcmaThreshold, type DcmaThresholdKey, type DcmaThresholds } from '@/domain/schedule-quality';
 import {
@@ -218,8 +219,8 @@ export async function setHealthThresholds(input: Partial<HealthThresholds>, acto
   ST(actor);
   const cur = await getHealthThresholds();
   const next = { risk: input.risk ?? cur.risk, off: input.off ?? cur.off };
-  for (const [k, v] of Object.entries(next)) if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0 || v > 2) throw new Error(`Invalid threshold ${k}`);
-  if (next.off >= next.risk) throw new Error('"Off track below" must be lower than "At risk below"');
+  const refusal = healthThresholdsRefusal(next);
+  if (refusal) throw new Error(refusal);
   const db = await getDb();
   await db.transaction(async (tx) => {
     const who = await whoIs(tx, actor);

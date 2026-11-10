@@ -70,6 +70,9 @@ export interface CardView {
   title: string;
   typeLabel: string;
   typeClass: string;
+  /** D9-25: the client attended — a "Client present" tag on the card. */
+  clientPresent: boolean;
+  clientPresentLabel: string;
   statusLabel: string;
   statusClass: string;
   /** "29 Sep 2026 · 08:30 · 5 invited · 3 actions". */
@@ -165,6 +168,9 @@ export interface DetailView {
   syncedFromOutlook: boolean;
   typeLabel: string;
   typeClass: string;
+  /** D9-25: the client attended (its decisions are client decisions) and the box's label. */
+  clientPresent: boolean;
+  clientPresentLabel: string;
   statusLabel: string;
   statusClass: string;
   /** "Attendance · 5 Invited". */
@@ -228,16 +234,11 @@ export interface MeetingsInput {
   query: MeetingsQuery;
   /** R-013: business date — "Meetings this week", "Decisions this month" (its month index is the prototype's PG_NOW). */
   today: string;
-  /**
-   * The viewer is a client (P-10b): the tasks the minutes created are internal — their numbers and links are not shown (an
-   * external owner's action becomes an internal follow-up task, S-12 a); nor the plan activity of an action.
-   */
-  client?: boolean;
 }
 
 const tagOf = (kind: 'meetingType' | 'meetingStatus', code: string) => TAG_CLASS[statusTone(kind, code)];
 
-export function meetingsScreenView({ code, meetings: ms, questions, query, today, client = false }: MeetingsInput, t: T, lang: Lang): MeetingsScreenView {
+export function meetingsScreenView({ code, meetings: ms, questions, query, today }: MeetingsInput, t: T, lang: Lang): MeetingsScreenView {
   const title = (m: Meeting) => dataText(m.title, lang);
   const ref = (m: Meeting) => `${m.number} · ${t(m.dateText)}`;
   const due = (d: string | null) => dueText(d, t, lang);
@@ -264,6 +265,8 @@ export function meetingsScreenView({ code, meetings: ms, questions, query, today
       title: title(m),
       typeLabel: t(meetingType.label(m.type)),
       typeClass: tagOf('meetingType', m.type),
+      clientPresent: m.clientPresent,
+      clientPresentLabel: t('Client present'),
       statusLabel: t(meetingStatus.label(m.status)),
       statusClass: tagOf('meetingStatus', m.status),
       sub: `${t(m.dateText)} · ${m.time} · ${invitedText(m.participants.length, lang)}${n ? ` · ${t(actionsText(n))}` : ''}`,
@@ -276,8 +279,8 @@ export function meetingsScreenView({ code, meetings: ms, questions, query, today
     const r = { meeting: m.number, point: l.point, position: l.position };
     return {
       ref: r, key: lineKey(r), type: l.type, typeLabel: t(meetingLineType.label(l.type)), text: dataText(l.text, lang), isAction: l.type === 'action', done: l.done,
-      meta: l.type === 'action' ? ownerDue(l.owner, l.due) + (l.activity && !client ? ` · ${l.activity}` : '') : '',
-      taskNumber: client ? null : l.taskNumber, taskHref: client ? null : taskHref(l.taskNumber),
+      meta: l.type === 'action' ? ownerDue(l.owner, l.due) + (l.activity ? ` · ${l.activity}` : '') : '',
+      taskNumber: l.taskNumber, taskHref: taskHref(l.taskNumber),
     };
   };
 
@@ -324,6 +327,8 @@ export function meetingsScreenView({ code, meetings: ms, questions, query, today
       syncedFromOutlook: !!m.syncedFromOutlook,
       typeLabel: t(meetingType.label(m.type)),
       typeClass: tagOf('meetingType', m.type),
+      clientPresent: m.clientPresent,
+      clientPresentLabel: t('Client present'),
       statusLabel: t(meetingStatus.label(m.status)),
       statusClass: tagOf('meetingStatus', m.status),
       attendanceTitle: `${t('Attendance')} · ${m.participants.length} ${t('Invited')}`,
@@ -382,7 +387,7 @@ export function meetingsScreenView({ code, meetings: ms, questions, query, today
       stateText: t(ACTION_STATE_LABEL[a.state]),
       done: a.line.done,
       href: meetingsHref(code, { filter: query.filter, meeting: a.meeting.number }),
-      taskHref: client ? null : taskHref(a.line.taskNumber),
+      taskHref: taskHref(a.line.taskNumber),
     };
   });
 

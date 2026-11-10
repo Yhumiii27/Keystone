@@ -55,7 +55,7 @@ describe('Codex document decisions from My approvals (R-124)', () => {
     expect(await decideDocumentFromInboxAction({ number: 'RPT-HLT-014', step: 2, decision: 'approved' })).toEqual({ ok: false, error: 'This decision is not waiting for you any more' });
     as('Romain Aubert', 'R. Aubert', 'pm');
     expect(await decideDocumentFromInboxAction({ number: 'RPT-HLT-014', step: 1, decision: 'approved' })).toEqual({ ok: false, error: 'You are not the approver of this step' });
-    as('Nadia Bensaïd', 'N. Bensaïd', 'client');
+    as('Julien Wagner', 'J. Wagner', 'member');
     expect(await decideDocumentFromInboxAction({ number: 'RPT-HLT-014', step: 1, decision: 'rejected', comment: 'No' })).toEqual({ ok: false, error: 'You are not the approver of this step' });
     expect(await entries('RPT-HLT-014')).toEqual([]);
   });

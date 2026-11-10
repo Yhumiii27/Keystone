@@ -109,18 +109,14 @@ describe('/projects/[code]/quality', () => {
     const own = props(await page({}));
     // D13: no '→ Containment' on the open NCR (Vigie's QHSE qualifies it).
     expect(own.ncr!.rows.map((r) => r.action?.label ?? null)).toEqual(['→ Verification', null, '→ Root cause', '→ Corrective action', null]);
-    session.role = 'client';
+    // D9-06: the PM of record records the client's decision on a submitted deliverable (the client no longer sees Keystone).
     const c = await page({ tab: 'dlv', dlv: 'D-014' });
-    expect(c.PageHeader.props.primary).toBeUndefined();
     const cv = props(c);
     expect(cv.dlv!.rows.filter((r) => r.action?.kind === 'decide').map((r) => r.number)).toEqual(['D-014', 'D-016']);
-    expect([cv.dlvDrawer!.canDecide, cv.dlvDrawer!.canLinkDocument, cv.dlvDrawer!.hint]).toEqual([true, false, '']);
-    // P-10b (R-043): no NCR for the client — the screen is the deliverables register (no NCR tab, no NCR drawer, no linked NCR).
-    const cn = props(await page({ ncr: 'EV-2026-030', tab: 'ncr' }));
-    expect([cn.tab, cn.ncr, cn.ncrDrawer, cn.seg.map((x) => x.value)]).toEqual(['dlv', null, null, ['dlv']]);
-    expect(JSON.stringify(cn.dlv)).not.toContain('NCR-');
-    // R-042 (P-10a): another organisation's project is refused (sent home).
-    await expect(page({ tab: 'dlv' }, 'NDC-031')).rejects.toThrow('REDIRECT /');
+    expect([cv.dlvDrawer!.canDecide, cv.dlvDrawer!.hint]).toEqual([true, '']);
+    session.role = 'quality';
+    const q = props(await page({ tab: 'dlv', dlv: 'D-014' }));
+    expect([q.dlvDrawer!.canDecide, q.dlvDrawer!.hint]).toEqual([false, 'The project manager records the client’s decision once the PV is signed.']);
   });
 
   it('R-115 (Q-3b): on the deliverables register the primary is "New deliverable" for the project’s PM and the director, "New NCR" otherwise', async () => {
@@ -130,9 +126,9 @@ describe('/projects/[code]/quality', () => {
       return pr ? ((pr.type as { name: string }).name === 'NewDeliverableButton' ? 'new-deliverable' : 'new-ncr') : null;
     };
     const out: Record<string, string | null> = {};
-    for (const role of ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client']) out[role] = await primaryOf(role);
+    for (const role of ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement']) out[role] = await primaryOf(role);
     expect(out).toEqual({
-      director: 'new-deliverable', pm: 'new-deliverable', depthead: 'new-ncr', member: 'new-ncr', englead: 'new-ncr', quality: 'new-ncr', procurement: 'new-ncr', client: null,
+      director: 'new-deliverable', pm: 'new-deliverable', depthead: 'new-ncr', member: 'new-ncr', englead: 'new-ncr', quality: 'new-ncr', procurement: 'new-ncr',
     });
     // Another PM's project (read-only for him) and the NCR tab: "New NCR".
     expect(await primaryOf('pm', 'NDC-031')).toBe('new-ncr');
@@ -163,13 +159,12 @@ describe('/projects/[code]/quality', () => {
     expect(log).toContain('Non-conformance log');
     expect(log).toContain('Open → containment → root cause → corrective action → verification → closed · ISO 9001 §8.7');
     expect(log).toContain('aria-current="true"'); // the selected NCR chip "All"
-    session.role = 'client';
+    // D9-06: the PM records the client's decision (dialog: date and signed document) on the submitted deliverables.
+    session.role = 'pm';
     const reg = html((await page({ tab: 'dlv' })).QualityView);
-    expect(reg).toContain('aria-label="Accept D-014"');
-    expect(reg).toContain('aria-label="Reject D-016"');
+    expect(reg).toContain('aria-label="Record acceptance D-014"');
+    expect(reg).toContain('aria-label="Record rejection D-016"');
     expect(reg).toContain('title="Julien Wagner"');
-    expect(reg).not.toContain('localhost:3200');
-    expect(reg).not.toContain('>Start</button>');
   });
 
   it('markup: NCR drawer (Vigie links, severity managed in Vigie, record links) and deliverable drawer (FR)', async () => {
@@ -190,7 +185,9 @@ describe('/projects/[code]/quality', () => {
     const dd = (await import('./dlv-drawer')).DeliverableDrawer;
     const { makeT } = await import('@/i18n/translate');
     const d = drawerHtml(createElement(dd, { code: 'HLT-026', view: props(q).dlvDrawer!, context: 'x', t: makeT('fr') }) as El);
-    expect(d).toContain('Passez sur le rôle Client (en bas à gauche) pour accepter ou refuser.');
+    // D9-06: the PM records the client's decision (was the hint to switch to the Client persona).
+    expect(d).toContain('Enregistrer l’acceptation');
+    expect(d).not.toContain('rôle Client');
     expect(d).toContain('Déposer le document émis (aperçu PDF)');
     expect(d).toContain('Déposer dans Codex');
     expect(d).toContain('Lier un document Codex');

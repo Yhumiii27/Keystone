@@ -28,7 +28,7 @@ function pageFileOf(slug: string, scope: string): string | null {
 
 describe('screen registry', () => {
   it('has 61 screens, all built', () => {
-    expect(SCREENS).toHaveLength(62);
+    expect(SCREENS).toHaveLength(61); // D9-06: the client portal is gone
     expect(SCREENS.filter((s) => !s.built).map((s) => s.id)).toEqual([]);
   });
 

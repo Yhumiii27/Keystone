@@ -2,7 +2,7 @@
 // from the prototype data set exactly as the prototype does.
 import { describe, expect, it } from 'vitest';
 import { makeT } from '@/i18n/translate';
-import { DEMO_CLIENT_ORG, PERSONA_BY_ROLE } from '@/config/personas';
+import { PERSONA_BY_ROLE } from '@/config/personas';
 import type { RoleKey } from '@/config/screens';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
 import { money } from '@/lib/format';
@@ -143,7 +143,7 @@ describe('My projects (spec §2.2)', () => {
   const todos = PROTO.TODOS as { person: string; status: string; project: string }[];
   const viewer = (role: RoleKey): MyProjectsViewer => {
     const p = PERSONA_BY_ROLE[role];
-    return { role, name: p.name, short: p.short, clientOrg: DEMO_CLIENT_ORG, dept: role === 'depthead' ? 'Engineering' : null };
+    return { role, name: p.name, short: p.short, dept: role === 'depthead' ? 'Engineering' : null };
   };
   const model = (role: RoleKey, pending = 0) =>
     myProjectsModel(viewer(role), POOL, SCHED, { deptOf, todos }, { personaTitle: PERSONA_BY_ROLE[role].title, pendingDecisions: pending, lang: 'en' });
@@ -172,7 +172,6 @@ describe('My projects (spec §2.2)', () => {
     expect(roles('depthead')).toEqual([false, ['HLT-026:Department involved:ro']]);
     expect(roles('member')).toEqual([false, ['HLT-026:Team member:ro']]);
     expect(roles('procurement')).toEqual([false, ['HLT-026:Team member:ro', 'NDC-031:Team member:ro', 'WSA-044:Team member:ro', 'MSR-012:Team member:ro']]);
-    expect(roles('client')).toEqual([false, ['HLT-026:Client']]);
     for (const r of ['englead', 'quality'] as const) expect(roles(r)).toEqual([true, POOL.map((p) => `${p.code}::ro`)]);
   });
 
