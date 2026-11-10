@@ -8,7 +8,7 @@ Statut : construit sur la branche `d9-p1p4` le 10 nov. 2026, d’après les rép
 | D9-31 · P1 Relance fournisseurs et inspections usine | « Lancer : inspections, FAT et bons de libération sur les commandes » | R-159 | **fait** (§ 1) |
 | D9-34 · P4 Exposition de change et alertes de couverture | « Lancer après la devise par contrat (R-075) » — R-075 est fait | R-162 | **fait** (§ 2) |
 
-Migration **0078** `drizzle/0078_d9_expediting_fx.sql` (générée, aucune modification à la main ; à renuméroter à l’intégration
+Migration **0080** (renumérotée à l’intégration) `drizzle/0080_expediting_fx.sql` (générée, aucune modification à la main ; à renuméroter à l’intégration
 si un autre lot a pris le numéro) : quatre tables nouvelles, aucune colonne modifiée, aucune vue `pub_` créée ni touchée, aucun
 droit accordé. Aucune nouvelle dépendance.
 
