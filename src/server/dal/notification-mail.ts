@@ -8,13 +8,10 @@ import 'server-only';
 // - digest: the job "notification-digest", every morning at the reminders hour, sends each person one e-mail with the notices
 //   kept for it and not read yet in the bell — once per person and business date (`reminder_sends`, kind "digest"); a notice
 //   read in the bell before the digest is not mailed ("seen").
-// Rights: a person is mailed only what the bell shows them — an internal account every notice addressed to it; a client only
-// the notices of their organisation's projects on their workspace's screens, never NCRs or purchasing (`noticeVisibility`, the
-// bell's read-time filter of src/server/dal/shell.ts). The texts are French (the default language), as the bell shows them.
+// Rights: a person is mailed only what the bell shows them — every notice addressed to them (D9-06: the client's read-time filter
+// went with the Client role). The texts are French (the default language), as the bell shows them.
 import { and, eq, inArray, lt, or } from 'drizzle-orm';
-import { DEFAULT_PROJECT } from '@/config/screens';
-import { digestMail, digestSendKey, isClientOnly, noticeMail, type MailState, type NoticeForMail } from '@/domain/notification-mail';
-import { clientRefusedProject, clientSeesTarget } from '@/domain/rights';
+import { digestMail, digestSendKey, noticeMail, type MailState, type NoticeForMail } from '@/domain/notification-mail';
 import { fieldsText } from '@/i18n/data-text';
 import { makeT } from '@/i18n/translate';
 import { businessToday } from '@/server/clock';
@@ -23,7 +20,6 @@ import { stampText } from '@/server/db/codes';
 import { notificationRecipients, notifications, projects, users } from '@/server/db/schema';
 import { logError } from '@/server/log';
 import { mailTransport, type MailTransport } from '@/server/mail/transport';
-import { listProjects } from './projects';
 import { absoluteLink, claimSends, recipientsOf, recordSendOutcome, type MailOutcome, type Recipient } from './reminders';
 
 /** A row left "sending" this long is given up (failed). */
@@ -39,17 +35,6 @@ export interface NoticeMailRun {
 }
 
 type Notice = { id: string; title: string; sub: string; screen: string; params: Record<string, unknown>; projectCode: string | null; occurredAt: Date };
-
-/** Whether a recipient may see a notice — the bell's read-time rule (dal/shell.ts notificationsFor). */
-export async function noticeVisibility(): Promise<(r: Pick<Recipient, 'roles' | 'organisation'>, n: Pick<Notice, 'screen' | 'params' | 'projectCode'>) => boolean> {
-  const all = await listProjects();
-  return (r, n) => {
-    if (!isClientOnly(r.roles)) return true;
-    const p = all.find((x) => x.code === (n.projectCode ?? DEFAULT_PROJECT));
-    const own = !!p && !clientRefusedProject({ role: 'client', organisation: r.organisation }, p);
-    return clientSeesTarget(n.screen, n.params, own);
-  };
-}
 
 const fr = () => {
   const t = makeT('fr');
@@ -116,13 +101,13 @@ export async function sendImmediateMails(opts: { notificationId?: string } = {})
     .returning({ notificationId: notificationRecipients.notificationId, userId: notificationRecipients.userId });
   run.claimed = claimed.length;
   if (!claimed.length) return run;
-  const [notices, people, may] = await Promise.all([noticesOf(claimed.map((c) => c.notificationId)), recipientsOfUsers(claimed.map((c) => c.userId)), noticeVisibility()]);
+  const [notices, people] = await Promise.all([noticesOf(claimed.map((c) => c.notificationId)), recipientsOfUsers(claimed.map((c) => c.userId))]);
   const transport = mailTransport();
   const tr = fr();
   for (const row of claimed) {
     const n = notices.get(row.notificationId);
     const r = people.get(row.userId);
-    if (!n || !r || !may(r, n)) {
+    if (!n || !r) {
       await setState([row], 'not_visible');
       run.skipped++;
       continue;
@@ -161,7 +146,7 @@ export async function runNotificationDigest(on?: string): Promise<DigestRun> {
   const run: DigestRun = { today, claimed: 0, sent: 0, failed: 0, skipped: 0, persons: 0 };
   const waiting = await db.selectDistinct({ userId: notificationRecipients.userId }).from(notificationRecipients).where(eq(notificationRecipients.mailState, 'digest'));
   if (!waiting.length) return run;
-  const [people, may] = await Promise.all([recipientsOfUsers(waiting.map((w) => w.userId)), noticeVisibility()]);
+  const people = await recipientsOfUsers(waiting.map((w) => w.userId));
   const transport = mailTransport();
   const tr = fr();
   for (const { userId } of waiting) {
@@ -179,7 +164,7 @@ export async function runNotificationDigest(on?: string): Promise<DigestRun> {
     }
     const notices = await noticesOf(rows.map((x) => x.notificationId));
     const seen = rows.filter((x) => x.readAt);
-    const hidden = rows.filter((x) => !x.readAt && (!notices.get(x.notificationId) || !may(r, notices.get(x.notificationId)!)));
+    const hidden = rows.filter((x) => !x.readAt && !notices.get(x.notificationId));
     const due = rows.filter((x) => !seen.includes(x) && !hidden.includes(x));
     await setState(seen, 'seen');
     await setState(hidden, 'not_visible');

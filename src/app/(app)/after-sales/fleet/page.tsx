@@ -21,7 +21,7 @@ import { getI18n, getZone } from '@/server/session';
 
 export default async function InstalledBasePage() {
   const [{ t, lang }, access, zone] = await Promise.all([getI18n(), getScreenAccess('fleet'), getZone()]);
-  const [data, candidates] = await Promise.all([getFleetScreen(zone), access.viewer.role === 'client' ? Promise.resolve([]) : listDeliveryCandidates()]);
+  const [data, candidates] = await Promise.all([getFleetScreen(zone), listDeliveryCandidates()]);
 
   let primary;
   if (access.canEdit) {
@@ -36,7 +36,7 @@ export default async function InstalledBasePage() {
   return (
     <>
       <PageHeader screen="fleet" primary={primary} />
-      <FleetBody view={fleetView(data, zone, t, lang, { vigie: access.viewer.role !== 'client' })} t={t} />
+      <FleetBody view={fleetView(data, zone, t, lang, { vigie: true })} t={t} />
       <DeliveredCard rows={deliveredView(candidates, { canRegister, today: data.today }, t, lang)} t={t} />
     </>
   );

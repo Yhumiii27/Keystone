@@ -83,7 +83,7 @@ describe('R-037 — recordMinutesReadAction (Server Function)', () => {
     expect((await readOf(ext))['M. Kerviel']).toBe('2026-09-25'); // R-013: the business date (25 Sep 2026 on the demo data set), not the prototype's 30 Sep
   });
 
-  it('every persona: only recipients without a receipt record one; the client on this external meeting too', async () => {
+  it('every persona: only recipients without a receipt record one', async () => {
     const recorded: Record<string, boolean> = {};
     for (const p of PERSONAS) {
       session.role = p.role;
@@ -91,17 +91,16 @@ describe('R-037 — recordMinutesReadAction (Server Function)', () => {
       expect(r.ok, p.role).toBe(true);
       recorded[p.role] = (r as { recorded: boolean }).recorded;
     }
-    // J. Wagner and M. Kerviel had read already; R. Aubert organised; the others were not invited — only N. Bensaïd records.
+    // J. Wagner and M. Kerviel had read already; R. Aubert organised; the others were not invited. D9-06: N. Bensaïd (the client's
+    // contact) has no account any more — her receipt stays empty.
     // Finance (R-044), the 9th persona, was not invited either.
-    expect(recorded).toEqual({ director: false, pm: false, depthead: false, member: false, englead: false, quality: false, procurement: false, finance: false, logistics: false, client: true });
-    expect(await readOf(ext)).toEqual({ 'R. Aubert': null, 'M. Kerviel': '2026-09-25', 'J. Wagner': '2026-09-29', 'N. Bensaïd': '2026-09-25' }); // R-013: read on the business date
+    expect(recorded).toEqual({ director: false, pm: false, depthead: false, member: false, englead: false, quality: false, procurement: false, finance: false, logistics: false });
+    expect(await readOf(ext)).toEqual({ 'R. Aubert': null, 'M. Kerviel': '2026-09-25', 'J. Wagner': '2026-09-29', 'N. Bensaïd': null }); // R-013: read on the business date
   });
 
-  it('the client never reaches an internal meeting; malformed and foreign input refused; minutes not sent record nothing', async () => {
+  it('malformed and foreign input refused; minutes not sent record nothing', async () => {
     session.role = 'pm';
     await sendMinutes('MTG-118', 'Romain Aubert');
-    session.role = 'client';
-    expect(await recordMinutesReadAction({ code: HLT, meeting: 'MTG-118' })).toEqual({ ok: false, error: 'Unknown meeting' });
     session.role = 'member';
     for (const input of [{ code: '', meeting: ext }, { code: HLT, meeting: 'X' }, { code: HLT, meeting: 'MTG-9999' }, { code: HLT, meeting: 'MTG-121' }, { code: 'NOPE-1', meeting: ext }, undefined])
       expect((await recordMinutesReadAction(input as never)).ok).toBe(false);

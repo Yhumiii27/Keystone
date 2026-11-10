@@ -21,10 +21,10 @@ type Q = DB | Tx;
 export const actorSees = (actor: Pick<Actor, 'role'>, screen: ScreenId) =>
   Object.hasOwn(ROLE_SCREENS, actor.role) && canSee(actor.role as RoleKey, screen);
 
-/** The actor is on the project's named team (PM of record or any team role), or is the portfolio director; never a client. */
+/** The actor is on the project's named team (PM of record or any team role), or is the portfolio director. */
 export async function onProjectTeam(q: Q, actor: Actor, projectId: string): Promise<boolean> {
   if (actor.role === 'director') return true;
-  if (actor.role === 'client' || !Object.hasOwn(ROLE_SCREENS, actor.role)) return false;
+  if (!Object.hasOwn(ROLE_SCREENS, actor.role)) return false;
   const person = await findPerson(q, actor.name);
   if (!person) return false;
   const [p] = await q.select({ pm: projects.pmPersonId }).from(projects).where(eq(projects.id, projectId));
@@ -39,7 +39,7 @@ export async function onProjectTeam(q: Q, actor: Actor, projectId: string): Prom
 
 /**
  * `getProjectContext(code).canEdit(screen)` for an internal writer: the screen is in the actor's workspace and the actor is
- * on the project's team (or is the director). A client is refused. R-044: Finance reads Budget, Hours and Billing even on its
+ * on the project's team (or is the director). R-044: Finance reads Budget, Hours and Billing even on its
  * teams (`financeReadOnly`), R-158 Logistics the BOM, Site, Schedule and Deliveries (`roleReadOnly`). The Contract screen follows
  * P-4 instead: `editsContract`; the Shipments `editsShipments`.
  */
@@ -50,10 +50,10 @@ export async function editsProjectScreen(q: Q, actor: Actor, projectId: string, 
 /**
  * P-4 (R-044) — `canEditContract` (src/domain/rights.ts) for the contract writers: the director and Finance on every project
  * (delivery-8 default, not the named-team rule of P-2); otherwise a lead of the project (PM of record, co-PM, deputy) whose
- * workspace has the Contract screen. A client, or a role without the Contract screen, is refused.
+ * workspace has the Contract screen. A role without the Contract screen is refused.
  */
 export async function editsContract(q: Q, actor: Actor, projectId: string): Promise<boolean> {
-  if (actor.role === 'client' || !actorSees(actor, 'contract')) return false;
+  if (!actorSees(actor, 'contract')) return false;
   if (actor.role === 'director' || actor.role === 'finance') return true;
   const person = await findPerson(q, actor.name);
   return !!person && leadsProject(q, projectId, person.id);

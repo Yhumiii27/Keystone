@@ -4,7 +4,6 @@
 // project-context helpers (src/server/project-context.ts) and the DAL feed these functions with facts from the database.
 import { canSee } from '@/config/role-screens';
 import type { RoleKey, ScreenId } from '@/config/screens';
-import type { ApprovalKind } from './approvals';
 
 // ── R-041 · Named project team (P-2, L-4b) ──────────────────────────────────────────────────────────────────────────
 
@@ -46,14 +45,9 @@ export interface RightsViewer {
   personId: string | null;
   short: string;
   name: string;
-  organisation: string | null;
 }
 
 export interface ProjectFacts {
-  /** Client organisation name ("Port authority"). */
-  client: string;
-  /** R-190: the client is a group subsidiary (internal client) — no client-portal access (R-179, I-2b). Absent = external. */
-  clientInternal?: boolean;
   /** Short name of the PM of record ("R. Aubert", '—' when none). */
   pm: string;
   pmPersonId: string | null;
@@ -62,18 +56,14 @@ export interface ProjectFacts {
 
 /** The viewer's rights on one project. */
 export interface ProjectAccess {
-  /** On the named team (any team role), the director on every project, a client on their organisation's projects (P-2). */
+  /** On the named team (any team role), or the director on every project (P-2). */
   member: boolean;
   /** The project manager's rights: PM of record, co-PM or deputy (team role pm / deputy), or the director (L-4b, P-9a). */
   lead: boolean;
   /** PM of record, co-PM or deputy by the team itself — not by the director role (P-9b "the project's PM"). */
   pm: boolean;
-  /** Client contact of the project's organisation. */
-  client: boolean;
-  /** Project writes refused: not on the team (P-2); a client on another organisation's project. */
+  /** Project writes refused: not on the team (P-2). */
   readOnly: boolean;
-  /** Project refused altogether: a client on another organisation's project (P-10a, R-042). */
-  refused: boolean;
   /** The viewer's team role; null when not on the team. */
   teamRole: ProjectTeamRole | null;
 }
@@ -84,10 +74,6 @@ export const isViewerMember = (v: Pick<RightsViewer, 'personId' | 'short'>, m: P
 
 /** The viewer's rights on a project (R-041). */
 export function projectAccess(v: RightsViewer, p: ProjectFacts): ProjectAccess {
-  if (v.role === 'client') {
-    const own = !clientRefusedProject(v, p);
-    return { member: own, lead: false, pm: false, client: own, readOnly: !own, refused: !own, teamRole: null };
-  }
   const isPmOfRecord = v.personId ? !!p.pmPersonId && p.pmPersonId === v.personId : p.pm === v.short;
   const rows = p.team.filter((m) => isViewerMember(v, m));
   const teamRole: ProjectTeamRole | null = isPmOfRecord
@@ -95,7 +81,7 @@ export function projectAccess(v: RightsViewer, p: ProjectFacts): ProjectAccess {
     : (PROJECT_TEAM_ROLES.find((r) => rows.some((m) => m.role === r)) ?? null);
   const pm = !!teamRole && LEAD_TEAM_ROLES.includes(teamRole);
   const director = v.role === 'director';
-  return { member: director || !!teamRole, lead: director || pm, pm, client: false, readOnly: !director && !teamRole, refused: false, teamRole };
+  return { member: director || !!teamRole, lead: director || pm, pm, readOnly: !director && !teamRole, teamRole };
 }
 
 /**
@@ -113,27 +99,27 @@ export const canManageTeam = (role: RoleKey, a: Pick<ProjectAccess, 'teamRole'>)
  * Procurement no longer has the Contract screen (P-4).
  */
 export const canEditContract = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) =>
-  role === 'director' || role === 'finance' || (a.lead && role !== 'client' && canSee(role, 'contract'));
+  role === 'director' || role === 'finance' || (a.lead && canSee(role, 'contract'));
 
 /**
  * R-190 (Arche K-05): the project's CAPEX link (CAPEX code, machine need) — the director and the project's leads (PM of record,
  * co-PM, deputy) who see the Contract screen; not Finance, which edits the contract's money, not the project's origin.
  */
 export const canSetCapexLink = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) =>
-  role === 'director' || (a.lead && role !== 'client' && role !== 'finance' && canSee(role, 'contract'));
+  role === 'director' || (a.lead && role !== 'finance' && canSee(role, 'contract'));
 
 /**
  * R-185: the project's equipment lines (Contract screen, "Equipment" card) — the same people as the CAPEX link: the director and
- * the project's leads who see the Contract screen; not Finance, not the client.
+ * the project's leads who see the Contract screen; not Finance.
  */
 export const canSetProjectEquipment = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) => canSetCapexLink(role, a);
 
 /**
  * R-189 (Arche K-04): which schedule milestone is which CAPEX milestone (Schedule screen) — the same people as the CAPEX link: the
- * director and the project's leads who see the Schedule screen; not Finance, not the client.
+ * director and the project's leads who see the Schedule screen; not Finance.
  */
 export const canSetCapexMilestone = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) =>
-  role === 'director' || (a.lead && role !== 'client' && role !== 'finance' && canSee(role, 'schedule'));
+  role === 'director' || (a.lead && role !== 'finance' && canSee(role, 'schedule'));
 
 /** R-044: Finance reads Budget, Hours and Billing, even on a project whose team it is on (billing gate unchanged). */
 export const FINANCE_READ_ONLY_SCREENS: readonly ScreenId[] = ['budget', 'hours', 'billing'];
@@ -160,8 +146,7 @@ export const roleReadOnly = (role: RoleKey, screen: ScreenId) => financeReadOnly
 /**
  * R-159: the fabrication follow-up and the inspections of a purchase order (plan, record the result, report the NCR) — the
  * portfolio director, procurement and quality, on every project (EPC2i's purchasing and quality serve every project, like
- * Logistics on the shipments; décision prise sans demander). The project's PMs and the other internal roles read; the client is
- * refused the screen.
+ * Logistics on the shipments; décision prise sans demander). The project's PMs and the other internal roles read.
  */
 export const EXPEDITING_ROLES: readonly RoleKey[] = ['director', 'procurement', 'quality'];
 export const canEditExpediting = (role: string) => (EXPEDITING_ROLES as readonly string[]).includes(role);
@@ -181,11 +166,11 @@ export const canSeeFxExposure = (role: string) => (FX_ROLES as readonly string[]
  * R-158: who prepares and follows a project's shipments (Shipments screen: shipments, loads, content, packing control, transport
  * steps, status) — the portfolio director and Logistics on every project (like Finance on the contract: EPC2i's logistics serves
  * every project, not a named team), or one of the project's leads (PM of record, co-PM, deputy) whose workspace has the screen.
- * The rest of the team and the other internal roles read; the client is refused the screen.
+ * The rest of the team and the other roles read.
  */
 export const canEditShipments = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) =>
   // R-158 lot B: the team member has the screen to point the reception only (`canRecordReception`), never to edit shipments.
-  role !== 'client' && role !== 'member' && canSee(role, 'shipments') && (role === 'director' || role === 'logistics' || a.lead);
+  role !== 'member' && canSee(role, 'shipments') && (role === 'director' || role === 'logistics' || a.lead);
 
 /**
  * R-158 lot B (decision 5): who points a shipment's site reception (loads and content received, missing, damaged — the gaps raise
@@ -193,61 +178,16 @@ export const canEditShipments = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) 
  * screen (the team member on site, a department head on the team).
  */
 export const canRecordReception = (role: RoleKey, a: Pick<ProjectAccess, 'lead' | 'member'>) =>
-  canEditShipments(role, a) || (role !== 'client' && canSee(role, 'site') && !roleReadOnly(role, 'site') && a.member);
+  canEditShipments(role, a) || (canSee(role, 'site') && !roleReadOnly(role, 'site') && a.member);
 
 /** C-9 (R-044 default, DELIVERY-7 §8 open question): the project currency and budget rate — the director and Finance. */
 export const BUDGET_RATE_ROLES: readonly RoleKey[] = ['director', 'finance'];
 export const canSetBudgetRate = (role: string) => (BUDGET_RATE_ROLES as readonly string[]).includes(role);
 
-// ── R-139 · "View as client" (P-11) ────────────────────────────────────────────────────────────────────────────────
-
-/**
- * P-11 (answer a): the director and the project's leads (PM of record, co-PMs, deputies) preview the client portal of the
- * project — the "View as client" entry of the project screens' header and the preview banner of the portal. Other internal
- * roles are sent to the project's sheet (D9-07, `clientPortalSendsToProject`); the client never previews.
- */
-export const canPreviewClientView = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) => role !== 'client' && (role === 'director' || a.lead);
-
-/**
- * D9-07 (owner, 10 Nov 2026: « Non, les renvoyer vers la fiche du projet »): an internal role that may not preview the client
- * portal (every role but the client, the director and the project's leads) is sent to the project's sheet (Plan) when it opens
- * the portal's address; it no longer reads the portal outside its workspace.
- */
-export const clientPortalSendsToProject = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) => role !== 'client' && !canPreviewClientView(role, a);
-
-// ── R-042 · Screens outside the client's workspace (P-1, P-10a) ─────────────────────────────────────────────────────
-
-/** P-1: a client is refused (sent to their home) on any screen outside their workspace; internal roles read it. */
-export const clientRefusedScreen = (role: RoleKey, screen: ScreenId) => role === 'client' && !canSee(role, screen);
-
-/**
- * P-10a: a client is refused every project of another organisation (and every project when they have no organisation).
- * R-190 (R-179, I-2b): and every project whose client is a group subsidiary — an internal client follows its projects in the
- * CAPEX application, the client portal is for external clients only.
- */
-export const clientRefusedProject = (v: Pick<RightsViewer, 'role' | 'organisation'>, p: { client: string; clientInternal?: boolean }) =>
-  v.role === 'client' && !(!!v.organisation && p.client === v.organisation && !p.clientInternal);
-
-// ── R-043 · What the client does not see of their own project (P-10b) ──────────────────────────────────────────────
-
-/** P-10b: the client sees the external meetings only (internal meetings, their transcripts and the question bridge are hidden). */
-export const clientSeesMeeting = (type: string) => type === 'external';
-
-/** P-10b: My approvals kinds a client may receive — change requests and deliverable acceptance (no purchasing, NCR, internal). */
-export const CLIENT_APPROVAL_KINDS: readonly ApprovalKind[] = ['cr', 'deliverable'];
-
-/** Screens holding purchasing data (P-10b) — hidden from the client even through links, search or notifications. */
-export const PURCHASING_SCREENS: readonly ScreenId[] = ['procurement', 'orders', 'deliveries', 'stock'];
-
-/**
- * A notification, search hit or link target a client may see (P-1, P-10a, P-10b): a screen of their workspace, never about
- * an NCR (Quality's NCR register) or purchasing, on a project of their organisation (or no project).
- */
-export function clientSeesTarget(screen: string, params: Record<string, unknown>, ownProject: boolean | null): boolean {
-  if (!canSee('client', screen as ScreenId) || PURCHASING_SCREENS.includes(screen as ScreenId)) return false;
-  if (screen === 'quality' && ('ncr' in params || params.tab === 'ncr' || 'filter' in params)) return false;
-  return ownProject !== false;
-}
+// ── R-139, R-042, R-043 · Client portal (removed) ───────────────────────────────────────────────────────────────────
+// D9-06, D9-22, D9-23 (owner, 10 Nov 2026): clients never see Keystone — the "View as client" preview, the client's refusals
+// (P-1, P-10a) and what the client did not see (P-10b) were removed with the Client role and its portal; so was
+// D9-07's redirect rule `clientPortalSendsToProject` (the portal no longer exists, its address goes to the Plan).
 
 // ── R-045 · Project creation (P-3) ──────────────────────────────────────────────────────────────────────────────────
 // src/features/projects/permissions.ts (CREATE_PROJECT_ROLES: director and PMs).
@@ -272,7 +212,7 @@ export const canSeeShipmentValues = (role: RoleKey) => canSeeSupplierPrices(role
 // ── R-047 · Codex deposit and synchronisation (NEW-D3-1) ───────────────────────────────────────────────────────────
 
 /** "Deposit in Codex" / "New revision · Codex": the project's internal team (and the director), inside the workspace. */
-export const canDepositInCodex = (role: RoleKey, outside: boolean, a: Pick<ProjectAccess, 'member'>) => role !== 'client' && !outside && a.member;
+export const canDepositInCodex = (outside: boolean, a: Pick<ProjectAccess, 'member'>) => !outside && a.member;
 
 /** "Sync now" of the Codex index: the director (NEW-D3-1 "directeur et administrateur" — Keystone has no administrator role). */
 export const canSyncCodex = (role: RoleKey, outside: boolean) => role === 'director' && !outside;
@@ -327,17 +267,17 @@ export const isOrganizer = (v: Pick<RightsViewer, 'personId' | 'name' | 'short'>
 /**
  * Drafting and sending the minutes — "Send minutes", the transcript (import, analysis, review, "Add to minutes", proposals into
  * the risk register or the client questions): the meeting's organiser and the project's PM (PM of record, co-PM, deputy).
- * The other internal team members add notes and tick actions; the client reads (P-9b).
+ * The other team members add notes and tick actions (P-9b).
  */
 export const canWriteMinutes = (v: Pick<RightsViewer, 'role' | 'personId' | 'name' | 'short'>, a: Pick<ProjectAccess, 'pm'>, m: { organizerPersonId: string | null; organizer: string }) =>
-  v.role !== 'client' && (a.pm || isOrganizer(v, m));
+  a.pm || isOrganizer(v, m);
 
 // ── R-061 · Plan structure (P-9a) ──────────────────────────────────────────────────────────────────────────────────
 
 /**
  * WBS structure, names, owners, durations, budgets, links, calendars, removal and the scheduling decisions: the project's PM
  * team (PM of record, co-PMs, deputies) and the director. `planEditable` = the Plan is editable for the viewer at all (not
- * outside the workspace, on the team, not the client).
+ * outside the workspace, on the team).
  */
 export const canEditPlanStructure = (planEditable: boolean, a: Pick<ProjectAccess, 'lead'>) => planEditable && a.lead;
 
@@ -347,10 +287,10 @@ export const canEditActivityProgress = (planEditable: boolean, a: Pick<ProjectAc
 
 /**
  * R-204: a supplier schedule (its milestones / activities, their logic and the progress the supplier reports) — the project's
- * leads and the director, and procurement (the buyer), on a project whose purchase orders they may edit; never the client.
+ * leads and the director, and procurement (the buyer), on a project whose purchase orders they may edit.
  */
 export const canEditSupplierSchedule = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>, ordersEditable: boolean) =>
-  role !== 'client' && ordersEditable && (a.lead || role === 'procurement');
+  ordersEditable && (a.lead || role === 'procurement');
 
 /** R-204: the ties consolidating a supplier schedule into the project's CPM — the project's leads and the director (structure). */
-export const canTieSupplierSchedule = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>, planEditable: boolean) => role !== 'client' && planEditable && a.lead;
+export const canTieSupplierSchedule = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>, planEditable: boolean) => planEditable && a.lead;

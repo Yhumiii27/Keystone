@@ -10,7 +10,6 @@ import 'server-only';
 // Project-bound kinds follow the current project (default: the viewer's last project, `ks-project` cookie).
 import type { Persona } from '@/config/personas';
 import type { ApprovalItem } from '@/domain/approvals';
-import { CLIENT_APPROVAL_KINDS, clientRefusedProject } from '@/domain/rights';
 import type { Lang } from '@/i18n/translate';
 import { businessToday } from '@/server/clock';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
@@ -62,18 +61,10 @@ export interface ApprovalInbox {
 
 async function contextOf(viewer: Persona, projectCode: string | undefined, lang: Lang): Promise<ApprovalContext> {
   const code = projectCode ?? (await getLastProject());
-  const [identity, found, today] = await Promise.all([getApproverIdentity(viewer), getProject(code), businessToday()]);
-  // P-10a (R-042): a client's project-bound kinds never cover another organisation's project.
-  const project = found && clientRefusedProject(viewer, found) ? null : found;
+  const [identity, project, today] = await Promise.all([getApproverIdentity(viewer), getProject(code), businessToday()]);
   return { viewer: identity, project, lang, today };
 }
 
-/**
- * Providers that may reach the viewer: every one, except for a client (P-10b, R-043) — change requests and deliverable
- * acceptance only, never purchasing, NCR or internal kinds.
- */
-const providersFor = (viewer: Persona): readonly ApprovalProvider[] =>
-  viewer.role === 'client' ? APPROVAL_PROVIDERS.filter((p) => CLIENT_APPROVAL_KINDS.includes(p.kind)) : APPROVAL_PROVIDERS;
 
 /** The viewer's inbox (My approvals page): their own items, then (R-051) the items of the approvers they stand in for. */
 export async function getApprovalInbox(viewer: Persona, opts: { projectCode?: string; lang?: Lang } = {}): Promise<ApprovalInbox> {
@@ -105,17 +96,17 @@ export interface Delegator {
 
 /**
  * R-051 (P-7d): the approvers the viewer stands in for on the business date (active delegations naming them as substitute),
- * with the viewer each decision runs as. None for a client, and none inside a delegated decision (no chaining).
+ * with the viewer each decision runs as. None inside a delegated decision (no chaining).
  */
 export async function delegatorsOf(viewer: Persona): Promise<Delegator[]> {
-  if (viewer.role === 'client' || currentDelegation()) return [];
+  if (currentDelegation()) return [];
   const userId = await viewerUserId(viewer);
   if (!userId) return [];
   const rows = await activeDelegationsTo(userId, await businessToday());
   const out: Delegator[] = [];
   for (const d of rows) {
     const approver = await approverViewerOf(d.approverUserId);
-    if (approver && approver.role !== 'client') out.push({ delegationId: d.id, approver });
+    if (approver) out.push({ delegationId: d.id, approver });
   }
   return out;
 }
@@ -123,7 +114,7 @@ export async function delegatorsOf(viewer: Persona): Promise<Delegator[]> {
 /** The viewer's own items only (no delegation): what a delegated decision is checked against. */
 export async function getOwnApprovalInbox(viewer: Persona, opts: { projectCode?: string; lang?: Lang } = {}): Promise<ApprovalInbox> {
   const ctx = await contextOf(viewer, opts.projectCode, opts.lang ?? 'en');
-  const providers = providersFor(viewer);
+  const providers = APPROVAL_PROVIDERS;
   const [items, decided] = await Promise.all([
     Promise.all(providers.map((p) => p.items(ctx))),
     Promise.all(providers.map((p) => p.decided(ctx))),
@@ -155,12 +146,12 @@ async function safeItems(p: ApprovalProvider, ctx: ApprovalContext): Promise<App
 export async function approvalCount(viewer: Persona, projectCode?: string): Promise<number> {
   const ctx = await contextOf(viewer, projectCode, 'en');
   const delegators = await delegatorsOf(viewer);
-  if (!delegators.length) return (await Promise.all(providersFor(viewer).map((p) => safeCount(p, ctx)))).reduce((a, n) => a + n, 0);
+  if (!delegators.length) return (await Promise.all(APPROVAL_PROVIDERS.map((p) => safeCount(p, ctx)))).reduce((a, n) => a + n, 0);
   // R-051: the items of the approvers the viewer stands in for, each item counted once.
-  const keys = new Set((await Promise.all(providersFor(viewer).map((p) => safeItems(p, ctx)))).flat().map(itemKey));
+  const keys = new Set((await Promise.all(APPROVAL_PROVIDERS.map((p) => safeItems(p, ctx)))).flat().map(itemKey));
   for (const d of delegators) {
     const theirs = await contextOf(d.approver, ctx.project?.code ?? projectCode, 'en');
-    for (const i of (await Promise.all(providersFor(d.approver).map((p) => safeItems(p, theirs)))).flat()) keys.add(itemKey(i));
+    for (const i of (await Promise.all(APPROVAL_PROVIDERS.map((p) => safeItems(p, theirs)))).flat()) keys.add(itemKey(i));
   }
   return keys.size;
 }
@@ -176,7 +167,7 @@ export async function approvalCountsByProject(viewer: Persona, codes: string[]):
     return Object.fromEntries(codes.map((code, i) => [code, counts[i]]));
   }
   const base = await contextOf(viewer, codes[0] ?? '', 'en');
-  const providers = providersFor(viewer);
+  const providers = APPROVAL_PROVIDERS;
   const globals = providers.filter((p) => p.scope === 'global');
   const perProject = providers.filter((p) => p.scope === 'project');
   const global = (await Promise.all(globals.map((p) => safeCount(p, base)))).reduce((a, n) => a + n, 0);
@@ -198,7 +189,7 @@ export async function approvalCountsByProject(viewer: Persona, codes: string[]):
         return;
       }
       const found = await getProject(code);
-      const ctx = { ...base, project: found && clientRefusedProject(viewer, found) ? null : found };
+      const ctx = { ...base, project: found };
       out[code] = global + fromSql + (await Promise.all(asked.map((p) => safeCount(p, ctx)))).reduce((a, n) => a + n, 0);
     }),
   );

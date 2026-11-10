@@ -173,3 +173,19 @@
 .fileNone { color: var(--color-neutral-500); }
 .confirmBody { display: flex; flex-direction: column; gap: 8px; }
 .confirmText { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--color-neutral-300); text-wrap: pretty; }
+
+/* D9-25: the meeting's "Client present" box. */
+.clientPresent {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--color-neutral-200);
+  cursor: pointer;
+}
+
+.clientPresent input {
+  accent-color: var(--color-accent);
+  width: 15px;
+  height: 15px;
+}

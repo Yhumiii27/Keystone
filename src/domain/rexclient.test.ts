@@ -7,19 +7,16 @@
 import { describe, expect, it } from 'vitest';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
 import {
-  changeStatus, clientIssueStatus, closureItemStatus, deliverableStatus, isoOfDemoDate, lessonStatus, lessonTheme, milestoneStatus,
+  changeStatus, closureItemStatus, deliverableStatus, isoOfDemoDate, lessonStatus, lessonTheme,
   type ChangeStep, type StepDecision,
 } from '@/server/db/codes';
 import {
-  CLIENT_TABS, DOCS_TAB, LESSON_RESULT, REPORT_RESULT, clientDecisions, clientKpis, clientMilestones, clientProgress, closureProgress, closureRow,
-  contractSummary, invoiceRow, issueRow, lessonRow, oneDecimal, openIssueCount, parseClientReport, parseClientTab, parseIssueText, parseNewLesson,
+  LESSON_RESULT, clientDecisions, clientKpis, closureProgress, closureRow,
+  contractSummary, invoiceRow, lessonRow, oneDecimal, parseNewLesson,
   paymentOf, rexView, type ChangeRequestLike, type ClosureLike, type DeliverableLike, type Kpi, type LessonLike, type SatisfactionLike,
 } from './rexclient';
 import golden from './rexclient.golden.json';
 import { demoNcrGolden } from '@/domain/vigie-demo';
-
-/** R-013: the prototype's status date (Fri 25 Sep 2026), passed explicitly ("Raised today"). */
-const STATUS_ISO = '2026-09-25';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // D13 (CV-07): the prototype's NCR numbers as the demo data set has them (EV-2026-0nn, src/domain/vigie-demo.ts).
@@ -137,34 +134,21 @@ const deliverables = (): DeliverableLike[] =>
   }));
 const proto = (code: string) => (code === 'HLT-026' ? PROTO.HLT_PD : PROTO_GEN.projectData[code]);
 const evmOf = (code: string) => ({ pv: proto(code).PV, ev: proto(code).EV, bac: proto(code).BAC });
-const msOf = (code: string) =>
-  (proto(code).MILES as [string, number, number, string][]).map(([name, baselineMonth, forecastMonth, st]) => ({
-    name, baselineMonth, forecastMonth, status: milestoneStatus.code(st), statusLabel: st,
-  }));
-const issues = () =>
-  (PROTO.CLIENT_ISSUES as string[][]).map(([number, title, raised, status, response]) => ({
-    number, title, raisedOn: isoOfDemoDate(raised.replace('Raised ', ''))!, status: clientIssueStatus.code(status), response,
-  }));
-
-describe('client portal (03 §8)', () => {
-  it('KPI tiles: progress vs plan, forecast handover vs contract date, milestones, awaiting decisions, open issues', () => {
+// D9-06 / D9-22 (owner, 10 Nov 2026): the client portal was removed — what remains here feeds the client status report the
+// project team sends (KPI tiles, decisions, invoices, contract summary). The portal's progress bars, milestone list, tabs,
+// issues, shared documents and "Download status report" form went with it, and so did their golden cases.
+describe('client status report (the former client portal, 03 §8)', () => {
+  it('KPI tiles: progress vs plan, forecast handover vs contract date, milestones, awaiting decisions', () => {
     for (const [code, awaiting] of [['HLT-026', 3], ['NDC-031', 1]] as const) {
       const p = proto(code);
-      const v = clientKpis({ evm: evmOf(code), schedule: p, awaiting, openIssues: openIssueCount(issues()) });
-      expect(kpis(v)).toEqual(gk(G.client.en[code].kpis));
+      const v = clientKpis({ evm: evmOf(code), schedule: p, awaiting });
+      // D9-06: the prototype's fifth tile "Open issues" went with the portal's issues.
+      expect(kpis(v)).toEqual(gk(G.client.en[code].kpis).slice(0, 4));
     }
     // Projects without schedule data (pipeline, EWA-051): no prototype fallback to Harbor Line (00 §7.16).
-    expect(clientKpis({ evm: null, schedule: null, awaiting: 0, openIssues: 0 }).map((k) => [k.value, k.sub])).toEqual([
-      ['—', ''], ['—', ''], ['—', ''], ['0', 'Change requests and deliverables'], ['0', 'Raised by you'],
+    expect(clientKpis({ evm: null, schedule: null, awaiting: 0 }).map((k) => [k.value, k.sub])).toEqual([
+      ['—', ''], ['—', ''], ['—', ''], ['0', 'Change requests and deliverables'],
     ]);
-  });
-
-  it('progress bars up to the data date and the milestone list', () => {
-    for (const code of ['HLT-026', 'NDC-031']) {
-      expect(clientProgress(proto(code).chartMonths, evmOf(code))).toEqual(G.client.en[code].progress);
-      expect(clientMilestones(msOf(code), proto(code).start, 2026).map((m) => ({ name: m.name, baseDate: m.baseDate, fcDate: m.fcDate, status: m.status, tagClass: tag(m.tone) })))
-        .toEqual(G.client.en[code].milestones);
-    }
   });
 
   const decisionsOf = (c: ChangeRequestLike[], d: DeliverableLike[]) => {
@@ -183,11 +167,9 @@ describe('client portal (03 §8)', () => {
     const afterDirector = crs();
     afterDirector.find((x) => x.id === 'CR-008')!.chain[1].decision = 'ok';
     expect(decisionsOf(afterDirector, deliverables())).toEqual({ decisions: g.decisions, decided: g.decided });
-    // S-9a (docs/DECISIONS.md): the portal gains a "Schedule" tab after the prototype's first segment.
-    expect(CLIENT_TABS.map((o) => o.label)).toEqual([g.seg[0], 'Schedule', ...g.seg.slice(1)]);
   });
 
-  it('after the client approves CR-008, accepts D-014 and rejects D-016 (stamped by the data layer)', () => {
+  it('after the client approves CR-008, accepts D-014 and rejects D-016 (recorded by the PM since D9-06, stamped by the data layer)', () => {
     const c = crs();
     c.find((x) => x.id === 'CR-008')!.chain[2].decision = 'ok';
     const d = deliverables();
@@ -219,32 +201,5 @@ describe('client portal (03 §8)', () => {
     expect(paymentOf({ status: 'invoiced', dueOn: '2026-11-10' }, 2026)).toEqual({ kind: 'due', date: '10 Nov' });
     // R-013: seen in 2027, a 2026 due date carries its year.
     expect(paymentOf({ status: 'invoiced', dueOn: '2026-11-10' }, 2027)).toEqual({ kind: 'due', date: '10 Nov ’26' });
-  });
-
-  it('issues: status tags, "Raised today" for issues raised on the status date', () => {
-    expect(issues().map((i) => issueRow(i, STATUS_ISO)).map((r) => ({ id: r.id, title: r.title, when: r.when, status: r.status, resp: r.response, tagClass: tag(r.tone) })))
-      .toEqual(G.client.en['HLT-026'].issues);
-    const fresh = issueRow({ number: 'CI-08', title: 'Crane test witness slot', raisedOn: STATUS_ISO, status: 'open', response: 'Acknowledged — response within 2 working days' }, STATUS_ISO);
-    const g = G.client.en.afterIssues.issues[2];
-    expect({ when: fresh.when, status: fresh.status, resp: fresh.response, tagClass: tag(fresh.tone) }).toEqual({ when: g.when, status: g.status, resp: g.resp, tagClass: g.tagClass });
-    // The prototype numbered the third new issue "CI-010" ('CI-0' + 10); the data layer pads to two digits (CI-10).
-    expect(G.client.en.afterIssues.issues[0].id).toBe('CI-010');
-    expect(openIssueCount(issues())).toBe(G.client.en['HLT-026'].kpis[4].value);
-  });
-
-  it('issue text, display tab, status report form', () => {
-    expect(parseIssueText('  Training dates ')).toEqual({ ok: true, value: 'Training dates' });
-    expect(parseIssueText('   ')).toEqual({ ok: false, error: 'Describe the issue or request' });
-    expect(parseIssueText(['x'])).toEqual({ ok: false, error: 'Describe the issue or request' });
-    expect(parseIssueText('x'.repeat(501))).toEqual({ ok: false, error: 'The description is too long' });
-    expect([parseClientTab('docs'), parseClientTab('nope'), parseClientTab(undefined)]).toEqual(['docs', 'progress', 'progress']);
-    expect(parseClientReport({})).toEqual({ ok: true, value: { period: 'month', format: 'pdf' } });
-    expect(parseClientReport({ period: 'quarter', format: 'pptx' })).toEqual({ ok: true, value: { period: 'quarter', format: 'pptx' } });
-    expect(parseClientReport({ period: 'Q3 2026' })).toEqual({ ok: false, error: 'Unknown period' });
-    expect(parseClientReport({ format: 'docx' })).toEqual({ ok: false, error: 'Unknown format' });
-    expect(REPORT_RESULT).toBe(G.toasts.client.en);
-    // 03 OQ2: the prototype's ID header was the engineering register's "Column mapping".
-    expect(G.labels['Column mapping']).toBe('Correspondance des colonnes');
-    expect(DOCS_TAB.idHeader).toBe('Reference');
   });
 });

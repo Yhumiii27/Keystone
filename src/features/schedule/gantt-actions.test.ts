@@ -42,7 +42,7 @@ describe('Gantt Server Functions (R-198)', () => {
   }, 60_000);
   beforeEach(() => Object.assign(viewer, { role: 'pm', name: 'Romain Aubert', plan: true, schedule: true, lead: true, lang: 'en' }));
 
-  it('rights: the project’s PMs and the director; read-only outside the workspace, on a read-only project, for the client', async () => {
+  it('rights: the project’s PMs and the director; read-only outside the workspace and on a read-only project', async () => {
     const before = await act('A1330');
     Object.assign(viewer, { role: 'englead', name: 'Antoine Girard', lead: false });
     expect(await ganttEditActivityAction('HLT-026', 'A1330', { start: '2026-12-01' })).toEqual(STRUCTURE);
@@ -54,9 +54,7 @@ describe('Gantt Server Functions (R-198)', () => {
     // The Schedule read only (Logistics, R-158), the Plan editable: still refused.
     Object.assign(viewer, { plan: true, schedule: false });
     expect(await ganttEditActivityAction('HLT-026', 'A1330', { start: '2026-12-01' })).toEqual(READ_ONLY);
-    Object.assign(viewer, { role: 'client', name: 'Nadia Bensaïd', schedule: true });
-    expect(await ganttEditActivityAction('HLT-026', 'A1330', { start: '2026-12-01' })).toEqual(READ_ONLY);
-    Object.assign(viewer, { role: 'pm', name: 'Romain Aubert' });
+    Object.assign(viewer, { role: 'pm', name: 'Romain Aubert', schedule: true });
     expect(await ganttEditActivityAction('NOPE-1', 'A1330', { start: '2026-12-01' })).toEqual({ error: 'Invalid request' });
     expect(await act('A1330')).toEqual(before);
   });

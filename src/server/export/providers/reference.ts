@@ -15,16 +15,15 @@ import { docFamily, documentStatus, drawingState, ecoStatus } from '@/server/db/
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportWorkbook } from '../types';
 import { col, compact, filterLine, kpiSheet, param, pricedWorkbook, sheet } from './common';
-import { projectFilter } from './scope';
 import { dataText } from '@/i18n/data-text';
 
 // ── Documents (Codex index) ──────────────────────────────────────────────────────────────────────────────────────────
 async function docsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   if (!ctx.project) return null;
   const { t } = ctx;
-  const [docs, visible] = await Promise.all([listVaultDocuments(), projectFilter(ctx)]);
+  const docs = await listVaultDocuments();
   // A client exports the documents shared with them on their organisation's projects (P-10a, P-10b).
-  const own = docs.filter((d) => visible(d.project) && (ctx.viewer.role !== 'client' || d.shared));
+  const own = docs;
   const numbers = (param(ctx, 'numbers') ?? '').split(',').map((s) => s.trim()).filter(Boolean).slice(0, 500);
   const query = {
     scope: parseScope(param(ctx, 'scope')), project: ctx.project.code, view: parseView(param(ctx, 'view')), family: parseFamily(param(ctx, 'fam')),
@@ -86,9 +85,9 @@ async function plmWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
 // ── ECO (Vigie mirror) ───────────────────────────────────────────────────────────────────────────────────────────────
 async function ecoWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
-  const [data, visible] = await Promise.all([getEcoScreen({ name: ctx.viewer.name, role: ctx.viewer.role }, null), projectFilter(ctx)]);
+  const data = await getEcoScreen({ name: ctx.viewer.name, role: ctx.viewer.role }, null);
   const status = ecoFilterOf(param(ctx, 'status'));
-  const ecos = data.ecos.filter((e) => (!status || e.status === status) && (ctx.viewer.role !== 'client' || e.projects.some((c) => visible(c))));
+  const ecos = data.ecos.filter((e) => !status || e.status === status);
   return {
     title: t('Engineering change orders'),
     filters: compact([status ? `${t('Status')}: ${t(ecoStatus.label(status))}` : null]),
@@ -100,7 +99,7 @@ async function ecoWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
         col('approvals', t('Approvals'), 'text', 40), col('vigie', 'Vigie', 'text', 40),
       ], ecos.map((e) => ({
         number: e.number, title: dataText(e.title, ctx.lang), type: t(e.typeLabel), status: t(e.statusLabel), from: e.fromRevision, to: e.toRevision, cost: e.costEur, days: e.scheduleDays, stock: t(e.stockImpact),
-        parts: e.parts.join(' · '), projects: e.projects.filter((c) => visible(c)).join(' · '), requestedBy: e.requestedBy, raised: e.raisedOn,
+        parts: e.parts.join(' · '), projects: e.projects.join(' · '), requestedBy: e.requestedBy, raised: e.raisedOn,
         approvals: e.approvals.map((a) => `${a.key}: ${a.decision}`).join(' · '), vigie: e.vigieUrl,
       }))),
     ],

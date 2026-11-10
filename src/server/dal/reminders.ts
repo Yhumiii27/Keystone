@@ -15,7 +15,6 @@ import {
   REMINDER_NOTICE_TITLE, dueWindow, groupByPerson, planReminders, reminderMail, reminderNoticeSub, reminderSendKey, reminderTarget, sendKeyText,
   type DueItem, type PlannedReminder, type ReminderPrefs,
 } from '@/domain/reminders';
-import { clientRefusedProject, clientSeesMeeting, clientSeesTarget } from '@/domain/rights';
 import { sortRoles } from '@/domain/auth';
 import { dataText } from '@/i18n/data-text';
 import { makeT } from '@/i18n/translate';
@@ -23,7 +22,7 @@ import { businessToday } from '@/server/clock';
 import { getConfig } from '@/server/config';
 import { getDb } from '@/server/db/client';
 import {
-  activities, activityAssignments, clients, deliverableRaci, deliverables, meetingAgendaPoints, meetingLines, meetings, milestones, persons, projectControls, projects,
+  activities, activityAssignments, deliverableRaci, deliverables, meetingAgendaPoints, meetingLines, meetings, milestones, persons, projectControls, projects,
   reminderSends, sitePrerequisites, tasks, users,
 } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
@@ -133,7 +132,7 @@ export async function collectDueItems(today: string, q?: Q): Promise<DueItem[]> 
 /** durationDays > 0 (an activity of zero duration is a milestone, reminded as a milestone). */
 const sqlPositive = (c: typeof activities.durationDays) => gte(c, 1);
 
-/** A person who can be reminded: an active user account, its roles, its organisation (client), its address. */
+/** A person who can be reminded: an active user account, its roles, its address. */
 export interface Recipient {
   userId: string;
   personId: string;
@@ -142,27 +141,24 @@ export interface Recipient {
   short: string;
   email: string | null;
   roles: RoleKey[];
-  organisation: string | null;
 }
 
 /** The active user accounts of `personIds` (person id → recipient). E-mail: the sign-in address, else the person's. */
 export async function recipientsOf(personIds: readonly string[], q?: Q): Promise<Map<string, Recipient>> {
   const db = q ?? (await getDb());
   if (!personIds.length) return new Map();
-  const org = alias(clients, 'user_org');
   const rows = await db
-    .select({ userId: users.id, personId: users.personId, roles: users.roles, email: users.email, personEmail: persons.email, full: persons.fullName, short: persons.shortName, org: org.name })
-    .from(users).innerJoin(persons, eq(persons.id, users.personId)).leftJoin(org, eq(org.id, users.clientId))
+    .select({ userId: users.id, personId: users.personId, roles: users.roles, email: users.email, personEmail: persons.email, full: persons.fullName, short: persons.shortName })
+    .from(users).innerJoin(persons, eq(persons.id, users.personId))
     .where(and(eq(users.active, true), inArray(users.personId, [...new Set(personIds)])));
   return new Map(rows.map((r) => [r.personId, {
-    userId: r.userId, personId: r.personId, name: r.full ?? r.short, short: r.short, email: r.email || r.personEmail || null, roles: sortRoles(r.roles), organisation: r.org,
+    userId: r.userId, personId: r.personId, name: r.full ?? r.short, short: r.short, email: r.email || r.personEmail || null, roles: sortRoles(r.roles),
   }]));
 }
 
 /**
- * Who may receive which item (R-041, R-042, R-043): a person holding an internal role receives every item of a running project
- * (an internal role opens any project read-only); a client only the items of their organisation's projects that their portal
- * shows (`clientSeesTarget`), never an internal meeting's action.
+ * Who may receive which item (R-041): a person holding a Keystone role receives every item of a running project (every role
+ * opens any project, read-only outside its team). D9-06: no client role any more.
  */
 export async function receiveRule(): Promise<(r: Recipient, item: DueItem) => boolean> {
   const projectRows = await listProjects();
@@ -170,12 +166,7 @@ export async function receiveRule(): Promise<(r: Recipient, item: DueItem) => bo
   return (r, item) => {
     const p = byCode.get(item.projectCode);
     if (!p) return false;
-    if (r.roles.some((role) => role !== 'client')) return true;
-    if (!r.roles.length) return false;
-    const own = !clientRefusedProject({ role: 'client', organisation: r.organisation }, p);
-    if (!own) return false;
-    if (item.kind === 'meeting_action' && !clientSeesMeeting(item.meetingType ?? 'internal')) return false;
-    return clientSeesTarget(item.screen as ScreenId, item.params, own);
+    return r.roles.length > 0;
   };
 }
 

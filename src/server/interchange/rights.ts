@@ -9,7 +9,7 @@
 // - Resource assignments: director, PM (own projects), head of department.
 // R-041 (P-2): on an existing project every role but the director imports only into a project whose named team they are on, and
 // the schedule and budget imports need the project's PM rights (PM of record, co-PM, deputy). A head of department staffs
-// every project from their department, so their resource assignments are not limited to their teams. The client never imports.
+// every project from their department, so their resource assignments are not limited to their teams.
 // Questionnaire: these lists may change here only.
 import type { RoleKey } from '@/config/screens';
 import { ENABLED_IMPORT_KINDS } from '@/domain/ch4-defaults';
@@ -44,14 +44,13 @@ export interface ImportProjectRel {
 export const importKindsOf = (role: RoleKey): ImportKind[] =>
   (Object.keys(IMPORT_ROLES) as ImportKind[])
     .filter((k) => ENABLED_IMPORT_KINDS.includes(k))
-    .filter((k) => IMPORT_ROLES[k].includes(role) || (SCHEDULE_IMPORT_KINDS.includes(k) && role !== 'client'));
+    .filter((k) => IMPORT_ROLES[k].includes(role) || SCHEDULE_IMPORT_KINDS.includes(k));
 
 /** Kinds of the "Excel / CSV" card. */
 export const TABLE_IMPORT_KINDS: readonly ImportKind[] = ['budget_lines', 'bom', 'parts', 'assignments'];
 
 /** May `role` import `kind` into a project (`rel` = the viewer's rights on it; null = no project: parts catalogue or a new project)? */
 export function canImport(role: RoleKey, kind: ImportKind, rel: ImportProjectRel | null): boolean {
-  if (role === 'client') return false;
   // D9-08: a schedule into an existing project — its leads (PM of record, co-PM, deputy) and the director, whatever the role.
   if (SCHEDULE_IMPORT_KINDS.includes(kind) && rel !== null) return rel.lead;
   if (!IMPORT_ROLES[kind].includes(role)) return false;

@@ -21,7 +21,7 @@ describe('Quality refusals say why (R-157)', () => {
     expect(deliverableRefusalText({ number: 'D-018', status: 'planned' }, 'move')).toBe('D-018 · This deliverable has moved to another step');
     expect(deliverableRefusalText({ number: 'D-014', status: 'accepted' }, 'decide')).toBe('D-014 · The client has already accepted this deliverable');
     expect(deliverableRefusalText({ number: 'D-014', status: 'rejected' }, 'decide')).toBe('D-014 · The client has already rejected this deliverable');
-    expect(deliverableRefusalText({ number: 'D-014', status: 'submitted' }, 'decide')).toBe('D-014 · Only a client contact of the project accepts or rejects this deliverable');
+    expect(deliverableRefusalText({ number: 'D-014', status: 'submitted' }, 'decide')).toBe('D-014 · Only the project manager records the client’s decision on this deliverable'); // D9-06
     expect(deliverableRefusalText({ number: 'D-016', status: 'in_progress' }, 'decide')).toBe('D-016 · This deliverable is not submitted to the client');
   });
 

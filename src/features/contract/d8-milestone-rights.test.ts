@@ -57,11 +57,6 @@ describe('P-4 — Edit / Remove milestone with Finance off the team, for the 9 p
     it(persona.role, async () => {
       const n = await spare(`Spare ${persona.role}`);
       session.role = persona.role;
-      if (persona.role === 'client') {
-        await expect(updatePaymentMilestoneAction('HLT-026', n, VALUES)).rejects.toThrow('REDIRECT /');
-        await expect(removePaymentMilestoneAction('HLT-026', n)).rejects.toThrow('REDIRECT /');
-        return;
-      }
       const ctx = await getProjectContext('HLT-026', 'contract');
       expect([persona.role, ctx.canEdit('contract')]).toEqual([persona.role, EDITORS.includes(persona.role)]);
       if (persona.role === 'finance') expect(ctx.access.teamRole).toBeNull();
@@ -101,7 +96,7 @@ describe('P-4 — the DAL writers re-check canEditContract, not the team rule', 
       await db.update(projectMembers).set({ projectRole: before.role }).where(where);
     }
     // A client, a role without the Contract screen, an unknown role: refused whatever the team says.
-    for (const role of ['client', 'procurement', 'quality', 'boss']) await refused(removePaymentMilestone('HLT-026', n, { name: 'Marie Lefebvre', role }));
+    for (const role of ['procurement', 'quality', 'boss']) await refused(removePaymentMilestone('HLT-026', n, { name: 'Marie Lefebvre', role }));
     // Finance off the team and the director (any name): accepted.
     expect(await updatePaymentMilestone('HLT-026', n, { ...PATCH, label: 'By Finance' }, { name: 'Léa Marchand', role: 'finance' })).toBe(n);
     await removePaymentMilestone('HLT-026', n, { name: 'Somebody Else', role: 'director' });

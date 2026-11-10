@@ -3,7 +3,7 @@
 // - fabrication progress and inspections (plan, edit, remove a planned one, record the result and the NCR number): the portfolio
 //   director, procurement and quality, on every project (`canEditExpediting`), the Purchase orders screen in their workspace;
 // - the release note (issue, withdraw with a reason): quality and the director (`canIssueRelease`).
-// The project's PMs and the other roles read; the client is refused (getProjectContext). The writers (src/server/dal/expediting.ts)
+// The project's PMs and the other roles read. The writers (src/server/dal/expediting.ts)
 // validate with the pure rules and re-check the rights inside their transaction.
 import { revalidatePath } from 'next/cache';
 import { EXPEDITING_ERRORS } from '@/domain/expediting';

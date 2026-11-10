@@ -1,6 +1,6 @@
 // Sign-in rules (R-038 Microsoft Entra ID, R-039 real users) — pure, shared by the proxy, the auth routes and the DAL.
-// Decisions: I-2a (Entra ID for every EPC2i application), I-2b (no client access at launch: IT simply opens no client
-// account), DELIVERY-7-PLAN §1 (roles come from Entra ID — app roles in the token, or group ids mapped by IT in
+// Decisions: I-2a (Entra ID for every EPC2i application), D9-06 / D9-22 (clients never see Keystone: no client role, a
+// token's 'client' role is ignored), DELIVERY-7-PLAN §1 (roles come from Entra ID — app roles in the token, or group ids mapped by IT in
 // configuration —, the person from the token e-mail matched to `persons`; no user-administration screen, D-7a).
 import type { RoleKey } from '@/config/screens';
 
@@ -8,7 +8,7 @@ import type { RoleKey } from '@/config/screens';
  * Keystone roles from the broadest workspace to the narrowest. A user holding several roles starts in the first one
  * they hold (the "highest") and may switch to another in the account menu.
  */
-export const ROLE_PRIORITY: readonly RoleKey[] = ['director', 'pm', 'depthead', 'englead', 'quality', 'procurement', 'finance', 'logistics', 'member', 'client'];
+export const ROLE_PRIORITY: readonly RoleKey[] = ['director', 'pm', 'depthead', 'englead', 'quality', 'procurement', 'finance', 'logistics', 'member'];
 
 /** Role names shown in the account menu (EN source strings, translated through t()). */
 export const ROLE_LABEL: Record<RoleKey, string> = {
@@ -23,7 +23,6 @@ export const ROLE_LABEL: Record<RoleKey, string> = {
   finance: 'Finance',
   // R-158: Entra app role 'logistics' / 'Keystone.Logistics' (or an ENTRA_GROUP_ROLES mapping to "logistics").
   logistics: 'Logistics',
-  client: 'Client',
 };
 
 export const isRoleKey = (v: unknown): v is RoleKey => typeof v === 'string' && (ROLE_PRIORITY as readonly string[]).includes(v);
@@ -135,7 +134,6 @@ export type SignInRefusal =
   | 'ambiguous_user' // several persons share it
   | 'no_role' // the token grants no Keystone role
   | 'inactive' // the user account is deactivated
-  | 'no_organisation' // a client user whose person belongs to no client organisation
   | 'account_mismatch'; // the person is already linked to another Microsoft account
 
 /** Refusal reasons as written in the audit trail ("Sign-in refused · Unknown e-mail", EN source strings). */
@@ -145,7 +143,6 @@ export const SIGN_IN_REFUSAL_LABEL: Record<SignInRefusal, string> = {
   ambiguous_user: 'E-mail shared by several people',
   no_role: 'No Keystone role',
   inactive: 'Account deactivated',
-  no_organisation: 'No client organisation',
   account_mismatch: 'Linked to another Microsoft account',
 };
 
@@ -161,7 +158,6 @@ export const SIGN_IN_ERROR: Record<SignInError, string> = {
   ambiguous_user: 'Several people share your e-mail address in Keystone. Ask IT to correct the staff directory.',
   no_role: 'No Keystone role is assigned to your account. Ask IT to assign you a role.',
   inactive: 'Your Keystone account is deactivated.',
-  no_organisation: 'Your client account is not attached to any organisation.',
   account_mismatch: 'This person is already linked to another Microsoft account.',
   expired: 'The sign-in took too long. Please try again.',
   state: 'The sign-in could not be verified. Please try again.',
@@ -177,8 +173,6 @@ export const isSignInError = (v: unknown): v is SignInError => typeof v === 'str
 /** The person a token e-mail designates, as the sign-in sees it. */
 export interface SignInPerson {
   personId: string;
-  /** Client organisation name of the person (external contacts), null for EPC2i staff. */
-  organisation: string | null;
 }
 
 /** The user row already linked to the person or to the Microsoft account, if any. */
@@ -187,11 +181,10 @@ export interface SignInUser {
   personId: string;
   entraObjectId: string | null;
   active: boolean;
-  organisation: string | null;
 }
 
 export type SignInDecision =
-  | { ok: true; personId: string; userId: string | null; roles: RoleKey[]; organisation: string | null }
+  | { ok: true; personId: string; userId: string | null; roles: RoleKey[] }
   | { ok: false; reason: SignInRefusal };
 
 /**
@@ -209,11 +202,9 @@ export function decideSignIn(input: {
   const { byObjectId, roles } = input;
   let personId: string;
   let user: SignInUser | null;
-  let organisation: string | null;
   if (byObjectId) {
     personId = byObjectId.personId;
     user = byObjectId;
-    organisation = byObjectId.organisation;
   } else {
     if (!input.email) return { ok: false, reason: 'no_email' };
     if (!input.persons.length) return { ok: false, reason: 'unknown_user' };
@@ -221,21 +212,17 @@ export function decideSignIn(input: {
     personId = input.persons[0].personId;
     user = input.userOfPerson;
     if (user && user.entraObjectId && user.entraObjectId !== input.oid) return { ok: false, reason: 'account_mismatch' };
-    organisation = input.persons[0].organisation ?? user?.organisation ?? null;
   }
   if (user && !user.active) return { ok: false, reason: 'inactive' };
   if (!roles.length) return { ok: false, reason: 'no_role' };
-  if (roles.includes('client') && !organisation) return { ok: false, reason: 'no_organisation' };
-  return { ok: true, personId, userId: user?.userId ?? null, roles, organisation };
+  return { ok: true, personId, userId: user?.userId ?? null, roles };
 }
 
 /**
- * Title under the user's name (EN source string): a client user reads "Client — <organisation>" (as the prototype's
- * client persona), staff their job title, else the name of their highest role.
+ * Title under the user's name (EN source string): their job title, else the name of their highest role.
  */
-export function userTitle(jobTitle: string | null | undefined, roles: readonly RoleKey[], organisation: string | null): string {
+export function userTitle(jobTitle: string | null | undefined, roles: readonly RoleKey[]): string {
   const top = sortRoles(roles)[0];
-  if (top === 'client' && organisation) return `Client — ${organisation}`;
   if (jobTitle && jobTitle.trim()) return jobTitle.trim();
   return top ? ROLE_LABEL[top] : 'Team member';
 }

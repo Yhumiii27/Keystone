@@ -32,7 +32,7 @@ import { listAudit } from '@/server/dal/notifications';
 import { issueInvoiceAction, removePaymentMilestoneAction, updatePaymentMilestoneAction } from './actions';
 import { billingView, contractView, editMilestoneValues, invoiceFormDef } from './model';
 
-const ROLES: RoleKey[] = ['director', 'pm', 'procurement', 'finance', 'client', 'depthead', 'member', 'englead', 'quality'];
+const ROLES: RoleKey[] = ['director', 'pm', 'procurement', 'finance', 'depthead', 'member', 'englead', 'quality'];
 // P-4 (R-044, roles-rates-hr lot): procurement no longer edits the contract; Finance does, on every project.
 const CONTRACT_EDITORS: RoleKey[] = ['director', 'pm', 'finance'];
 const hlt = async () => (await getContract('HLT-026'))!;
@@ -49,12 +49,6 @@ describe('R-077 — Edit / Remove milestone for the 9 personas', () => {
     it(role, async () => {
       const n = await addPaymentMilestone('HLT-026', { label: `Spare ${role}`, sharePct: 1, contractualDue: '2027-02-01' }, 'Marie Lefebvre');
       session.role = role;
-      if (role === 'client') {
-        // R-042 (P-1): Contract is outside the client's workspace → sent home.
-        await expect(updatePaymentMilestoneAction('HLT-026', n, VALUES)).rejects.toThrow('REDIRECT /');
-        await expect(removePaymentMilestoneAction('HLT-026', n)).rejects.toThrow('REDIRECT /');
-        return;
-      }
       if (!CONTRACT_EDITORS.includes(role)) {
         const ro = { error: 'This contract is read-only for you' };
         expect(await updatePaymentMilestoneAction('HLT-026', n, VALUES)).toEqual(ro);

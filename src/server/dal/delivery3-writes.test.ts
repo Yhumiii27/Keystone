@@ -9,7 +9,7 @@ import { openDatabase } from '@/server/db/open';
 import { getCashFlow, listBillingPlans } from './cashflow';
 import { addAmendment, addBond, addPaymentMilestone, getContract, issueInvoice, markInvoicePaid, updateContractSheet } from './contract';
 import {
-  acknowledgeDocument, depositInCodex, freezeDocument, getCodexSyncState, getDocumentRecord, listVaultDocuments,
+  depositInCodex, freezeDocument, getCodexSyncState, getDocumentRecord, listVaultDocuments,
   proposeDocumentRelease, recordCircuitStart, recordDocumentDecision,
 } from './documents';
 import { createInterface, freezeInterface, listInterfaces, markInterfaceReceived } from './interfaces';
@@ -64,16 +64,14 @@ describe('Codex vault writers', () => {
     await proposeDocumentRelease(draft.number, 'Antoine Girard');
     const d = await vault(draft.number);
     expect([d.canApprove, d.nextApprover === 'M. Lefebvre']).toEqual([true, false]);
-    for (const wrong of [{ name: 'Julien Wagner', role: 'member' }, { name: 'Marie Lefebvre', role: 'pm' }, { name: 'Nadia Bensaïd', role: 'client' }])
+    for (const wrong of [{ name: 'Julien Wagner', role: 'member' }, { name: 'Marie Lefebvre', role: 'pm' }])
       await expect(recordDocumentDecision(d.number, { decision: 'approved' }, wrong)).rejects.toThrow('You are not the approver of this step');
     expect((await vault(d.number)).circuitState.approved).toEqual([]);
     expect(await recordDocumentDecision(d.number, { decision: 'approved' }, { name: 'Marie Lefebvre', role: 'director' })).toMatchObject({ step: d.circuitState.nextStep });
   });
 
-  it('client acknowledges PID-HLT-026; the record keeps no download log (D-2: it stays in Codex)', async () => {
-    await acknowledgeDocument('PID-HLT-026', 'Nadia Bensaïd');
-    expect((await vault('PID-HLT-026')).acknowledged).toBe(true);
-    await expect(acknowledgeDocument('BOM-MEC-026', 'Nadia Bensaïd')).rejects.toThrow(/not shared/);
+  it('the record keeps no download log (D-2: it stays in Codex)', async () => {
+    // D9-06: the client's "Acknowledge receipt" went with the client portal.
     // D-2 = a (R-127): no Keystone download log (logDocumentDownload and document_downloads are gone).
     expect(await getDocumentRecord('PID-HLT-026')).not.toHaveProperty('downloads');
   });

@@ -1,7 +1,7 @@
 // Documents Server Functions against an in-memory database: access checks, the deposit hand-off (new document
 // numbered CER-HLT-042, new revision back to Draft), the approval circuit (named approver / director; Delivery 7: the
 // decisions go to Codex through the outbox and the release comes from Codex's answer — P-7b, R-124), downloads, "Sync
-// now" and the client's acknowledgement — with the viewer as the actor. Session and project context are mocked.
+// now" — with the viewer as the actor. Session and project context are mocked.
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const viewer = { name: 'Marie Lefebvre', short: 'M. Lefebvre', role: 'director', canEdit: true, isMine: true };
@@ -10,19 +10,17 @@ vi.mock('@/server/session', async () => {
   const { makeT } = await import('@/i18n/translate');
   return { getI18n: async () => ({ lang: 'en', t: makeT('en') }) };
 });
-// `isMine` = on the project's named team (R-041 access.member); the client's organisation is the demo one.
+// `isMine` = on the project's named team (R-041 access.member).
 vi.mock('@/server/project-context', async () => {
-  const { listProjects } = await import('@/server/dal/projects');
   return {
     getProjectContext: async (code: string) => ({
       project: { code },
-      viewer: { name: viewer.name, short: viewer.short, role: viewer.role, organisation: viewer.role === 'client' ? 'Port authority' : null },
+      viewer: { name: viewer.name, short: viewer.short, role: viewer.role, },
       canEdit: () => viewer.canEdit,
       outside: false,
       isMine: viewer.isMine,
       access: { member: viewer.isMine },
     }),
-    clientProjectCodes: async () => new Set((await listProjects()).filter((p) => p.client === 'Port authority').map((p) => p.code)),
   };
 });
 
@@ -33,8 +31,7 @@ import { docsBadge } from '@/server/dal/docs-badge';
 import { validateEngRelease } from '@/server/dal/engineering';
 import { applyCodexDocumentStates } from '@/server/integrations/codex/mirror';
 import { listAudit } from '@/server/dal/notifications';
-import { sendMinutes } from '@/server/dal/meetings';
-import { acknowledgeDocumentAction, approveDocumentAction, depositInCodexAction, logDownloadAction, syncCodexAction } from './actions';
+import { approveDocumentAction, depositInCodexAction, logDownloadAction, syncCodexAction } from './actions';
 
 const as = (name: string, short: string, role: string, extra: Partial<typeof viewer> = {}) => Object.assign(viewer, { name, short, role, canEdit: true, isMine: true }, extra);
 
@@ -52,9 +49,6 @@ describe('documents Server Functions', () => {
     viewer.isMine = false;
     expect(await depositInCodexAction({ project: 'HLT-026', type: 'CER', title: 'x' })).toEqual(NOT_TEAM);
     expect(await depositInCodexAction({ project: 'HLT-026', revisionOf: 'GA-HLT-026' })).toEqual(NOT_TEAM);
-    as('Nadia Bensaïd', 'N. Bensaïd', 'client');
-    expect(await depositInCodexAction({ project: 'HLT-026', type: 'CER', title: 'x' })).toEqual(NOT_TEAM);
-    expect(await syncCodexAction('HLT-026')).toEqual({ error: 'Only the portfolio director synchronises the Codex index' });
     as('Romain Aubert', 'R. Aubert', 'pm');
     expect(await syncCodexAction('HLT-026')).toEqual({ error: 'Only the portfolio director synchronises the Codex index' });
     // A revision is deposited from the record's own project vault.
@@ -100,8 +94,6 @@ describe('documents Server Functions', () => {
   it('"Approve in Codex": only the named approver (or the director); the decisions wait for Codex, which releases the record', async () => {
     as('Romain Aubert', 'R. Aubert', 'pm');
     expect(await approveDocumentAction('HLT-026', 'RPT-HLT-014')).toEqual({ error: 'You are not the approver of this step' });
-    as('Nadia Bensaïd', 'N. Bensaïd', 'client', { canEdit: false });
-    expect(await approveDocumentAction('HLT-026', 'RPT-HLT-014')).toEqual({ error: 'You are not the approver of this step' });
     as('Gabriel Comte', 'G. Comte', 'quality');
     expect(await approveDocumentAction('HLT-026', 'RPT-HLT-014')).toEqual({ ok: true, toast: 'RPT-HLT-014 · Approved · Pending sync with Codex' });
     let d = (await getDocumentRecord('RPT-HLT-014'))!;
@@ -143,14 +135,9 @@ describe('documents Server Functions', () => {
     expect(d.approvals.map((a) => [a.who, a.signed, a.keystone])).toEqual([['J. Wagner', true, null], ['M. Lefebvre', true, null], ['M. Lefebvre', true, null]]);
   });
 
-  it('downloads: the Codex hand-off for every viewer (nothing logged, D-2); a client downloads the shared records of their projects only', async () => {
-    as('Nadia Bensaïd', 'N. Bensaïd', 'client', { canEdit: false });
-    // P-10a / P-10b: an internal record (not shared) or another organisation's record is unknown to the client.
-    expect(await logDownloadAction('HLT-026', 'LST-INS-026')).toEqual({ error: 'Unknown document' });
-    expect(await logDownloadAction('HLT-026', 'PID-NDC-031')).toEqual({ error: 'Unknown document' });
-    // D-2 = a (R-127): the files are in Codex — the hand-off toast; no Codex link for the client (no Codex access).
+  it('downloads: the Codex hand-off for every viewer (nothing logged, D-2)', async () => {
+    // D-2 = a (R-127): the files are in Codex — the hand-off toast. D9-06: no client viewer any more (the portal is gone).
     const HAND_OFF = 'Download needs Codex — the document files are stored in Codex';
-    expect(await logDownloadAction('HLT-026', 'PID-HLT-026')).toEqual({ ok: true, toast: HAND_OFF, link: null });
     as('Julien Wagner', 'J. Wagner', 'member');
     expect(await logDownloadAction('HLT-026', 'PID-HLT-026', 'Native')).toEqual({
       ok: true, toast: HAND_OFF, link: { href: 'http://localhost:3100/?document=PID-HLT-026&revision=D', label: 'Open Codex' },
@@ -170,26 +157,4 @@ describe('documents Server Functions', () => {
     expect(r).toEqual({ ok: true, toast: 'Codex · simulated sync (mock connector) · 417 records · 5 decisions pending sync with Codex' });
   });
 
-  it('client "Acknowledge receipt": the client of the project only, shared records only', async () => {
-    as('Romain Aubert', 'R. Aubert', 'pm');
-    expect(await acknowledgeDocumentAction('HLT-026', 'PID-HLT-026')).toEqual({ error: 'Only the client can acknowledge receipt' });
-    as('Nadia Bensaïd', 'N. Bensaïd', 'client', { isMine: false });
-    expect(await acknowledgeDocumentAction('NDC-031', 'PID-NDC-031')).toEqual({ error: 'Only the client can acknowledge receipt' });
-    as('Nadia Bensaïd', 'N. Bensaïd', 'client');
-    expect(await acknowledgeDocumentAction('HLT-026', 'LST-INS-026')).toEqual({ error: 'Unknown document' });
-    expect(await acknowledgeDocumentAction('HLT-026', 'PID-HLT-026')).toEqual({ ok: true });
-    const d = (await getDocumentRecord('PID-HLT-026'))!;
-    expect(d.acknowledged).toBe(true);
-    expect(d.distribution[0]).toMatchObject({ kind: 'client', acknowledgedOn: '2026-09-25' }); // R-013: the business date, not Codex's 29 Sep
-  });
-
-  it('P-10b (integration review): the minutes of an internal meeting are not shared — the client can neither download nor acknowledge them', async () => {
-    const { minutesNumber } = await sendMinutes('MTG-118', 'Romain Aubert');
-    as('Romain Aubert', 'R. Aubert', 'pm');
-    expect(await logDownloadAction('HLT-026', minutesNumber)).toMatchObject({ ok: true });
-    as('Nadia Bensaïd', 'N. Bensaïd', 'client');
-    expect(await logDownloadAction('HLT-026', minutesNumber)).toEqual({ error: 'Unknown document' });
-    expect(await acknowledgeDocumentAction('HLT-026', minutesNumber)).toEqual({ error: 'Unknown document' });
-    expect((await getDocumentRecord(minutesNumber))!.acknowledged).toBe(false);
-  });
 });

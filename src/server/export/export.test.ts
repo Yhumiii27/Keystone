@@ -9,7 +9,7 @@ import { exportLog } from '@/server/db/schema';
 import { getDb } from '@/server/db/client';
 import { toCsv } from './csv';
 import { renderPdf, pdfText } from './pdf';
-import { ExportError, buildExportContext, exportFileName, logExport, runExport } from './run';
+import { buildExportContext, exportFileName, logExport, runExport } from './run';
 import { readXlsx, sheetName, toXlsx } from './xlsx';
 import { pdfTextLines } from './test/pdf-text';
 import type { ExportSheet } from './types';
@@ -101,28 +101,24 @@ describe('export context and reference providers (seeded database)', () => {
     setDb(await withoutK14Demo(await openDatabase())); // K-14: compared with the prototype without the APM-008 rows (src/test/k14.ts)
   }, 60_000);
 
-  it('access rules: unknown screen, missing / unknown project, client on another organisation', async () => {
+  it('access rules: unknown screen, missing / unknown project', async () => {
     await expect(ctxOf('nope', 'director', '')).rejects.toMatchObject({ status: 404 });
     await expect(ctxOf('budget', 'director', '')).rejects.toMatchObject({ status: 400 });
     await expect(ctxOf('budget', 'director', 'code=XXX-999')).rejects.toMatchObject({ status: 404 });
-    await expect(ctxOf('budget', 'client', 'code=NDC-031')).rejects.toBeInstanceOf(ExportError);
-    // P-1: outside their workspace a client is refused (even on their own project); an internal role exports read-only.
-    await expect(ctxOf('budget', 'client', 'code=HLT-026')).rejects.toMatchObject({ status: 403 });
+    // An internal role outside its workspace exports read-only.
     const c = await ctxOf('budget', 'quality', 'code=HLT-026&tab=setup&format=xlsx');
     expect([c.project?.code, c.outside, c.readOnly, c.ratesMasked, c.params.get('tab'), c.params.has('format')]).toEqual(['HLT-026', true, false, true, 'setup', false]);
     const pm = await ctxOf('budget', 'pm', 'code=NDC-031');
     expect([pm.readOnly, pm.ratesMasked, pm.outside]).toEqual([true, false, false]);
   });
 
-  it('projects register: director sees every project, the client is refused (P-1); filters apply', async () => {
+  it('projects register: director sees every project; filters apply', async () => {
     const all = await runExport(await ctxOf('projects', 'director', ''), 'csv');
     const lines = new TextDecoder().decode(all.body).replace(/^﻿/, '').trim().split('\r\n');
     expect(all.rowCount).toBe(17);
     expect(lines[0]).toBe('Code,Project,Stage,Project manager,Client,Analytic code,Machine type,Start date,Finish,Health,SPI,CPI,Next milestone,Attention');
     // R-185: the machine type column gives the equipment lines (Harbor Line: its EMP and three MEMU).
     expect(lines[1].startsWith('HLT-026,Harbor Line Terminal Expansion,Fabrication & Assemblage,R. Aubert,Port authority,HAV004,1 × EMP · 3 × MEMU,2026-01,2026-12,')).toBe(true); // R-157: Start / Finish are month dates
-    // P-1: the projects register is outside the client's workspace — refused (the provider still filters by organisation).
-    await expect(ctxOf('projects', 'client', '')).rejects.toMatchObject({ status: 403 });
     const q = await runExport(await ctxOf('projects', 'director', 'q=harbor&view=budget'), 'xlsx');
     const [sheet] = await readXlsx(q.body);
     expect(sheet.rows.length).toBe(2);

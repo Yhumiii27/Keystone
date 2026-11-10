@@ -105,12 +105,6 @@ describe('/projects/[code]/engineering', () => {
     expect(html((await syn({}, 'NDC-031')).EngEmpty)).toContain('Pas encore de registre ingénierie pour ce projet — importez une première liste pour démarrer.');
   });
 
-  it('R-042 (P-1): engineering is outside the client’s workspace — the client is sent home', async () => {
-    session.role = 'client';
-    await expect(syn({})).rejects.toThrow('REDIRECT /');
-    await expect(dis('mechanical', {})).rejects.toThrow('REDIRECT /');
-  });
-
   it('R-041 (P-2): the engineering lead and the quality manager edit Harbor Line (referents), not NDC-031', async () => {
     for (const role of ['englead', 'quality']) {
       session.role = role;

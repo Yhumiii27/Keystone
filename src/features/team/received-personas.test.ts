@@ -42,10 +42,6 @@ describe('R-116 — Mark received: personas', () => {
     let editors = 0;
     for (const p of PERSONAS) {
       session.role = p.role;
-      if (p.role === 'client') {
-        await expect(markInterfaceReceivedAction('HLT-026', 'IF-05', { received: '28 Sep 2026' })).rejects.toThrow('REDIRECT');
-        continue;
-      }
       const canEdit = (await getProjectContext('HLT-026', 'interfaces')).canEdit('interfaces');
       const r = await markInterfaceReceivedAction('HLT-026', 'IF-05', { received: '1 Oct 2026' });
       if (canEdit) {

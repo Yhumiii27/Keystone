@@ -293,7 +293,7 @@ export function canArbitrateConflict(
   viewer: { headed: readonly string[]; lead: boolean },
   conflict: { department: string | null },
 ): boolean {
-  if (!Object.hasOwn(ROLE_SCREENS, role) || role === 'client') return false;
+  if (!Object.hasOwn(ROLE_SCREENS, role)) return false;
   if (role === 'director') return true;
   if (conflict.department) return canDecideDepartment(role, viewer.headed, conflict.department);
   return viewer.lead;

@@ -6,11 +6,9 @@
 // Purchase orders 4308–4328, Skills 4394, Drawings 4373–4376); each is reproduced here at the scale the Home needs.
 import { screenHref, type RoleKey, type ScreenId } from '@/config/screens';
 import type { Lang } from '@/i18n/translate';
-import { dateOf, dayLabel, money } from '@/lib/format';
-import { displayOfIso, dowOfIso, type StepDecision } from '@/server/db/codes';
+import { dayLabel, money } from '@/lib/format';
+import { displayOfIso, dowOfIso } from '@/server/db/codes';
 import { workdayOffsetOf } from './clock';
-import { CR_STEPS, currentStep } from './change-control';
-import { BASE_CURRENCY, moneyIn, type CurrencyCode } from './currency';
 import { weekHoursOf } from './kpis';
 import { mainShortfall, peakWeekNumbers, unmetDemand, weekRangesText, type CapacityRow } from './resources';
 import { nextWeekEnd, spanText } from './tasks';
@@ -238,76 +236,6 @@ export interface ChangeRequest {
   chain: Partial<Record<'pm' | 'director' | 'client' | 'ccb', string>>;
 }
 
-/** Client deliverable row (DELIVERABLES 3464): [id, title, type, status, note]. */
-export interface ClientDeliverable {
-  id: string;
-  title: string;
-  type: string;
-  status: string;
-  note: string;
-}
-
-/** A line of the project's deliverables register (quality DAL `listDeliverables`), as the client Home needs it. */
-export interface RegisterDeliverable {
-  number: string;
-  title: string;
-  /** Settings label of the type ("Test & inspection reports"). */
-  typeLabel: string;
-  status: 'planned' | 'in_progress' | 'internal_review' | 'submitted' | 'accepted' | 'rejected';
-  statusLabel: string;
-  /** The register's acceptance text ("Accept by 2 Oct", "Issue 30 Sep", "25 Sep · comments issued"). */
-  acceptanceText: string;
-  /** ISO date of the client's acceptance (PV), null when not accepted. */
-  acceptedOn: string | null;
-  /** The same date as displayed ("18 Sep"). */
-  acceptedOnText: string | null;
-}
-
-/**
- * Deliverables on the client Home (the prototype's static DELIVERABLES 3464: D-014…D-017 of Harbor Line), from the
- * register: being produced, waiting for the client, rejected, or accepted since `acceptedSince` (ISO, the business date
- * − 30 days); planned ones and older acceptances stay on the client portal. Register order.
- */
-export function clientHomeDeliverables(rows: RegisterDeliverable[], acceptedSince: string): ClientDeliverable[] {
-  return rows
-    .filter((d) => d.status !== 'planned' && (d.status !== 'accepted' || (!!d.acceptedOn && d.acceptedOn >= acceptedSince)))
-    .map((d) => ({
-      id: d.number, title: d.title, type: d.typeLabel, status: d.statusLabel,
-      note: d.status === 'accepted' && d.acceptedOnText ? `Signed ${d.acceptedOnText}` : d.acceptanceText,
-    }));
-}
-
-/** A milestone of the project's billing plan (client portal `invoices`). */
-export interface BillingInvoice {
-  /** "M3" on a contract plan; null on a legacy monthly plan. */
-  milestoneNumber: string | null;
-  /** "M3 Structure topped out" (contract) / "Sep" (legacy monthly plan). */
-  milestone: string;
-  amountKeur: number;
-  status: string;
-  /** "INV-2026-003"; null on a legacy plan. */
-  invoiceNumber: string | null;
-  /** Payment due date as displayed ("10 Nov"); null when unknown. */
-  dueText: string | null;
-}
-
-/** The client's open invoice: the first invoiced, unpaid milestone of the billing plan; null when none. */
-export function clientOpenInvoice(plan: BillingInvoice[], currency: CurrencyCode = BASE_CURRENCY): ClientInput['invoice'] {
-  const m = plan.find((x) => x.status === 'invoiced');
-  if (!m) return null;
-  // "M3 Structure topped out" → number "M3" + name "Structure topped out" (the name is translated, the number is not).
-  const name = m.milestoneNumber && m.milestone.startsWith(m.milestoneNumber + ' ') ? m.milestone.slice(m.milestoneNumber.length + 1) : m.milestone;
-  return { invoiceNumber: m.invoiceNumber, milestoneNumber: m.milestoneNumber, name, amount: m.amountKeur, due: m.dueText, currency };
-}
-
-/** "INV-2026-003 · M3 Structure topped out · €1.38M · due 10 Nov" (parts the plan does not have are left out). */
-function invoiceSub(inv: NonNullable<ClientInput['invoice']>, lang: Lang): Txt {
-  // C-9: in the invoice's currency (the contract's).
-  const p: Record<string, string> = { name: inv.name, amt: moneyIn(inv.amount, inv.currency ?? BASE_CURRENCY, lang), inv: inv.invoiceNumber ?? '', no: inv.milestoneNumber ?? '', date: inv.due ?? '' };
-  const parts = [inv.invoiceNumber ? '{inv}' : '', inv.milestoneNumber ? '{no} {name}' : '{name}', '{amt}', inv.due ? 'due {date}' : ''];
-  return { tpl: parts.filter(Boolean).join(' · '), p };
-}
-
 export interface PortfolioAlert {
   title: string;
   detail: string;
@@ -377,14 +305,6 @@ const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.le
 const lcFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 /** "Second steel crew — schedule recovery" → "Second steel crew". */
 const shortTitle = (s: string) => s.split(' — ')[0];
-/**
- * The request waits for `step`: in review and `step` is its current step — delivery 8 (R-069, P-6b: PM → director → client →
- * board, so the client's Home lists a request only once the PM and the director approved it).
- */
-const crAwaiting = (cr: ChangeRequest, step: 'client' | 'director') =>
-  changeRequestStatus(cr) === 'in_review' &&
-  currentStep(CR_STEPS.map((s) => ({ step: s, decision: (cr.chain[s] === 'n/a' ? 'na' : (cr.chain[s] ?? null)) as StepDecision | null }))) === step;
-
 const WEEKDAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /**
@@ -886,77 +806,6 @@ export function logisticsHome(i: LogisticsInput): HomeView {
       rows: i.shipments
         .filter((s) => s.openGaps > 0 || s.missingHs > 0)
         .map((s) => row(s.ref, s.equipment.join(', '), s.missingHs ? { tpl: '{n} without HS code', p: { n: s.missingHs } } : { tpl: '{n} gaps to justify', p: { n: s.openGaps } }, TAG.accent, href())),
-    },
-  };
-}
-
-// ── Client ───────────────────────────────────────────────────────────────────────────────────────────────
-
-export interface ClientInput {
-  lang: Lang;
-  persona: Persona;
-  /** Business date (ISO, R-013): the greeting, and My work's due buckets. */
-  today: string;
-  project: CurrentProject;
-  evm: EvmSeries | null;
-  schedule: ScheduleHeader | null;
-  /** Change requests of the current project. */
-  changeRequests: ChangeRequest[];
-  /** Deliverables awaiting / past client acceptance (current project). */
-  deliverables: ClientDeliverable[];
-  /** Open invoice of the billing plan (INV-2026-003, "M3", "Structure topped out", 1380 k€, "10 Nov"), null when none. */
-  invoice: { invoiceNumber: string | null; milestoneNumber: string | null; name: string; amount: number; due: string | null; currency?: CurrencyCode } | null;
-}
-
-export function clientHome(i: ClientInput): HomeView {
-  const { lang, project } = i;
-  const code = project.code;
-  const s = i.schedule;
-  const cpHref = (tab: string) => homeHref('client', { code, params: { tab } });
-  const crs = i.changeRequests.filter((c) => crAwaiting(c, 'client'));
-  const crAmount = crs.reduce((a, c) => a + c.amount, 0);
-  const submitted = i.deliverables.filter((d) => d.status === 'Submitted').length;
-  const next = s?.milestones.find((m) => m.statusLabel !== 'Done');
-  const progress = i.evm ? Math.round((evmAtDate(i.evm).ev / i.evm.bac) * 100) + '%' : '—';
-  const crSub = (c: ChangeRequest): Txt => {
-    const p = { amt: money(c.amount, lang, { signed: true }), n: Math.abs(c.days), date: c.date };
-    if (c.days < 0) return { tpl: '{amt} · schedule recovery {n} days · submitted {date}', p };
-    if (c.days > 0) return { tpl: '{amt} · handover +{n} days · submitted {date}', p };
-    return { tpl: '{amt} · submitted {date}', p };
-  };
-  return {
-    ...greeting(i.persona, i.today),
-    kpis: [
-      kpi('Progress', progress, i.evm ? { tpl: 'Work completed · {name}', p: { name: project.name } } : NO_DATA, false),
-      // Template, not 'Next: ' + name: the FR dictionary only knows "Next: Structure topped out".
-      kpi('Milestones reached', s ? s.milesText : '—', next ? { tpl: 'Next: {name}', p: { name: next.name } } : s ? '—' : NO_DATA, false),
-      kpi('Change requests to approve', crs.length, crs.length ? `${crs.map((c) => c.id).join(', ')} · ${money(crAmount, lang)}` : 'None', crs.length > 0),
-      kpi('Deliverables to accept', submitted, 'Acceptance due within 10 days', false),
-    ],
-    left: {
-      title: 'Milestones',
-      rows: (s?.milestones ?? []).map((m) =>
-        row(
-          m.name,
-          { tpl: 'Baseline {b} · Forecast {f}', p: { b: dateOf(m.baselineMonth + s!.start), f: dateOf(m.forecastMonth + s!.start) } },
-          m.statusLabel,
-          m.statusLabel === 'Done' ? TAG.neutral : m.statusLabel === 'Late' ? TAG.accent : TAG.outline,
-          cpHref('progress'),
-        ),
-      ),
-    },
-    right: {
-      title: 'Waiting for your decision',
-      rows: [
-        ...crs.map((c) => row(`${c.id} — ${shortTitle(c.title)}`, crSub(c), 'Approve / reject', TAG.accent, cpHref('decisions'))),
-        ...i.deliverables.map((d) =>
-          row(`${d.id} · ${d.title}`, { tpl: '{type} · {note}', p: { type: d.type, note: d.note } }, d.status, d.status === 'Submitted' ? TAG.accent : d.status === 'Accepted' ? TAG.neutral : TAG.outline, cpHref('decisions')),
-        ),
-        // The open invoice of the billing plan (the prototype's static "Milestone 4 invoice €640k · due 15 Oct", A-5).
-        ...(i.invoice
-          ? [row('Invoices', invoiceSub(i.invoice, lang), 'Open', TAG.outline, cpHref('invoices'))]
-          : []),
-      ],
     },
   };
 }

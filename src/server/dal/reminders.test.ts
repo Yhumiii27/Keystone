@@ -179,23 +179,18 @@ describe('preferences', () => {
 });
 
 describe('rights', () => {
-  it('a client receives only what their portal shows: deliverables of their projects, actions of external meetings — never a task or an internal meeting', async () => {
+  // D9-06: no client user any more — a person without a Keystone account (the client's contact) is never reminded.
+  it('a person without an account receives nothing; an internal role receives every item of a running project', async () => {
     const db = await getDb();
     const [nadia] = await db.select({ id: persons.id }).from(persons).where(eq(persons.fullName, 'Nadia Bensaïd'));
-    const r = (await recipientsOf([nadia.id])).get(nadia.id)!;
-    expect(r.roles).toEqual(['client']);
+    expect((await recipientsOf([nadia.id])).get(nadia.id)).toBeUndefined();
     const may = await receiveRule();
-    const item = (over: Partial<DueItem>): DueItem => ({ kind: 'task', id: 'x', projectCode: 'HLT-026', ref: 'R', title: 'T', dueOn: '2026-09-30', personIds: [nadia.id], screen: 'task', params: {}, ...over });
-    expect(may(r, item({ kind: 'deliverable', screen: 'quality', params: { qTab: 'dlv', dlv: 'D-017' } }))).toBe(true);
-    expect(may(r, item({ kind: 'deliverable', projectCode: 'NDC-031', screen: 'quality', params: { qTab: 'dlv', dlv: 'D-110' } }))).toBe(false);
-    expect(may(r, item({ kind: 'task', params: { taskId: 'T-2305' } }))).toBe(false);
-    expect(may(r, item({ kind: 'meeting_action', screen: 'meetings', params: { meeting: 'MTG-118' }, meetingType: 'internal' }))).toBe(false);
-    expect(may(r, item({ kind: 'meeting_action', screen: 'meetings', params: { meeting: 'MTG-118' }, meetingType: 'external' }))).toBe(true);
+    const item = (over: Partial<DueItem>): DueItem => ({ kind: 'task', id: 'x', projectCode: 'HLT-026', ref: 'R', title: 'T', dueOn: '2026-09-30', personIds: [], screen: 'task', params: {}, ...over });
     // An internal role receives every item of a running project (read-only outside its team).
     const julien = (await recipientsOf([(await userOf('member'))!.personId])).values().next().value!;
     expect(may(julien, item({ projectCode: 'NDC-031' }))).toBe(true);
 
-    // End to end: an action of an internal meeting given to the client is not reminded to her.
+    // End to end: an action of a meeting given to the client's contact is not reminded to her.
     const [line] = await db.select({ id: meetingLines.id }).from(meetingLines)
       .innerJoin(meetingAgendaPoints, eq(meetingAgendaPoints.id, meetingLines.agendaPointId)).innerJoin(meetings, eq(meetings.id, meetingAgendaPoints.meetingId))
       .where(and(eq(meetings.number, 'MTG-118'), eq(meetingLines.type, 'action'), eq(meetingLines.done, false)));

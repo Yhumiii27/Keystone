@@ -44,7 +44,7 @@ import { itpScreenView } from './model';
 
 /** The prototype's today for recorded results (NOW_ISO, 30 Sep 2026): the pure rules take it explicitly since R-013. */
 const NOW = '2026-09-30';
-const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'] as const;
+const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'] as const;
 // R-013: one business date (25 Sep 2026 on the demo data set, not the prototype's 30 Sep): results are dated on or before it.
 const FAIL = { result: 'failed', date: '25 Sep', inspector: 'Gabriel Comte', comment: 'DFT 180 µm < 240 µm on G2 web' };
 
@@ -137,7 +137,6 @@ describe('R-112 "Record result" Server Function and DAL', () => {
       englead: 'ok',
       quality: 'ok',
       procurement: 'This inspection plan is read-only for you',
-      client: 'Only quality and the engineering lead record inspection results',
     });
     // The writer re-checks the role whatever the caller.
     await expect(recordItpResult('HLT-026', 'I-02', { result: 'passed', resultOn: '2026-09-12', inspector: 'x' }, { name: 'Romain Aubert', role: 'pm' })).rejects.toThrow(/Only quality/);

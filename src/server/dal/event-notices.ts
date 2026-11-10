@@ -1,51 +1,30 @@
 import 'server-only';
 // R-015 (X-6a « les événements clés, aux personnes concernées ») — the key events delivery 8 left without a notice, addressed to
 // persons (their active user accounts), never to a whole role, the actor never told:
-// - SAT planned → the client contacts of the project (the SAT invitation, R-036: e-mailed at once like every client notice);
-// - deliverable submitted to the client → the client contacts (the acceptance awaits them); the client's decision → the
-//   deliverable's R (RACI) and the project's leads;
+// - the client's decision on a deliverable (recorded by the project's leads, D9-06) → the deliverable's R (RACI) and the
+//   project's leads;
 // - inspection (ITP) failed → the project's leads and its quality / engineering referents (the NCR itself is reported in Vigie);
 // - indicator alert (R-130 rules) → the project's leads and the directors (pool and approvals alerts: the directors), once per
 //   alert while it lasts (job "indicator-alerts").
-// Client notices respect the decision of 25 Oct 2026 (R-190): a group subsidiary (internal client) follows its projects in the
-// CAPEX application, so its contacts receive nothing from Keystone; the portal and its notices are for external clients only.
+// D9-06 (owner, 10 Nov 2026): clients never see Keystone — the SAT invitation and the "deliverable to accept" notice to the
+// client contacts were removed with the Client role.
 // Sent after the writer's transaction committed, best effort (a failure is logged, never undoes the write). Titles are fixed
 // English templates the bell translates (t()); typed text stays in the sub-line (fieldsText, R-148).
-import { and, arrayOverlaps, eq, inArray, like, or } from 'drizzle-orm';
+import { and, eq, inArray, like } from 'drizzle-orm';
 import type { PortfolioAlert } from '@/domain/portfolio-alerts';
 import { sendKeyText } from '@/domain/reminders';
 import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
-import { displayOfIso } from '@/server/db/codes';
-import { clients, deliverableRaci, deliverables, persons, projects, reminderSends, users } from '@/server/db/schema';
-import type { DB, Tx } from '@/server/db/types';
+import { deliverableRaci, deliverables, projects, reminderSends, users } from '@/server/db/schema';
 import { logError } from '@/server/log';
 import { notifyPersonIds, personIdsWithRoles, projectLeadIds, projectReferentIds } from './person-notices';
 
-type Q = DB | Tx;
-
 /** Fixed EN titles (FR in src/i18n/extra/d9-notification-mail.json; the reference after " · " stays as is). */
 export const EVENT_NOTICE = {
-  sat: 'SAT invitation',
-  deliverableToAccept: (n: string) => `Deliverable to accept · ${n}`,
   deliverableAccepted: (n: string) => `Deliverable accepted by the client · ${n}`,
   deliverableRejected: (n: string) => `Deliverable rejected by the client · ${n}`,
   inspectionFailed: (n: string) => `Inspection failed · ${n}`,
 } as const;
-
-/**
- * The client contacts to notify on a project: active accounts holding the client role of the project's client organisation
- * (the account's or the person's organisation). None when the client is a group subsidiary (internal client, R-190) or the
- * project has no client.
- */
-export async function clientContactIds(q: Q, projectCode: string): Promise<string[]> {
-  const [p] = await q.select({ clientId: projects.clientId, internal: clients.isInternal }).from(projects).leftJoin(clients, eq(clients.id, projects.clientId))
-    .where(eq(projects.code, projectCode));
-  if (!p?.clientId || p.internal) return [];
-  const rows = await q.select({ id: users.personId }).from(users).innerJoin(persons, eq(persons.id, users.personId))
-    .where(and(eq(users.active, true), arrayOverlaps(users.roles, ['client']), or(eq(users.clientId, p.clientId), eq(persons.clientId, p.clientId))));
-  return [...new Set(rows.map((r) => r.id))];
-}
 
 async function safely(where: string, run: () => Promise<string[]>, fields: Record<string, unknown>): Promise<string[]> {
   try {
@@ -54,30 +33,6 @@ async function safely(where: string, run: () => Promise<string[]>, fields: Recor
     logError(where, e, fields);
     return [];
   }
-}
-
-/** "Plan SAT": the invitation to the project's client contacts (portal). Returns the persons notified. */
-export async function notifySatPlanned(
-  projectCode: string, sat: { system: string; date: string; witnesses?: string | null }, actorPersonId: string | null,
-): Promise<string[]> {
-  return safely('notifySatPlanned', async () => {
-    const db = await getDb();
-    const to = await clientContactIds(db, projectCode);
-    const sub = [sat.system, displayOfIso(sat.date), sat.witnesses?.trim() || null].filter(Boolean).join(' · ');
-    return notifyPersonIds({ kind: 'request', title: EVENT_NOTICE.sat, sub, screen: 'client', params: {}, projectCode }, to, actorPersonId);
-  }, { projectCode });
-}
-
-/** "Submit to client": the client contacts are asked to accept (My approvals / Quality's register). */
-export async function notifyDeliverableSubmitted(projectCode: string, d: { number: string; title: string }, actorPersonId: string | null): Promise<string[]> {
-  return safely('notifyDeliverableSubmitted', async () => {
-    const db = await getDb();
-    const to = await clientContactIds(db, projectCode);
-    return notifyPersonIds(
-      { kind: 'approval', title: EVENT_NOTICE.deliverableToAccept(d.number), sub: d.title, screen: 'quality', params: { qTab: 'dlv', dlv: d.number }, projectCode },
-      to, actorPersonId,
-    );
-  }, { projectCode, number: d.number });
 }
 
 /** The client's acceptance or rejection: the deliverable's R (RACI) and the project's leads. */
@@ -174,7 +129,7 @@ export async function runIndicatorAlerts(on?: string): Promise<IndicatorAlertRun
   if (!alerts.length) return run;
   const directors = await personIdsWithRoles(db, ['director']);
   const internal = new Set((await db.select({ p: users.personId, roles: users.roles }).from(users).where(eq(users.active, true)))
-    .filter((u) => u.roles.some((r) => r !== 'client')).map((u) => u.p));
+    .filter((u) => u.roles.length > 0).map((u) => u.p));
   for (const a of alerts) {
     try {
       const leads = a.code ? await projectLeadIds(db, a.code) : [];

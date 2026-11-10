@@ -232,7 +232,7 @@ describe('"Delivery — quality check" items (apprItems 4725)', () => {
     const items = (code: string) => qcInboxItems(protoReceipts(code), 2026).map(({ id, title, sub, when, who }) => ({ kind: 'Delivery — quality check', id, title, sub, when, who }));
     expect(items('HLT-026')).toEqual(G.inbox.en.quality);
     for (const code of PROJECTS) expect(items(code)).toEqual(G.inbox.en[`procurement:${code}`].map((i: any) => ({ ...i, when: day(i.when) })));
-    for (const role of ['director', 'pm', 'depthead', 'member', 'englead', 'client']) expect(G.inbox.en[role]).toEqual([]);
+    for (const role of ['director', 'pm', 'depthead', 'member', 'englead']) expect(G.inbox.en[role]).toEqual([]);
     expect(qcInboxItems(protoReceipts('HLT-026'), 2026)[0].whenIso).toBe('2026-09-18');
   });
 
@@ -243,7 +243,7 @@ describe('"Delivery — quality check" items (apprItems 4725)', () => {
 
   it('QC decisions: the inbox roles and the portfolio director; the project manager registers but does not accept', () => {
     expect(QC_DECIDERS).toEqual(['quality', 'procurement', 'director']);
-    expect((['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'] as const).map(canDecideQc)).toEqual([true, false, false, false, false, true, true, false]);
+    expect((['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'] as const).map(canDecideQc)).toEqual([true, false, false, false, false, true, true]);
   });
 });
 

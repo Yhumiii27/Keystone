@@ -61,10 +61,6 @@ describe('My projects · schedule quality (S-32)', () => {
   it('every persona: the link follows the Schedule screen; the fallback wall has no cell; the client is refused', async () => {
     for (const p of PERSONAS) {
       as(p.role);
-      if (p.role === 'client') {
-        await expect(MyProjectsPage()).rejects.toThrow();
-        continue;
-      }
       const b = await body();
       if (b.props.data.fallback) {
         expect([p.role, b.props.quality]).toEqual([p.role, undefined]);

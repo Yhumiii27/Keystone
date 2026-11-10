@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { PERSONA_BY_ROLE } from '@/config/personas';
-import { canSee, type RoleKey, type ScreenId } from '@/config/screens';
+import { type RoleKey } from '@/config/screens';
 import { approvalCount } from '@/server/approvals';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
@@ -17,7 +17,6 @@ import { createPart } from './parts';
 import { approvePurchaseOrder, rejectSupplierInvoice } from './purchasing';
 import { applyStockMovement, listStock } from './stock';
 import { crumbExtraOf, deepLink, defaultTitleOf, getShellNav, notificationsFor, projectBadges, searchShell, zoneBarOf } from './shell';
-import { listProjects } from './projects';
 
 // Golden values need the pristine seed: use a fresh in-memory database, never the local ./.data one
 // (which the running app mutates, e.g. a project created by the wizard changes the counts).
@@ -32,7 +31,8 @@ describe('shell badges (golden values, docs/spec/01 §4.3–4.4)', () => {
     // My tasks counts the viewer's own tasks due today (the prototype showed Hélène Sauvage's 2 to every persona,
     // docs/spec/00 §7.16): Marie Lefebvre has none.
     const want = {
-      mywork: '', myapprovals: '5', docs: '1',
+      // D9-06: My approvals + D-014, D-016 (the client's decision the director may record).
+      mywork: '', myapprovals: '7', docs: '1',
       meetings: '1', interfaces: '1', eng: '4', 'eng-elec': '2', 'eng-auto': '2', pid: '9', risks: '1', changes: '1',
       quality: '1', site: 'NO GO', eco: '1', procurement: '3', orders: '1', deliveries: '1', stock: '1', sav: '2',
       // R-021: the prototype's "!" came from Outlook's seeded "Warning" — no connector exists for Outlook (A-15).
@@ -57,8 +57,9 @@ describe('shell badges (golden values, docs/spec/01 §4.3–4.4)', () => {
     // The quality manager heads Quality (RQ-042) and is the next Codex approver of RPT-HLT-014, besides the
     // BL-2026-0521 delivery QC: 3 items where the prototype's fixed routing gave 1 (docs/spec/08 §7, myapprovals report).
     // R-044: Finance has no My approvals kind (no approvals inbox, no screen in its workspace); R-158: nor Logistics. Deviation P-6b (delivery 8,
-    // R-069): CR-008 waits for the director before it reaches the client — client 3 → 2.
-    const want: Record<RoleKey, number> = { director: 5, pm: 3, depthead: 2, member: 0, englead: 0, quality: 3, procurement: 5, finance: 0, logistics: 0, client: 2 };
+    // R-069): CR-008 waits for the director before it reaches the client. D9-06: no client persona any more; the project's leads
+    // (director, PM) get the submitted deliverables D-014 and D-016 to record the client's decision.
+    const want: Record<RoleKey, number> = { director: 7, pm: 5, depthead: 2, member: 0, englead: 0, quality: 3, procurement: 5, finance: 0, logistics: 0 };
     for (const [role, n] of Object.entries(want)) {
       expect([role, await approvalCount(PERSONA_BY_ROLE[role as RoleKey], 'HLT-026')]).toEqual([role, n]);
       expect([role, (await projectBadges(role as RoleKey, 'HLT-026')).myapprovals]).toEqual([role, n ? String(n) : '']);
@@ -83,7 +84,8 @@ describe('shell badges (golden values, docs/spec/01 §4.3–4.4)', () => {
 describe('notifications (docs/spec/01 §5.5)', () => {
   it('initial unread counts per role', async () => {
     // R-044: no notification audience for Finance; R-158: none for Logistics.
-    const want: Record<RoleKey, number> = { director: 3, pm: 4, depthead: 1, member: 2, englead: 1, quality: 1, procurement: 1, finance: 0, logistics: 0, client: 1 };
+    // D9-06: no client persona any more.
+    const want: Record<RoleKey, number> = { director: 3, pm: 4, depthead: 1, member: 2, englead: 1, quality: 1, procurement: 1, finance: 0, logistics: 0 };
     for (const [role, n] of Object.entries(want)) expect([role, (await notificationsFor(role as RoleKey)).filter((x) => !x.read).length]).toEqual([role, n]);
   });
 
@@ -104,7 +106,6 @@ describe('notifications (docs/spec/01 §5.5)', () => {
     expect(await unread('director')).toEqual(['n1', 'n2', 'n8']);
     await markAllNotificationsRead('director');
     expect(await unread('director')).toEqual([]);
-    expect(await unread('client')).toEqual(['n1']);
   });
 });
 
@@ -281,71 +282,4 @@ describe('Delivery 5 badges, search and zone bar follow the database (docs/spec/
     const b = await projectBadges('director', 'EWA-051');
     for (const k of ['eng', 'eng-elec', 'pid', 'quality', 'itp', 'site'] as const) expect([k, b[k]]).toEqual([k, undefined]);
   });
-
-  it('R-042 / R-043 (P-1, P-10a, P-10b): the client\'s sidebar and search stay on their organisation\'s projects and workspace', async () => {
-    const nav = await getShellNav('client');
-    const all = await listProjects();
-    expect(nav.projects.map((p) => p.code)).toEqual(all.filter((p) => p.client === 'Port authority').map((p) => p.code));
-    expect(nav.projects.map((p) => p.code)).toContain('HLT-026');
-    expect(nav.projects.map((p) => p.code)).not.toContain('NDC-031');
-    expect(Object.keys(nav.projectBadges)).toEqual(nav.projects.map((p) => p.code));
-    // Their project opens their portal; another organisation's project is not found. R-148: the PM's name is data.
-    expect(await searchShell('harbor', 'HLT-026', 'client')).toEqual([
-      { kind: 'Project', title: 'Harbor Line Terminal Expansion', sub: expect.stringMatching(/^HLT-026 · /), subData: [expect.any(String)], href: '/projects/HLT-026/client' },
-    ]);
-    expect(await searchShell('northgate', 'HLT-026', 'client')).toEqual([]);
-    // No NCR, purchase order, part, person, ECO, risk, drawing or activity; change requests of their organisation's projects.
-    for (const q of ['ev-2026-029', 'po-1082', 'gbx-91', 'wagner', 'eco-2026', 'dwg'])
-      expect(await searchShell(q, 'HLT-026', 'client'), q).toEqual([]);
-    expect((await searchShell('cr-008', 'HLT-026', 'client')).map((h) => [h.kind, h.href])).toEqual([['Change request', '/projects/HLT-026/changes?cr=CR-008']]);
-    // X-5 (R-052): the change requests of every project of their organisation, wherever they search from (Harbor Line's here).
-    expect((await searchShell('cr-0', 'NDC-031', 'client')).map((h) => h.href)).toEqual([
-      '/projects/HLT-026/changes?cr=CR-004', '/projects/HLT-026/changes?cr=CR-006', '/projects/HLT-026/changes?cr=CR-007',
-    ]);
-    // Staff search is unchanged.
-    expect((await searchShell('northgate', 'HLT-026')).map((h) => h.kind)).toContain('Project');
-  });
-});
-
-describe('R-043 (P-1, P-10b): the client\'s sidebar badges', () => {
-  const meetingsBadge = async (role: RoleKey) => Number((await getShellNav(role)).projectBadges['HLT-026'].meetings || 0);
-
-  it('only the entries of her workspace: no NCR count, no purchasing or other internal count, no global badge', async () => {
-    const staff = await getShellNav('director');
-    const nav = await getShellNav('client');
-    // Staff keep their badges (the open critical NCR of HLT-026 on Quality, purchasing, site Go / No Go…).
-    expect(staff.projectBadges['HLT-026'].quality).toMatch(/^\d+$/);
-    expect(staff.projectBadges['HLT-026'].site).toBe('NO GO');
-    expect(Object.values(staff.globalBadges).some(Boolean)).toBe(true);
-    // The client: nothing of the internal counts reaches her browser (the sidebar props).
-    expect(nav.globalBadges).toEqual({});
-    for (const [code, b] of Object.entries(nav.projectBadges)) {
-      for (const id of Object.keys(b)) expect([code, id, canSee('client', id as ScreenId)]).toEqual([code, id, true]);
-      expect([code, b.quality]).toEqual([code, undefined]);
-    }
-    const b = nav.projectBadges['HLT-026'];
-    for (const k of ['procurement', 'orders', 'deliveries', 'stock', 'eco', 'sav', 'risks', 'eng', 'pid', 'site', 'interfaces', 'billing', 'docs', 'mywork'] as const)
-      expect([k, b[k]]).toEqual([k, undefined]);
-    expect(JSON.stringify(nav)).not.toContain('NO GO');
-    // Her own entries keep their badges: My approvals (her inbox) and the change requests in review.
-    expect(b.myapprovals).toMatch(/^\d+$/);
-    expect(b.myapprovals).toBe((await projectBadges('client', 'HLT-026')).myapprovals);
-    expect(b.changes).toBe(staff.projectBadges['HLT-026'].changes);
-    // projectBadges() follows the same rule.
-    expect((await projectBadges('client', 'HLT-026')).quality).toBeUndefined();
-  });
-
-  it('her Meetings badge counts the external meetings with notes in progress only', async () => {
-    const [staff0, client0] = [await meetingsBadge('director'), await meetingsBadge('client')];
-    const write = async (type: 'internal' | 'external') => {
-      const n = await createMeeting('HLT-026', {
-        title: `${type} review`, type, series: 'one_off', date: '2026-10-07', time: '9:00', location: '', invitees: ['R. Aubert'], agenda: ['Progress'],
-      }, 'Romain Aubert');
-      await addMeetingLine(n, 0, { type: 'info', text: 'Noted', owner: '', due: '' }, 'Romain Aubert');
-    };
-    await write('internal');
-    expect([await meetingsBadge('director'), await meetingsBadge('client')]).toEqual([staff0 + 1, client0]);
-    await write('external');
-    expect([await meetingsBadge('director'), await meetingsBadge('client')]).toEqual([staff0 + 2, client0 + 1]);
-  }, 20_000);
 });

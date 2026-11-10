@@ -1,25 +1,15 @@
-// Export providers — Project review: Trends & status report, Lessons learned & closure, and the client portal.
+// Export providers — Project review: Trends & status report, Lessons learned & closure.
 // Trends: the weekly snapshot history and the status reports generated so far; PDF = the status report (steering
 // audience by default; `?audience=&period=&sections=` as the "Generate status report" form). Lessons learned: lessons,
-// closure checklist and satisfaction survey. Client portal (client = own projects, enforced by the export context):
-// the current tab's table first; documents `status` (client status report), `statement` (account statement) and `planning`
-// (the Gantt PDF of the "Schedule" tab, S-9a).
-import { parseClientTab } from '@/domain/rexclient';
-import { makeT } from '@/i18n/translate';
-import { getClientScreen, getRexScreen } from '@/features/rexclient/screen';
-import { getClientPortal } from '@/server/dal/client';
+// closure checklist and satisfaction survey. The client portal's exports went with the portal (D9-06, D9-22).
+import { getRexScreen } from '@/features/rexclient/screen';
 import { getRex } from '@/server/dal/rex';
-import { getScheduleData } from '@/server/dal/schedule';
 import { getTrends } from '@/server/dal/trends';
 import { canSeeMargins } from '@/domain/portfolio-finance';
 import { registerExportProvider } from '../registry';
-import type { ExportContext, ExportSheet, ExportWorkbook, PdfDocument } from '../types';
-import { statementDocument } from './contract';
-import { yearOfIso } from '@/domain/clock';
-import { col, isoOf, kpiSheet, monthIso, param, sheet } from './common';
-import { statusReportDocument, statusReportOptions, trendsReportOptions } from './status-report';
-import { scheduleDocument } from './steering';
-import { dataText } from '@/i18n/data-text';
+import type { ExportContext, ExportWorkbook } from '../types';
+import { col, kpiSheet, sheet } from './common';
+import { statusReportDocument, trendsReportOptions } from './status-report';
 
 // ── Trends ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 async function trendsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
@@ -77,64 +67,6 @@ async function rexWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   };
 }
 
-// ── Client portal ────────────────────────────────────────────────────────────────────────────────────────────────────
-async function clientWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
-  if (!ctx.project) return null;
-  const { t, lang } = ctx;
-  const tab = parseClientTab(param(ctx, 'tab'));
-  // The same view in English gives the dates as the app writes them ("15 Mar", "13 Jan ’27") → real dates in Excel; texts that
-  // are not a date ("Accepted on delivery") stay as shown.
-  const [view, en, portal] = await Promise.all([
-    getClientScreen(ctx.project.code, tab, t, lang), getClientScreen(ctx.project.code, tab, makeT('en'), 'en'), getClientPortal(ctx.project.code),
-  ]);
-  const dateOf = (enText: string | undefined, shown: string) => (enText ? isoOf(enText, yearOfIso(ctx.today)) : null) ?? shown;
-  const milestones = sheet(t('Milestones'), [col('name', t('Milestone'), 'text', 34), col('baseline', t('Baseline'), 'date'), col('forecast', t('Forecast'), 'date'), col('status', t('Status'), 'text', 12)],
-    view.milestones.map((m, i) => ({ name: m.name, baseline: dateOf(en.milestones[i]?.baseDate, m.baseDate), forecast: dateOf(en.milestones[i]?.fcDate, m.fcDate), status: m.status })));
-  const decisions = sheet(t('Decisions'), [col('id', t('Reference'), 'text', 10), col('kind', t('Type'), 'text', 16), col('title', t('Title'), 'text', 40), col('sub', t('Details'), 'text', 36), col('when', t('Since'), 'date'), col('state', t('Status'), 'text', 14)], [
-    ...view.decisions.map((d, i) => ({ id: d.id, kind: d.kindLabel, title: d.title, sub: d.sub, when: dateOf(en.decisions[i]?.when, d.when), state: t('Waiting for you') })),
-    ...view.decided.map((d, i) => ({ id: d.id, kind: '', title: d.title, sub: '', when: dateOf(en.decided[i]?.when, d.when), state: d.state })),
-  ]);
-  const invoices = sheet(t('Invoices'), [
-    col('no', t('Milestone'), 'text', 8), col('name', t('Description'), 'text', 36), col('amount', t('Amount'), 'money_keur'), col('status', t('Status'), 'text', 14),
-    col('invoice', t('Invoice'), 'text', 14), col('due', t('Due date'), 'date'), col('paid', t('Paid on'), 'date'),
-  ], portal.invoices.map((i, k) => ({
-    no: i.milestoneNumber ?? '', name: view.invoices[k]?.name ?? t(i.milestone), amount: i.amountKeur, status: t(i.statusLabel), invoice: i.invoiceNumber ?? '', due: i.dueOn, paid: i.paidOn,
-  })));
-  const issues = sheet(t('Issues'), [col('id', t('Issue'), 'text', 8), col('title', t('Title'), 'text', 44), col('raised', t('Raised on'), 'date'), col('by', t('Raised by'), 'text', 18), col('status', t('Status'), 'text', 12), col('response', t('Response'), 'text', 44)],
-    portal.issues.map((i, k) => ({ id: i.number, title: view.issues[k]?.title ?? i.title, raised: i.raisedOn, by: i.raisedBy, status: t(i.statusLabel), response: view.issues[k]?.response ?? i.response })));
-  const docs = sheet(t('Documents'), [col('id', view.docsLabels.idHeader, 'text', 18), col('title', t('Title'), 'text', 40), col('type', t('Type'), 'text', 18), col('date', t('Date'), 'date'), col('rev', t('Revision'), 'text', 8), col('status', t('Status'), 'text', 14), col('ack', t('Acknowledged'), 'boolean')],
-    view.docs.map((d, i) => ({ id: d.id, title: d.title, type: d.typeLabel, date: dateOf(en.docs[i]?.date, d.date), rev: d.rev, status: d.status, ack: d.acknowledged })));
-  // "Schedule" tab (S-9a): the work packages' baseline and forecast dates (no owners — internal), from the schedule data.
-  const schedule = tab === 'planning' ? await getScheduleData(ctx.project.code) : null;
-  const planning = schedule
-    ? sheet(t('Work packages'), [
-      col('name', t('Work package'), 'text', 34), col('bStart', t('Baseline start'), 'date'), col('bEnd', t('Baseline finish'), 'date'), col('fStart', t('Forecast start'), 'date'),
-      col('fEnd', t('Forecast finish'), 'date'), col('pct', t('% complete'), 'percent'), col('critical', t('Critical'), 'boolean'),
-    ], schedule.bars.map((b) => {
-      const s0 = schedule.header.start;
-      return {
-        name: dataText(b.name, ctx.lang), bStart: monthIso(s0 + b.baselineStart), bEnd: monthIso(s0 + b.baselineEnd), fStart: monthIso(s0 + b.forecastStart), fEnd: monthIso(s0 + b.forecastEnd),
-        pct: b.pct / 100, critical: b.critical,
-      };
-    }))
-    : null;
-  const byTab: Record<string, ExportSheet> = { progress: milestones, decisions, invoices, issues, docs, ...(planning ? { planning } : {}) };
-  const first = byTab[tab] ?? milestones;
-  return {
-    title: t('My project — client view'),
-    filters: [`${t('Tab')}: ${view.tabs.find((x) => x.value === tab)?.label ?? tab}`],
-    sheets: [first, ...[...(planning ? [planning] : []), milestones, decisions, invoices, issues, docs].filter((s) => s !== first), kpiSheet(ctx, view.kpis.map((k) => ({ label: k.label, value: k.value, sub: k.sub })))],
-  };
-}
-
-const clientStatusReport = (ctx: ExportContext): Promise<PdfDocument | null> => statusReportDocument(ctx, statusReportOptions(ctx, 'client'));
-
 registerExportProvider({ screen: 'trends', table: trendsWorkbook, pdf: trendsReport, documents: { status: trendsReport } });
 registerExportProvider({ screen: 'rex', table: rexWorkbook, fileBase: () => 'closure' });
-/** Client portal "Schedule" tab (S-9a): the Gantt PDF without the internal indicators. */
-const clientPlanning = (ctx: ExportContext): Promise<PdfDocument | null> => scheduleDocument(ctx, 'client');
-
-registerExportProvider({
-  screen: 'client', table: clientWorkbook, pdf: clientStatusReport, documents: { status: clientStatusReport, statement: statementDocument, planning: clientPlanning },
-});
 

@@ -1,6 +1,6 @@
 // R-160 (P2, D9-32): CE conformity Server Functions and data layer against an in-memory database — who edits what (engineering
-// lead and quality: the whole file; the project's PM: the declaration and the marking; the director and the others: read; a
-// client never), the audit row with the changed fields before / after, R-010 (a file changed meanwhile by someone else is
+// lead and quality: the whole file; the project's PM: the declaration and the marking; the director and the others: read),
+// the audit row with the changed fields before / after, R-010 (a file changed meanwhile by someone else is
 // refused), the readiness computed against the Settings checklists, the portfolio list, the handover warning (never a block)
 // and the Settings checklists (the portfolio director only). Session and project context are mocked.
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -58,13 +58,11 @@ describe('CE conformity', () => {
     expect(ce.deliverables[0].type).toBe('certificates');
   });
 
-  it('who edits: the director and procurement read, a viewer outside the workspace or a client is refused', async () => {
+  it('who edits: the director and procurement read, a viewer outside the workspace is refused (D9-06: no client role)', async () => {
     as('Marie Lefebvre', 'director', true);
     expect(await saveCeFileAction('HLT-026', 'EQ-02', { regime: 'machinery' }, null)).toEqual({ error: 'This CE file is read-only for you' });
     as('Fabien Bertrand', 'procurement', false, false);
     viewer.lang = 'fr';
-    expect(await saveCeFileAction('HLT-026', 'EQ-02', { regime: 'machinery' }, null)).toEqual({ error: 'Ce dossier CE est en lecture seule pour vous' });
-    as('Nadia Bensaïd', 'client');
     expect(await saveCeFileAction('HLT-026', 'EQ-02', { regime: 'machinery' }, null)).toEqual({ error: 'Ce dossier CE est en lecture seule pour vous' });
     as('Antoine Girard', 'englead');
     expect(await saveCeFileAction('HLT-026', 'EQ-9', {}, null)).toEqual({ error: 'Requête invalide' });

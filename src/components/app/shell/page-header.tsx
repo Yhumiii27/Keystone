@@ -1,11 +1,10 @@
 // PageHeader — the header every screen renders first (docs/spec/01 §5, §7; docs/spec/02 C-02, C-03).
 // Server Component with client islands. Renders, as siblings inside <main> (gap 18):
 //   <header> breadcrumb (+ project switcher) · title (+ health, Read-only) · search · bell · status date · FR/EN · Export · primary
-//   (R-139: "View as client" before Export, for the director and the project's leads on project screens)
 //   outside banner (screen outside the viewer's workspace)
 //   zone bar (zone-scoped screens)
 // Usage: return <><PageHeader screen="plan" projectCode={code} primary={<…/>} />{…screen body…}</>
-import { ArrowLeft, CalendarBlank, Eye, GlobeHemisphereEast, House, UserCircle } from '@phosphor-icons/react/dist/ssr';
+import { CalendarBlank, Eye, GlobeHemisphereEast, House, UserCircle } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { SCREEN_BY_ID, screenHref, type ScreenId } from '@/config/screens';
@@ -17,8 +16,8 @@ import { displayOfIso } from '@/server/db/codes';
 import { dataText, fieldsText, projectLabelText } from '@/i18n/data-text';
 import { getProject, type ProjectRow } from '@/server/dal/projects';
 import { crumbExtraOf, defaultTitleOf, notificationsFor, zoneBarOf } from '@/server/dal/shell';
-import { canEditContract, canEditShipments, canPreviewClientView, clientRefusedScreen, roleReadOnly } from '@/domain/rights';
-import { getProjectScope, refuseClient } from '@/server/project-context';
+import { canEditContract, canEditShipments, roleReadOnly } from '@/domain/rights';
+import { getProjectScope } from '@/server/project-context';
 import { getI18n, getLastProject, getViewer, getZone } from '@/server/session';
 import { ExportButton, GlobalSearch, LangToggle, Notifications, ProjectSwitcher, ZoneSeg } from './header-islands';
 import { PROJECT_EDITABLE, crumbBase, isOutside } from './nav-model';
@@ -53,14 +52,10 @@ const healthView = (p: Pick<ProjectRow, 'health'>) =>
 
 export async function PageHeader({ screen, projectCode, title, crumbExtra, primary, taskId, projectParam }: PageHeaderProps) {
   const [{ t, lang }, viewer, zone, lastProject, scope, today] = await Promise.all([getI18n(), getViewer(), getZone(), getLastProject(), getProjectScope(), businessToday()]);
-  // R-042 (P-1, P-10a): backstop of the pages' own refusal — a client never gets an outside screen or another
-  // organisation's project rendered.
-  if (clientRefusedScreen(viewer.role, screen)) refuseClient();
   const def = SCREEN_BY_ID[screen];
   const isProject = def.scope === 'project';
   const code = projectCode ?? lastProject;
   const project = isProject ? await getProject(code) : projectParam ? await getProject(projectParam) : null;
-  if (project && scope.access(project).refused) refuseClient();
 
   const outside = isOutside(viewer.role, screen);
   const access = project ? scope.access(project) : null;
@@ -79,12 +74,6 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
   const ownRule = !outside && (screen === 'contract' || screen === 'shipments' || roleReadOnly(viewer.role, screen));
   const readOnly = !!project && (ownRule ? !editable : scope.readOnly(project));
   const showPrimary = !!primary && editable;
-  // R-139 (P-11 a): the director and the project's leads preview the client portal from every project screen but the portal.
-  const preview = isProject && !!project && !!access && canPreviewClientView(viewer.role, access);
-  const previewHref = preview && screen !== 'client' ? screenHref('client', { code: project.code }) : null;
-  // On the portal itself, the preview banner replaces the generic outside banner (the PM is outside there: the primary and the
-  // edits stay hidden by `outside`; deciding and acknowledging stay the client's).
-  const previewBanner = preview && screen === 'client';
 
   const extra = crumbExtra !== undefined ? crumbExtra : await crumbExtraOf(screen, { role: viewer, code, zone, taskId });
   // R-148: the contract's reference and payment terms are typed text (shown as typed); the other extras are Keystone's.
@@ -161,27 +150,11 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
         </div>
         <LangToggle lang={lang} />
         <div className={styles.actions}>
-          {previewHref && (
-            <Link href={previewHref} className={`btn btn-secondary ${styles.previewBtn}`} title={t('View as client')} aria-label={t('View as client')}>
-              <Eye />
-              <span className={styles.previewLabel}>{t('View as client')}</span>
-            </Link>
-          )}
           <ExportButton screen={screen} code={project?.code ?? code} formats={exportFormatsOf(screen)} task={taskId ?? null} />
           {showPrimary && primary}
         </div>
       </header>
-      {previewBanner && (
-        <div className={styles.outside}>
-          <Eye size={16} className={styles.accentIcon} />
-          <span className={styles.outsideText}>{t('Client view · preview · read-only')}</span>
-          <Link href={screenHref('plan', { code: project.code })} className={`btn btn-ghost ${styles.homeBtn}`}>
-            <ArrowLeft />
-            {t('Back to project')}
-          </Link>
-        </div>
-      )}
-      {outside && !previewBanner && (
+      {outside && (
         <div className={styles.outside}>
           <Eye size={16} className={styles.accentIcon} />
           <span className={styles.outsideText}>{t('Outside my workspace · Read-only · ' + viewer.title)}</span>

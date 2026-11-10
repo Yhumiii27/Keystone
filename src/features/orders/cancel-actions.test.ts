@@ -113,7 +113,7 @@ describe('R-095 Server Functions', () => {
     expect(drafts.length).toBeGreaterThanOrEqual(4);
     const rights = Object.fromEntries(await Promise.all(PERSONAS.map(async (p) => [p.role, (await poCancelRights(HLT, p.name))[drafts[0]] ?? null])));
     // R-044 (roles-rates-hr lot): Finance, the 9th persona, does not cancel orders; nor Logistics (R-158, 10th).
-    expect(rights).toEqual({ director: 'cancel', pm: 'cancel', depthead: null, member: null, englead: null, quality: null, procurement: 'cancel', finance: null, logistics: null, client: null });
+    expect(rights).toEqual({ director: 'cancel', pm: 'cancel', depthead: null, member: null, englead: null, quality: null, procurement: 'cancel', finance: null, logistics: null });
     // The drawer offers "Cancel order" to exactly those viewers (and to the editors of Orders only).
     for (const p of PERSONAS) {
       const data = await getOrdersScreen(HLT, p.name);
@@ -125,7 +125,7 @@ describe('R-095 Server Functions', () => {
   it('every persona: the Orders editors who may cancel do; the others are refused, nothing written', async () => {
     const outcome: Record<string, string> = {};
     // Refusals first (none of them may change the draft), then the author cancels it.
-    const order: RoleKey[] = ['depthead', 'member', 'englead', 'quality', 'client', 'procurement'];
+    const order: RoleKey[] = ['depthead', 'member', 'englead', 'quality', 'procurement'];
     for (const role of order) {
       as(role);
       try {
@@ -140,7 +140,6 @@ describe('R-095 Server Functions', () => {
       member: 'Purchase orders are read-only for you',
       englead: 'Purchase orders are read-only for you',
       quality: 'Purchase orders are read-only for you',
-      client: 'NEXT_REDIRECT',
       procurement: `${drafts[0]} · Cancelled`,
     });
     const po = (await getPurchaseOrder(drafts[0]))!;

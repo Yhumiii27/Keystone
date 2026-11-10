@@ -36,7 +36,7 @@ import {
 } from './actions';
 import { G } from './test-fixtures';
 
-const ROLES: RoleKey[] = ['director', 'pm', 'procurement', 'finance', 'client', 'depthead', 'member', 'englead', 'quality'];
+const ROLES: RoleKey[] = ['director', 'pm', 'procurement', 'finance', 'depthead', 'member', 'englead', 'quality'];
 /** P-4 (R-044): who edits the contract / bills on HLT-026 now — the golden's `ctrCanEdit` except procurement, plus Finance. */
 const P4: Partial<Record<RoleKey, { contract: boolean; billing: boolean }>> = {
   procurement: { contract: false, billing: false },
@@ -49,12 +49,6 @@ describe('Contract & Billing Server Functions behind the real project context', 
   for (const role of ROLES)
     it(role, async () => {
       session.role = role;
-      if (role === 'client') {
-        // R-042 (P-1): Contract and Billing are outside the client's workspace → sent home (was: the read-only refusal).
-        await expect(addAmendmentAction('HLT-026', { label: ' ', amt: '1' })).rejects.toThrow('REDIRECT /');
-        await expect(issueInvoiceAction('HLT-026', { ms: 'M3', no: 'X', date: '30 Sep 2026' })).rejects.toThrow('REDIRECT /');
-        return;
-      }
       const contract = P4[role]?.contract ?? (G.scenarios[`${role === 'director' ? 'seed' : role}|contract|en`].ctrCanEdit as boolean);
       const billing = P4[role]?.billing ?? (G.scenarios[`${role === 'director' ? 'seed' : role}|billing|en`].ctrCanEdit as boolean);
       const ro = { error: 'This contract is read-only for you' };

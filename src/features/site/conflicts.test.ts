@@ -44,17 +44,12 @@ describe('R-119 · arbitrate a site-team conflict, 9 personas', () => {
     const out: Record<string, unknown> = {};
     for (const role of ROLES) {
       as(role);
-      if (role === 'client') {
-        await expect(arbitrateConflictAction(HLT, key, { comment: 'x' })).rejects.toThrow('REDIRECT /');
-        out[role] = 'sent home';
-        continue;
-      }
       const r = await arbitrateConflictAction(HLT, key, { comment: `Checked by ${role}` });
       out[role] = 'toast' in (r as object) ? 'ok' : (r as { error: string }).error;
     }
     expect(out).toEqual({
       director: 'ok', pm: ARBITRATION_REFUSED, depthead: 'This conflict is already arbitrated', member: ARBITRATION_REFUSED, englead: ARBITRATION_REFUSED,
-      quality: ARBITRATION_REFUSED, procurement: ARBITRATION_REFUSED, finance: ARBITRATION_REFUSED, logistics: ARBITRATION_REFUSED, client: 'sent home',
+      quality: ARBITRATION_REFUSED, procurement: ARBITRATION_REFUSED, finance: ARBITRATION_REFUSED, logistics: ARBITRATION_REFUSED,
     });
     const c = (await getSite(HLT))!.collisions.find((x) => x.key === key)!;
     expect([c.resolved, c.arbitration?.comment, c.arbitration?.by]).toEqual([true, 'Checked by director', 'Marie Lefebvre']);
@@ -98,7 +93,6 @@ describe('R-119 · arbitrate a site-team conflict, 9 personas', () => {
   it('the writer re-checks the rule with the actor (a direct call)', async () => {
     const key = await keyOf('Pauline Noguès', 'cert');
     await expect(arbitrateSiteConflict(HLT, key, 'x', { name: 'Romain Aubert', role: 'pm' })).rejects.toThrow(ARBITRATION_REFUSED);
-    await expect(arbitrateSiteConflict(HLT, key, 'x', { name: 'Nadia Bensaïd', role: 'client' })).rejects.toThrow(ARBITRATION_REFUSED);
     await expect(arbitrateSiteConflict(HLT, key, 'x', { name: 'Marion Kerviel', role: 'depthead' })).rejects.toThrow(ARBITRATION_REFUSED);
     await expect(arbitrateSiteConflict(HLT, key, ' ', { name: 'Marie Lefebvre', role: 'director' })).rejects.toThrow(/required/);
     await expect(arbitrateSiteConflict(HLT, 'nope', 'x', { name: 'Marie Lefebvre', role: 'director' })).rejects.toThrow('This conflict has changed');

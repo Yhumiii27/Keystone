@@ -33,20 +33,19 @@ export default async function MeetingsPage({ params, searchParams }: { params: P
   const [{ code }, sp] = await Promise.all([params, searchParams]);
   const ctx = await getProjectContext(code, 'meetings');
   const projectCode = ctx.project.code;
-  const client = ctx.viewer.role === 'client';
-  const [{ t, lang }, data, today] = await Promise.all([getI18n(), getMeetingsScreen(projectCode, { client }), businessToday()]);
-  const canEdit = ctx.canEdit('meetings') && !client;
+  const [{ t, lang }, data, today] = await Promise.all([getI18n(), getMeetingsScreen(projectCode), businessToday()]);
+  const canEdit = ctx.canEdit('meetings');
 
   const requested = first(sp.meeting)?.toUpperCase() ?? null;
   const pinned = !!requested && data.meetings.some((m) => m.number === requested);
   const query = { view: parseMeetingsView(first(sp.view)), filter: parseMeetingFilter(first(sp.filter)), meeting: pinned ? requested : null, decisions: parseDecisionScope(first(sp.decisions)) };
-  const view = meetingsScreenView({ code: projectCode, meetings: data.meetings, questions: data.questions, query, today, client }, t, lang);
+  const view = meetingsScreenView({ code: projectCode, meetings: data.meetings, questions: data.questions, query, today }, t, lang);
   const selected = selectMeeting(data.meetings, query.meeting);
   const canWrite = canEdit && !!selected && canWriteMinutes(ctx.viewer, ctx.access, selected);
   // A risk proposal of the selected meeting's transcript opens the risk register's "New risk" form (risk editors only).
   const riskProposal = canWrite && !!selected?.transcript?.items.some((x) => x.type === 'risk' && x.status === 'proposed');
   const riskTeam = riskProposal && (await getProjectContext(projectCode, 'risks')).canEdit('risks') ? await riskOwnerOptions(projectCode) : null;
-  // S-12 a (R-067): the composer's optional "Activity" of an action — loaded for the minutes' writers only (never a client).
+  // S-12 a (R-067): the composer's optional "Activity" of an action — loaded for the minutes' writers only.
   const activities = canWrite ? (await listMeetingActivityOptions(projectCode)).map((a) => ({ value: a.code, label: `${a.code} · ${dataText(a.name, lang)}` })) : [];
 
   const primary = canEdit ? (

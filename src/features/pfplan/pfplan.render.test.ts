@@ -167,9 +167,9 @@ describe('portfolio schedule page', () => {
   });
 
   it('outside-my-workspace banner for every persona but the director and the PM (prototype `outside`, ROLE_SCREENS)', () => {
-    const roles: RoleKey[] = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'];
+    const roles: RoleKey[] = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'];
     expect(Object.fromEntries(roles.map((r) => [r, !canSee(r, 'pfplan')]))).toEqual({
-      director: false, pm: false, depthead: true, member: true, englead: true, quality: true, procurement: true, client: true,
+      director: false, pm: false, depthead: true, member: true, englead: true, quality: true, procurement: true,
     });
   });
 });

@@ -74,10 +74,6 @@ describe('Settings › supplier schedule slip threshold (S-31)', () => {
   it('the director only; whole days 1–60; audit with before / after and activity', async () => {
     for (const p of PERSONAS) {
       as(p.role);
-      if (p.role === 'client') {
-        await expect(setSupplierSlipDaysAction('8')).rejects.toThrow('REDIRECT /');
-        continue;
-      }
       const r = await setSupplierSlipDaysAction('8');
       if (p.role === 'director') expect(r).toEqual({ ok: true });
       else expect([p.role, 'error' in r]).toEqual([p.role, true]);

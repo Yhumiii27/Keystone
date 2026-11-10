@@ -70,9 +70,3 @@ test('the director shares it with the team member, who reads it with their own r
   await expect(page.getByText('Non disponible pour votre rôle')).toHaveCount(0);
   w.check();
 });
-
-test('a client is sent home', async ({ page, context }) => {
-  await viewAs(context, 'client');
-  await page.goto('/my/dashboards');
-  await expect(page).toHaveURL(/\/$/);
-});

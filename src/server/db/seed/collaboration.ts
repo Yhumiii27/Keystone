@@ -73,6 +73,8 @@ export async function seedCollaboration(tx: Tx, ctx: SeedCtx): Promise<void> {
     const startsOn = isoOfDemoDate(m.date)!;
     await tx.insert(meetings).values({
       id, projectId: must(ctx.projectByCode, m.proj, 'project'), number: m.id, title: m.title, series: meetingSeries.code(m.series), type: meetingType.code(m.type),
+      // D9-25: the prototype's external meetings were the client meetings — the demo marks them client present.
+      clientPresent: meetingType.code(m.type) === 'external',
       startsOn, startTime: m.time, startsAt: parisInstant(startsOn, m.time), durationMin: durationMinOf(m.dur), location: m.loc,
       organizerPersonId: personIdOrNull(ctx, m.organizer), organizerName: m.organizer, status: meetingStatus.code(m.status), minutesNumber: m.doc || null,
       minutesDocumentId: (m.doc && ctx.document.get(m.doc)) || null, minutesSentOn: m.sent ? isoOfDemoDate(m.sent) : null, sortOrder: i + 1,
@@ -125,8 +127,9 @@ export async function seedCollaboration(tx: Tx, ctx: SeedCtx): Promise<void> {
   type Stk = [string, string, string, string, number, number, string, string, string, string, string];
   await tx.insert(stakeholders).values(
     Object.entries(PROTO.STAKEHOLDERS as Record<string, Stk[]>).flatMap(([code, rows]) =>
-      rows.map(([name, organisation, role, type, influence, interest, attitude, contact, owner, last, notes], position) => ({
-        id: newId(), projectId: must(ctx.projectByCode, code, 'project'), name, organisation, role, type: stakeholderType.code(type), influence, interest, attitude,
+      // D9-26: the prototype's influence / interest / attitude (power / interest grid) are not kept — roles and responsibilities only.
+      rows.map(([name, organisation, role, type, , , , contact, owner, last, notes], position) => ({
+        id: newId(), projectId: must(ctx.projectByCode, code, 'project'), name, organisation, role, type: stakeholderType.code(type),
         contactEmail: contact || null, ownerPersonId: personIdOrNull(ctx, owner), ownerName: owner, lastContactOn: isoOfDemoDate(last)!, notes,
         personId: ctx.personByFull.get(name) ?? null, position,
       })),

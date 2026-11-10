@@ -7,9 +7,9 @@ type Ctx = Pick<ProjectContext, 'canEdit' | 'viewer' | 'isLead'>;
 
 /**
  * The Plan is editable for the viewer at all: not outside the workspace, on the project's team (not a read-only project,
- * R-041), never the client. What they may change then depends on `canEditStructure` / `canEditProgress`.
+ * R-041). What they may change then depends on `canEditStructure` / `canEditProgress`.
  */
-export const canEditPlan = (ctx: Ctx) => ctx.canEdit('plan') && ctx.viewer.role !== 'client';
+export const canEditPlan = (ctx: Ctx) => ctx.canEdit('plan');
 
 /**
  * Structure (P-9a): add / rename / re-order / remove work packages and activities, names, owners, durations, budgets, links,

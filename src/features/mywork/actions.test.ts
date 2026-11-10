@@ -54,7 +54,7 @@ describe('gate', () => {
   });
 
   it('outside the workspace (pm, quality, client): every write refused, nothing changes', async () => {
-    for (const role of ['pm', 'quality', 'client'] as RoleKey[]) {
+    for (const role of ['pm', 'quality'] as RoleKey[]) {
       as(role);
       expect(await setTaskStatusAction({ taskId: 'T-2305', status: 'done' })).toEqual({ ok: false, error: OUTSIDE });
       expect(await addTaskCommentAction({ taskId: 'T-2305', text: 'Hello' })).toEqual({ ok: false, error: OUTSIDE });

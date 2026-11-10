@@ -110,7 +110,8 @@ mais l’avertissement reste) ; ERP-202, NDC-031 et WSA-044 (EQ-01) sont dans la
 | Chef de projet (PM de référence, co-PM, adjoint du projet) | modifie la déclaration (signataire, date, référence) et la date du marquage CE ; le reste est conservé tel quel côté serveur (`applyCeScope`) | lisent |
 | Directeur de portefeuille | **lit** (consigne du lot) | modifie (règle A-14 de Paramètres) |
 | Autres rôles internes | lisent (hors espace de travail pour certains) | lisent |
-| Client | jamais affiché, refusé | — |
+
+Le rôle Client n’existe plus (D9-06, lot d9-noclient) : le dossier CE n’a plus de cas « client ».
 
 Règle pure `ceEditScope` ; la Server Function la calcule depuis le contexte du projet (`getProjectContext`, écran
 « Mise en service ») et l’écrivain la revérifie (espace de travail, rôle, `managesProject` pour le PM). Chaque enregistrement

@@ -99,13 +99,10 @@ describe('R-203 — user dashboards', () => {
     expect(await saveDashboardAction({ id: director, name: 'Pris' })).toEqual({ ok: false, error: 'This dashboard does not exist any more' });
     expect(await deleteDashboardAction({ id: director })).toEqual({ ok: false, error: 'This dashboard does not exist any more' });
     expect(await getDashboardFor(director, memberUser)).toBeNull();
-    as('client');
-    await expect(createDashboardAction({ name: 'Client' })).rejects.toThrow('REDIRECT /');
   });
 
   it('sharing: only active internal users; the recipient reads it, cannot change it, and sees only what their role allows', async () => {
     as('director');
-    expect(await shareDashboardAction({ id: director, userIds: [await userOf('client')] })).toEqual({ ok: false, error: 'Dashboards are shared with active internal users only' });
     expect(await shareDashboardAction({ id: director, userIds: [directorUser] })).toEqual({ ok: false, error: 'Dashboards are shared with active internal users only' });
     expect(await shareDashboardAction({ id: director, userIds: [memberUser] })).toMatchObject({ ok: true });
     expect((await getDashboardFor(director, directorUser))!.sharedWith.map((p) => p.name)).toEqual(['Julien Wagner']);
@@ -142,7 +139,7 @@ describe('R-203 — user dashboards', () => {
     expect(copy.layout.widgets.length).toBeGreaterThan(0);
   });
 
-  it.each(PERSONAS.map((p) => p.role).filter((r) => r !== 'client'))('%s: every widget of a shared dashboard is filled exactly when the role may see it', async (role) => {
+  it.each(PERSONAS.map((p) => p.role))('%s: every widget of a shared dashboard is filled exactly when the role may see it', async (role) => {
     const r = await resolveWidgets(PERSONA_BY_ROLE[role], everyWidget().widgets, 'fr');
     for (const x of r) expect(x.data.state === 'denied', `${role} · ${x.widget.kind}`).toBe(!canSeeWidget(role, x.widget));
   });

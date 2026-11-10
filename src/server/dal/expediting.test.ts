@@ -73,8 +73,6 @@ describe('R-159 · expediting rights', () => {
     expect(await saveInspectionAction('HLT-026', 'PO-1078', '', { kind: 'fat', plannedOn: '2026-10-20' })).toEqual({ ok: true });
     as('procurement');
     expect(await issueReleaseNoteAction('HLT-026', 'PO-1078', {})).toEqual({ error: 'Only quality or the director can issue or withdraw a release note' });
-    as('client');
-    await expect(saveInspectionAction('HLT-026', 'PO-1078', '', { kind: 'fat' })).rejects.toThrow(/REDIRECT/);
     await removeInspection('HLT-026', 'PO-1078', 'I-1', DIRECTOR);
   });
 });

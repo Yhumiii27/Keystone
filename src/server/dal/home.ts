@@ -4,26 +4,24 @@ import 'server-only';
 // pool's weekly loads, tasks, the skills matrix and certifications come from the database. The director's KPI tiles
 // and "Needs attention" items are the Portfolio overview's (src/server/dal/portfolio.ts). Since Delivery 4, the parts
 // catalogue, the purchase orders (and so the BOM shortfall), the drawings (PDM vault mirror) and the ECOs (Vigie
-// mirror, src/server/integrations/vigie) come from the database too; since Delivery 5, the client's deliverables
-// (the deliverables register, src/server/dal/quality.ts) and open invoice (the billing plan, as on the client portal). R-158:
+// mirror, src/server/integrations/vigie) come from the database too (the client's Home went with the Client role, D9-06). R-158:
 // the Logistics Home reads the current project's shipments (src/server/dal/shipments.ts).
 import { SHIPMENT_STATUS_LABEL, shipmentSteps } from '@/domain/shipments';
 import { getProjectShipments } from './shipments';
 import type { RoleKey } from '@/config/screens';
 import { isNotNull } from 'drizzle-orm';
 import {
-  clientHome, clientHomeDeliverables, clientOpenInvoice, deptHeadHome, directorHome, engLeadHome, homeHref, logisticsHome, memberHome, pmHome, procurementHome,
+  deptHeadHome, directorHome, engLeadHome, homeHref, logisticsHome, memberHome, pmHome, procurementHome,
   qualityHome, type ChangeRequest, type CurrentProject, type Drawing, type Eco, type EvmSeries, type HomeView, type Lookups, type Part,
   type Persona, type PersonLoad, type PortfolioAlert, type PurchaseOrder, type ResourceRequest, type ScheduleHeader, type Todo,
 } from '@/domain/home';
-import { yearOfIso } from '@/domain/clock';
 import { noProjectHome } from '@/domain/home-empty';
 import { businessToday } from '@/server/clock';
 import { inExecution } from '@/domain/portfolio';
 import { workingDayOf } from '@/domain/tasks';
 import type { Lang } from '@/i18n/translate';
 import { getDb } from '@/server/db/client';
-import { REQUEST_STATUS_TAG, addDaysIso, ecoType, fmtDOfIso, requestStatus, taskStatus } from '@/server/db/codes';
+import { REQUEST_STATUS_TAG, ecoType, requestStatus, taskStatus } from '@/server/db/codes';
 import { projects as projectsTable } from '@/server/db/schema';
 import type { ZoneKey } from '@/server/session';
 import { getCostControl, listChangeRequestsOf } from './cost';
@@ -31,14 +29,11 @@ import { listDrawings } from './drawings';
 import { listEcos } from './eco';
 import { loggedThisWeek } from './kpis';
 import { listParts } from './parts';
-import { getClientPortal } from './client';
 import { getActivities, getMilestones, getScheduleControl } from './planning';
 import { getPortfolioOverview } from './portfolio';
 import { getSkillsMatrix } from './hr';
-import { clientRefusedProject } from '@/domain/rights';
 import { getProject, listProjects, type ProjectRow } from './projects';
 import { listPurchaseOrders } from './purchasing';
-import { listDeliverables } from './quality';
 import { listApprovalDepartments, listResourceRequests } from './requests';
 import { currentLoadWeeks, getCapacityDemand, getResourcePool } from './resources';
 import { listTasks } from './tasks';
@@ -52,8 +47,6 @@ export interface HomeQuery {
    * null when the database has no project yet.
    */
   projectCode: string | null;
-  /** Client organisation of a client viewer (R-042, P-10a: their Home shows one of their organisation's projects only). */
-  organisation?: string | null;
   /** Portfolio zone filter (shared with the Portfolio screens): director KPIs and alerts follow it. */
   zone: ZoneKey | null;
   lang: Lang;
@@ -72,20 +65,6 @@ async function lookups(): Promise<Lookups> {
 const REQ_STATUS: Record<string, [string, string]> = Object.fromEntries(requestStatus.codes.map((c) => [c, [requestStatus.label(c), 'tag ' + REQUEST_STATUS_TAG[c]]]));
 /** Task status labels (STATUS_L 3264). */
 const TASK_STATUS: Record<string, string> = Object.fromEntries(taskStatus.codes.map((c) => [c, taskStatus.label(c)]));
-
-/**
- * The client Home's deliverables (being produced, waiting for the client, rejected, accepted in the last 30 days) and
- * open invoice, from the deliverables register and the billing plan the client portal shows.
- */
-async function clientInputs(code: string, today: string) {
-  const [dlv, portal] = await Promise.all([listDeliverables(code), getClientPortal(code)]);
-  const deliverables = clientHomeDeliverables(
-    dlv.map((d) => ({ ...d, acceptedOnText: d.acceptedOn ? fmtDOfIso(d.acceptedOn, yearOfIso(today)) : null })),
-    addDaysIso(today, -30),
-  );
-  const invoice = clientOpenInvoice(portal.invoices.map((m) => ({ ...m, dueText: m.dueOn ? fmtDOfIso(m.dueOn, yearOfIso(today)) : null })), portal.currency);
-  return { deliverables, invoice };
-}
 
 /** The parts catalogue (PARTS order, parts created in Keystone appended): list price, quantity per project short code. */
 async function parts(): Promise<Part[]> {
@@ -173,21 +152,12 @@ async function todos(): Promise<Todo[]> {
 const currentOf = (p: ProjectRow): CurrentProject => ({ code: p.code, name: p.name, shortCode: p.shortCode });
 
 /**
- * The project of the Home: the code when it exists (and, for a client, belongs to their organisation), else the current
- * project of the register (R-011); null when the viewer has no project.
+ * The project of the Home: the code when it exists, else the current project of the register (R-011); null when there is no
+ * project.
  */
-async function resolveProject(code: string | null, role: RoleKey, organisation?: string | null): Promise<ProjectRow | null> {
-  const current = await resolveCurrentProject(code, { role, organisation });
+async function resolveProject(code: string | null): Promise<ProjectRow | null> {
+  const current = await resolveCurrentProject(code);
   return current ? getProject(current) : null;
-}
-
-/**
- * The client's current project (P-10a): the last project used when it belongs to their organisation, else their first project
- * with data, else their first project; null when their organisation has none (never another organisation's project).
- */
-async function resolveClientProject(code: string | null, organisation: string | null): Promise<ProjectRow | null> {
-  const own = (await listProjects()).filter((p) => !clientRefusedProject({ role: 'client', organisation }, p));
-  return own.find((p) => p.code === code) ?? own.find((p) => p.hasData) ?? own[0] ?? null;
 }
 
 async function evmAndSchedule(code: string): Promise<{ evm: EvmSeries | null; schedule: ScheduleHeader | null }> {
@@ -225,12 +195,6 @@ export async function getHomeView(q: HomeQuery): Promise<HomeView> {
   const { persona, lang } = q;
   // R-013: the business date, once for the whole Home (greeting, due buckets, "accepted in the last 30 days").
   const today = await businessToday();
-  if (q.role === 'client') {
-    const own = await resolveClientProject(q.projectCode, q.organisation ?? null);
-    if (!own) return noProjectHome(persona, today);
-    const [{ evm, schedule }, crs, { deliverables, invoice }] = await Promise.all([evmAndSchedule(own.code), changeRequestsOf([own]), clientInputs(own.code, today)]);
-    return clientHome({ lang, persona, today, project: currentOf(own), evm, schedule, changeRequests: crs, deliverables, invoice });
-  }
   switch (q.role) {
     case 'depthead': {
       const [dept, reqs, pool, departments] = await Promise.all([deptOfHead(persona.name), requests(), people(), capacityRows()]);
@@ -254,7 +218,7 @@ export async function getHomeView(q: HomeQuery): Promise<HomeView> {
     }
   }
   // The other Homes are built around the current project; a new production database has none yet (R-011).
-  const project = await resolveProject(q.projectCode, q.role, q.organisation);
+  const project = await resolveProject(q.projectCode);
   if (!project) return noProjectHome(persona, today);
   const current = currentOf(project);
   switch (q.role) {

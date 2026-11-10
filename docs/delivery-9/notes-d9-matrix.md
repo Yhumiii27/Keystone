@@ -102,6 +102,9 @@ Réponse : « Non, les renvoyer vers la fiche du projet ».
 - Inchangé (D9-06 en cours de confirmation) : l’aperçu « Voir comme le client » du directeur et des responsables du projet, le
   portail et le profil client.
 - Test : `src/domain/d8-roles-rates-hr.test.ts` (boucle sur `PERSONAS`).
+- **Devenu sans objet (fusion du lot d9-noclient, D9-06)** : le portail client, l’aperçu « Voir comme le client » et le profil
+  Client sont retirés ; `clientPortalSendsToProject`, son test et la page `/projects/<code>/client` sont supprimés — l’adresse
+  du portail mène au Plan du projet pour tous (`[...rest]`).
 
 ## 4. État des items
 

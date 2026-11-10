@@ -6,7 +6,7 @@ import { groupBySupplier, isPreselected, sparesOrderValue, suggestedSpareQty, va
 
 describe('forced stage changes (L-1 default)', () => {
   it('the portfolio director decides; nobody else', () => {
-    expect((['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'] as const).filter(isForcedStageDecider)).toEqual(['director']);
+    expect((['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'] as const).filter(isForcedStageDecider)).toEqual(['director']);
   });
 
   it('Reject reverts only while the forced move is the last one and the project stands in that stage', () => {

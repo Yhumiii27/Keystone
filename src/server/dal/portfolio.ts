@@ -72,7 +72,7 @@ export async function getMyProjects(viewer: Viewer, currentProject: string, lang
   ]);
   // R-041: the viewer's team role (tag) and read-only state per project follow the named project team.
   const access = (p: ProjectRow) => {
-    const a = projectAccess(viewer, { client: p.client, clientInternal: p.clientInternal, pm: p.pm, pmPersonId: p.pmPersonId, team: teams.get(p.code) ?? [] });
+    const a = projectAccess(viewer, { pm: p.pm, pmPersonId: p.pmPersonId, team: teams.get(p.code) ?? [] });
     return { teamRole: a.teamRole, readOnly: a.readOnly };
   };
   // A-3: the same population as the Overview (projects in execution).
@@ -82,8 +82,7 @@ export async function getMyProjects(viewer: Viewer, currentProject: string, lang
   // Department of a department head: the one they head (the prototype's `state.dept`), else their own (R-039), else Engineering.
   const dept = viewer.role === 'depthead' ? depts.find((d) => d.head === viewer.name)?.name ?? viewer.department ?? 'Engineering' : null;
   return myProjectsModel(
-    // A client sees the projects of their own organisation (R-039: the viewer's, no longer the CLIENT_ORG constant).
-    { role: viewer.role, name: viewer.name, short: viewer.short, clientOrg: viewer.organisation ?? '', dept },
+    { role: viewer.role, name: viewer.name, short: viewer.short, dept },
     pool,
     sched,
     { deptOf, todos: tasks },

@@ -33,12 +33,12 @@ import { openDatabase } from '@/server/db/open';
 import { deliverables, projects } from '@/server/db/schema';
 import { listAudit } from '@/server/dal/notifications';
 import { createDeliverable, getDeliverable, listDeliverables } from '@/server/dal/quality';
-import { createDeliverableAction, decideDeliverableAction, moveDeliverableAction, rejectDeliverableWithCommentsAction } from './actions';
+import { createDeliverableAction, moveDeliverableAction, recordClientDecisionAction } from './actions';
 import { newDeliverableFormDef } from './deliverable-form';
 import { dlvDrawerView, dlvTabView, type QualityState } from './model';
 
 const HLT = 'HLT-026';
-const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'] as const;
+const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'] as const; // D9-06: no client
 const NEW = { type: 'test_reports', title: 'Load test report — gantry 2', due: '30 Nov', wbs: '1.5', r: 'Thomas Kerbrat', b: 'Hélène Sauvage' };
 
 describe('R-114 / R-115 rules', () => {
@@ -49,10 +49,9 @@ describe('R-114 / R-115 rules', () => {
     expect(nextRevision('#')).toBe('#.1');
   });
 
-  it('a rejected deliverable offers "Start next revision" to the project team, never to the client', () => {
-    const team = { role: 'pm', canEdit: true, isClientContact: false };
+  it('a rejected deliverable offers "Start next revision" to the project team', () => {
+    const team = { role: 'pm', canEdit: true, isLead: false };
     expect(deliverableActionFor({ status: 'rejected' }, team)).toEqual({ kind: 'move', to: 'in_progress', label: 'Start next revision', variant: 'secondary' });
-    expect(deliverableActionFor({ status: 'rejected' }, { role: 'client', canEdit: true, isClientContact: true })).toBeNull();
     expect(deliverableActionFor({ status: 'rejected' }, { ...team, canEdit: false })).toBeNull();
   });
 
@@ -107,7 +106,6 @@ describe('R-114 / R-115 Server Functions', () => {
       englead: 'Only the project manager creates deliverables',
       quality: 'Only the project manager creates deliverables',
       procurement: 'Quality is read-only for you',
-      client: 'Only the project manager creates deliverables',
     });
     expect((await listDeliverables(HLT)).length).toBe(before + 2);
     // The PM of HLT-026 on another project (NDC-031, read-only for him) is refused; the writer re-checks the ownership.
@@ -137,14 +135,13 @@ describe('R-114 / R-115 Server Functions', () => {
   });
 
   it('reject → "Start next revision" (revision +1, history kept) → resubmit → reject again → accept', async () => {
-    // D-016 (rev B) is submitted: the client rejects it with comments.
-    session.role = 'client';
-    expect(await rejectDeliverableWithCommentsAction(HLT, 'D-016', { comments: 'Load case 4 missing' })).toEqual({ toast: 'D-016 · Rejected' });
+    // D-016 (rev B) is submitted: the client rejects it with comments — D9-06: recorded by the PM from the client's letter.
+    session.role = 'pm';
+    expect(await recordClientDecisionAction(HLT, 'D-016', 'rejected', { on: '2026-09-25', reference: 'LTR-016', comments: 'Load case 4 missing' })).toEqual({ toast: 'D-016 · Client rejection recorded' });
     let d = (await getDeliverable(HLT, 'D-016'))!;
     expect([d.status, d.revision, d.reviewComments, d.acceptanceText]).toEqual(['rejected', 'B', 'Load case 4 missing', '25 Sep · comments issued']);
-    expect(d.reviews).toEqual([{ revision: 'B', decision: 'rejected', submittedOn: d.submittedOn, decidedOn: '2026-09-25', decidedBy: 'N. Bensaïd', comments: 'Load case 4 missing' }]);
-    // The client cannot restart it; quality (project team) can.
-    expect(await moveDeliverableAction({ projectCode: HLT, number: 'D-016', to: 'in_progress' })).toEqual({ ok: false, error: 'Only the project team records this progress' });
+    expect(d.reviews).toEqual([{ revision: 'B', decision: 'rejected', submittedOn: d.submittedOn, decidedOn: '2026-09-25', decidedBy: 'R. Aubert', comments: 'Load case 4 missing', reference: 'LTR-016' }]);
+    // Quality (project team) restarts it.
     session.role = 'quality';
     expect(await moveDeliverableAction({ projectCode: HLT, number: 'D-016', to: 'in_progress' })).toEqual({ ok: true, toast: 'D-016 · In progress · Rev C' });
     d = (await getDeliverable(HLT, 'D-016'))!;
@@ -158,26 +155,25 @@ describe('R-114 / R-115 Server Functions', () => {
     // Rev C: internal review, submit, rejected again, then rev D accepted.
     expect((await moveDeliverableAction({ projectCode: HLT, number: 'D-016', to: 'internal_review' })).ok).toBe(true);
     expect((await moveDeliverableAction({ projectCode: HLT, number: 'D-016', to: 'submitted' })).ok).toBe(true);
-    session.role = 'client';
-    expect(await decideDeliverableAction({ projectCode: HLT, number: 'D-016', decision: 'rejected', comments: 'Units on sheet 3' })).toEqual({ ok: true, toast: 'D-016 · Rejected' });
     session.role = 'pm';
+    expect(await recordClientDecisionAction(HLT, 'D-016', 'rejected', { on: '2026-09-25', comments: 'Units on sheet 3' })).toEqual({ toast: 'D-016 · Client rejection recorded' });
     expect((await moveDeliverableAction({ projectCode: HLT, number: 'D-016', to: 'in_progress' })).ok).toBe(true);
     expect((await moveDeliverableAction({ projectCode: HLT, number: 'D-016', to: 'internal_review' })).ok).toBe(true);
     expect((await moveDeliverableAction({ projectCode: HLT, number: 'D-016', to: 'submitted' })).ok).toBe(true);
-    session.role = 'client';
-    expect((await decideDeliverableAction({ projectCode: HLT, number: 'D-016', decision: 'accepted' })).ok).toBe(true);
+    expect(await recordClientDecisionAction(HLT, 'D-016', 'accepted', { on: '2026-09-25', reference: 'PV-HLT-016' })).toEqual({ toast: 'D-016 · Client acceptance recorded' });
     d = (await getDeliverable(HLT, 'D-016'))!;
-    expect([d.status, d.revision, d.acceptedBy]).toEqual(['accepted', 'D', 'N. Bensaïd']);
+    expect([d.status, d.revision, d.acceptedBy, d.acceptanceRef, d.acceptanceText]).toEqual(['accepted', 'D', 'R. Aubert', 'PV-HLT-016', '25 Sep · PV-HLT-016']);
     expect(d.reviews.map((r) => [r.revision, r.decision, r.comments])).toEqual([['D', 'accepted', null], ['C', 'rejected', 'Units on sheet 3'], ['B', 'rejected', 'Load case 4 missing']]);
 
     // Drawer: history lines (newest first) in FR, no restart once accepted.
     const state: QualityState = { tab: 'dlv', filter: null, status: null, ncr: null, dlv: 'D-016' };
     const view = (role: string, dv = d) =>
-      dlvDrawerView({ today: DEMO_TODAY_ISO, code: HLT, deliverable: dv, state, viewer: { role, canEdit: true, isClientContact: role === 'client', vigie: role !== 'client' }, documents: [] }, makeT('fr'), 'fr');
+      dlvDrawerView({ today: DEMO_TODAY_ISO, code: HLT, deliverable: dv, state, viewer: { role, canEdit: true, isLead: role === 'pm' }, documents: [] }, makeT('fr'), 'fr');
+    // D9-06: the reference of the signed document, then the project lead who recorded the client's decision.
     expect(view('pm').reviews).toEqual([
-      { line: 'Rév. D · Accepté 25 sept. · N. Bensaïd', comments: null },
-      { line: 'Rév. C · Refusé 25 sept. · N. Bensaïd', comments: 'Units on sheet 3' },
-      { line: 'Rév. B · Refusé 25 sept. · N. Bensaïd', comments: 'Load case 4 missing' },
+      { line: 'Rév. D · Accepté 25 sept. · PV-HLT-016 · R. Aubert', comments: null },
+      { line: 'Rév. C · Refusé 25 sept. · R. Aubert', comments: 'Units on sheet 3' },
+      { line: 'Rév. B · Refusé 25 sept. · LTR-016 · R. Aubert', comments: 'Load case 4 missing' },
     ]);
     expect(view('pm').restart).toBeNull();
   });
@@ -188,13 +184,13 @@ describe('R-114 / R-115 Server Functions', () => {
     await db.update(deliverables).set({ status: 'rejected', rejectedOn: '2026-09-20', reviewComments: 'Missing CE marking', revision: 'A', submittedOn: '2026-09-15' })
       .where(and(eq(deliverables.projectId, p.id), eq(deliverables.number, 'D-018')));
     let d = (await getDeliverable(HLT, 'D-018'))!;
-    expect(d.reviews).toEqual([{ revision: 'A', decision: 'rejected', submittedOn: '2026-09-15', decidedOn: '2026-09-20', decidedBy: 'Client', comments: 'Missing CE marking' }]);
-    // Register row: "Start next revision" for the PM, nothing for the client.
+    expect(d.reviews).toEqual([{ revision: 'A', decision: 'rejected', submittedOn: '2026-09-15', decidedOn: '2026-09-20', decidedBy: 'Client', comments: 'Missing CE marking', reference: null }]);
+    // Register row: "Start next revision" for the PM, nothing for a read-only viewer.
     const state: QualityState = { tab: 'dlv', filter: null, status: null, ncr: null, dlv: null };
     const rows = (role: string) =>
-      dlvTabView({ code: HLT, deliverables: [d], state, viewer: { role, canEdit: true, isClientContact: role === 'client', vigie: role !== 'client' }, today: DEMO_TODAY_ISO }, makeT('en'), 'en').rows;
+      dlvTabView({ code: HLT, deliverables: [d], state, viewer: { role, canEdit: role !== 'member', isLead: role === 'pm' }, today: DEMO_TODAY_ISO }, makeT('en'), 'en').rows;
     expect(rows('pm')[0].action).toEqual({ kind: 'move', to: 'in_progress', label: 'Start next revision', variant: 'secondary', restart: true });
-    expect(rows('client')[0].action).toBeNull();
+    expect(rows('member')[0].action).toBeNull();
     session.role = 'director';
     expect(await moveDeliverableAction({ projectCode: HLT, number: 'D-018', to: 'in_progress' })).toEqual({ ok: true, toast: 'D-018 · In progress · Rev B' });
     d = (await getDeliverable(HLT, 'D-018'))!;

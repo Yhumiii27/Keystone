@@ -28,7 +28,7 @@ import type { DB, Tx } from '@/server/db/types';
 import type { PoInspectionResult } from '@/domain/expediting';
 import { supplierFatsOfItp } from './expediting';
 import { vigieNcrUrl } from '@/server/integrations/vigie/links';
-import { isClientContactOf, isIsoDate, optionalDate, optionalText, projectOf, requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
+import { isIsoDate, optionalDate, optionalText, projectOf, requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
 import { afterPunchItemChange } from './shipment-reception';
 import { onProjectTeam } from './team-guard';
 import { notifyInspectionFailed } from './event-notices';
@@ -471,12 +471,10 @@ export async function listPunchItems(projectCode: string, origin?: PunchOrigin):
 }
 
 /**
- * Who changes the punch list of a project (re-checked by the writers, R-041): an internal actor on the project's named team
- * (or the director); a client contact of the project's own organisation (the prototype's client has the screen and its
- * primary action, P-10a). Workspace: the Inspections & punch list screen (`requireWorkspace`).
+ * Who changes the punch list of a project (re-checked by the writers, R-041): an actor on the project's named team (or the
+ * director). Workspace: the Inspections & punch list screen (`requireWorkspace`).
  */
-async function editsPunchList(q: Q, actor: Actor, project: { id: string; clientId: string | null }): Promise<boolean> {
-  if (actor.role === 'client') return isClientContactOf(q, actor, project.clientId);
+async function editsPunchList(q: Q, actor: Actor, project: { id: string }): Promise<boolean> {
   return onProjectTeam(q, actor, project.id);
 }
 
@@ -516,8 +514,7 @@ export async function addPunchItem(projectCode: string, input: NewPunchInput, ac
   if (!punchOwnerParty.isCode(ownerParty)) throw new Error('Invalid owner party');
   const dueOn = optionalDate(input.dueOn, 'due date');
   const location = optionalText(input.location, 'System / location', 200) ?? '';
-  // P-10b: a client never records (nor sees) a Vigie NCR number.
-  const ncrNumber = actor.role === 'client' ? null : optionalText(input.ncrNumber, 'NCR', 40);
+  const ncrNumber = optionalText(input.ncrNumber, 'NCR', 40);
   if (ncrNumber && !NCR_REF.test(ncrNumber)) throw new Error('Invalid NCR');
   const db = await getDb();
   return db.transaction(async (tx) => {

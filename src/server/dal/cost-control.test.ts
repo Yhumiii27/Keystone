@@ -14,7 +14,7 @@ import { PERSONA_BY_ROLE } from '@/config/personas';
 import { getBudgetContract, getBudgetData } from './budget';
 import { postApprovedChange } from './change-posting';
 import { createChangeRequest, decideChangeStep } from './changes';
-import { getClientPortal } from './client';
+import { getClientReportData } from './client-report';
 import { ContingencyError, decideContingencyDraw, drawLinkOptions, getContingency, listDrawsAwaitingValidation, submitContingencyDraw } from './contingency';
 import { getContract } from './contract';
 import { getCostControl } from './cost';
@@ -124,7 +124,7 @@ describe('R-068 — the Budget reads the single change register (A-4)', () => {
 
   it('approving CR-008 posts +85 to the BAC and work package 1.4 and prepares a draft amendment, once', async () => {
     await decideChangeStep('HLT-026', 'CR-008', 'director', 'ok', 'Marie Lefebvre');
-    await decideChangeStep('HLT-026', 'CR-008', 'client', 'ok', 'Nadia Bensaïd');
+    await decideChangeStep('HLT-026', 'CR-008', 'client', 'ok', 'Romain Aubert'); // D9-06: recorded by the PM
     expect(await decideChangeStep('HLT-026', 'CR-008', 'ccb', 'ok', 'Marie Lefebvre')).toBe('approved');
     expect((await getProject('HLT-026'))!.budget).toBe(4885);
     const c = (await getCostControl('HLT-026'))!;
@@ -135,7 +135,7 @@ describe('R-068 — the Budget reads the single change register (A-4)', () => {
     expect([a.label, a.amountKeur, a.status, a.changeRequestLinked, a.signed]).toEqual(['Amendment 3 — Second steel crew — schedule recovery (CR-008)', 85, 'draft', true, false]);
     // A draft amendment does not change the contract value (signed ones do).
     expect(ct.valueKeur).toBe(5400 + 120);
-    expect((await getClientPortal('HLT-026')).contract!.approvedChangesKeur).toBe(285);
+    expect((await getClientReportData('HLT-026')).contract!.approvedChangesKeur).toBe(285);
     const audit = await listAudit({ limit: 6 });
     expect(audit.find((r) => r.area === 'Budget' && r.object === 'CR-008')!.change).toBe('posted to the budget · BAC 4800 → 4885 k€ · 1.4 +85 k€');
     expect(audit.find((r) => r.area === 'Contract')!.change).toBe('amendment prepared from CR-008 · Amendment 3 — Second steel crew — schedule recovery (CR-008) · 85 k€ · Draft');
@@ -163,7 +163,7 @@ describe('R-068 — the Budget reads the single change register (A-4)', () => {
 
     // R-069: 30 k€ is not above the board threshold (50 k€) — the chain ends with the client.
     const m = await createChangeRequest('NDC-031', { title: 'UPS bypass', types: ['scope', 'budget'], amountKeur: 30, scheduleDays: 5, wbsCodes: ['1'] }, 'Sophie Perrin');
-    for (const [step, who] of [['pm', 'Sophie Perrin'], ['director', 'Marie Lefebvre'], ['client', 'Nadia Bensaïd']] as const) await decideChangeStep('NDC-031', m, step, 'ok', who);
+    for (const [step, who] of [['pm', 'Sophie Perrin'], ['director', 'Marie Lefebvre'], ['client', 'Sophie Perrin']] as const) await decideChangeStep('NDC-031', m, step, 'ok', who);
     const [ndc] = await db.select({ id: projects.id, bac: projects.budgetKeur }).from(projects).where(eq(projects.code, 'NDC-031'));
     expect(ndc.bac).toBe(2130);
     const [q] = await db.select().from(changeRequestPostings).where(eq(changeRequestPostings.projectId, ndc.id));
@@ -181,7 +181,7 @@ describe('R-068 — the Budget reads the single change register (A-4)', () => {
     try {
       // R-069: 46 k€, no board step (threshold 50 k€).
       const n = await createChangeRequest('HLT-026', { title: 'Extra fenders', types: ['scope', 'budget'], amountKeur: 46, scheduleDays: 0, wbsCodes: ['1.7'], contractImpact: 'price' }, 'Romain Aubert');
-      for (const [step, who] of [['pm', 'Romain Aubert'], ['director', 'Marie Lefebvre'], ['client', 'Nadia Bensaïd']] as const) await decideChangeStep('HLT-026', n, step, 'ok', who);
+      for (const [step, who] of [['pm', 'Romain Aubert'], ['director', 'Marie Lefebvre'], ['client', 'Romain Aubert']] as const) await decideChangeStep('HLT-026', n, step, 'ok', who);
       const a = (await getContract('HLT-026'))!.amendments.find((x) => x.changeRequestRef === n)!;
       // 46 k€ ÷ 0.92 € per USD = 50 k$ (the BAC, in euros, moves by 46).
       expect([a.amountKeur, a.status]).toEqual([50, 'draft']);
@@ -252,7 +252,6 @@ describe('R-071 — linked draw-downs validated by the portfolio director (C-4)'
       { name: 'Fabien Bertrand', role: 'procurement' }, // on NDC-031's team, Contingency outside the procurement workspace
       { name: 'Nobody', role: 'pm' },
       { name: 'Marie Lefebvre', role: 'admin' },
-      { name: 'Nadia Bensaïd', role: 'client' },
     ];
     for (const actor of wrong) {
       const e = await submitContingencyDraw('NDC-031', draw, actor).catch((x) => x);

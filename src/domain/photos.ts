@@ -37,12 +37,6 @@ export function photoScreenOf(o: Pick<PhotoOwnerKey, 'kind' | 'register'>): Scre
   return o.register === 'site' ? 'site' : 'itp';
 }
 
-/**
- * The client may see this kind of photo: a punch item raised by an inspection (stored origin 'itp'), on their own project —
- * checked by the caller. Never a Site item's (X-15 still open), never an item whose origin is unknown.
- */
-export const clientSeesPhotos = (o: Pick<PhotoOwnerKey, 'kind' | 'register'>) => o.kind === 'punch_item' && o.register === 'itp';
-
 const REF: Record<PhotoOwnerKind, RegExp> = {
   goods_receipt: /^BL-\d{4}-\d{3,6}$/,
   daily_report: /^DR-\d{2,5}$/,

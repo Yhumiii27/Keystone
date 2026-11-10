@@ -9,7 +9,7 @@ import { openDatabase } from '@/server/db/open';
 import { recordStatusReport } from '@/server/dal/trends';
 import { buildExportContext, runExport } from '../run';
 import { pdfTextLines } from '../test/pdf-text';
-import { effectiveAudience, trendsReportOptions } from './status-report';
+import { trendsReportOptions } from './status-report';
 import '.';
 
 const NOW = new Date('2026-10-09T08:00:00Z');
@@ -48,11 +48,11 @@ describe('status report per audience (C-5, R-131)', () => {
     expect(x).not.toContain('No one is assigned to this project yet');
   });
 
-  it('client: no internal cost figure; changes, deliverables, invoices, contract summary — whatever the URL asks', async () => {
+  it('client audience: no internal cost figure; changes, deliverables, invoices, contract summary', async () => {
     for (const [screen, role, q] of [
-      ['client', 'client', 'code=HLT-026&variant=status&audience=steering'],
-      ['trends', 'client', 'code=HLT-026&variant=status&audience=internal'],
-      ['client', 'director', 'code=HLT-026&variant=status&audience=internal'],
+      // D9-06: the client report is generated from Trends by the project team (the client portal and its viewer are gone).
+      ['trends', 'pm', 'code=HLT-026&variant=status&audience=client'],
+      ['trends', 'director', 'code=HLT-026&variant=status&audience=client'],
     ] as const) {
       const x = await pdf(screen, role, q);
       expect(x, `${screen} ${role}`).toContain('Client');
@@ -61,14 +61,9 @@ describe('status report per audience (C-5, R-131)', () => {
     }
   });
 
-  it('a recorded internal report with a manager note: the client viewer gets the client report without the note', async () => {
+  it('a recorded report keeps its audience and manager note (D9-06: no client viewer any more)', async () => {
     await recordStatusReport('HLT-026', { period: 'month', audience: 'internal', sections: 'full', note: 'Supplier claim under review' }, 'Romain Aubert');
     const pm = await trendsReportOptions(await ctxOf('trends', 'pm', 'code=HLT-026&variant=status&report=latest'));
     expect(pm).toMatchObject({ audience: 'internal', note: 'Supplier claim under review' });
-    const client = await trendsReportOptions(await ctxOf('trends', 'client', 'code=HLT-026&variant=status&report=latest'));
-    expect(client).toMatchObject({ audience: 'client', note: null });
-    const x = await pdf('trends', 'client', 'code=HLT-026&variant=status&report=latest');
-    expect(x).not.toContain('Supplier claim under review');
-    expect([effectiveAudience({ viewer: PERSONA_BY_ROLE.client }, 'steering'), effectiveAudience({ viewer: PERSONA_BY_ROLE.pm }, 'internal')]).toEqual(['client', 'internal']);
   });
 });

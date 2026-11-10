@@ -118,9 +118,6 @@ describe('/reference/parts', () => {
       session.role = role;
       expect((await page()).PageHeader.props.primary, role).toBeUndefined();
     }
-    // R-042 (P-1): outside their workspace the client is sent home.
-    session.role = 'client';
-    await expect(page()).rejects.toThrow('REDIRECT /');
   });
 
   it('R-046 (NEW-D2-1): catalogue prices for the director, the PMs and procurement only; masked prices are not sortable', async () => {

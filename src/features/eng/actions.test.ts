@@ -54,9 +54,6 @@ describe('engineering Server Functions', () => {
   });
 
   it('refuses viewers outside the workspace, read-only projects and malformed requests', async () => {
-    // R-042 (P-1): engineering is outside the client's workspace — the client is sent home.
-    as('client');
-    await expect(confirmInputAction({ code: HLT, disc: 'meca', doc: 'PID-HLT-026' })).rejects.toThrow('REDIRECT /');
     for (const role of ['depthead', 'member', 'procurement']) {
       as(role);
       expect(await confirmInputAction({ code: HLT, disc: 'meca', doc: 'PID-HLT-026' })).toEqual(READ_ONLY);

@@ -14,7 +14,7 @@ vi.mock('@/server/project-context', async () => {
     getProjectContext: async (code: string) => ({
       project: await getProject(code), viewer: { role: 'director', name: 'Marie Lefebvre' }, canEdit: () => true, isMine: true,
       // R-041 (rights): the director has the project manager's rights on every project.
-      isLead: true, access: { member: true, lead: true, pm: false, client: false, readOnly: false, refused: false },
+      isLead: true, access: { member: true, lead: true, pm: false, readOnly: false, refused: false },
     }),
   };
 });

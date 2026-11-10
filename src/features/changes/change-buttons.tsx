@@ -11,7 +11,7 @@ import { useToast } from '@/components/ds/Toast';
 import { downloadExport } from '@/features/exports/download';
 import { useI18n } from '@/i18n/client';
 import { exportHref } from '@/lib/export-href';
-import { createChangeRequestAction, decideChangeStepAction, generateStatusReportAction, submitChangeRequestAction, type ChangeActionResult } from './actions';
+import { createChangeRequestAction, decideChangeStepAction, generateStatusReportAction, recordClientChangeStepAction, submitChangeRequestAction, type ChangeActionResult } from './actions';
 import { useToday } from '@/components/app/clock';
 import { newChangeRequestForm, statusReportForm, translatedChangeRequestForm } from './forms';
 
@@ -130,8 +130,14 @@ export function SubmitForReviewButton({ code, number, variant }: { code: string;
 /**
  * Drawer step actions: ghost "Reject" (12px, 3px 8px) + primary "Approve" with a check (12px, 3px 10px).
  * `stepLabel` (translated, e.g. "Portfolio director") completes the accessible names ("Approve · Portfolio director").
+ * D9-06: the client step opens a dialog — the project manager records the client's signed decision (date, reference).
  */
 export function StepDecisionButtons({ code, number, step, stepLabel }: { code: string; number: string; step: string; stepLabel?: string }) {
+  if (step === 'client') return <ClientStepButtons code={code} number={number} stepLabel={stepLabel} />;
+  return <InlineStepButtons code={code} number={number} step={step} stepLabel={stepLabel} />;
+}
+
+function InlineStepButtons({ code, number, step, stepLabel }: { code: string; number: string; step: string; stepLabel?: string }) {
   const { t } = useI18n();
   const { pending, run } = useWrite();
   const name = (verb: string) => (stepLabel ? `${t(verb)} · ${stepLabel}` : undefined);
@@ -143,6 +149,39 @@ export function StepDecisionButtons({ code, number, step, stepLabel }: { code: s
       <Button variant="primary" size="row" icon={Check} disabled={pending} aria-label={name('Approve')} onClick={() => run(() => decideChangeStepAction(code, number, step, 'ok'))}>
         {t('Approve')}
       </Button>
+    </>
+  );
+}
+
+/** D9-06: "Record client approval" / "Record client rejection" — date of the client's decision and the signed document's reference. */
+function ClientStepButtons({ code, number, stepLabel }: { code: string; number: string; stepLabel?: string }) {
+  const { t } = useI18n();
+  const today = useToday();
+  const [open, setOpen] = useState<'ok' | 'rejected' | null>(null);
+  const name = (verb: string) => (stepLabel ? `${t(verb)} · ${stepLabel}` : undefined);
+  return (
+    <>
+      <Button variant="ghost" size="compact" aria-label={name('Record rejection')} onClick={() => setOpen('rejected')}>
+        {t('Record rejection')}
+      </Button>
+      <Button variant="primary" size="row" icon={Check} aria-label={name('Record approval')} onClick={() => setOpen('ok')}>
+        {t('Record approval')}
+      </Button>
+      {open && (
+        <FormDialog
+          title={open === 'ok' ? 'Record client approval' : 'Record client rejection'}
+          submit={open === 'ok' ? 'Record approval' : 'Record rejection'}
+          fields={[
+            { id: 'on', label: 'Date of the client’s decision', type: 'date', defaultValue: today, required: true },
+            { id: 'reference', label: 'Reference of the signed document', type: 'text', required: open === 'ok', placeholder: open === 'ok' ? 'AV-HLT-003' : 'Letter of comments (optional)' },
+          ]}
+          translate
+          open
+          onClose={() => setOpen(null)}
+          context={number}
+          onSubmit={(values) => recordClientChangeStepAction(code, number, open, values)}
+        />
+      )}
     </>
   );
 }

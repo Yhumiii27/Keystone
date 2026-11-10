@@ -4,7 +4,7 @@ import 'server-only';
 // approval or rejection, the requester. Rule: `crNoticeOf` (src/domain/change-control.ts). Called by the Server Functions AFTER
 // the writer's transaction committed (a notice never runs inside it — createNotification opens its own transaction, and a
 // retried transaction must not notify twice); a failure is logged and never undoes the decision. Keystone's bell, and the e-mail
-// each person chose (R-036: approvals at once by default). Client contacts receive it through the bell's read-time filter like any notice (src/server/dal/shell.ts).
+// each person chose (R-036: approvals at once by default). The client step goes to the PM of record (D9-06).
 import { asc, eq } from 'drizzle-orm';
 import { crNoticeOf } from '@/domain/change-control';
 import { getDb } from '@/server/db/client';
@@ -21,18 +21,17 @@ import { createNotification } from './notifications';
 export async function notifyChangeRequest(projectCode: string, number: string, actorName: string): Promise<string[]> {
   try {
     const db = await getDb();
-    const [p] = await db.select({ pm: projects.pmPersonId, clientId: projects.clientId }).from(projects).where(eq(projects.code, projectCode));
+    const [p] = await db.select({ pm: projects.pmPersonId }).from(projects).where(eq(projects.code, projectCode));
     const cr = p ? (await listChangeRequestDetails(projectCode)).find((c) => c.id === number) : undefined;
     if (!p || !cr) return [];
     const accounts = await db
-      .select({ personId: users.personId, roles: users.roles, clientId: users.clientId })
+      .select({ personId: users.personId, roles: users.roles })
       .from(users)
       .where(eq(users.active, true))
       .orderBy(asc(users.sortOrder));
     const people = {
       pm: p.pm,
       directors: accounts.filter((u) => u.roles.includes('director')).map((u) => u.personId),
-      clientContacts: p.clientId ? accounts.filter((u) => u.clientId === p.clientId).map((u) => u.personId) : [],
       requester: cr.requestedByPersonId,
     };
     const actor = await findPerson(db, actorName);

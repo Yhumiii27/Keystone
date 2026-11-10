@@ -223,7 +223,7 @@ describe('ECOs read through the Vigie connector (mock over the seeded mirror)', 
     expect(ecos.every((e) => e.vigieUrl === `http://localhost:3200/modifications-techniques/${e.number}`)).toBe(true);
   });
 
-  it.each(['director', 'pm', 'englead', 'quality', 'procurement', 'client'])('KPI inputs for %s reproduce ecoKpis', async (role) => {
+  it.each(['director', 'pm', 'englead', 'quality', 'procurement'])('KPI inputs for %s reproduce ecoKpis', async (role) => {
     const ecos = await listEcos();
     const open = ecos.filter((e) => e.open);
     const key = role === 'englead' || role === 'quality' || role === 'pm' ? role : null;
@@ -468,7 +468,7 @@ describe('sourcing — RFQs, invoices 3-way match, suppliers (08 §1)', () => {
 // ── My approvals ───────────────────────────────────────────────────────────────────────────────────────
 
 describe('My approvals — database-backed supply-chain and ECO kinds (08 §7.5)', () => {
-  it.each(['director', 'pm', 'depthead', 'englead', 'quality', 'procurement', 'client'])('%s: PO, ECO, delivery QC, RFQ award and invoice items reproduce apprItems', async (role) => {
+  it.each(['director', 'pm', 'depthead', 'englead', 'quality', 'procurement'])('%s: PO, ECO, delivery QC, RFQ award and invoice items reproduce apprItems', async (role) => {
     const name = PERSONA[role];
     const items: { kind: string; id: string; title: string; sub: string; when: string; who: string }[] = [];
     if (role === 'pm' || role === 'director')

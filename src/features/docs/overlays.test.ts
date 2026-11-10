@@ -65,10 +65,10 @@ describe('document record drawer markup', () => {
     expect(html.match(/<a [^>]*target="_blank"[^>]*href="http:\/\/localhost:3100[^"]*"[^>]*>|<a [^>]*href="http:\/\/localhost:3100[^"]*"[^>]*target="_blank"[^>]*>/g)?.length).toBe(2);
   });
 
-  it('EN, PID-HLT-026: distribution with the client acknowledgement; current revision only, no download log (D-2)', async () => {
+  it('EN, PID-HLT-026: distribution to the client (D9-06: sent, acknowledged outside Keystone); current revision only, no download log (D-2)', async () => {
     const seq = text(await drawerHtml('en', 'PID-HLT-026', { short: 'R. Aubert', role: 'pm' }));
     // R-128: the deliverable relation D-016 is a link (Quality › Deliverables, the record's own project).
-    for (const s of ['Distribution', 'Client — Port authority · N. Bensaïd', '· rev D · 26 Sep', 'Acknowledgment pending', 'Mechanical', 'Received',
+    for (const s of ['Distribution', 'Client — Port authority · N. Bensaïd', '· rev D · 26 Sep', 'Sent to the client', 'Mechanical', 'Received',
       'Earlier revisions and download log in Codex', 'Deliverable', 'D-016'])
       expect(seq, s).toContain(s);
     // D-2 = a (R-127): no earlier revision (rev C, "Withdrawn 26 Sep") and no download log in Keystone.
@@ -79,14 +79,6 @@ describe('document record drawer markup', () => {
     expect(html).toContain('href="/projects/HLT-026/quality?tab=dlv&amp;dlv=D-016"');
   });
 
-  it('client: no link to Codex (no Codex access), relations inert', async () => {
-    const html = await drawerHtml('en', 'PID-HLT-026', { short: 'N. Bensaïd', role: 'client' });
-    expect(html).not.toContain('localhost:3100');
-    expect(html).not.toContain('Open in Codex');
-    expect(html).not.toContain('Earlier revisions and download log in Codex');
-    expect(html).not.toContain('href="/projects/HLT-026/quality');
-    expect(text(html)).toContain('D-016');
-  });
 });
 
 describe('"Deposit in Codex" markup', () => {

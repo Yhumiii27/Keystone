@@ -74,7 +74,7 @@ describe('Portfolio prioritisation Server Functions', () => {
   });
 
   it('Score a proposal: pipeline projects only, whole scores 1–5, viewer as scorer, audit row; the ranking picks it up', async () => {
-    as('client', 'Nadia Bensaïd');
+    as('member', 'Julien Wagner');
     expect(await scoreProposalAction({ project: 'EWA-051', fit: '5', fin: '5', risk: '5', res: '5', client: '5' })).toEqual({ error: 'Outside my workspace · Read-only' });
     as('pm', 'Romain Aubert');
     expect(await scoreProposalAction({ project: 'HLT-026', fit: '5', fin: '5', risk: '5', res: '5', client: '5' })).toEqual({ error: 'Choose a project in the pipeline' });

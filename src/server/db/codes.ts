@@ -1039,10 +1039,6 @@ export const interventionStatus = codec<InterventionStatus, string>([['planned',
 export type InterventionType = 'corrective' | 'diagnosis' | 'preventive';
 export const interventionType = codec<InterventionType, string>([['corrective', 'Corrective'], ['diagnosis', 'Diagnosis'], ['preventive', 'Preventive']]);
 
-/** Client portal issues (CLIENT_ISSUES 3544). */
-export type ClientIssueStatus = 'open' | 'in_progress' | 'closed';
-export const clientIssueStatus = codec<ClientIssueStatus, string>([['open', 'Open'], ['in_progress', 'In progress'], ['closed', 'Closed']]);
-
 /** Cursus approvals per person (SITE_DOCS 3574) — approvals and dates only, never personal data. */
 export type CursusVisa = 'not_required' | 'approved' | 'pending';
 export const cursusVisa = codec<CursusVisa, string>([['not_required', 'Not required'], ['approved', 'Approved'], ['pending', 'Pending']]);
@@ -1149,16 +1145,15 @@ export const slugOf = (label: string) =>
  * Delivery 5 tests assert both lists agree). The director sees every screen.
  */
 export const D5_SCREEN_ROLES = {
-  quality: ['director', 'pm', 'englead', 'quality', 'client'],
-  itp: ['director', 'pm', 'englead', 'quality', 'client'],
-  commissioning: ['director', 'pm', 'englead', 'quality', 'client'],
+  quality: ['director', 'pm', 'englead', 'quality'],
+  itp: ['director', 'pm', 'englead', 'quality'],
+  commissioning: ['director', 'pm', 'englead', 'quality'],
   rex: ['director', 'pm', 'englead', 'quality'],
   fleet: ['director', 'pm', 'quality', 'procurement'],
   sav: ['director', 'pm', 'quality', 'procurement'],
   site: ['director', 'pm', 'depthead', 'member', 'logistics'],
   pid: ['director', 'englead', 'quality'],
   eng: ['director', 'pm', 'englead', 'quality'],
-  client: ['director', 'client'],
   // R-162 (P4): Finance has Settings (reference exchange rates, hedging thresholds).
   settings: ['director', 'pm', 'depthead', 'englead', 'quality', 'procurement', 'finance', 'logistics'],
   mtypes: ['director', 'pm', 'englead', 'quality'],

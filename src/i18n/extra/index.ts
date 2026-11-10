@@ -94,6 +94,7 @@ import d9Delegations from './d9-delegations.json';
 import d9Dashboards from './d9-dashboards.json';
 import d9Multilevel from './d9-multilevel.json';
 import d9VigieViews from './d9-vigie-views.json';
+import d9Noclient from './d9-noclient.json';
 import d9NotificationMail from './d9-notification-mail.json';
 import d9Concurrency from './d9-concurrency.json';
 import d9ScheduleQuality from './d9-schedule-quality.json';
@@ -204,4 +205,5 @@ export const EXTRA_FR: Record<string, string> = {
   ...d9Multilevel,
   ...d9VigieViews,
   ...d9Planning,
+  ...d9Noclient,
 };

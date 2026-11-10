@@ -1,6 +1,6 @@
 import 'server-only';
 // Users DAL (R-039): one account per person, linked to the Microsoft Entra ID account (object id), with several roles,
-// a department and a client organisation. Sign-in (R-038) creates or refreshes the account from the token — the person
+// and a department (the client organisation went with the Client role, D9-06). Sign-in (R-038) creates or refreshes the account from the token — the person
 // comes from the e-mail matched to `persons`, the roles from the token — and every sign-in, refusal, sign-out and
 // active-role switch is written to the audit trail (area "Sign-in"). Per-user records (notification read state,
 // prioritisation weights…) are keyed by users.id through `userIdOf`, which also resolves the demo "View as" personas.
@@ -11,7 +11,7 @@ import { ROLE_LABEL, SIGN_IN_REFUSAL_LABEL, decideSignIn, sortRoles, userTitle, 
 import { systemMessage } from '@/domain/system-messages';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import { writeAudit } from '@/server/db/helpers';
-import { clients, departments, persons, users } from '@/server/db/schema';
+import { departments, persons, users } from '@/server/db/schema';
 
 type Q = DB | Tx;
 
@@ -26,7 +26,7 @@ export async function userIdOf(q: Q, ref: UserRef): Promise<string | null> {
   return u?.id ?? null;
 }
 
-/** A user account with its person, department and organisation (what the viewer is built from). */
+/** A user account with its person and department (what the viewer is built from). */
 export interface UserAccount {
   userId: string;
   personId: string;
@@ -41,11 +41,9 @@ export interface UserAccount {
   shortName: string;
   initials: string;
   department: string | null;
-  organisation: string | null;
   lastSignInAt: string | null;
 }
 
-const userClient = alias(clients, 'user_client');
 const userDept = alias(departments, 'user_dept');
 
 const accountSelect = {
@@ -54,14 +52,13 @@ const accountSelect = {
   shortName: persons.shortName,
   initials: persons.initials,
   department: userDept.name,
-  organisation: userClient.name,
 };
 
-function toAccount(r: { u: typeof users.$inferSelect; fullName: string | null; shortName: string; initials: string; department: string | null; organisation: string | null }): UserAccount {
+function toAccount(r: { u: typeof users.$inferSelect; fullName: string | null; shortName: string; initials: string; department: string | null }): UserAccount {
   return {
     userId: r.u.id, personId: r.u.personId, personaRole: (r.u.personaRole as RoleKey | null) ?? null, roles: sortRoles(r.u.roles), active: r.u.active,
     entraObjectId: r.u.entraObjectId, email: r.u.email, title: r.u.title, fullName: r.fullName, shortName: r.shortName, initials: r.initials,
-    department: r.department, organisation: r.organisation, lastSignInAt: r.u.lastSignInAt?.toISOString() ?? null,
+    department: r.department, lastSignInAt: r.u.lastSignInAt?.toISOString() ?? null,
   };
 }
 
@@ -70,8 +67,7 @@ function accounts(q: Q) {
     .select(accountSelect)
     .from(users)
     .innerJoin(persons, eq(persons.id, users.personId))
-    .leftJoin(userDept, eq(userDept.id, users.departmentId))
-    .leftJoin(userClient, eq(userClient.id, users.clientId));
+    .leftJoin(userDept, eq(userDept.id, users.departmentId));
 }
 
 /** One user account by id (null when unknown). */
@@ -112,7 +108,7 @@ export type SignInResult = { ok: true; account: UserAccount; created: boolean } 
 /**
  * Signs a Microsoft account in: finds the person (already linked object id, else the e-mail matched to `persons`),
  * applies the refusal rules (domain/auth decideSignIn), then creates or refreshes the user — roles from the token,
- * department and organisation from the person, last sign-in — in one transaction, with an audit row. A refusal is
+ * department from the person, last sign-in — in one transaction, with an audit row. A refusal is
  * audited too (actor = the token e-mail).
  */
 export async function signInUser(input: SignInInput): Promise<SignInResult> {
@@ -122,23 +118,20 @@ export async function signInUser(input: SignInInput): Promise<SignInResult> {
   const run = () =>
     db.transaction(async (tx): Promise<SignInResult> => {
       const [linked] = await tx
-        .select({ userId: users.id, personId: users.personId, entraObjectId: users.entraObjectId, active: users.active, organisation: userClient.name })
+        .select({ userId: users.id, personId: users.personId, entraObjectId: users.entraObjectId, active: users.active })
         .from(users)
-        .leftJoin(userClient, eq(userClient.id, users.clientId))
         .where(eq(users.entraObjectId, input.oid));
       const matched = input.email
         ? await tx
-            .select({ personId: persons.id, organisation: clients.name })
+            .select({ personId: persons.id })
             .from(persons)
-            .leftJoin(clients, eq(clients.id, persons.clientId))
             .where(sql`lower(${persons.email}) = ${input.email}`)
         : [];
       let ofPerson: SignInUser | null = null;
       if (!linked && matched.length === 1) {
         const [u] = await tx
-          .select({ userId: users.id, personId: users.personId, entraObjectId: users.entraObjectId, active: users.active, organisation: userClient.name })
+          .select({ userId: users.id, personId: users.personId, entraObjectId: users.entraObjectId, active: users.active })
           .from(users)
-          .leftJoin(userClient, eq(userClient.id, users.clientId))
           .where(eq(users.personId, matched[0].personId));
         ofPerson = u ?? null;
       }
@@ -157,11 +150,9 @@ export async function signInUser(input: SignInInput): Promise<SignInResult> {
         .select({ fullName: persons.fullName, shortName: persons.shortName, jobTitle: persons.jobTitle, departmentId: persons.departmentId, clientId: persons.clientId })
         .from(persons)
         .where(eq(persons.id, decision.personId));
-      let clientId = person.clientId;
-      if (!clientId && decision.userId) [{ clientId }] = await tx.select({ clientId: users.clientId }).from(users).where(eq(users.id, decision.userId));
       const values = {
-        roles, entraObjectId: input.oid, ...(input.email ? { email: input.email } : {}), title: userTitle(person.jobTitle, roles, decision.organisation),
-        departmentId: person.departmentId, clientId, isExternal: !!clientId || roles.includes('client'), lastSignInAt: at, updatedAt: at,
+        roles, entraObjectId: input.oid, ...(input.email ? { email: input.email } : {}), title: userTitle(person.jobTitle, roles),
+        departmentId: person.departmentId, isExternal: !!person.clientId, lastSignInAt: at, updatedAt: at,
       };
       let userId = decision.userId;
       let created = false;

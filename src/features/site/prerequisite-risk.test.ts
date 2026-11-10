@@ -118,10 +118,6 @@ describe('R-121 · "Raise as a risk"', () => {
     const out: Record<string, unknown> = {};
     for (const role of ROLES) {
       as(role);
-      if (role === 'client') {
-        await expect(pageView({ prereq: String(QUAI) })).rejects.toThrow(/REDIRECT|NOT_FOUND/);
-        continue;
-      }
       const v = (await pageView({ prereq: String(QUAI) })).ready!;
       out[role] = v.prereqs.filter((r) => r.raise).map((r) => r.position);
       expect([role, v.prereqs.map((r) => r.focus)]).toEqual([role, [false, false, false, true, false, false]]);
@@ -158,10 +154,6 @@ describe('R-121 · "Raise as a risk"', () => {
     const values = { title: 'Late client prerequisite — Autorisation de levage & arrêt exploitation quai 4', cat: 'contractual_client', owner: 'Romain Aubert', resp: 'mitigate', p: '4', i: '4', cost: '30' };
     for (const role of ROLES.filter((r) => r !== 'pm' && r !== 'director')) {
       as(role);
-      if (role === 'client') {
-        await expect(raisePrerequisiteRiskAction(HLT, QUAI, stamp, values)).rejects.toThrow(/REDIRECT/);
-        continue;
-      }
       expect([role, errorOf(await raisePrerequisiteRiskAction(HLT, QUAI, stamp, values))]).toEqual([role, PREREQ_RISK_LEADS_ONLY]);
     }
     as('pm');
@@ -206,7 +198,6 @@ describe('R-121 · "Raise as a risk"', () => {
     const values = { title: 'Late client prerequisite — Autorisation de levage & arrêt exploitation quai 4', cat: 'contractual_client', owner: 'Romain Aubert', resp: 'mitigate' };
     // Offered to the same leads only; the others are refused as before.
     for (const role of ROLES) {
-      if (role === 'client') continue;
       as(role);
       const row = (await pageView()).ready!.prereqs[QUAI];
       expect([role, !!row.risk, !!row.raise]).toEqual([role, true, role === 'pm' || role === 'director']);

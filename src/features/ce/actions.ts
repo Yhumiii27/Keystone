@@ -2,7 +2,7 @@
 // R-160 (P2, D9-32): CE conformity Server Functions — save the CE file of an equipment line (Commissioning & handover screen), and
 // keep the reference checklists (Settings › CE conformity checklists). Each one validates its input, checks the viewer's rights on
 // the server (the file: `ceEditScope` from the project context — engineering lead and quality edit it all, a PM of the project
-// the declaration and the marking, the director and the others read, a client never; the checklists: the Settings editors),
+// the declaration and the marking, the director and the others read; the checklists: the Settings editors),
 // writes through the DAL writers (which re-check the workspace and the role, and audit), then revalidates.
 import { revalidatePath } from 'next/cache';
 import { ceEditScope } from '@/domain/ce-conformity';

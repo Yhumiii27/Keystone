@@ -5,7 +5,7 @@
 // stays in Vigie, the row carries its link) with the severity chip, deliverables with the status chip; `?tab=` puts the
 // current register first; PDF document `pv` = the acceptance certificate ("PV de réception") of an accepted deliverable.
 // ITP: inspections by system and the project's punch list (R-117: every origin, with its origin; `?view=` puts the current
-// one first, `?origin=` filters the punch list as the screen does); the NCR column is left out for the client (P-10b).
+// one first, `?origin=` filters the punch list as the screen does).
 import { filterCrs, parseCrFilter, withDerivedStatus } from '@/domain/change-control';
 import { filterPunchByOrigin, punchOriginFilterOf } from '@/domain/itpcom';
 import { deliverableFilterOf, ncrFilterOf, qualityTabOf } from '@/domain/quality';
@@ -117,10 +117,7 @@ async function changesWorkbook(ctx: ExportContext): Promise<ExportWorkbook | nul
 async function qualityWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   if (!ctx.project) return null;
   const { t } = ctx;
-  // P-10b (R-043): a client exports the deliverables register only — no NCR sheet, no linked NCR numbers.
-  const client = ctx.viewer.role === 'client';
-  const screen = await getQualityScreen(ctx.project.code);
-  const data = client ? { ...screen, ncrs: [], deliverables: screen.deliverables.map((d) => ({ ...d, linkedNcrs: [] })) } : screen;
+  const data = await getQualityScreen(ctx.project.code);
   const severity = ncrFilterOf(param(ctx, 'filter'));
   const status = deliverableFilterOf(param(ctx, 'status'));
   const tab = qualityTabOf(param(ctx, 'tab')) ?? 'ncr';
@@ -148,7 +145,7 @@ async function qualityWorkbook(ctx: ExportContext): Promise<ExportWorkbook | nul
   return {
     title: t('Quality — NCR & deliverables'),
     filters: compact([severity ? `${t('Severity')}: ${t(ncrSeverity.label(severity))}` : null, status ? `${t('Status')}: ${t(deliverableStatus.label(status))}` : null]),
-    sheets: client ? [dlvs] : tab === 'dlv' ? [dlvs, ncrs] : [ncrs, dlvs],
+    sheets: tab === 'dlv' ? [dlvs, ncrs] : [ncrs, dlvs],
   };
 }
 
@@ -159,8 +156,7 @@ async function pvDocument(ctx: ExportContext): Promise<PdfDocument | null> {
   const [data, contract] = await Promise.all([getQualityScreen(ctx.project.code), getContract(ctx.project.code)]);
   const found = data.deliverables.find((x) => x.number.toUpperCase() === id);
   if (!found || found.status !== 'accepted') return null;
-  // P-10b (R-043): the client's copy names no NCR.
-  const d = ctx.viewer.role === 'client' ? { ...found, linkedNcrs: [] } : found;
+  const d = found;
   const { t } = ctx;
   const doc = d.documentNumber ? data.documents.find((x) => x.number === d.documentNumber) ?? null : null;
   const client = contract?.sheet.client ?? ctx.project.client;
@@ -176,14 +172,18 @@ async function pvDocument(ctx: ExportContext): Promise<PdfDocument | null> {
         [t('Client'), dataText(client, ctx.lang)], [t('Contract'), contract?.sheet.reference ?? '—'], [t('Deliverable'), `${d.number} · ${dataText(d.title, ctx.lang)}`], [t('Type'), t(d.typeLabel)],
         ['WBS', `${d.wbsCode}${d.wbsName ? ' · ' + dataText(d.wbsName, ctx.lang) : ''}`], [t('Revision'), d.revision ?? '—'],
         [t('Issued document'), doc ? `${doc.number} · ${dataText(doc.title, ctx.lang)} · ${t('Rev')} ${doc.revision}` : d.documentNumber ?? '—'], [t('Submitted on'), fd(d.submittedOn)],
-        [t('Accepted on'), fd(d.acceptedOn)], [t('Accepted by'), d.acceptedBy ?? '—'],
+        [t('Accepted on'), fd(d.acceptedOn)],
+        // D9-06: an acceptance recorded by the project's lead names the signed document and who recorded it.
+        ...(d.acceptanceRef
+          ? [[t('Signed document'), d.acceptanceRef], [t('Recorded by'), d.acceptedBy ?? '—']] as [string, string][]
+          : [[t('Accepted by'), d.acceptedBy ?? '—']] as [string, string][]),
       ] },
       { kind: 'heading', text: t('Acceptance') },
       { kind: 'paragraph', text: t('The client accepts the deliverable named above as compliant with the contract.') },
       { kind: 'paragraph', text: d.reviewComments ? `${t('Reservations')}: ${t(d.reviewComments)}` : t('Accepted without reservation.') },
       ...(d.linkedNcrs.length ? [{ kind: 'paragraph' as const, text: `${t('Related non-conformities')}: ${d.linkedNcrs.join(', ')}`, muted: true }] : []),
       { kind: 'spacer', height: 18 },
-      { kind: 'signatures', parties: [{ role: t('For the client'), name: d.acceptedBy ?? undefined }, { role: t('For Keystone — project manager'), name: ctx.project.pm }] },
+      { kind: 'signatures', parties: [{ role: t('For the client'), name: d.acceptanceRef ? undefined : d.acceptedBy ?? undefined }, { role: t('For Keystone — project manager'), name: ctx.project.pm }] },
     ],
     footnote: t('Acceptance recorded in Keystone; the signed PV is filed in Codex with the deliverable.'),
   };
@@ -201,8 +201,6 @@ async function itpWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   const eqCol = multi ? [col('equipment', t('Equipment'), 'text', 10)] : [];
   const origin = punchOriginFilterOf(param(ctx, 'origin'));
   const punch = filterPunchByOrigin(all, origin);
-  // P-10b: the client never gets Vigie's NCR numbers (the screen hides the column too).
-  const internal = ctx.viewer.role !== 'client';
   const inspections = sheet(t('Inspection & test plan'), [
     col('number', t('Inspection'), 'text', 8), ...eqCol, col('system', t('System'), 'text', 24), col('name', t('Inspection'), 'text', 40), col('point', t('Point type'), 'text', 12),
     col('stage', t('Stage'), 'text', 14), col('reference', t('Reference'), 'text', 18), col('planned', t('Planned on'), 'date'), col('result', t('Result'), 'text', 12),
@@ -214,11 +212,11 @@ async function itpWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   const punchList = sheet(t('Punch list'), [
     col('number', t('Item'), 'text', 8), col('description', t('Description'), 'text', 44), col('origin', t('Origin'), 'text', 12), ...eqCol,
     col('location', t('System / location'), 'text', 22),
-    col('category', t('Category'), 'text', 8), col('source', t('Raised by'), 'text', 18), ...(internal ? [col('ncr', 'NCR', 'text', 9)] : []), col('owner', t('Owner'), 'text', 16),
+    col('category', t('Category'), 'text', 8), col('source', t('Raised by'), 'text', 18), col('ncr', 'NCR', 'text', 9), col('owner', t('Owner'), 'text', 16),
     col('due', t('Due'), 'date'), col('status', t('Status'), 'text', 12),
   ], punch.map((p) => ({
     number: p.number, description: dataText(p.description, ctx.lang), origin: t(p.originLabel), ...(multi ? { equipment: p.equipmentRef ?? t('Common') } : {}), location: dataText(p.location, ctx.lang), category: p.categoryLabel ? t(p.categoryLabel) : '',
-    source: p.sourceText ? t(p.sourceText) : '', ...(internal ? { ncr: p.ncrNumber ?? '' } : {}), owner: p.ownerName ? dataText(p.ownerName, ctx.lang) : p.owner ? t(p.owner) : '',
+    source: p.sourceText ? t(p.sourceText) : '', ncr: p.ncrNumber ?? '', owner: p.ownerName ? dataText(p.ownerName, ctx.lang) : p.owner ? t(p.owner) : '',
     due: p.dueOn, status: t(p.statusLabel),
   })));
   return {

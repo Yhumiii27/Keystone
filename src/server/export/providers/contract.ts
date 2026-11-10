@@ -1,7 +1,6 @@
 // Export providers — Contract and Billing & payments (/projects/[code]/contract, /billing).
 // Excel: the contract sheet, amendments, guarantees and the payment schedule; billing: milestones, issued invoices and the
-// KPI tiles. PDF: the client account statement (billing report, and the client view's "Download statement" document —
-// `statementDocument` is shared with the client provider). Delivery 7: amounts in the contract's currency (C-9), the payment
+// KPI tiles. PDF: the client account statement (billing report, `statementDocument`). Delivery 7: amounts in the contract's currency (C-9), the payment
 // rule in words (R-076), the amendments' own milestones and the signature cycle (R-079).
 import { moneyIn, thousandsUnit } from '@/domain/currency';
 import { paymentTermsText } from '@/domain/payment-terms';

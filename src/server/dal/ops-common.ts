@@ -3,11 +3,11 @@ import 'server-only';
 // engineering, P&ID, machine types, settings, integrations). Writers receive the viewer as `Actor` (persona name +
 // role key) and re-check, server-side, that the screen is in the viewer's workspace (`D5_SCREEN_ROLES`); Server
 // Functions additionally check the project read-only rule with `getProjectContext(code).canEdit(screen)` before calling.
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import type { SystemMessage } from '@/domain/system-messages';
 import { inWorkspace, type ActivityKind, type D5Screen } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
-import { persons, projects, users } from '@/server/db/schema';
+import { projects } from '@/server/db/schema';
 import { leadsProject } from './project-team';
 import type { DB, Tx } from '@/server/db/types';
 
@@ -40,21 +40,9 @@ export async function whoIs(q: Q, actor: Actor): Promise<{ personId: string | nu
   return { personId: p?.id ?? null, who: p ? nameOf(p) : actor.name, short: p?.shortName ?? actor.name };
 }
 
-/** The actor is a client contact of the project's client organisation (person or user account linked to it). */
-export async function isClientContactOf(q: Q, actor: Actor, projectClientId: string | null): Promise<boolean> {
-  if (actor.role !== 'client' || !projectClientId) return false;
-  const p = await findPerson(q, actor.name);
-  if (!p) return false;
-  const [person] = await q.select({ c: persons.clientId }).from(persons).where(eq(persons.id, p.id));
-  if (person?.c === projectClientId) return true;
-  const [u] = await q.select({ c: users.clientId }).from(users).where(and(eq(users.personId, p.id), eq(users.clientId, projectClientId)));
-  return !!u;
-}
-
 /** The actor leads the project — PM of record, co-PM or deputy (R-041, L-4b) — or is the portfolio director. */
 export async function managesProject(q: Q, actor: Actor, project: { id: string }): Promise<boolean> {
   if (actor.role === 'director') return true;
-  if (actor.role === 'client') return false;
   const p = await findPerson(q, actor.name);
   return !!p && leadsProject(q, project.id, p.id);
 }

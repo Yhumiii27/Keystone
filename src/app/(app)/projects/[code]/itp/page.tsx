@@ -54,7 +54,6 @@ export default async function ItpPage({ params, searchParams }: { params: Promis
   ]);
   const machineType = line ? line.typeLabel : projectType;
   const canEdit = ctx.canEdit('itp');
-  const internal = ctx.viewer.role !== 'client';
 
   let primary: ReactNode;
   if (canEdit) {
@@ -71,19 +70,18 @@ export default async function ItpPage({ params, searchParams }: { params: Promis
       ) : (
         <ItpFormButton
           kind="punch" code={projectCode} label={t('Add punch item')} context={context}
-          form={localizeForm(punchFormDef(await teamOwnerOptions(projectCode), { internal, equipment: equipmentForm }), t, lang)}
+          form={localizeForm(punchFormDef(await teamOwnerOptions(projectCode), { internal: true, equipment: equipmentForm }), t, lang)}
         />
       );
   }
 
-  // R-126 (X-15): punch-item photos stored by Keystone; added by the screen's editors (not the client), seen by internal
-  // viewers and by the client on their own project. R-117: the items raised on site follow the Site screen's rights, and the
-  // client never gets their photos (the origin is the stored one, re-checked by /api/photos).
+  // R-126 (X-15): punch-item photos stored by Keystone; added by the screen's editors. R-117: the items raised on site follow
+  // the Site screen's rights.
   let photos;
-  if (view === 'punch' && (internal || ctx.isMine)) {
-    const byItem = await listProjectPhotos(projectCode, 'punch_item', internal ? undefined : 'itp');
+  if (view === 'punch') {
+    const byItem = await listProjectPhotos(projectCode, 'punch_item');
     photos = {
-      canEdit: canEdit && internal, canEditSite: internal && ctx.canEdit('site'),
+      canEdit, canEditSite: ctx.canEdit('site'),
       punch: Object.fromEntries([...byItem].map(([k, v]) => [k, photoViews(v)])),
     };
   }
@@ -96,7 +94,7 @@ export default async function ItpPage({ params, searchParams }: { params: Promis
         view={itpScreenView(
           {
             code: projectCode, view, plan, punch, origin, machineType, today,
-            viewer: { canRecord: canEdit && canRecordItpResult(ctx.viewer.role), internal, name: ctx.viewer.name },
+            viewer: { canRecord: canEdit && canRecordItpResult(ctx.viewer.role), internal: true, name: ctx.viewer.name },
             equipment: { lines, selected: line?.ref ?? null, filter },
           },
           t, lang,

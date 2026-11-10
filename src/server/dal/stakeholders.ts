@@ -31,9 +31,6 @@ export interface StakeholderRow {
   /** No contact for more than 30 days (before the business date, R-013). */
   stale: boolean;
   notes: string;
-  influence: number;
-  interest: number;
-  attitude: string;
 }
 
 export interface RaciMatrix {
@@ -77,7 +74,7 @@ export async function getStakeholderRegister(projectCode: string): Promise<Stake
     stakeholders: rows.map(({ s, ownerShort }) => ({
       name: s.name, organisation: s.organisation, role: s.role, type: s.type, typeLabel: stakeholderType.label(s.type), initials: stakeholderInitials(s.name),
       contactEmail: s.contactEmail, owner: ownerShort ?? s.ownerName, lastContactOn: s.lastContactOn, lastText: shortDateYearOfIso(s.lastContactOn, yearOfIso(today)),
-      stale: isStaleContact(s.lastContactOn, now), notes: s.notes, influence: s.influence, interest: s.interest, attitude: s.attitude,
+      stale: isStaleContact(s.lastContactOn, now), notes: s.notes,
     })),
     raci,
   };

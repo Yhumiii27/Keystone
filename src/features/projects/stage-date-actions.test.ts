@@ -88,9 +88,6 @@ describe('moveStageAction: effective date (L-4c)', () => {
     expect(await forced(other.code, to, '2026-09-24')).toEqual({ ok: false, error: 'Read-only — you cannot change the project lifecycle' });
     session.role = 'member';
     expect(await forced(other.code, to, '2026-09-24')).toEqual({ ok: false, error: 'Read-only — you cannot change the project lifecycle' });
-    // R-042 (P-1): the Projects register is outside the client's workspace — the client is sent home.
-    session.role = 'client';
-    await expect(forced(other.code, to, '2026-09-24')).rejects.toThrow('NEXT_REDIRECT');
     session.role = 'director';
     const prev = (await getStageHistory(other.code)).at(-1)?.dateIso ?? null;
     const date = prev && prev > '2026-09-20' ? prev : '2026-09-20';

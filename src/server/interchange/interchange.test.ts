@@ -238,7 +238,7 @@ describe('rights', () => {
   it('per role and project ownership', async () => {
     const xml = fixture('sample.mspdi.xml');
     expect(await startImport({ kind: 'schedule', mode: 'update', projectCode: 'NDC-031', fileName: 'x.xml', data: xml }, PM)).toEqual({ ok: false, error: 'You may not import this file into this project' });
-    for (const role of ['member', 'client', 'englead', 'quality'] as const)
+    for (const role of ['member', 'englead', 'quality'] as const)
       expect((await startImport({ kind: 'schedule', mode: 'new', projectCode: null, fileName: 'x.xml', data: xml }, viewer(role))).ok, role).toBe(false);
     expect((await startImport({ kind: 'bom', mode: 'update', projectCode: 'HLT-026', fileName: 'bom.csv', data: fixture('bom.en.csv') }, viewer('englead'))).ok).toBe(true);
     expect((await startImport({ kind: 'bom', mode: 'update', projectCode: 'HLT-026', fileName: 'bom.csv', data: fixture('bom.en.csv') }, PM)).ok).toBe(false);

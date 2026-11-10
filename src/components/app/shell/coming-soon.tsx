@@ -7,7 +7,7 @@ import styles from './shell.module.css';
 
 /** Module spec of each screen (docs/spec/00 §0). */
 const SPEC: [string, ScreenId[]][] = [
-  ['03-portfolio-home.md', ['home', 'myprojects', 'worldmap', 'overview', 'projects', 'portfolio', 'cash', 'client']],
+  ['03-portfolio-home.md', ['home', 'myprojects', 'worldmap', 'overview', 'projects', 'portfolio', 'cash']],
   ['04-cost-contract.md', ['budget', 'trends', 'contract', 'billing', 'contingency']],
   ['05-planning-schedule.md', ['schedule', 'plan', 'pfplan', 'whatif', 'meetings', 'stakeholders']],
   ['06-resources-hr.md', ['resources', 'presources', 'rates', 'skills', 'leave', 'hours']],

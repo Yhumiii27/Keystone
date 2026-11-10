@@ -109,22 +109,23 @@ async function chainApprovers(projectCode: string): Promise<Record<ChangeStep, s
   const db = await getDb();
   const pm = alias(persons, 'pm');
   const [p] = await db
-    .select({ pmFull: pm.fullName, pmShort: pm.shortName, clientId: projects.clientId })
+    .select({ pmFull: pm.fullName, pmShort: pm.shortName })
     .from(projects)
     .leftJoin(pm, eq(pm.id, projects.pmPersonId))
     .where(eq(projects.code, projectCode));
   const people = await db
-    .select({ roles: users.roles, clientId: users.clientId, full: persons.fullName, short: persons.shortName })
+    .select({ roles: users.roles, full: persons.fullName, short: persons.shortName })
     .from(users)
     .innerJoin(persons, eq(persons.id, users.personId))
     .where(eq(users.active, true))
     .orderBy(asc(users.sortOrder));
   const director = people.find((u) => u.roles.includes('director'));
-  const client = p?.clientId ? people.find((u) => u.clientId === p.clientId) : undefined;
+  const pmName = p ? (p.pmFull ?? p.pmShort) : null;
   return {
-    pm: p ? (p.pmFull ?? p.pmShort) : null,
+    pm: pmName,
     director: director ? (director.full ?? director.short) : null,
-    client: client ? (client.full ?? client.short) : null,
+    // D9-06: clients never see Keystone — the PM of record records the client's signed decision.
+    client: pmName,
     // P-6a: the portfolio director records the change control board's decision (R-169: the prototype printed the
     // constant cadence "Monthly · next 8 Oct").
     ccb: director ? (director.full ?? director.short) : null,

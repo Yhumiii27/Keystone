@@ -1,6 +1,6 @@
 // Personas available in "View as" (PERSONAS, design line 3747) — the demo mode's users (KEYSTONE_AUTH=demo). With
 // Microsoft Entra ID (KEYSTONE_AUTH=entra) the viewer is the signed-in user instead (src/server/auth/viewer.ts), with
-// the same shape (R-039: person, e-mail, roles, department, client organisation).
+// the same shape (R-039: person, e-mail, roles, department).
 import { initials, shortName } from '@/lib/format';
 import type { RoleKey } from './screens';
 
@@ -17,8 +17,6 @@ export interface Persona {
   roles: RoleKey[];
   /** Sign-in e-mail (lower case). */
   email: string | null;
-  /** Client organisation of an external user (replaces the former CLIENT_ORG constant); null for EPC2i staff. */
-  organisation: string | null;
   /** Department the user belongs to (EN name, "Engineering"); null when none. */
   department: string | null;
   /** persons.id of a signed-in user; null for the demo personas (the data layer resolves them by role). */
@@ -26,9 +24,6 @@ export interface Persona {
   /** users.id of a signed-in user; null for the demo personas (the data layer resolves them by role). */
   userId: string | null;
 }
-
-/** Client organisation of the demo client persona (the prototype's CLIENT_ORG). */
-export const DEMO_CLIENT_ORG = 'Port authority';
 
 // [role, name, title, e-mail, department] — departments as seeded for these persons (DEPTS heads, DEPT_OF).
 const P: [RoleKey, string, string, string, string | null][] = [
@@ -44,12 +39,12 @@ const P: [RoleKey, string, string, string, string | null][] = [
   // R-158 (owner's decision 7, 25 Oct 2026): the Logistics persona — prepares and follows the shipments (no prototype persona;
   // the person is created with its user, src/server/db/seed/users.ts).
   ['logistics', 'Camille Verdier', 'Logistics coordinator', 'camille.verdier@epc2i.fr', 'Controls & planning'],
-  ['client', 'Nadia Bensaïd', 'Client — Port authority', 'n.bensaid@port-exemple.fr', null],
+  // D9-06 (owner, 10 Nov 2026): the Client persona is removed — clients never see Keystone.
 ];
 
 export const PERSONAS: Persona[] = P.map(([role, name, title, email, department]) => ({
   role, name, title, initials: initials(name), short: shortName(name), roles: [role], email, department,
-  organisation: role === 'client' ? DEMO_CLIENT_ORG : null, personId: null, userId: null,
+  personId: null, userId: null,
 }));
 export const PERSONA_BY_ROLE = Object.fromEntries(PERSONAS.map((p) => [p.role, p])) as Record<RoleKey, Persona>;
 export const DEFAULT_ROLE: RoleKey = 'director';

@@ -65,7 +65,7 @@ describe('rate cards (06 §2)', () => {
   });
 
   it('visibility: director and pm only — and Finance since R-044 (P-12 c); multiplier hints', () => {
-    expect(['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'finance', 'client'].filter(canSeeRates)).toEqual(['director', 'pm', 'finance']);
+    expect(['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'finance'].filter(canSeeRates)).toEqual(['director', 'pm', 'finance']);
     expect(mults.map((m) => multiplierHint(m.key))).toEqual(['× base rate', '× base rate', '× base rate', '× base rate', '× base, per hour on call']);
   });
 });

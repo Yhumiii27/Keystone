@@ -1,5 +1,5 @@
 // Export providers — Warranty & after-sales (zone screens): Installed base and Warranty claims & interventions.
-// Rows follow the zone bar; a client exports only the machines of its organisation and their claims. The claims export
+// Rows follow the zone bar. The claims export
 // puts the screen's view first (`?view=claims|interventions|costs`); a claim's design ECO stays in Vigie (its number).
 import { savViewOf } from '@/domain/aftersales';
 import { getFleetScreen, getSavScreen } from '@/server/dal/aftersales';
@@ -8,15 +8,7 @@ import type { MachineRow } from '@/server/dal/fleet';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook } from '../types';
 import { col, compact, filterLine, param, sheet } from './common';
-import { projectFilter } from './scope';
 import { dataText } from '@/i18n/data-text';
-
-async function machineFilter(ctx: ExportContext): Promise<(m: Pick<MachineRow, 'projectCode' | 'client'>) => boolean> {
-  if (ctx.viewer.role !== 'client') return () => true;
-  const visible = await projectFilter(ctx);
-  const org = ctx.viewer.organisation;
-  return (m) => (!!org && m.client === org) || (!!m.projectCode && visible(m.projectCode));
-}
 
 const zoneLine = (ctx: ExportContext) => filterLine(ctx.t('Zone'), ctx.zone?.toUpperCase());
 
@@ -34,8 +26,8 @@ function machineSheet(ctx: ExportContext, machines: MachineRow[]): ExportSheet {
 }
 
 async function fleetWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
-  const [data, keep] = await Promise.all([getFleetScreen(ctx.zone), machineFilter(ctx)]);
-  const machines = data.machines.filter(keep);
+  const data = await getFleetScreen(ctx.zone);
+  const machines = data.machines;
   return {
     title: ctx.t('Installed base'),
     filters: compact([zoneLine(ctx)]),
@@ -50,9 +42,9 @@ async function fleetWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
 async function savWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
   const view = savViewOf(param(ctx, 'view'));
-  const [data, costs, keep] = await Promise.all([getSavScreen(ctx.zone), claimCostsByMachine({ zone: ctx.zone }), machineFilter(ctx)]);
-  const machines = new Set(data.machines.filter(keep).map((m) => m.number));
-  const claims = data.claims.filter((c: ClaimRow) => machines.has(c.machineNumber));
+  const [data, costs] = await Promise.all([getSavScreen(ctx.zone), claimCostsByMachine({ zone: ctx.zone })]);
+  const machines = new Set(data.machines.map((m) => m.number));
+  const claims: ClaimRow[] = data.claims.filter((c) => machines.has(c.machineNumber));
   const claimsSheet = sheet(t('Claims'), [
     col('number', t('Claim'), 'text', 9), col('machine', t('Machine'), 'text', 28), col('client', t('Client'), 'text', 20), col('issue', t('Issue'), 'text', 40), col('severity', t('Severity'), 'text', 10),
     col('reported', t('Reported on'), 'date'), col('status', t('Status'), 'text', 14), col('coverage', t('Coverage'), 'text', 14), col('cost', t('Cost'), 'money_keur'),

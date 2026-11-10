@@ -1,7 +1,7 @@
 // R-160 (P2, D9-32): "CE conformity · technical file" on the Commissioning & handover screen — one row per equipment line (R-185)
 // with its machines in the installed base, when they are placed on the market, the file's readiness (computed) and what is
 // missing; the handover warning (never a block); the handover dossier's CE declaration line, reused. `?ce=EQ-01` opens the line's
-// CE file below the card (./ce-file-editor.tsx). Server Component; never shown to a client.
+// CE file below the card (./ce-file-editor.tsx). Server Component.
 import { SealCheck, Warning } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
 import { Callout } from '@/components/app/Callout';
@@ -21,7 +21,6 @@ import { ceCardView, ceEditorView } from './model';
 import s from './ce.module.css';
 
 export async function CeConformityCard({ ctx, selected }: { ctx: ProjectContext; selected: string | null }) {
-  if (ctx.viewer.role === 'client') return null;
   const code = ctx.project.code;
   const [{ t, lang }, ce] = await Promise.all([getI18n(), getProjectCe(code)]);
   if (!ce) return null;

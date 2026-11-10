@@ -41,13 +41,12 @@ describe('widget rights per persona', () => {
     for (const d of WIDGET_KINDS)
       for (const metric of [undefined, 'cpi', 'openTasks', 'pendingApprovals', 'openRisks', 'openPunch', 'lateMilestones', 'progress']) {
         const w = { kind: d.kind, metric };
-        expect(canSeeWidget(role, w), `${d.kind} ${metric}`).toBe(role !== 'client' && canSee(role, widgetScreen(w)));
+        expect(canSeeWidget(role, w), `${d.kind} ${metric}`).toBe(canSee(role, widgetScreen(w)));
       }
   });
 
-  it('the client has no dashboards and no widget; every internal role has the screen and some widgets', () => {
-    expect(availableKinds('client')).toEqual([]);
-    for (const p of PERSONAS.filter((x) => x.role !== 'client')) {
+  it('every role has the screen and some widgets (D9-06: no client role any more)', () => {
+    for (const p of PERSONAS) {
       expect(canSee(p.role, 'dashboards'), p.role).toBe(true);
       expect(availableKinds(p.role).length, p.role).toBeGreaterThan(0);
     }
@@ -70,7 +69,6 @@ describe('widget rights per persona', () => {
     const l = starterLayout(role, 'HLT-026');
     expect(layoutSchema.safeParse(l).success).toBe(true);
     expect(forbiddenWidget(role, l)).toBeNull();
-    if (role === 'client') expect(l.widgets).toEqual([]);
   });
 });
 

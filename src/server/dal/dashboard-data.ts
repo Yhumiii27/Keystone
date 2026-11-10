@@ -90,11 +90,11 @@ export async function resolveWidgets(viewer: Persona, widgets: readonly Widget[]
   if (!widgets.length) return [];
   const [today, access, all, th] = await Promise.all([businessToday(), projectAccessResolver(viewer), listProjects(), healthThresholds()]);
   const byCode = new Map(all.map((p) => [p.code, p]));
-  const mine = (p: Pick<ProjectRow, 'code' | 'pm' | 'client' | 'clientInternal' | 'pmPersonId'>) => access(p).member;
+  const mine = (p: Pick<ProjectRow, 'code' | 'pm' | 'pmPersonId'>) => access(p).member;
   /** A project the viewer may read, with data; null otherwise. */
   const readable = (code: string) => {
     const p = byCode.get(code);
-    return p && p.hasData && !access(p).refused ? p : null;
+    return p && p.hasData ? p : null;
   };
 
   const overview = memo((zone) => getPortfolioOverview((zone || null) as DashboardZone | null, lang));
@@ -247,8 +247,8 @@ export async function resolveWidgets(viewer: Persona, widgets: readonly Widget[]
   return Promise.all(widgets.map(async (widget) => ({ widget, data: await resolve(widget) })));
 }
 
-/** Projects a viewer can pick for a project widget: in the register with data, not refused (register order). */
-export async function dashboardProjectChoices(viewer: Persona, lang: Lang): Promise<{ code: string; label: string; inExecution: boolean }[]> {
-  const [all, access] = await Promise.all([listProjects(), projectAccessResolver(viewer)]);
-  return all.filter((p) => p.hasData && !access(p).refused).map((p) => ({ code: p.code, label: projectLabelText(p, lang), inExecution: inExecution(p) }));
+/** Projects a viewer can pick for a project widget: in the register with data (register order). */
+export async function dashboardProjectChoices(_viewer: Persona, lang: Lang): Promise<{ code: string; label: string; inExecution: boolean }[]> {
+  const all = await listProjects();
+  return all.filter((p) => p.hasData).map((p) => ({ code: p.code, label: projectLabelText(p, lang), inExecution: inExecution(p) }));
 }

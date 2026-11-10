@@ -146,16 +146,7 @@ describe('exports', () => {
     const db = await getDb();
     expect((await db.select().from(connectors).where(eq(connectors.name, 'MS Project')))[0].lastVolume).toBe('HLT-026 exported · BL1');
     expect((await db.select().from(auditEntries).where(eq(auditEntries.objectRef, 'HLT-026'))).some((a) => a.change.startsWith('MS Project XML exported'))).toBe(true);
-    as('client');
-    expect((await exportMspdi(new Request('http://localhost/x'), { params: Promise.resolve({ code: 'NDC-031' }) })).status).toBe(403);
-    // P-1 (security review): the file carries costs and resources and lives outside the client's workspace — refused even on
-    // the client's own project.
-    expect((await exportMspdi(new Request('http://localhost/x'), { params: Promise.resolve({ code: 'HLT-026' }) })).status).toBe(403);
     expect((await exportMspdi(new Request('http://localhost/x'), { params: Promise.resolve({ code: 'XXX-999' }) })).status).toBe(404);
-    // The client sees their organisation's projects only (HLT-026, and the project imported above for "Port authority").
-    const mine = (await exportSetupAction('xml')).projects.map((p) => p.code);
-    expect(mine).toContain('HLT-026');
-    expect(mine).not.toContain('NDC-031');
   });
 });
 

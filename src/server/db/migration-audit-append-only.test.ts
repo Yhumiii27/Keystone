@@ -78,8 +78,9 @@ describe('R-168: append-only audit trail (custom migration)', () => {
       .where(isNotNull(auditEntries.actorPersonId));
     expect(seeded.length).toBeGreaterThanOrEqual(8);
     for (const r of seeded) expect([r.who, r.user]).toEqual([r.who, r.personUser]);
-    // Romain Aubert (CR-008), the client contact (D-015) and the procurement persona (PO-1082) have accounts.
-    expect(seeded.filter((r) => ['Romain Aubert', 'Nadia Bensaïd', 'Fabien Bertrand'].includes(r.who)).every((r) => r.user)).toBe(true);
+    // Romain Aubert (CR-008) and the procurement persona (PO-1082) have accounts; D9-06: the client contact (D-015) has none.
+    expect(seeded.filter((r) => ['Romain Aubert', 'Fabien Bertrand'].includes(r.who)).every((r) => r.user)).toBe(true);
+    expect(seeded.filter((r) => r.who === 'Nadia Bensaïd').every((r) => r.user === null)).toBe(true);
   });
 });
 

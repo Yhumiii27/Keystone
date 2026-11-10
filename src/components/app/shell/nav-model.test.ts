@@ -25,7 +25,6 @@ describe('crumbBase (crumbOf)', () => {
     expect(crumbBase('overview')).toBe('Portfolio');
     expect(crumbBase('task')).toBe('My work');
     expect(crumbBase('docs')).toBe('Documents');
-    expect(crumbBase('client')).toBe('Keystone');
   });
 });
 
@@ -54,9 +53,9 @@ describe('buildSidebar (docs/spec/01 §4.3–4.6)', () => {
     expect(m.sections.find((s) => s.key === 'tech')!.badge).toBe('1');
   });
 
-  it('closed sections still show the active item; client sees My project', () => {
-    const m = buildSidebar({ ...base, role: 'client', active: 'changes', navOpen: { project: false } });
-    expect(m.fixed.map((e) => e.id)).toEqual(['home', 'client', 'myapprovals', 'docs']);
+  it('closed sections still show the active item', () => {
+    // D9-06: the client persona and its "My project" entry are gone; the PM checks the same rule.
+    const m = buildSidebar({ ...base, role: 'pm', active: 'changes', navOpen: { project: false } });
     const project = m.sections.find((s) => s.key === 'project')!;
     expect(project.rows.filter((r) => r.kind === 'item').map((r) => (r.kind === 'item' ? r.entry.id : ''))).toEqual(['changes']);
   });

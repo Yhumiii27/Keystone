@@ -55,15 +55,4 @@ describe('GET /api/meetings/[number]/transcript', () => {
       expect(res.status, n).toBe(404);
     }
   });
-
-  it('P-10b (R-043): a client is refused every transcript — another organisation’s project and their own', async () => {
-    Object.assign(viewer, { role: 'client', isMine: false });
-    const res = await get(meeting);
-    expect(res.status).toBe(403);
-    expect(await res.text()).toBe('You cannot open this file');
-    Object.assign(viewer, { role: 'client', isMine: true });
-    expect((await get(meeting)).status).toBe(403);
-    expect((await get('MTG-999')).status).toBe(403);
-    Object.assign(viewer, { role: 'pm', isMine: true });
-  });
 });

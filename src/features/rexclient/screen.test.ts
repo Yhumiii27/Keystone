@@ -1,45 +1,21 @@
-// Lessons learned & closure and client portal screens on a seeded in-memory database, in English and French, against
-// the prototype's own render values (src/domain/rexclient.golden.json, scripts/proto-golden-rexclient.ts). The view
-// models are what the pages render (getRexScreen / getClientScreen). Deliberate deviations are asserted explicitly:
-// the contract billing plan instead of the static BILLING rows (A-5), issues scoped per project (11 §7 #22), French
-// decimals and the translated criterion / step labels / deliverable types the prototype left in English.
+// Lessons learned & closure screen on a seeded in-memory database, in English and French, against the prototype's own render
+// values (src/domain/rexclient.golden.json, scripts/proto-golden-rexclient.ts). The view model is what the page renders
+// (getRexScreen). Deliberate deviations are asserted explicitly: French decimals and the translated criterion labels the
+// prototype left in English. D9-06: the client portal screen and its cases were removed (clients never see Keystone).
 import { beforeAll, describe, expect, it } from 'vitest';
 import { crumbBase, isOutside } from '@/components/app/shell/nav-model';
 import { SCREEN_BY_ID, type RoleKey } from '@/config/screens';
 import { makeT, type Lang } from '@/i18n/translate';
-import { money } from '@/lib/format';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
-import { getContract } from '@/server/dal/contract';
 import golden from '@/domain/rexclient.golden.json';
 import { demoNcrGolden } from '@/domain/vigie-demo';
-import { getClientScreen, getRexScreen } from './screen';
+import { getRexScreen } from './screen';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // D13 (CV-07): the prototype's NCR numbers as the demo data set has them (EV-2026-0nn, src/domain/vigie-demo.ts).
 const G = demoNcrGolden(golden) as any;
 
-/**
- * Delivery 7 (R-073; C-2a "EV = avancement × budget", A-12): the portal's progress tile and "Progress to date" bars read the earned
- * value computed from the activities and the cost-loaded BL1 at the data date, no longer the seeded PV / EV series.
- * HLT-026: 64 % (planned 71 %) → 63 % (planned 76 %); NDC-031: 51 % (planned 38 %) → 46 % (planned 48 %).
- */
-const bars = (labels: string[], plan: string[], act: string[]) => labels.map((label, i) => ({ label, planH: plan[i], actH: act[i] }));
-const HLT_PLAN = ['2%', '4.1%', '5.9%', '9.8%', '19.3%', '31%', '52%', '65%', '76.3%'];
-const HLT_ACT = ['2%', '4.1%', '5.7%', '7.8%', '14.6%', '26.2%', '43%', '57.2%', '62.6%'];
-const D7: Record<string, Record<string, { kpi0: { value: string; sub: string }; progress: { label: string; planH: string; actH: string }[] }>> = {
-  'HLT-026': {
-    en: { kpi0: { value: '63%', sub: 'Planned 76% by today' }, progress: bars(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'], HLT_PLAN, HLT_ACT) },
-    fr: { kpi0: { value: '63%', sub: 'Prévu 76 % à ce jour' }, progress: bars(['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.'], HLT_PLAN, HLT_ACT) },
-  },
-  'NDC-031': {
-    en: {
-      kpi0: { value: '46%', sub: 'Planned 48% by today' },
-      progress: bars(['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'], ['3.2%', '10%', '16.3%', '27.2%', '38.1%', '48.5%'], ['3%', '8.9%', '16.4%', '26.4%', '36.8%', '46.3%']),
-    },
-  },
-};
-const withD7 = (code: string, lang: string, kpis: any[]) => [{ ...kpis[0], ...D7[code][lang].kpi0 }, ...kpis.slice(1)];
 const LANGS: Lang[] = ['en', 'fr'];
 const ICON = { done: 'ph ph-check-square', progress: 'ph ph-minus-square', idle: 'ph ph-square' };
 const str = (ks: any[]) => ks.map((k) => ({ ...k, value: String(k.value) }));
@@ -79,114 +55,13 @@ describe('Lessons learned & closure screen', () => {
   });
 });
 
-describe('client portal screen', () => {
-  it.each(LANGS)('HLT-026 (%s): tiles, tabs, progress, milestones, decisions', async (lang) => {
-    const t = makeT(lang);
-    const v = await getClientScreen('HLT-026', 'decisions', t, lang);
-    const g0 = G.client[lang]['HLT-026'];
-    // NEW-D5-3 'a' (R-156): in French the 'Handover' step is « Transfert » (the prototype said « Livraison »): the forecast tile,
-    // the Handover milestone and CR-008's schedule impact. Golden values are not regenerated; only these three change.
-    const g = lang === 'fr'
-      ? {
-          ...g0,
-          kpis: g0.kpis.map((k: any, i: number) => (i === 1 ? { ...k, label: 'Transfert prévu' } : k)),
-          milestones: g0.milestones.map((m: any, i: number) => (i === 5 ? { ...m, name: 'Transfert' } : m)),
-          decisions: g0.decisions.map((d: any, i: number) => (i === 0 ? { ...d, sub: d.sub.replace('-12 j sur la livraison', '-12 j sur le transfert') } : d)),
-        }
-      : g0;
-    // Deviation P-6b (delivery 8, R-069): CR-008 reaches the client only once the portfolio director approved it — 3 → 2 waiting.
-    const notYet = (d: any) => d.id !== 'CR-008';
-    expect(v.kpis).toEqual(withD7('HLT-026', lang, str(g.kpis)).map((k: any, i: number) => (i === 3 ? { ...k, value: String(g.decisions.filter(notYet).length) } : k)));
-    // S-9a: "Schedule" (FR "Planning") added after the prototype's first segment.
-    expect(v.tabs.map((o) => o.label)).toEqual([g.seg[0], t('Schedule'), ...g.seg.slice(1)]);
-    expect(v.tabs.map((o) => o.href)).toEqual(['', 'planning', 'decisions', 'invoices', 'issues', 'docs'].map((x) => `/projects/HLT-026/client${x ? `?tab=${x}` : ''}`));
-    expect(v.progress).toEqual(D7['HLT-026'][lang].progress);
-    expect(v.milestones).toEqual(g.milestones);
-    // Deliverable types the prototype left in English are translated by the shared dictionary when it has them.
-    const typeFr = (sub: string) => (lang === 'fr' ? sub.replace(/^[^·]+ · /, (m) => `${t(m.slice(0, -3))} · `) : sub);
-    expect(v.decisions.map((d) => ({ kind: d.kindLabel, id: d.id, title: d.title, sub: d.sub, when: d.when, approveLabel: d.approveLabel })))
-      .toEqual(g.decisions.filter(notYet).map((d: any) => (d.id.startsWith('D-') ? { ...d, sub: typeFr(d.sub) } : d)));
-    expect(v.decided).toEqual(g.decided);
-  });
-
-  it.each(LANGS)('HLT-026 (%s): invoices and contract summary follow the contract billing plan (A-5)', async (lang) => {
-    const t = makeT(lang);
-    const v = await getClientScreen('HLT-026', 'invoices', t, lang);
-    const c = (await getContract('HLT-026'))!;
-    const g = G.client[lang]['HLT-026'];
-    // Delivery 7, NEW-D3-3 (R-079): the signed Amendment 1's own milestone M6 is billable and listed after M5 (planned).
-    const planned = g.invoices[g.invoices.length - 1];
-    expect(v.invoices.map((i) => [i.status, i.tagClass])).toEqual([...g.invoices, planned].map((i: any) => [i.status, i.tagClass]));
-    expect(v.invoices.map((i) => [i.no, i.amount])).toEqual(
-      c.milestones.filter((m) => m.billable).map((m, k) => [['INV-2026-001', 'INV-2026-002', 'INV-2026-003'][k] ?? '—', money(m.amountKeur, lang)]),
-    );
-    if (lang === 'en') expect(v.invoices[5].name).toBe('M6 Anti-collision lidar commissioned');
-    expect(v.invoices.map((i) => i.payment)).toEqual(
-      lang === 'en'
-        ? ['Settled', 'Settled', 'Due 10 Nov', 'On milestone', 'On milestone', 'On milestone']
-        : ['Réglée', 'Réglée', 'Échéance 10 nov.', 'Au jalon', 'Au jalon', 'Au jalon'],
-    );
-    expect(v.invoices[2].name).toBe(lang === 'en' ? 'M3 Structure topped out' : 'M3 Structure hors d’eau');
-    expect(v.summary!.map((r) => r.k)).toEqual(g.invKpis.map((r: any) => r.k));
-    expect(v.summary!.map((r) => r.v)).toEqual([money(c.valueKeur, lang), money(c.invoicedKeur, lang), money(c.paidKeur, lang), g.invKpis[3].v]);
-    expect([v.invoicesEmpty, v.summaryEmpty]).toEqual([null, null]);
-  });
-
-  it.each(LANGS)('HLT-026 (%s): issues and shared documents (Codex index)', async (lang) => {
-    const v = await getClientScreen('HLT-026', 'docs', makeT(lang), lang);
-    const g = G.client[lang]['HLT-026'];
-    expect(v.issues.map((i) => ({ id: i.id, title: i.title, when: i.when, status: i.status, resp: i.response, tagClass: i.tagClass }))).toEqual(g.issues);
-    expect(v.docs.map((d) => ({
-      id: d.id, title: d.title, typeLabel: d.typeLabel, date: d.date, rev: d.rev, status: d.status, stClass: d.tagClass, ack: d.acknowledged, canAck: !d.acknowledged, ackLabel: d.ackLabel,
-    }))).toEqual(g.docs);
-    // 03 OQ2 / A.3: real labels instead of the engineering register's "Column mapping" / "Deliverables" / "Own documents · …".
-    // L-9 (R-138): + the title of the "By category" strip.
-    expect(v.docsLabels).toEqual(lang === 'en'
-      ? { idHeader: 'Reference', sub: 'Released documents shared with you', empty: 'No document shared with you yet', byCategory: 'By category' }
-      : { idHeader: 'Référence', sub: 'Documents diffusés partagés avec vous', empty: 'Aucun document partagé avec vous pour l’instant', byCategory: 'Par catégorie' });
-  });
-
-  it('NDC-031: generated data; issues are per project (the prototype listed Harbor Line’s issues everywhere)', async () => {
-    const v = await getClientScreen('NDC-031', 'progress', makeT('en'), 'en');
-    const g = G.client.en['NDC-031'];
-    expect(v.kpis.slice(0, 4)).toEqual(withD7('NDC-031', 'en', str(g.kpis)).slice(0, 4));
-    expect(v.kpis[4]).toEqual({ ...g.kpis[4], value: '0' });
-    expect(v.issues).toEqual([]);
-    expect(v.progress).toEqual(D7['NDC-031'].en.progress);
-    expect(v.milestones).toEqual(g.milestones);
-    expect(v.decisions.map((d) => [d.id, d.sub, d.when])).toEqual(g.decisions.map((d: any) => [d.id, d.sub, d.when]));
-    expect(v.decided).toEqual(g.decided);
-    // Legacy monthly plan: no invoice numbers or due dates are recorded ("F-2026-104" / "Due 15 Oct" were static).
-    expect(v.invoices.map((i) => [i.no, i.name, i.amount, i.status, i.payment])).toEqual(g.invoices.map((i: any) => ['—', i.name, i.amt, i.status, i.status === 'Invoiced' ? '—' : i.due]));
-    expect(v.summary!.map((r) => r.v)).toEqual(g.invKpis.map((r: any) => r.v));
-    expect(v.docs.map((d) => [d.id, d.acknowledged])).toEqual(g.docs.map((d: any) => [d.id, d.ack]));
-  });
-
-  it('projects without data: empty states, no Harbor Line fallback (00 §7.16)', async () => {
-    const v = await getClientScreen('EWA-051', 'progress', makeT('en'), 'en');
-    expect(v.kpis.map((k) => k.value)).toEqual(['—', '—', '—', '0', '0']);
-    expect([v.progress, v.milestones, v.decisions, v.decided, v.invoices, v.issues, v.docs]).toEqual([null, [], [], [], [], [], []]);
-    expect([v.invoicesEmpty, v.summaryEmpty]).toEqual(['No billing plan for this project yet', 'No contract recorded for this project']);
-    // Internal project (contract value 0): the prototype's empty invoice list and €0k contract summary.
-    for (const lang of LANGS) {
-      const internal = await getClientScreen('ERP-202', 'invoices', makeT(lang), lang);
-      expect([internal.invoices, internal.invoicesEmpty, internal.summaryEmpty]).toEqual([[], makeT(lang)('Internal project — no client billing'), null]);
-      expect(internal.summary).toEqual(lang === 'en'
-        ? [{ k: 'Contract value', v: '€0k' }, { k: 'Invoiced', v: '€0k' }, { k: 'Paid', v: '€0k' }, { k: 'Approved changes', v: '—' }]
-        : [{ k: 'Montant du contrat', v: '0 k€' }, { k: 'Facturé', v: '0 k€' }, { k: 'Payé', v: '0 k€' }, { k: 'Modifications approuvées', v: '—' }]);
-    }
-  });
-});
-
 describe('page header (title, crumb, who gets the primary action)', () => {
-  it.each(LANGS)('%s: Lessons learned & closure and My project — client view, every role on HLT-026', (lang) => {
+  it.each(LANGS)('%s: Lessons learned & closure, every role on HLT-026', (lang) => {
     const t = makeT(lang);
-    const cases = [
-      { screen: 'rex' as const, roles: G.rex[lang].roles, crumb: crumbBase('rex'), primary: 'Add lesson' },
-      { screen: 'client' as const, roles: G.client[lang].roles, crumb: `${crumbBase('client')} · read-only except decisions and issues`, primary: 'Download status report' },
-    ];
+    // D9-06: the client portal screen ("My project — client view") and the Client role are gone — the client cases are left out.
+    const cases = [{ screen: 'rex' as const, roles: G.rex[lang].roles, crumb: crumbBase('rex'), primary: 'Add lesson' }];
     for (const c of cases)
-      for (const [role, h] of Object.entries(c.roles) as [RoleKey, any][]) {
+      for (const [role, h] of (Object.entries(c.roles) as [RoleKey | 'client', any][]).filter(([r]) => r !== 'client') as [RoleKey, any][]) {
         // HLT-026 is owned by the PM persona and the client's organisation, so only the workspace rule applies here; the
         // pages render the primary action when the screen is in the workspace (and, for the REX screen, the project editable).
         expect([t(SCREEN_BY_ID[c.screen].title), t(c.crumb), t(c.primary), isOutside(role, c.screen), !isOutside(role, c.screen)])

@@ -7,7 +7,8 @@ import { DELEGATION_MAX_DAYS, canCancelDelegation, decisionKey, delegationError,
 const today = DEMO_TODAY_ISO; // Fri 25 Sep 2026
 const pm = { userId: 'u-pm', active: true, roles: ['pm'] as const, external: false };
 const englead = { userId: 'u-eng', active: true, roles: ['englead'] as const, external: false };
-const client = { userId: 'u-cl', active: true, roles: ['client'] as const, external: true };
+// D9-06: no client role any more — an external user (a contractor's account) stands for the refused accounts.
+const external = { userId: 'u-ext', active: true, roles: ['member'] as const, external: true };
 const base = { today, approver: pm, substitute: englead, existing: [] };
 
 describe('R-051 — delegation rules', () => {
@@ -19,8 +20,8 @@ describe('R-051 — delegation rules', () => {
     expect([periodsOverlap(d, { startsOn: '2026-10-02', endsOn: '2026-10-09' }), periodsOverlap(d, { startsOn: '2026-10-03', endsOn: '2026-10-09' })]).toEqual([true, false]);
   });
 
-  it('internal users only: never a client or an external user', () => {
-    expect([isInternalUser(pm), isInternalUser(client), isInternalUser({ roles: ['pm'], external: true }), isInternalUser({ roles: ['client', 'pm'], external: false })]).toEqual([true, false, false, true]);
+  it('internal users only: never an external user, never an account without a role', () => {
+    expect([isInternalUser(pm), isInternalUser(external), isInternalUser({ roles: ['pm'], external: true }), isInternalUser({ roles: ['pm'], external: false }), isInternalUser({ roles: [], external: false })]).toEqual([true, false, false, true, false]);
   });
 
   it('a valid delegation, starting today or later', () => {
@@ -40,10 +41,10 @@ describe('R-051 — delegation rules', () => {
     expect(err({ startsOn: today, endsOn: '2027-09-26' })).toBe('long');
     expect(DELEGATION_MAX_DAYS).toBe(366);
     expect(err({ startsOn: today, endsOn: '2026-10-02' }, { substitute: pm })).toBe('self');
-    expect(err({ startsOn: today, endsOn: '2026-10-02' }, { substitute: client })).toBe('external');
+    expect(err({ startsOn: today, endsOn: '2026-10-02' }, { substitute: external })).toBe('external');
     expect(err({ startsOn: today, endsOn: '2026-10-02' }, { substitute: null })).toBe('external');
     expect(err({ startsOn: today, endsOn: '2026-10-02' }, { substitute: { ...englead, active: false } })).toBe('inactive');
-    expect(err({ startsOn: today, endsOn: '2026-10-02' }, { approver: client, substitute: pm })).toBe('approver');
+    expect(err({ startsOn: today, endsOn: '2026-10-02' }, { approver: external, substitute: pm })).toBe('approver');
   });
 
   it('overlapping delegations of the same approver are refused; cancelled and ended ones do not count', () => {

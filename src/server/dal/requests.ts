@@ -449,17 +449,15 @@ async function createTaskFromRequest(tx: Tx, r: typeof resourceRequests.$inferSe
 /**
  * People procurement may name on a sourcing task (P-8b): existing persons only — the internal resource pool first (pool order),
  * then the other known people who are not a client organisation's contacts (external workers already in Keystone), by name.
- * Contract-role placeholders and client users are left out. Creating a person waits for the Cursus staff directory (R-027).
+ * Contract-role placeholders are left out. Creating a person waits for the Cursus staff directory (R-027).
  */
 export async function listSourcingCandidates(q?: DB | Tx): Promise<{ personId: string; name: string; short: string; pool: boolean }[]> {
   const db = q ?? (await getDb());
   const rows = await db
-    .select({ id: persons.id, full: persons.fullName, short: persons.shortName, pool: persons.resourcePoolPosition, order: persons.sortOrder, userClient: users.clientId, roles: users.roles })
+    .select({ id: persons.id, full: persons.fullName, short: persons.shortName, pool: persons.resourcePoolPosition, order: persons.sortOrder })
     .from(persons)
-    .leftJoin(users, eq(users.personId, persons.id))
     .where(and(sql`${persons.clientId} is null`, eq(persons.isContractRole, false)));
   return rows
-    .filter((r) => !r.userClient && !(r.roles ?? []).includes('client'))
     .sort((a, b) => (a.pool == null) !== (b.pool == null) ? (a.pool == null ? 1 : -1) : a.pool != null && b.pool != null ? a.pool - b.pool : (a.full ?? a.short).localeCompare(b.full ?? b.short))
     .map((r) => ({ personId: r.id, name: r.full ?? r.short, short: r.short, pool: r.pool != null }));
 }

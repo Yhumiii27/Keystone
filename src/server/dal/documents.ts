@@ -33,7 +33,7 @@ import { awaitsKeystoneData } from '@/server/integrations/codex/mirror';
 import { logWarning } from '@/server/log';
 import {
   clients, codexIndexAwaiting, deliverables, documentAcknowledgements, documentApprovals, documentApproverAssignments, documentDeposits, documentIndexSyncs,
-  documentLinks, documentRevisions, documentTypeCircuitSteps, documentTypes, documents, persons, projects, punchItems, purchaseOrders, users,
+  documentLinks, documentRevisions, documentTypeCircuitSteps, documentTypes, documents, persons, projects, punchItems, purchaseOrders,
 } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
 
@@ -511,11 +511,11 @@ export async function getDocumentRecord(number: string): Promise<DocumentRecord 
   };
 }
 
-/** Client organisation of a project and its client contact (the client user of that organisation), for the distribution row. */
+/** Client organisation of a project and its client contact (a person of that organisation), for the distribution row. */
 async function clientContactOf(q: Awaited<ReturnType<typeof getDb>> | Tx, projectId: string): Promise<{ organisation: string; contact: string | null; personId: string | null } | null> {
   const [p] = await q.select({ clientId: projects.clientId, name: clients.name }).from(projects).leftJoin(clients, eq(clients.id, projects.clientId)).where(eq(projects.id, projectId));
   if (!p?.clientId || !p.name) return null;
-  const [u] = await q.select({ short: persons.shortName, id: persons.id }).from(users).innerJoin(persons, eq(persons.id, users.personId)).where(eq(users.clientId, p.clientId));
+  const [u] = await q.select({ short: persons.shortName, id: persons.id }).from(persons).where(eq(persons.clientId, p.clientId)).orderBy(asc(persons.shortName)).limit(1);
   return { organisation: p.name, contact: u?.short ?? null, personId: u?.id ?? null };
 }
 
@@ -1003,24 +1003,6 @@ export async function recordCircuitStart(tx: Tx, number: string, actor: { name: 
     text: `${number} rev ${d.currentRevision} · Release validated by the PM · Approval circuit started · ${sync}`,
   });
   return { entryId: entry.id, revision: d.currentRevision };
-}
-
-/** Client portal "Acknowledge receipt" of a shared document's current revision, on `on` (default the business date, R-013). */
-export async function acknowledgeDocument(number: string, actorName: string, onDate?: string): Promise<void> {
-  const db = await getDb();
-  const on = onDate ?? (await businessToday());
-  await db.transaction(async (tx) => {
-    const d = await loadDoc(tx, number);
-    const [t] = await tx.select().from(documentTypes).where(eq(documentTypes.code, d.typeCode));
-    if (!t || !sharedWithClient(t, d)) throw new Error(`${number} is not shared with the client`);
-    const actor = await findPerson(tx, actorName);
-    await tx.insert(documentAcknowledgements).values({ documentId: d.id, revision: d.currentRevision, acknowledgedByPersonId: actor?.id ?? null, acknowledgedOn: on })
-      .onConflictDoNothing();
-    await writeAudit(tx, {
-      actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: number, change: `rev ${d.currentRevision} acknowledged by the client`,
-      area: 'Documents', entityType: 'document', entityId: d.id, projectId: d.projectId, after: { revision: d.currentRevision, acknowledgedOn: on },
-    });
-  });
 }
 
 /** A deposit refused because Codex is connected (HTTP connector): it is made in Codex itself (A-15, R-033). */
