@@ -4,8 +4,8 @@ Décisions du propriétaire (`docs/DECISIONS.md`) : les clients ne voient pas Ke
 « décision client » est une décision prise en réunion « client présent » (D9-25) ; la grille pouvoir / intérêt des parties
 prenantes disparaît, elles se définissent par leurs rôles et responsabilités (D9-26).
 
-Migration : `drizzle/0078_no_client.sql` (générée par `npm run db:generate`, complétée à la main pour la reprise des
-données). Aucune vue `pub_` ne lit une colonne retirée (vérifié sur les 22 vues des migrations 0000–0074).
+Migration : `drizzle/0083_no_client.sql` (générée par `npm run db:generate`, complétée à la main pour la reprise des
+données). Aucune vue `pub_` ne lit une colonne retirée (vérifié sur les 22 vues des migrations 0000–0074 ; aucune migration postérieure ne crée de vue `pub_`).
 
 ## 1. Portail client et profil Client retirés (D9-06, D9-22, D9-23)
 
@@ -89,4 +89,4 @@ Gardé, et pourquoi :
 - DocuSign (D9-06) : l’envoi en signature est un nouvel outil à cadrer avec la DSI — non construit ; la référence du
   document signé se saisit à la main en attendant.
 - Les points signalés par les clients (`client_issues`) ont été supprimés avec leurs données de démonstration ; si une
-  base réelle en contenait, les exporter avant la migration 0078.
+  base réelle en contenait, les exporter avant la migration 0083.
