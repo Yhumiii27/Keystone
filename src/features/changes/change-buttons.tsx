@@ -168,6 +168,7 @@ function ClientStepButtons({ code, number, stepLabel }: { code: string; number: 
         {t('Record approval')}
       </Button>
       {open && (
+        // Above the change request's drawer (z-index 60/61), from which it is opened.
         <FormDialog
           title={open === 'ok' ? 'Record client approval' : 'Record client rejection'}
           submit={open === 'ok' ? 'Record approval' : 'Record rejection'}
@@ -177,6 +178,7 @@ function ClientStepButtons({ code, number, stepLabel }: { code: string; number: 
           ]}
           translate
           open
+          zIndex={70}
           onClose={() => setOpen(null)}
           context={number}
           onSubmit={(values) => recordClientChangeStepAction(code, number, open, values)}
