@@ -32,6 +32,8 @@ const REFERENCE_TABLES = [
   'rate_multipliers', 'rate_multiplier_rates',
   // R-158 (decision 9): the 11 Incoterms 2020.
   'incoterms',
+  // R-160 (P2): the CE conformity checklists (Annex III, Annex IV headings), posed by migration 0079 on every database.
+  'ce_checklist_items',
 ].sort();
 
 describe('production seed (KEYSTONE_SEED=production)', () => {

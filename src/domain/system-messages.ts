@@ -167,6 +167,12 @@ const MESSAGES = {
     (p) => `Equipment ${p.ref} removed · ${p.equipment}`,
     (p) => `Équipement ${p.ref} retiré · ${p.equipment}`,
   ),
+  // R-160 (P2): the CE file of an equipment line (audit trail and activity feed); `fields` = the fields changed (EN keys).
+  'ce.fileUpdated': def(
+    { ref: 'ref', done: 'count', total: 'count' },
+    (p) => `CE file of ${p.ref} updated · readiness ${p.done}/${p.total}`,
+    (p, f) => `Dossier CE de ${p.ref} mis à jour · état ${f.count(p.done)}/${f.count(p.total)}`,
+  ),
   // R-186: the machine catalogue on the Machine types screen ("EMP-40T v2"; audit trail, activity feed on publish and retire).
   'catalogue.created': def(
     { ref: 'ref', label: 'data' },

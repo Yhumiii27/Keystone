@@ -8,6 +8,7 @@
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import { equipmentChoiceOf } from '@/domain/equipment-scope';
+import { ceHandoverWarning } from '@/features/ce/warnings';
 import { canRecordItpResult, parseInspectionResult, parseNewInspection, parseNewPunch, parsePlanSat, punchStep } from '@/domain/itpcom';
 import { shortName } from '@/lib/format';
 import { businessToday } from '@/server/clock';
@@ -156,7 +157,8 @@ export async function planSatAction(code: string, values: Record<string, string>
   }
   refresh(ok.code);
   // R-015 / R-036: "invitation sent" only when a client contact was invited (none for a subsidiary or a client without account).
-  return { toast: await tr(invited ? SAT_RESULT : SAT_NOT_INVITED) };
+  // R-160 (P2): a warning when the CE file of the system's equipment line is incomplete — the SAT is planned all the same.
+  return { toast: (await tr(invited ? SAT_RESULT : SAT_NOT_INVITED)) + (await ceHandoverWarning(ok.code, { system: v.system }, (await getI18n()).t)) };
 }
 
 const RESULT_CHANGED = 'This inspection has changed since you opened it';

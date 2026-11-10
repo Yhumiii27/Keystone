@@ -5,6 +5,7 @@
 // current options, writes through the data-layer writers with the viewer as the actor (audit trail, activity), then
 // revalidates every page (the sidebar badge, the zone bar counts, the part record's installed base and both screens).
 // Messages are English source strings translated per " · " segment.
+import { ceHandoverWarning } from '@/features/ce/warnings';
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import { parseNewClaim, parseNewMachine } from '@/domain/aftersales';
@@ -231,7 +232,8 @@ export async function registerMachinesAction(values: Record<string, string>): Pr
       name: access.viewer.name, role: access.viewer.role,
     });
     refreshAll();
-    return { toast: messageText(`${numbers.join(', ')} · Machines registered with their as-built configuration`, t) };
+    // R-160 (P2): a warning when the CE file of the delivered line is incomplete — the machines are registered all the same.
+    return { toast: messageText(`${numbers.join(', ')} · Machines registered with their as-built configuration`, t) + (await ceHandoverWarning(v.projectCode, { equipment: v.equipment ?? null }, t)) };
   } catch (err) {
     console.error('registerMachinesAction', err);
     return { error: messageText('The change could not be saved', t) };

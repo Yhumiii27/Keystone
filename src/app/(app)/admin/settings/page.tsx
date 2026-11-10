@@ -7,6 +7,7 @@
 // no Reset, a read-only note); the lists drive the modules and the thresholds the one health rule (A-13).
 // R-158 lot A (decision 9): the Incoterms card (Incoterms 2020 and their split of responsibilities), same editors.
 // R-199 / R-036: the Reminders & reports card (company default of the reminders and the weekly reports), same editors.
+// R-160 (P2, D9-32): the CE conformity checklists card (Annex III and Annex IV headings), same editors.
 import { PageHeader } from '@/components/app/shell/page-header';
 import { canEditSettings } from '@/domain/settings-rules';
 import { settingsView } from '@/features/admin/model';
@@ -20,6 +21,9 @@ import { getConfig } from '@/server/config';
 import { listIncoterms } from '@/server/dal/incoterms';
 import { readReminderDefaults } from '@/server/dal/reminder-preferences';
 import { getSettings } from '@/server/dal/settings';
+import { listCeChecklists } from '@/server/dal/ce-conformity';
+import { CeChecklistsCard } from '@/features/ce/checklists-card';
+import { ceChecklistsView } from '@/features/ce/model';
 import { getScreenAccess } from '@/server/project-context';
 import { CURRENCIES, BASE_CURRENCY } from '@/domain/currency';
 import { referenceRateOn } from '@/domain/fx-exposure';
@@ -30,7 +34,9 @@ import { listReferenceRates, readFxThresholds } from '@/server/dal/fx';
 import { getI18n } from '@/server/session';
 
 export default async function SettingsPage() {
-  const [{ t, lang }, access, data, incoterms, reminders] = await Promise.all([getI18n(), getScreenAccess('settings'), getSettings(), listIncoterms(), readReminderDefaults()]);
+  const [{ t, lang }, access, data, incoterms, reminders, ceLists] = await Promise.all([
+    getI18n(), getScreenAccess('settings'), getSettings(), listIncoterms(), readReminderDefaults(), listCeChecklists(),
+  ]);
   const canEdit = access.canEdit && canEditSettings(access.viewer.role);
   // R-162 (P4): the reference exchange rates and the hedging alert thresholds — Finance and the director edit them.
   const [fxRates, fxThresholds, today] = await Promise.all([listReferenceRates(), readFxThresholds(), businessToday()]);
@@ -44,6 +50,8 @@ export default async function SettingsPage() {
       {/* R-199 / R-036: the company default of the reminders and weekly reports, same editors. */}
       <ReminderDefaultsCard values={formOfPrefs(reminders)} canEdit={canEdit} transport={getConfig().mail.transport} />
       <FxSettingsCard rates={fxRows} thresholds={fxThresholds} currencies={CURRENCIES.filter((c) => c !== BASE_CURRENCY)} canEdit={access.canEdit && canEditFxRates(access.viewer.role)} />
+      {/* R-160 (P2, D9-32): the CE conformity checklists (Annex III, Annex IV headings), same editors. */}
+      <CeChecklistsCard lists={ceChecklistsView(ceLists, t, lang)} canEdit={canEdit} />
     </>
   );
 }

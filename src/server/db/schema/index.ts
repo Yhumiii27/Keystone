@@ -41,3 +41,4 @@ export * from './risk-analysis';
 export * from './dashboards';
 export * from './multilevel';
 export * from './expediting';
+export * from './conformity';

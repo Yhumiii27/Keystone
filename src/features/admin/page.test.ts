@@ -69,8 +69,8 @@ describe('/admin/settings', () => {
       session.role = role;
       const p = parts(await SettingsPage());
       // R-158: the Incoterms card under the lists; R-199: the company default of the reminders and reports, same editors; R-162: the
-      // reference exchange rates (Finance and the director).
-      expect(Object.keys(p)).toEqual(['PageHeader', 'SettingsBody', 'IncotermsCard', 'ReminderDefaultsCard', 'FxSettingsCard']);
+      // reference exchange rates (Finance and the director); R-160: the CE conformity checklists card, same editors as the lists.
+      expect(Object.keys(p)).toEqual(['PageHeader', 'SettingsBody', 'IncotermsCard', 'ReminderDefaultsCard', 'FxSettingsCard', 'CeChecklistsCard']);
       expect(p.FxSettingsCard.props.canEdit, role).toBe(role === 'director' || role === 'finance');
       expect(p.ReminderDefaultsCard.props, role).toMatchObject({ canEdit, transport: 'none', values: { offsets: '7,1', emailReminders: 'on', emailReports: 'on', overdue: 'on' } });
       expect(p.PageHeader.props.screen).toBe('settings');
