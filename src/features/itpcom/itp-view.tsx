@@ -164,6 +164,7 @@ function PlanGroup({ code, group: g }: { code: string; group: InspectionGroupVie
               <Td className={s.name}>
                 {r.name}
                 {r.resultLine && <span className={s.resultLine}>{r.resultLine}</span>}
+                {r.supplierFats?.map((f) => <span key={f} className={s.resultLine}>{f}</span>)}
                 {r.comment && <span className={s.resultComment}>{r.comment}</span>}
                 <NcrLinks row={r} />
               </Td>

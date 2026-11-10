@@ -145,8 +145,37 @@ export const financeReadOnly = (role: RoleKey, screen: ScreenId) => role === 'fi
 export const LOGISTICS_READ_ONLY_SCREENS: readonly ScreenId[] = ['bom', 'site', 'schedule', 'deliveries'];
 export const logisticsReadOnly = (role: RoleKey, screen: ScreenId) => role === 'logistics' && LOGISTICS_READ_ONLY_SCREENS.includes(screen);
 
-/** A screen of the role's workspace the role only reads (Finance: Budget, Hours, Billing — R-044; Logistics — R-158). */
-export const roleReadOnly = (role: RoleKey, screen: ScreenId) => financeReadOnly(role, screen) || logisticsReadOnly(role, screen);
+/**
+ * R-159 (P1): quality has the Purchase orders screen to follow the orders' inspections and issue their release notes; the orders
+ * themselves (drafts, approval, cancellation, currency) stay read-only for it.
+ */
+export const QUALITY_READ_ONLY_SCREENS: readonly ScreenId[] = ['orders'];
+export const qualityReadOnly = (role: RoleKey, screen: ScreenId) => role === 'quality' && QUALITY_READ_ONLY_SCREENS.includes(screen);
+
+/** A screen of the role's workspace the role only reads (Finance: Budget, Hours, Billing — R-044; Logistics — R-158; quality — R-159). */
+export const roleReadOnly = (role: RoleKey, screen: ScreenId) => financeReadOnly(role, screen) || logisticsReadOnly(role, screen) || qualityReadOnly(role, screen);
+
+// ── R-159 · Expediting, supplier inspections and release notes (P1, D9-31) ───────────────────────────────────────────
+
+/**
+ * R-159: the fabrication follow-up and the inspections of a purchase order (plan, record the result, report the NCR) — the
+ * portfolio director, procurement and quality, on every project (EPC2i's purchasing and quality serve every project, like
+ * Logistics on the shipments; décision prise sans demander). The project's PMs and the other internal roles read; the client is
+ * refused the screen.
+ */
+export const EXPEDITING_ROLES: readonly RoleKey[] = ['director', 'procurement', 'quality'];
+export const canEditExpediting = (role: string) => (EXPEDITING_ROLES as readonly string[]).includes(role);
+/** R-159: the release note (bon de libération) that authorises the supplier to ship — quality (and the director), never purchasing. */
+export const RELEASE_ROLES: readonly RoleKey[] = ['director', 'quality'];
+export const canIssueRelease = (role: string) => (RELEASE_ROLES as readonly string[]).includes(role);
+
+// ── R-162 · Reference exchange rates and FX exposure (P4, D9-34) ─────────────────────────────────────────────────────
+
+/** R-162: the reference exchange rates and the hedging alert thresholds (Settings) — Finance and the portfolio director. */
+export const FX_ROLES: readonly RoleKey[] = ['director', 'finance'];
+export const canEditFxRates = (role: string) => (FX_ROLES as readonly string[]).includes(role);
+/** R-162: the FX exposure of a project (Contract screen) and of the portfolio (Cash flow) — Finance and the director read it. */
+export const canSeeFxExposure = (role: string) => (FX_ROLES as readonly string[]).includes(role);
 
 /**
  * R-158: who prepares and follows a project's shipments (Shipments screen: shipments, loads, content, packing control, transport

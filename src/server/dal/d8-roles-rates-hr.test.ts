@@ -183,7 +183,7 @@ describe('Server Functions × 9 personas', () => {
         continue;
       }
       const r = await setHoursVarianceAction('7');
-      const want = role === 'director' ? { ok: true } : { error: ['pm', 'depthead', 'englead', 'quality', 'procurement', 'logistics'].includes(role) ? 'Settings are edited by the portfolio director' : 'Settings are read-only for you' };
+      const want = role === 'director' ? { ok: true } : { error: ['pm', 'depthead', 'englead', 'quality', 'procurement', 'finance', 'logistics'].includes(role) ? 'Settings are edited by the portfolio director' : 'Settings are read-only for you' };
       expect([role, r]).toEqual([role, want]);
     }
     expect(await readHoursVariance()).toBe(7);

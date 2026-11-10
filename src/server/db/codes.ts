@@ -1134,6 +1134,8 @@ export const APP_SETTING_DCMA = 'schedule.dcma';
 export const APP_SETTING_DRIFT = 'forecast.drift';
 /** S-31: the supplier schedule slip threshold { days } (default and bounds: src/domain/supplier-slip-alerts.ts). */
 export const APP_SETTING_SUPPLIER_SLIP = 'purchasing.supplierSlip';
+/** R-162 (P4): the FX hedging alert thresholds { exposureKeur, driftPct } (defaults and bounds: src/domain/fx-exposure.ts). */
+export const APP_SETTING_FX_ALERTS = 'finance.fxAlerts';
 /** S-34: the escalation of a supplier slip to the directors { days, impactDays } (src/domain/supplier-slip-alerts.ts). */
 export const APP_SETTING_SUPPLIER_SLIP_ESCALATION = 'purchasing.supplierSlipEscalation';
 
@@ -1157,7 +1159,8 @@ export const D5_SCREEN_ROLES = {
   pid: ['director', 'englead', 'quality'],
   eng: ['director', 'pm', 'englead', 'quality'],
   client: ['director', 'client'],
-  settings: ['director', 'pm', 'depthead', 'englead', 'quality', 'procurement', 'logistics'],
+  // R-162 (P4): Finance has Settings (reference exchange rates, hedging thresholds).
+  settings: ['director', 'pm', 'depthead', 'englead', 'quality', 'procurement', 'finance', 'logistics'],
   mtypes: ['director', 'pm', 'englead', 'quality'],
   catalogue: ['director', 'pm', 'englead', 'quality'],
   plumbing: ['director', 'pm'],

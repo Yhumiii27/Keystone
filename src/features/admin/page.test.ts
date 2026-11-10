@@ -63,12 +63,15 @@ describe('/admin/settings', () => {
     // A-14: the director edits; the other workspace roles read (no Reset, a read-only note); member is outside; the client is sent home (R-042).
     for (const [role, canEdit, note] of [
       ['director', true, false], ['pm', false, true], ['depthead', false, true], ['englead', false, true], ['quality', false, true], ['procurement', false, true],
-      ['member', false, false],
+      // R-162: Finance has Settings (reads the lists, edits the reference exchange rates).
+      ['finance', false, true], ['member', false, false],
     ] as const) {
       session.role = role;
       const p = parts(await SettingsPage());
-      // R-158: the Incoterms card under the lists; R-199: the company default of the reminders and reports, same editors.
-      expect(Object.keys(p)).toEqual(['PageHeader', 'SettingsBody', 'IncotermsCard', 'ReminderDefaultsCard']);
+      // R-158: the Incoterms card under the lists; R-199: the company default of the reminders and reports, same editors; R-162: the
+      // reference exchange rates (Finance and the director).
+      expect(Object.keys(p)).toEqual(['PageHeader', 'SettingsBody', 'IncotermsCard', 'ReminderDefaultsCard', 'FxSettingsCard']);
+      expect(p.FxSettingsCard.props.canEdit, role).toBe(role === 'director' || role === 'finance');
       expect(p.ReminderDefaultsCard.props, role).toMatchObject({ canEdit, transport: 'none', values: { offsets: '7,1', emailReminders: 'on', emailReports: 'on', overdue: 'on' } });
       expect(p.PageHeader.props.screen).toBe('settings');
       if (canEdit) expect(primaryName(p)).toBe('ResetSettingsButton');

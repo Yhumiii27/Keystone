@@ -37,7 +37,8 @@ describe('R-044 · the Finance role and persona', () => {
     const finance = ROLE_SCREENS.finance!;
     expect([...finance].sort()).toEqual(
       // R-203: My dashboards for every internal role.
-      ['billing', 'budget', 'cash', 'contract', 'dashboards', 'docs', 'home', 'hours', 'leave', 'meetings', 'mywork', 'myprojects', 'overview', 'plan', 'rates', 'task'].sort(),
+      // R-162 (P4): Settings for the reference exchange rates and the hedging thresholds.
+      ['billing', 'budget', 'cash', 'contract', 'dashboards', 'docs', 'home', 'hours', 'leave', 'meetings', 'mywork', 'myprojects', 'overview', 'plan', 'rates', 'settings', 'task'].sort(),
     );
     expect(canSee('finance', 'portfolio')).toBe(false);
     expect(canSee('finance', 'myapprovals')).toBe(false);

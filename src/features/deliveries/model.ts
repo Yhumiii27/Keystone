@@ -72,6 +72,8 @@ export interface RowView {
   tone: ReceiptTone;
   canReceive: boolean;
   canQc: boolean;
+  /** R-159: the order needs a release note and none was issued on or before this delivery (flag, not a block). */
+  noRelease: boolean;
 }
 
 export interface KvView {
@@ -146,7 +148,7 @@ export function deliveriesView(
   t: T,
   lang: Lang,
   year: number,
-  opts: { vigieLinks?: boolean } = {},
+  opts: { vigieLinks?: boolean; noRelease?: ReadonlySet<string> } = {},
 ): DeliveriesView {
   const { receipts } = data;
   const open = q.receipt ? (receipts.find((r) => r.number === q.receipt) ?? null) : null;
@@ -157,7 +159,7 @@ export function deliveriesView(
       id: v.id, href: deliveriesHref(code, { status: q.status, receipt: selected ? null : v.id }), selected,
       sub: `${t(v.date)} · ${dataText(v.note, lang)}`, po: v.po, supplier: dataText(v.supplier, lang), lines: v.lines, qty: v.qty, acc: v.acc,
       rej: v.rej, rejColor: v.rejLo ? LO : 'var(--color-neutral-400)', qc: qcResultText(v.qc, lang), loc: dataText(v.loc, lang),
-      status: statusText(v.status, t, lang), tone: v.tone, canReceive: v.canReceive, canQc: v.canQc,
+      status: statusText(v.status, t, lang), tone: v.tone, canReceive: v.canReceive, canQc: v.canQc, noRelease: !!opts.noRelease?.has(v.id),
     };
   });
   let drawer: DrawerView | null = null;
@@ -169,7 +171,11 @@ export function deliveriesView(
         ref: l.ref, name: dataText(l.name, lang), o: l.o, d: l.d, a: l.a, r: l.r, rColor: l.rLo ? LO : 'var(--color-neutral-500)', loc: dataText(l.loc, lang),
         href: bomPartHref(code, l.ref),
       })),
-      meta: d.meta.map((x) => ({ k: t(x.k), v: kvText(x, t, lang), color: x.lo ? LO : OK })),
+      meta: [
+        ...d.meta.map((x) => ({ k: t(x.k), v: kvText(x, t, lang), color: x.lo ? LO : OK })),
+        // R-159: shipped without the supplier's release note (flag only).
+        ...(opts.noRelease?.has(d.id) ? [{ k: t('Release note'), v: t('Missing — shipped without the release note'), color: LO }] : []),
+      ],
       qc: d.qc.map((x) => ({ k: t(x.k), v: kvText(x, t, lang), color: x.lo ? LO : OK })),
       docs: d.docs.map((x) => dataText(x, lang)), canReceive: d.canReceive, canQc: d.canQc,
       closeHref: deliveriesHref(code, { status: q.status }), poHref: orderHref(code, d.po),

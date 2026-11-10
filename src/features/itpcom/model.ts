@@ -15,6 +15,7 @@ import { screenHref } from '@/config/screens';
 import type { Commissioning, SatPlanRow } from '@/server/dal/commissioning';
 import type { ItpPlan, PunchRow } from '@/server/dal/itp';
 import type { ItpResult, PunchStatus } from '@/server/db/codes';
+import { PO_INSPECTION_RESULT_LABEL } from '@/domain/expediting';
 import { vigieReportNcrUrl } from '@/server/integrations/vigie/links';
 import { localizeForm, resultFormDef } from './forms';
 import { blockedT, dataT, failedT, missingT, planShapeT, stepT } from './i18n';
@@ -98,6 +99,8 @@ export interface InspectionRowView {
   comment: string | null;
   /** Vigie NCRs reported from this inspection (internal viewers only, P-10b). */
   ncrs: { number: string; href: string; label: string }[];
+  /** R-159: the supplier FATs of purchase orders tied to this FAT point — "Supplier FAT PO-1078/I-2 · Passed" (internal viewers only). */
+  supplierFats?: string[];
   /** Failed without a Vigie NCR yet: "Report the NCR in Vigie", prefilled (internal viewers only, Q-6b). */
   reportNcr: { href: string; label: string } | null;
   /** "Record result" (quality, engineering lead, director on an editable project): the translated form and the result seen. */
@@ -244,6 +247,9 @@ export function itpScreenView({ code, view, plan, punch, origin = 'all', machine
         // The comment of a failure describes the non-conformity: internal (P-10b), not shown to the client.
         comment: viewer.internal ? (r.resultComment ?? null) : null,
         ncrs,
+        ...(viewer.internal && r.supplierFats?.length
+          ? { supplierFats: r.supplierFats.map((f) => `${t('Supplier FAT')} ${f.ref} · ${t(PO_INSPECTION_RESULT_LABEL[f.result])}`) }
+          : {}),
         reportNcr:
           viewer.internal && r.result === 'failed' && !ncrs.length
             ? { href: vigieReportNcrUrl({ projectCode: code, title: inspectionNcrTitle(r), inspection: r.number }), label: t('Report the NCR in Vigie') }

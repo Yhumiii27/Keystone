@@ -24,7 +24,10 @@ import { canSetProjectCategory } from '@/domain/project-category';
 import { getProjectCategory } from '@/server/dal/project-category';
 import { getContractIncoterm, listIncoterms } from '@/server/dal/incoterms';
 import { canSetInternalClient } from '@/domain/internal-client';
-import { canSetBudgetRate, canSetCapexLink, canSetProjectEquipment } from '@/domain/rights';
+import { canSeeFxExposure, canSetBudgetRate, canSetCapexLink, canSetProjectEquipment } from '@/domain/rights';
+import { FxExposureCard } from '@/features/fx/fx-exposure-card';
+import { businessToday } from '@/server/clock';
+import { getProjectFxExposure } from '@/server/dal/fx';
 import { listCatalogueChoices } from '@/server/dal/machine-catalogue';
 import { listMachineTypeOptions } from '@/server/dal/mtypes';
 import { listProjectEquipments } from '@/server/dal/project-equipment';
@@ -66,6 +69,11 @@ export default async function ContractPage({ params }: { params: Promise<{ code:
     />
   );
 
+  // R-162 (P4): the project's FX exposure (contract to collect, open orders to pay, per currency other than the euro) — Finance and
+  // the director read it.
+  const fx = canSeeFxExposure(ctx.viewer.role) ? await getProjectFxExposure(projectCode, await businessToday()) : null;
+  const fxCard = fx ? <FxExposureCard lines={[fx]} thresholds={fx.thresholds} t={t} lang={lang} /> : null;
+
   if (!contract)
     return (
       <>
@@ -73,6 +81,7 @@ export default async function ContractPage({ params }: { params: Promise<{ code:
         <Stack>
           <EmptyState variant="boxed">{t('No contract registered for this project')}</EmptyState>
           <CurrencyCard fx={currencyView(await getProjectFx(projectCode), lang)} code={projectCode} canSetRate={canSetRate} t={t} />
+          {fxCard}
           {equipmentCard}
           {categoryCard}
           {capexCard}
@@ -102,7 +111,7 @@ export default async function ContractPage({ params }: { params: Promise<{ code:
   return (
     <>
       <PageHeader screen="contract" projectCode={projectCode} primary={primary} crumbExtra={contract.sheet.reference} />
-      <ContractScreen view={contractView(contract, t, lang)} code={projectCode} canEdit={canEdit} canSetRate={canSetRate} context={context} forms={forms} t={t} capexCard={<>{incotermCard}{equipmentCard}{categoryCard}{capexCard}{clientCard}</>} />
+      <ContractScreen view={contractView(contract, t, lang)} code={projectCode} canEdit={canEdit} canSetRate={canSetRate} context={context} forms={forms} t={t} capexCard={<>{fxCard}{incotermCard}{equipmentCard}{categoryCard}{capexCard}{clientCard}</>} />
     </>
   );
 }

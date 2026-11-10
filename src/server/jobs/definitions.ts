@@ -189,13 +189,17 @@ const RUNS: Record<JobName, () => Promise<JobOutcome>> = {
   'indicator-alerts': async (): Promise<JobOutcome> => {
     const r = await (await import('@/server/dal/event-notices')).runIndicatorAlerts();
     const s = await (await import('@/server/dal/supplier-slip-notices')).runSupplierSlipAlerts(r.today);
+    // R-159 / R-162: late supplier inspections of long-lead orders and the FX hedging alerts.
+    const x = await (await import('@/server/dal/expediting-notices')).runExpeditingAlerts(r.today);
     return {
       summary: `Indicator alerts at ${r.today} · ${r.alerts} active · ${r.raised} new · ${r.notified} persons notified · ${r.cleared} cleared`
-        + ` · supplier slips: ${s.slipping} of ${s.watched} schedules · ${s.raised} new levels · ${s.notified} persons notified · ${s.cleared} cleared · ${s.escalated} escalated to the directors`,
+        + ` · supplier slips: ${s.slipping} of ${s.watched} schedules · ${s.raised} new levels · ${s.notified} persons notified · ${s.cleared} cleared · ${s.escalated} escalated to the directors`
+        + ` · supplier inspections late: ${x.late} · ${x.notified} persons notified · FX alerts: ${x.fxAlerts} · ${x.fxRaised} new · ${x.fxNotified} persons notified · ${x.fxCleared} cleared`,
       counts: {
         alerts: r.alerts, raised: r.raised, notified: r.notified, cleared: r.cleared,
         supplierSlipping: s.slipping, supplierRaised: s.raised, supplierNotified: s.notified, supplierCleared: s.cleared,
         supplierEscalated: s.escalated, supplierDirectorsNotified: s.directorsNotified,
+        inspectionsLate: x.late, inspectionsNotified: x.notified, fxAlerts: x.fxAlerts, fxRaised: x.fxRaised, fxNotified: x.fxNotified, fxCleared: x.fxCleared,
       },
     };
   },
