@@ -302,6 +302,10 @@
   {
    "date": "2026-11-10",
    "text": "D9-30 : demande déposée chez Codex (lire les projets dans keystone.pub_projets), Yhumiii27/Codex#28."
+  },
+  {
+   "date": "2026-11-10",
+   "text": "Lots intégrés : planning (D9-08 à D9-12), corrections Matrix des fériés et seuils (D9-04), portail client retiré (D9-06, D9-25, D9-26), P1 inspections et FAT, P4 change, P2 conformité CE."
   }
  ],
  "items": [
@@ -647,7 +651,9 @@
     "DECISIONS.md:132 S-9b et :211 D-7b, tous deux « Bloquant production »"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 9",
+    "note": " 10 nov. 2026 (D9-08) : import MS Project (XML) et GanttProject (.gan) rouvert, aperçu puis confirmation auditée (notes-d9-planning.md). Reste : procédure de reprise et fichiers réels des projets actifs."
    }
   },
   {
@@ -2019,7 +2025,9 @@
     "src/domain/team.ts:26 isStaleContact est calculé sur PG_NOW figé ; grep influence/interest/attitude dans src/features et src/domain : aucun affichage"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": " 10 nov. 2026 (D9-26) : grille pouvoir / intérêt retirée, parties prenantes par rôles et responsabilités."
    }
   },
   {
@@ -2051,7 +2059,9 @@
     "docs/decisions/questions.json S-4 option a : « Les retards, les échéances et l’horodatage suivent l’horloge réelle »"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": " 10 nov. 2026 (D9-09, D9-10) : le CP avance la date de référence, proposée chaque vendredi ; gel hebdomadaire CPI, SPI, EAC, marge, risques, avancement (migration 0079)."
    }
   },
   {
@@ -2138,7 +2148,9 @@
     "DELIVERY-6.md:356 et :368 (§8) listent ces deux questions S-3"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": " 10 nov. 2026 (D9-11, D9-12) : référence rejetée gardée « rejetée » ; la plus haute reste courante ; Re-baseline après BL1 par demande de modification."
    }
   },
   {
@@ -3839,7 +3851,9 @@
     "docs/DELIVERY-6.md:106 et :359 question D-5 ouverte"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": " 10 nov. 2026 (D9-25) : case « client présent » sur la réunion."
    }
   },
   {
@@ -4295,9 +4309,9 @@
     "grep 'Voir comme le client' / screenHref('client') : aucun lien interne vers le portail"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8",
-    "note": "Livraison 8 : « Voir comme le client » pour le directeur et les responsables du projet (P-11 a) ; question ouverte sur « Signaler un problème » du directeur. 10 nov. 2026 (D9-06, D9-22, D9-23) : les clients ne voient pas Keystone — portail et profil Client retirés (lot « d9-noclient » en cours)."
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Livraison 8 : « Voir comme le client » pour le directeur et les responsables du projet (P-11 a) ; question ouverte sur « Signaler un problème » du directeur. 10 nov. 2026 (D9-06, D9-22, D9-23) : les clients ne voient pas Keystone — portail et profil Client retirés (lot « d9-noclient » en cours). 10 nov. 2026 (D9-06) : portail client et profil Client retirés ; décision client saisie par les responsables avec la référence du document signé (migration 0083)."
    }
   },
   {
@@ -4875,8 +4889,9 @@
     "grep -i expedit|release note|factory acceptance dans src : seulement l’étape de cycle de vie FAT et des transcriptions de réunion"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": " 10 nov. 2026 (D9-31) : lancée — lot « d9-p1p4 » en cours."
+    "state": "fait",
+    "note": " 10 nov. 2026 (D9-31) : lancée — lot « d9-p1p4 » en cours. 10 nov. 2026 (P1) : relance de fabrication, inspections et FAT par commande, bons de libération, alerte des commandes longues (migration 0080, notes-d9-p1p4.md).",
+    "delivery": "Livraison 9"
    }
   },
   {
@@ -4901,8 +4916,9 @@
     "Aucune table d’analyse de risques, d’exigences essentielles ou de dossier technique (liste des tables pgTable dans src/server/db/schema) ; grep 2023/1230|2006/42|technical file|risk assessment : aucun résultat"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": " 10 nov. 2026 (D9-32) : lancée avant janvier 2027 — lot « d9-p2ce » en cours."
+    "state": "fait",
+    "note": " 10 nov. 2026 (D9-32) : lancée avant janvier 2027 — lot « d9-p2ce » en cours. 10 nov. 2026 (P2) : dossier CE par ligne d’équipement, listes annexes III et IV dans Paramètres, avertissement à la livraison, liste portefeuille après le 20 janv. 2027 (migrations 0081-0082, notes-d9-p2ce.md). Contenu des listes à valider par le QHSE.",
+    "delivery": "Livraison 9"
    }
   },
   {
@@ -4955,8 +4971,9 @@
     "docs/DECISIONS.md:148 C-9 (Bloquant production) : « Devise par contrat et commande, consolidation en euros » (option b, pas c = P4)"
    ],
    "progress": {
-    "state": "a_faire",
-    "note": " 10 nov. 2026 (D9-34) : lancée — lot « d9-p1p4 » en cours."
+    "state": "fait",
+    "note": " 10 nov. 2026 (D9-34) : lancée — lot « d9-p1p4 » en cours. 10 nov. 2026 (P4) : cours de référence datés, exposition de change par projet, alertes de couverture (migration 0080).",
+    "delivery": "Livraison 9"
    }
   },
   {
@@ -5114,7 +5131,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "Livraison 8",
-    "note": "Livraison 8, lot journal d’audit : table en ajout seul (déclencheurs), utilisateur, avant / après, motif, 4 colonnes de plus dans l’export CSV ISO. Reste : remplir avant / après / motif dans les autres écritures (balayage après la livraison) et REVOKE quand l’hébergement est choisi (I-1a). 2 nov. 2026 : lot « audit » lancé (avant / après et motif dans les écritures restantes). Fait le 2 nov. 2026 (docs/delivery-9/notes-r168-audit.md) : ~120 écritures portent avant / après (champs modifiés seulement, changedValues) et motif ; garde-fou src/server/audit-coverage.test.ts (exceptions listées : créations, événements, système). Reste : REVOKE quand l’hébergement est choisi (I-1a)."
+    "note": "Livraison 8, lot journal d’audit : table en ajout seul (déclencheurs), utilisateur, avant / après, motif, 4 colonnes de plus dans l’export CSV ISO. Reste : remplir avant / après / motif dans les autres écritures (balayage après la livraison) et REVOKE quand l’hébergement est choisi (I-1a). 2 nov. 2026 : lot « audit » lancé (avant / après et motif dans les écritures restantes). Fait le 2 nov. 2026 (docs/delivery-9/notes-r168-audit.md) : ~120 écritures portent avant / après (champs modifiés seulement, changedValues) et motif ; garde-fou src/server/audit-coverage.test.ts (exceptions listées : créations, événements, système). Reste : REVOKE quand l’hébergement est choisi (I-1a). 10 nov. 2026 (D9-04) : pub_editer ouvre aussi les jours fériés et les seuils de Paramètres (migration 0078)."
    }
   },
   {
