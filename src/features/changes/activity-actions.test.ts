@@ -59,10 +59,6 @@ describe('change request ↔ plan activities (NEW-D2-2)', () => {
     const number = r.toast!.split(' · ')[0];
     expect((await (await getDb()).select({ n: changeRequests.number }).from(changeRequests)).length).toBe(n0 + 1);
     expect((await linksOf(number)).map((l) => [l.code, l.newDurationDays, l.crStatus])).toEqual([['A1420', 30, 'in_review'], ['A1430', null, 'in_review']]);
-    // A client raising a request cannot name plan activities (the plan is internal).
-    viewer.role = 'client';
-    viewer.name = 'Claire Dubois';
-    expect(await createChangeRequestAction(HLT, form('A1420'))).toEqual({ error: 'Only the project team links plan activities to a change request' });
   });
 
   it('the drawer adds, updates and removes links on open requests; rights and input are checked', async () => {
@@ -80,8 +76,6 @@ describe('change request ↔ plan activities (NEW-D2-2)', () => {
     viewer.canEdit = false;
     expect(await linkCrActivityAction(HLT, number, { activity: 'A1260' })).toEqual({ error: 'Only the project team links plan activities to a change request' });
     viewer.canEdit = true;
-    viewer.role = 'client';
-    expect(await unlinkCrActivityAction(HLT, number, 'A1260')).toEqual({ error: 'Only the project team links plan activities to a change request' });
     viewer.role = 'pm';
     viewer.name = 'Romain Aubert';
     viewer.lang = 'fr';
@@ -98,7 +92,6 @@ describe('change request ↔ plan activities (NEW-D2-2)', () => {
     const number = 'CR-008';
     const before = (await linksOf(number)).map((l) => l.code);
     const wrong = [
-      { name: 'Nadia Bensaïd', role: 'client' }, // the client of HLT-026: the plan is internal
       { name: 'Gabriel Comte', role: 'quality' }, // referent of HLT-026, Change control outside the quality workspace
       { name: 'S. Perrin', role: 'pm' }, // a PM, not on HLT-026's team
       { name: 'Nobody', role: 'pm' },

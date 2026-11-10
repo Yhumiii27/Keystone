@@ -48,7 +48,7 @@ function parts(tree: unknown): Record<string, El> {
   return out;
 }
 const page = async (sp: Record<string, string> = {}, code = 'HLT-026') => parts(await DeliveriesPage({ params: Promise.resolve({ code }), searchParams: Promise.resolve(sp) }));
-const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'];
+const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'];
 
 beforeAll(async () => {
   setDb(await openDatabase());
@@ -88,10 +88,6 @@ describe('/projects/[code]/deliveries', () => {
     for (const role of ROLES) {
       session.role = role;
       // R-042 (P-1): Deliveries is outside the client's workspace — the client is sent home.
-      if (role === 'client') {
-        await expect(page({}, code)).rejects.toThrow('REDIRECT /');
-        continue;
-      }
       const p = await page({}, code);
       const body = p.DeliveriesBody.props as { canEdit: boolean; canQc: boolean };
       // R-041 (P-2): the prototype's rights, on the projects whose named team the persona is on — the quality manager is a referent

@@ -1,5 +1,5 @@
 // R-158 lot B against the seeded in-memory demo database, with the real session ("View as" cookie) and project context: the demo
-// (EXP-01 arrived, partial reception, one punch item, three documents filed in Codex — L9-X3), the reception rights for the 10 personas, the pointing
+// (EXP-01 arrived, partial reception, one punch item, three documents filed in Codex — L9-X3), the reception rights for the 9 personas (D9-06), the pointing
 // and its punch items (raised, withdrawn), the reception completed, the manual closure refused without a reason, the automatic
 // closure with the last punch item, the shipping documents (8 templates, values masked for a viewer who may not see them, filing in
 // Codex: index record and new revision, stored file, pending deposit), pub_expeditions and the milestones, the freight-delay risk.
@@ -98,7 +98,7 @@ describe('the demo (R-158 lot B)', () => {
   });
 });
 
-describe('reception rights for the 10 personas', () => {
+describe('reception rights for the 9 personas (D9-06)', () => {
   it('the editors and the site team point; the others are refused; the client is sent home', async () => {
     const s = await shipment('EXP-01');
     const kit = s.loads[1].items.find((i) => i.free)!;
@@ -114,7 +114,7 @@ describe('reception rights for the 10 personas', () => {
     const RO = 'The reception is read-only for you';
     // The department head has the Site screen but is not on HLT-026's team; the team member (Julien Wagner) is.
     expect(outcome).toEqual({
-      director: 'ok', pm: 'ok', depthead: RO, member: 'ok', englead: RO, quality: RO, procurement: RO, finance: RO, logistics: 'ok', client: 'REDIRECT /',
+      director: 'ok', pm: 'ok', depthead: RO, member: 'ok', englead: RO, quality: RO, procurement: RO, finance: RO, logistics: 'ok',
     });
   });
 });

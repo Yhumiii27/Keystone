@@ -165,8 +165,8 @@ export function widgetScreen(w: Pick<Widget, 'kind'> & { metric?: string }): Scr
   }
 }
 
-/** My dashboards is an internal screen: a client has no dashboards and sees no widget (R-042). */
-export const canUseDashboards = (role: RoleKey) => role !== 'client' && canSee(role, 'dashboards');
+/** My dashboards: every role whose workspace has the screen (every role since D9-06 removed the client). */
+export const canUseDashboards = (role: RoleKey) => canSee(role, 'dashboards');
 
 /** The viewer's role may see this widget's data (the role gate; the project rights are the server's). */
 export const canSeeWidget = (role: RoleKey, w: Pick<Widget, 'kind'> & { metric?: string }) => canUseDashboards(role) && canSee(role, widgetScreen(w));

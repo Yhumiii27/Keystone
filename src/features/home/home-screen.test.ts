@@ -45,7 +45,7 @@ describe('Home screen render', () => {
   });
 
   it('every role renders in both languages', async () => {
-    for (const role of ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'] as RoleKey[])
+    for (const role of ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'] as RoleKey[])
       for (const lang of ['fr', 'en'] as Lang[]) expect(await html(role, lang)).toContain(lang === 'fr' ? 'Bonjour, ' : 'Good morning, ');
   });
 });

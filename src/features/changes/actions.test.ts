@@ -28,7 +28,7 @@ import { openDatabase } from '@/server/db/open';
 import { getChangeControl } from '@/server/dal/changes';
 import { listAudit } from '@/server/dal/notifications';
 import { getTrends } from '@/server/dal/trends';
-import { createChangeRequestAction, decideChangeStepAction, generateStatusReportAction, submitChangeRequestAction } from './actions';
+import { createChangeRequestAction, decideChangeStepAction, generateStatusReportAction, recordClientChangeStepAction, submitChangeRequestAction } from './actions';
 
 const as = (role: string, name: string) => {
   viewer.role = role;
@@ -61,8 +61,8 @@ describe('Change control Server Functions', () => {
     expect(decisions(await cr('CR-008'))).toEqual(['ok', 'pending', 'pending', 'pending']);
   });
 
-  it('only the step owner decides; the director also records the change control board', async () => {
-    as('client', 'Nadia Bensaïd');
+  it('only the step owner decides; the PM records the client’s decision (D9-06); the director also records the change control board', async () => {
+    as('member', 'Julien Wagner');
     expect(await decideChangeStepAction('HLT-026', 'CR-008', 'director', 'ok')).toEqual({ error: 'This approval step is not yours to decide' });
     as('pm', 'Romain Aubert');
     expect(await decideChangeStepAction('HLT-026', 'CR-008', 'pm', 'ok')).toEqual({ error: 'This approval step is no longer pending' });
@@ -75,14 +75,21 @@ describe('Change control Server Functions', () => {
 
     as('director', 'Marie Lefebvre');
     expect(await decideChangeStepAction('HLT-026', 'CR-008', 'director', 'ok')).toEqual({ ok: true });
-    as('client', 'Nadia Bensaïd');
-    expect(await decideChangeStepAction('HLT-026', 'CR-008', 'client', 'ok')).toEqual({ ok: true });
+    // D9-06: the client never sees Keystone — the PM records the client's decision with the signed document's reference.
+    as('pm', 'Romain Aubert');
+    expect(await decideChangeStepAction('HLT-026', 'CR-008', 'client', 'ok')).toEqual({ error: 'Record the client’s decision with its signed document' });
+    expect(await recordClientChangeStepAction('HLT-026', 'CR-008', 'ok', { on: '2026-09-24', reference: '' })).toEqual({ error: 'Enter the reference of the signed document' });
+    expect(await recordClientChangeStepAction('HLT-026', 'CR-008', 'ok', { on: '2026-09-30', reference: 'AV-HLT-003' })).toEqual({ error: 'The client’s decision cannot be after the status date' });
+    as('pm', 'Sophie Perrin');
+    expect(await recordClientChangeStepAction('HLT-026', 'CR-008', 'ok', { on: '2026-09-24', reference: 'AV-HLT-003' })).toMatchObject({ error: expect.any(String) });
+    as('pm', 'Romain Aubert');
+    expect(await recordClientChangeStepAction('HLT-026', 'CR-008', 'ok', { on: '2026-09-24', reference: 'AV-HLT-003' })).toEqual({ toast: 'Client approval recorded' });
     expect((await cr('CR-008')).status).toBe('in_review');
     as('director', 'Marie Lefebvre');
     expect(await decideChangeStepAction('HLT-026', 'CR-008', 'ccb', 'ok')).toEqual({ ok: true });
     const c8 = await cr('CR-008');
     expect(c8.status).toBe('approved');
-    expect(c8.chain.find((s) => s.step === 'client')).toMatchObject({ decision: 'ok', decidedBy: 'Nadia Bensaïd' });
+    expect(c8.chain.find((s) => s.step === 'client')).toMatchObject({ decision: 'ok', decidedBy: 'Romain Aubert' });
     expect(c8.chain.find((s) => s.step === 'ccb')).toMatchObject({ decision: 'ok', decidedBy: 'Marie Lefebvre' });
     expect(await decideChangeStepAction('HLT-026', 'CR-008', 'ccb', 'rejected')).toEqual({ error: 'This approval step is no longer pending' });
   });
@@ -100,13 +107,12 @@ describe('Change control Server Functions', () => {
     // R-069 (P-6c): the steps are fixed at submission — CR-009 (0 k€, a dates change) needs no board, the client's step stays.
     expect(decisions(await cr('CR-009'))).toEqual(['pending', 'pending', 'pending', 'na']);
     expect(await decideChangeStepAction('HLT-026', 'CR-009', 'pm', 'ok')).toEqual({ ok: true });
-    as('client', 'Nadia Bensaïd');
-    // P-6b: the client decides after the director.
-    expect(await decideChangeStepAction('HLT-026', 'CR-009', 'client', 'ok')).toEqual({ error: 'Not yours to decide yet' });
+    // P-6b: the client decides after the director (D9-06: recorded by the PM).
+    expect(await recordClientChangeStepAction('HLT-026', 'CR-009', 'ok', { on: '2026-09-25', reference: 'AV-HLT-004' })).toEqual({ error: 'Not yours to decide yet' });
     as('director', 'Marie Lefebvre');
     expect(await decideChangeStepAction('HLT-026', 'CR-009', 'director', 'ok')).toEqual({ ok: true });
-    as('client', 'Nadia Bensaïd');
-    expect(await decideChangeStepAction('HLT-026', 'CR-009', 'client', 'ok')).toEqual({ ok: true });
+    as('pm', 'Romain Aubert');
+    expect(await recordClientChangeStepAction('HLT-026', 'CR-009', 'ok', { on: '2026-09-25', reference: 'AV-HLT-004' })).toEqual({ toast: 'Client approval recorded' });
     as('director', 'Marie Lefebvre');
     expect(await decideChangeStepAction('HLT-026', 'CR-009', 'ccb', 'ok')).toEqual({ error: 'This approval step is no longer pending' });
     const cc = (await getChangeControl('HLT-026'))!;
@@ -160,8 +166,8 @@ describe('Change control Server Functions', () => {
     as('director', 'Marie Lefebvre');
     expect(await decideChangeStepAction('HLT-026', 'CR-013', 'director', 'ok')).toEqual({ ok: true });
     expect((await listProjectBaselines('HLT-026')).find((b) => b.code === 'BL3')!.state).toBe('proposed');
-    as('client', 'Nadia Bensaïd');
-    expect(await decideChangeStepAction('HLT-026', 'CR-013', 'client', 'ok')).toEqual({ ok: true });
+    as('pm', 'Romain Aubert');
+    expect(await recordClientChangeStepAction('HLT-026', 'CR-013', 'ok', { on: '2026-09-25', reference: 'AV-HLT-005' })).toEqual({ toast: 'Client approval recorded' });
     expect((await listProjectBaselines('HLT-026')).map((b) => [b.code, b.state, b.activityCount])).toEqual([
       ['BL0', 'superseded', 0], ['BL1', 'superseded', 21], ['BL2', 'superseded', 21], ['BL3', 'current', 21],
     ]);
@@ -173,8 +179,8 @@ describe('Change control Server Functions', () => {
     as('pm', 'Romain Aubert');
     expect(await decideChangeStepAction('HLT-026', 'CR-014', 'pm', 'rejected')).toEqual({ ok: true });
     expect((await listProjectBaselines('HLT-026')).find((b) => b.code === 'BL4')).toMatchObject({ state: 'proposed', activityCount: 0 });
-    // Security review: a client's request never proposes a baseline (S-1 / S-3: the PM and the director own baselines).
-    as('client', 'Nadia Bensaïd');
+    // Security review: only the PM and the director own baselines (S-1 / S-3) — a team member's request never proposes one.
+    as('member', 'Julien Wagner');
     expect(await createChangeRequestAction('HLT-026', { title: 'New baseline BL5', type: 'schedule', impact: 'dates', wbs: '1', why: 'x' }, { proposeBaseline: true })).toEqual({
       toast: 'CR-015 · Change request submitted for review',
     });
@@ -182,13 +188,13 @@ describe('Change control Server Functions', () => {
   });
 
   it('generate status report: validated, recorded with the viewer, prototype toast', async () => {
-    as('client', 'Nadia Bensaïd');
+    as('pm', 'Romain Aubert');
     expect(await generateStatusReportAction('HLT-026', { period: 'year' })).toEqual({ error: 'Unknown period' });
     expect(await generateStatusReportAction('HLT-026', { period: 'quarter', audience: 'client', sections: 'summary', note: 'For the steering' })).toEqual({
       toast: 'Status report generated · PDF ready',
     });
     const reports = (await getTrends('HLT-026'))!.reports;
-    expect(reports[0]).toMatchObject({ period: 'quarter', audience: 'client', sections: 'summary', note: 'For the steering', generatedBy: 'Nadia Bensaïd' });
+    expect(reports[0]).toMatchObject({ period: 'quarter', audience: 'client', sections: 'summary', note: 'For the steering', generatedBy: 'Romain Aubert' });
     // FR toasts: whole dictionary sentence first, else per " · " segment after the new number
     viewer.lang = 'fr';
     expect(await generateStatusReportAction('HLT-026', {})).toEqual({ toast: 'Rapport d’avancement généré · PDF prêt' });

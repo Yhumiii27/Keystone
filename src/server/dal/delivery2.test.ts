@@ -75,8 +75,9 @@ describe('change control (07 §2.2)', () => {
     const cr8 = cc.changeRequests.find((c) => c.id === 'CR-008')!;
     expect(cr8.typesLabel).toBe('Budget · Schedule');
     expect(cr8.wbs).toEqual([{ code: '1.4', name: 'Steel structure', amount: null }]);
+    // D9-06: the client's step is recorded by the PM of record.
     expect(cr8.chain.map((s) => [s.label, s.approver])).toEqual([
-      ['Project manager', 'Romain Aubert'], ['Portfolio director', 'Marie Lefebvre'], ['Client / sponsor', 'Nadia Bensaïd'], ['Change control board', 'Marie Lefebvre'],
+      ['Project manager', 'Romain Aubert'], ['Portfolio director', 'Marie Lefebvre'], ['Client / sponsor', 'Romain Aubert'], ['Change control board', 'Marie Lefebvre'],
     ]);
     expect(cc.changeRequests.find((c) => c.id === 'CR-005')!.chain.every((s) => s.decision === null)).toBe(true);
   });
@@ -354,7 +355,7 @@ describe('HR (06 §2–5)', () => {
 
 describe('notifications, activity, audit (01 §5.5, 10 §2)', () => {
   it('per-role notifications reproduce NOTIFS; unread director 3 · pm 4 · depthead 1 · member 2 · others 1', async () => {
-    const roles = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'];
+    const roles = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'];
     const byId = new Map<string, { row: unknown[]; audience: string[] }>();
     for (const role of roles)
       for (const n of await listNotifications(role)) {
@@ -366,9 +367,10 @@ describe('notifications, activity, audit (01 §5.5, 10 §2)', () => {
       const e = byId.get(n[0] as string)!;
       return [...e.row, e.audience.sort()];
     });
-    expect(got).toEqual((P.NOTIFS as unknown[][]).map((n) => [...n.slice(0, 8), [...(n[8] as string[])].sort()]));
-    const unread = await Promise.all(['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'].map(countUnreadNotifications));
-    expect(unread).toEqual([3, 4, 1, 2, 1, 1, 1, 1]);
+    // D9-06: no client persona — the prototype's audience without 'client'.
+    expect(got).toEqual((P.NOTIFS as unknown[][]).map((n) => [...n.slice(0, 8), (n[8] as string[]).filter((r) => r !== 'client').sort()]));
+    const unread = await Promise.all(['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'].map(countUnreadNotifications));
+    expect(unread).toEqual([3, 4, 1, 2, 1, 1, 1]);
     expect((await listNotifications('director'))[0]).toMatchObject({ id: 'n1', icon: 'ph ph-seal-check', when: '25 Sep 09:12', projectCode: 'HLT-026' });
   });
 

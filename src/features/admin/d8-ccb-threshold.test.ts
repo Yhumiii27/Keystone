@@ -43,9 +43,7 @@ describe('R-069 — Settings › Change control board threshold', () => {
   for (const role of ROLES)
     it(role, async () => {
       viewer.role = role;
-      if (role === 'client') {
-        await expect(setCcbThresholdAction('80')).rejects.toThrow('NEXT_REDIRECT');
-      } else if (!canSee(role, 'settings')) {
+      if (!canSee(role, 'settings')) {
         expect(await setCcbThresholdAction('80')).toEqual({ error: 'Settings are read-only for you' });
       } else if (role !== 'director') {
         expect(await setCcbThresholdAction('80')).toEqual({ error: 'Settings are edited by the portfolio director' });

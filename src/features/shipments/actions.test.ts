@@ -1,6 +1,6 @@
 // R-158 lot A — the Shipments screen's Server Functions, the Incoterms of Settings and the contract's Incoterm against the seeded
-// in-memory demo database, with the real session (the "View as" cookie) and project context: the rights for the 10 personas
-// (the director, Logistics and the project's leads edit; the others read; the client is sent home), validation, the packing
+// in-memory demo database, with the real session (the "View as" cookie) and project context: the rights for the 9 personas (D9-06)
+// (the director, Logistics and the project's leads edit; the others read), validation, the packing
 // control and its validation, statuses, transport steps from the contract's Incoterm, the lifecycle deliverable « Colisage &
 // documents douaniers » blocked until every packing list is validated, the audit trail and the activity feed (system messages),
 // the demo shipment, and the screen rendered in English and French.
@@ -85,8 +85,8 @@ describe('the demo data set (R-158)', () => {
   });
 });
 
-describe('rights for the 10 personas', () => {
-  it('the director, Logistics and HLT-026’s PM create a shipment; the others are refused; the client is sent home', async () => {
+describe('rights for the 9 personas (D9-06)', () => {
+  it('the director, Logistics and HLT-026’s PM create a shipment; the others are refused', async () => {
     const outcome: Record<string, string> = {};
     for (const p of PERSONAS) {
       as(p.role);
@@ -99,12 +99,12 @@ describe('rights for the 10 personas', () => {
     }
     expect(outcome).toEqual({
       director: 'EXP-02', pm: 'EXP-03', depthead: READ_ONLY.error, member: READ_ONLY.error, englead: READ_ONLY.error, quality: READ_ONLY.error,
-      procurement: READ_ONLY.error, finance: READ_ONLY.error, logistics: 'EXP-04', client: 'REDIRECT /',
+      procurement: READ_ONLY.error, finance: READ_ONLY.error, logistics: 'EXP-04',
     });
     as('logistics');
     for (const ref of ['EXP-02', 'EXP-03', 'EXP-04']) expect(await removeShipmentAction('HLT-026', ref)).toMatchObject({ ok: true });
     expect(PERSONAS.map((p) => p.role)).toContain('logistics');
-    expect(PERSONAS).toHaveLength(10);
+    expect(PERSONAS).toHaveLength(9); // D9-06: no client persona
   });
 
   it('Logistics edits the shipments of every project and reads the BOM, Site, Schedule and Deliveries', () => {
@@ -112,7 +112,6 @@ describe('rights for the 10 personas', () => {
     expect(canEditShipments('procurement', { lead: false })).toBe(false);
     expect(canEditShipments('procurement', { lead: true })).toBe(true);
     expect(canEditShipments('member', { lead: true })).toBe(false);
-    expect(canEditShipments('client', { lead: true })).toBe(false);
     expect(['bom', 'site', 'schedule', 'deliveries', 'shipments'].map((s) => roleReadOnly('logistics', s as never))).toEqual([true, true, true, true, false]);
   });
 });

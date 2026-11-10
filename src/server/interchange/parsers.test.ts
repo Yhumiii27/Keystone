@@ -198,7 +198,6 @@ describe('import rights and messages', () => {
     expect(importKindsOf('englead')).toEqual(['bom', 'parts']);
     expect(importKindsOf('procurement')).toEqual(['bom', 'parts']);
     expect(importKindsOf('depthead')).toEqual(['assignments']);
-    expect(importKindsOf('client')).toEqual([]);
     expect(importKindsOf('member')).toEqual([]);
     // R-041 (P-2): on an existing project, the schedule needs the PM rights and the other kinds the project team; a head of
     // department staffs every project (assignments on any project), a PM only their teams'.
@@ -208,7 +207,7 @@ describe('import rights and messages', () => {
     expect([canImport('pm', 'mspdi', lead), canImport('pm', 'mspdi', member), canImport('pm', 'mspdi', null), canImport('depthead', 'assignments', member), canImport('depthead', 'assignments', none)])
       .toEqual([true, false, true, true, true]);
     expect([canImport('pm', 'assignments', member), canImport('pm', 'assignments', none)]).toEqual([true, false]);
-    expect([canImport('englead', 'bom', member), canImport('englead', 'bom', none), canImport('englead', 'parts', null), canImport('client', 'bom', lead)]).toEqual([true, false, true, false]);
+    expect([canImport('englead', 'bom', member), canImport('englead', 'bom', none), canImport('englead', 'parts', null)]).toEqual([true, false, true]);
     expect(Object.keys(CARD_KINDS)).toEqual(['MS Project XML', 'Excel / CSV', 'Primavera P6 XER']);
   });
 

@@ -221,10 +221,10 @@ export interface DocDrawerView {
   closeHref: string;
   /**
    * "Open in Codex" (R-033): the record in Codex, new tab — Codex's own link once the index read brought it, else Codex's
-   * home (TODO(codex) D-1); null for the client role (no Codex access).
+   * home (TODO(codex) D-1).
    */
   codexHref: string | null;
-  /** R-127 (D-2 = a): "Earlier revisions and download log in Codex" under the current revision; null for the client role. */
+  /** R-127 (D-2 = a): "Earlier revisions and download log in Codex" under the current revision. */
   historyHref: string | null;
   /** "New revision · Codex" → the deposit hand-off in revision mode; null for read-only viewers. */
   newRevisionHref: string | null;
@@ -318,16 +318,16 @@ export function drawerView({ project, record: r, state, viewer, canEdit }: Drawe
       ? {
           to: t(clientRecipientText(x.organisation, x.contact)),
           sub: `· rev ${x.revision} · ${date(x.date)}`,
-          ack: t(x.acknowledgedOn ? `Acknowledged ${shortDateOfIso(x.acknowledgedOn)}` : 'Acknowledgment pending'),
-          ackClass: tag(x.acknowledgedOn ? 'tag-neutral' : 'tag-accent'),
+          // D9-06: the client acknowledges outside Keystone (no portal); an acknowledgement recorded before D9-06 is still shown.
+          ack: t(x.acknowledgedOn ? `Acknowledged ${shortDateOfIso(x.acknowledgedOn)}` : 'Sent to the client'),
+          ackClass: tag('tag-neutral'),
         }
       : { to: t(x.label), sub: `· rev ${x.revision} · ${date(x.date)}`, ack: t('Received'), ackClass: tag('tag-neutral') },
   );
 
   const mayApprove = canApproveDocument(viewer, r) && r.nextRoleLabel && r.nextApprover;
-  // Clients have no Codex access: no link to Codex in their drawer (R-127; R-033 opens the record in Codex for the team).
-  const client = viewer.role === 'client';
-  const inCodex = client ? null : codexDocumentUrl(r.number, r.revision, r.codexUrl);
+  // R-033: the record opens in Codex for the team.
+  const inCodex = codexDocumentUrl(r.number, r.revision, r.codexUrl);
   return {
     number: r.number,
     revision: r.revision,
@@ -351,8 +351,7 @@ export function drawerView({ project, record: r, state, viewer, canEdit }: Drawe
     revisions,
     approvals,
     distribution,
-    // A client's relations stay inert: every target is an internal screen that sends the client home (P-1).
-    links: r.links.map((l) => ({ kind: t(l.kindLabel), ref: l.ref, href: client ? null : linkHref(l, r.project) })),
+    links: r.links.map((l) => ({ kind: t(l.kindLabel), ref: l.ref, href: linkHref(l, r.project) })),
   };
 }
 

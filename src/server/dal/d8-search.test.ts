@@ -1,7 +1,6 @@
 // Delivery 8, lot audit-i18n-shell — R-052 (X-5 = portfolio): the global search covers the portfolio, filtered by rights,
 // and the R-149 deep-link fix for task notifications (built here, shell.ts belongs to this lot).
 import { beforeAll, describe, expect, it } from 'vitest';
-import { PERSONAS, PERSONA_BY_ROLE } from '@/config/personas';
 import { searchHitView } from '@/components/app/shell/search-view';
 import { makeT } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
@@ -15,7 +14,6 @@ beforeAll(async () => {
 }, 60_000);
 
 const of = (hits: SearchHit[], kind: string) => hits.filter((h) => h.kind === kind);
-const internal = PERSONAS.filter((p) => p.role !== 'client');
 
 describe('R-052 portfolio-wide search (X-5)', () => {
   it('PO-1082 is found from Northgate and opens Harbor Line, with the project code in the sub-line', async () => {
@@ -34,34 +32,14 @@ describe('R-052 portfolio-wide search (X-5)', () => {
     expect(risks.map((h) => h.sub.split(' · ')[0])).toEqual(['NDC-031', 'HLT-026', 'RCF-019']);
   });
 
-  it('a staff hit on another project opens that project, for every internal persona; projects without data are searched', async () => {
+  // D9-06: every viewer searches the same records (the client's own search went with the Client role).
+  it('a staff hit on another project opens that project; projects without data are searched', async () => {
     const ndc = await createChangeRequest('NDC-031', { title: 'Northgate raised-floor cabling', types: ['budget'], amountKeur: 12, scheduleDays: 0 }, 'Marie Lefebvre');
     // PRS-038 (Port authority) has no project data (a wizard-like project): its change requests are still found.
     const prs = await createChangeRequest('PRS-038', { title: 'Quay 9 fender upgrade', types: ['budget'], amountKeur: 30, scheduleDays: 4 }, 'Marie Lefebvre');
-    for (const p of internal) {
-      const hits = of(await searchShell('northgate raised', 'HLT-026', p), 'Change request');
-      expect([p.role, hits]).toEqual([p.role, [{ kind: 'Change request', title: `${ndc} · Northgate raised-floor cabling`, sub: 'NDC-031 · In review', subData: ['NDC-031'], href: `/projects/NDC-031/changes?cr=${ndc}` }]]);
-      expect([p.role, of(await searchShell('fender', 'HLT-026', p), 'Change request').map((h) => h.href)]).toEqual([p.role, [`/projects/PRS-038/changes?cr=${prs}`]]);
-    }
-  });
-
-  it('the client finds the change requests of every project of their organisation, never another organisation\'s', async () => {
-    const client = PERSONA_BY_ROLE.client;
-    const own = await createChangeRequest('QFR-015', { title: 'Quay crane rail realignment', types: ['schedule'], amountKeur: 0, scheduleDays: 6 }, 'Marie Lefebvre');
-    const other = await createChangeRequest('RCF-019', { title: 'Quay-side clinic wing', types: ['budget'], amountKeur: 5, scheduleDays: 0 }, 'Marie Lefebvre');
-    expect(of(await searchShell('realignment', 'HLT-026', client), 'Change request').map((h) => [h.title, h.href])).toEqual([[`${own} · Quay crane rail realignment`, `/projects/QFR-015/changes?cr=${own}`]]);
-    // 'quay' matches Port authority's change requests (PRS-038, QFR-015) and RCF-019's (Health trust): only the first two.
-    const hits = of(await searchShell('quay', 'HLT-026', client), 'Change request');
-    expect(hits.map((h) => h.href.split('/')[2])).toEqual(['PRS-038', 'QFR-015']);
-    expect(JSON.stringify(hits)).not.toContain(other);
-    expect(JSON.stringify(await searchShell(other.toLowerCase(), 'RCF-019', client))).toBe('[]');
-    // Current project first: from QFR-015, its own change request comes before Harbor Line's.
-    const fromQfr = of(await searchShell('cr-0', 'QFR-015', client), 'Change request').map((h) => h.href);
-    expect(fromQfr[0]).toBe(`/projects/QFR-015/changes?cr=${own}`);
-    expect(fromQfr.slice(1).every((h) => h.startsWith('/projects/HLT-026/changes?cr='))).toBe(true);
-    // Still nothing else of the internal workspace, on any of their projects.
-    for (const q of ['po-1082', 'ncr-0', 'r-03', 'wagner', 'eco-2026', 'dwg', 'a1250'])
-      expect([q, (await searchShell(q, 'QFR-015', client)).filter((h) => h.kind !== 'Project')]).toEqual([q, []]);
+    const hits = of(await searchShell('northgate raised', 'HLT-026'), 'Change request');
+    expect(hits).toEqual([{ kind: 'Change request', title: `${ndc} · Northgate raised-floor cabling`, sub: 'NDC-031 · In review', subData: ['NDC-031'], href: `/projects/NDC-031/changes?cr=${ndc}` }]);
+    expect(of(await searchShell('fender', 'HLT-026'), 'Change request').map((h) => h.href)).toEqual([`/projects/PRS-038/changes?cr=${prs}`]);
   });
 
   it('searchHitView shows the project code as typed and translates Keystone\'s labels (R-148)', async () => {
@@ -70,8 +48,8 @@ describe('R-052 portfolio-wide search (X-5)', () => {
     expect(fr.sub.split(' · ')[0]).toBe('HLT-026');
     expect(fr.sub).toBe(`HLT-026 · ${makeT('fr')('Awaiting approval')}`);
     expect(fr.kind).toBe(makeT('fr')('Purchase order'));
-    // The client's project hit: the PM's name is data (shown as typed).
-    const [proj] = await searchShell('harbor', 'HLT-026', PERSONA_BY_ROLE.client);
+    // A project hit: the PM's name is data (shown as typed).
+    const [proj] = await searchShell('harbor', 'HLT-026');
     expect(proj.subData).toEqual([proj.sub.split(' · ')[2]]);
   });
 });

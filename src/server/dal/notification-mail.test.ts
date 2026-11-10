@@ -1,5 +1,5 @@
 // R-036 and R-015 on the demo database (business date Fri 25 Sep 2026): who receives which notice (persons, never a whole role;
-// rights; the client; the internal client of R-190), the routing of each e-mail by preference (immediate, daily digest, none), the
+// rights), the routing of each e-mail by preference (immediate, daily digest, none), the
 // digest's idempotency, the file transport's .eml output, the @mentions of a task comment, and the indicator alerts told once
 // while they last.
 import fs from 'node:fs';
@@ -12,7 +12,7 @@ import { DEFAULT_NOTIFICATION_MODES } from '@/domain/notification-mail';
 import { DEFAULT_REMINDER_PREFS } from '@/domain/reminders';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
-import { clients, notificationRecipients, notifications, projects, reminderSends, users } from '@/server/db/schema';
+import { notificationRecipients, notifications, reminderSends, users } from '@/server/db/schema';
 import { listSatSystems, planSat } from './commissioning';
 import { runIndicatorAlerts } from './event-notices';
 import { recordItpResult } from './itp';
@@ -28,7 +28,6 @@ const A = {
   director: { role: 'director', name: 'Marie Lefebvre' },
   pm: { role: 'pm', name: 'Romain Aubert' },
   quality: { role: 'quality', name: 'Gabriel Comte' },
-  client: { role: 'client', name: 'Nadia Bensaïd' },
 } as const;
 
 let dir: string;
@@ -154,52 +153,22 @@ describe('R-036 · preferences and the daily digest', () => {
   });
 });
 
-describe('R-036 · rights: a person is mailed only what the bell shows them', () => {
-  it('the client: their project at once (even an alert), never an NCR nor another organisation’s project; role audiences still work', async () => {
-    const nadia = await userOf('client');
-    const mails = await mailsOf(async () => {
-      expect(await statesOf(await createNotification(notice({ kind: 'request', title: 'SAT invitation', screen: 'client', params: {}, toPersonIds: [nadia.personId] })))).toEqual({ client: 'sent' });
-      expect(await statesOf(await createNotification(notice({ kind: 'quality', title: 'NCR raised', screen: 'quality', params: { qTab: 'ncr', ncr: 'EV-2026-029' }, toPersonIds: [nadia.personId] }))))
-        .toEqual({ client: 'not_visible' });
-      expect(await statesOf(await createNotification(notice({ projectCode: 'NDC-031', toPersonIds: [nadia.personId] })))).toEqual({ client: 'not_visible' });
-    });
-    expect(mails).toHaveLength(1);
-    // A role audience (the prototype's notices) still reaches every user of the role.
-    const code = await createNotification(notice({ kind: 'sync', title: 'Lucca sync', screen: 'activity', projectCode: null, audience: ['director'] }));
-    expect(await statesOf(code)).toEqual({ director: 'digest' });
-  });
-});
-
 describe('R-015 · key events to the persons concerned', () => {
-  it('Plan SAT: the invitation to the external client’s contacts (bell + e-mail at once); nothing for a group subsidiary (R-190)', async () => {
+  // D9-06: the client never sees Keystone — planning a SAT invites nobody from Keystone (the PM invites the client directly).
+  it('Plan SAT: no invitation from Keystone (D9-06)', async () => {
     const [system] = await listSatSystems(HLT);
-    const mails = await mailsOf(() => planSat(HLT, { system, date: '2026-11-12', clientWitnesses: 'N. Bensaïd' }, A.pm));
-    const sat = async (persona: string) => (await bellOf(persona, 'SAT invitation')).filter((n) => n.sub.startsWith(system));
-    expect((await sat('client')).map((n) => n.sub)).toEqual([`${system} · 12 Nov 2026 · N. Bensaïd`]);
-    expect(await sat('pm')).toEqual([]);
-    expect(mails).toHaveLength(1);
-    expect(mails[0].text).toContain('Invitation à la SAT');
-    // The same client marked internal (a subsidiary): Arche follows the project, Keystone sends nothing.
-    const db = await getDb();
-    const [p] = await db.select({ clientId: projects.clientId }).from(projects).where(eq(projects.code, HLT));
-    await db.update(clients).set({ isInternal: true }).where(eq(clients.id, p.clientId!));
-    try {
-      expect(await mailsOf(() => planSat(HLT, { system, date: '2026-11-19' }, A.pm))).toEqual([]);
-      expect(await sat('client')).toHaveLength(1);
-    } finally {
-      await db.update(clients).set({ isInternal: false }).where(eq(clients.id, p.clientId!));
-    }
+    expect(await mailsOf(() => planSat(HLT, { system, date: '2026-11-12', clientWitnesses: 'N. Bensaïd' }, A.pm))).toEqual([]);
+    expect(await bellOf('pm', 'SAT invitation')).toEqual([]);
   });
 
-  it('a deliverable submitted asks the client to accept; the client’s decision goes to the leads', async () => {
+  // D9-06: no "Deliverable to accept" notice (the client is not a user); the decision recorded by a lead goes to the other leads.
+  it('a deliverable submitted: no notice to accept; the client’s decision recorded by the director goes to the PM', async () => {
     await moveDeliverable(HLT, 'D-018', 'in_progress', A.pm);
     await moveDeliverable(HLT, 'D-018', 'internal_review', A.pm);
     await moveDeliverable(HLT, 'D-018', 'submitted', A.pm);
-    expect((await bellOf('client', 'Deliverable to accept · D-018'))).toHaveLength(1);
     expect(await bellOf('pm', 'Deliverable to accept')).toEqual([]);
-    await decideDeliverable(HLT, 'D-018', 'rejected', A.client, 'Load case 4 missing');
+    await decideDeliverable(HLT, 'D-018', 'rejected', A.director, { comments: 'Load case 4 missing' });
     expect((await bellOf('pm', 'Deliverable rejected by the client · D-018')).map((n) => n.kind)).toEqual(['quality']);
-    expect(await bellOf('client', 'Deliverable rejected')).toEqual([]);
   });
 
   it('an inspection recorded Failed: the project’s leads, not the inspector who recorded it', async () => {
@@ -208,7 +177,6 @@ describe('R-015 · key events to the persons concerned', () => {
     expect(n).toMatchObject({ kind: 'quality', screen: 'itp' });
     expect(n.sub).toContain('Weld porosity on the rail splice');
     expect(await bellOf('quality', 'Inspection failed')).toEqual([]);
-    expect(await bellOf('client', 'Inspection failed')).toEqual([]);
   });
 
   it('@mentions in a task comment: the person mentioned, by e-mail at once', async () => {
@@ -234,8 +202,6 @@ describe('R-015 · key events to the persons concerned', () => {
     await db.update(reminderSends).set({ occurrence: 'cleared:2026-09-24' }).where(and(eq(reminderSends.kind, 'alert'), eq(reminderSends.itemKey, row.itemKey)));
     const again = await runIndicatorAlerts('2026-09-25');
     expect(again.raised).toBe(1);
-    // Internal recipients only.
-    expect((await listNotifications('client')).filter((n) => n.title.startsWith('Indicator alert'))).toEqual([]);
     const rows = await db.select({ kind: reminderSends.kind }).from(reminderSends).where(inArray(reminderSends.kind, ['alert']));
     expect(rows.length).toBeGreaterThan(0);
   }, 120_000);

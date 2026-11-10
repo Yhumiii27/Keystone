@@ -70,8 +70,6 @@ describe('/resources/approvals/[dept] (R-048)', () => {
     session.role = 'pm';
     const [, canDecide, chips] = await screen('engineering');
     expect([canDecide, chips.length > 2]).toEqual([false, true]);
-    session.role = 'client';
-    await expect(page('engineering')).rejects.toThrow(/^REDIRECT \/$/);
     session.role = 'director';
     await expect(page('nope')).rejects.toThrow('NOT_FOUND');
   });

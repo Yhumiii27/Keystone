@@ -59,10 +59,6 @@ describe('Settings › forecast drift thresholds (S-25)', () => {
     expect((await getDriftForecast('HLT-026'))!.forecast.suggestions.map((s) => s.rule)).toContain('spi_critical');
     for (const p of PERSONAS) {
       as(p.role);
-      if (p.role === 'client') {
-        await expect(setDriftThresholdAction('spiCritical', '0,5')).rejects.toThrow('REDIRECT /');
-        continue;
-      }
       const r = await setDriftThresholdAction('spiCritical', '0,5');
       if (p.role === 'director') expect(r).toEqual({ ok: true });
       else expect([p.role, 'error' in r]).toEqual([p.role, true]);

@@ -5,7 +5,6 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 vi.mock('next/navigation', () => ({ usePathname: () => '/projects/HLT-026/budget', useRouter: () => ({ push() {}, replace() {}, refresh() {} }), useSearchParams: () => new URLSearchParams() }));
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { canSee } from '@/config/role-screens';
 import { evmCore, workPackageTotals } from '@/domain/evm';
 import { I18nProvider } from '@/i18n/client';
 import { makeT, type Lang } from '@/i18n/translate';
@@ -76,6 +75,5 @@ describe('Budget by equipment (R-185)', () => {
     expect(fr).toContain('Les catégories de coûts ne sont pas ventilées par équipement');
     const ndc = (await getBudgetData('NDC-031'))!;
     expect(setup(ndc, 'en')).not.toContain('Budget by equipment');
-    expect(canSee('client', 'budget')).toBe(false);
   });
 });

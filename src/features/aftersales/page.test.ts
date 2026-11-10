@@ -38,7 +38,7 @@ function parts(tree: unknown): Record<string, El> {
 }
 const fleetPage = async () => parts(await InstalledBasePage());
 const savPage = async (sp: Record<string, string> = {}) => parts(await WarrantyClaimsPage({ searchParams: Promise.resolve(sp) }));
-const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'];
+const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'];
 const EDITORS = ['director', 'pm', 'quality', 'procurement'];
 
 beforeAll(async () => {
@@ -72,11 +72,9 @@ describe('/after-sales/fleet', () => {
     }
   });
 
-  it('Vigie links for staff and other outside viewers; the client never reaches the register (R-042, P-1)', async () => {
+  it('Vigie links for staff and other outside viewers', async () => {
     const vigieLinks = async () => ((await fleetPage()).FleetBody.props.view as FleetView).rows.filter((r) => r.config?.vigieHref).length;
     expect(await vigieLinks()).toBe(5);
-    session.role = 'client';
-    await expect(vigieLinks()).rejects.toThrow('NEXT_REDIRECT');
     session.role = 'englead';
     expect(await vigieLinks()).toBe(5);
   });
@@ -123,7 +121,5 @@ describe('/after-sales/claims', () => {
     Object.assign(session, { zone: null, role: 'quality' });
     const ecoOf = async () => ((await savPage()).SavBody.props.view as SavScreenView).claims!.find((c) => c.number === 'WC-013')!.eco!.href;
     expect(await ecoOf()).toMatch(/^http:\/\/localhost:3200\//);
-    session.role = 'client';
-    await expect(ecoOf()).rejects.toThrow('NEXT_REDIRECT');
   });
 });

@@ -63,8 +63,6 @@ describe('resource-request Server Functions', () => {
   });
 
   it('send: refused for roles without the dialog, read-only projects and invalid input', async () => {
-    state.role = 'client';
-    expect(await sendResourceRequestAction(draft())).toEqual({ ok: false, error: 'Read-only — you cannot send resource requests' });
     state.role = 'member';
     expect(await sendResourceRequestAction(draft())).toEqual({ ok: false, error: 'Read-only — you cannot send resource requests' });
     state.role = 'pm';

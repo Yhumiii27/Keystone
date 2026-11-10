@@ -27,6 +27,12 @@ export const meetings = pgTable('meetings', {
   title: text('title').notNull(),
   series: text('series').$type<MeetingSeries>().notNull(),
   type: text('type').$type<MeetingType>().notNull(),
+  /**
+   * D9-25 (owner, 10 Nov 2026): the client attended the meeting — its decisions are the project's client decisions (Meetings'
+   * "With the client" scope, the Site's client communication log). Ticked on the meeting; the existing external meetings were
+   * marked client present by migration (they were the client decisions before).
+   */
+  clientPresent: boolean('client_present').notNull().default(false),
   /** "29 Sep 2026" + "08:30" (Europe/Paris) — `startsAt` is the instant. */
   startsOn: date('starts_on', { mode: 'string' }).notNull(),
   startTime: text('start_time').notNull(),
@@ -187,10 +193,8 @@ export const stakeholders = pgTable('stakeholders', {
   organisation: text('organisation').notNull(),
   role: text('role').notNull(),
   type: text('type').$type<StakeholderType>().notNull(),
-  /** Always 0 / 0 / '' in the seed (S-13a under discussion, R-059). */
-  influence: integer('influence').notNull().default(0),
-  interest: integer('interest').notNull().default(0),
-  attitude: text('attitude').notNull().default(''),
+  // D9-26 (owner, 10 Nov 2026): no power / interest grid — `influence`, `interest` and `attitude` were dropped; stakeholders are
+  // defined by their roles and responsibilities (`role`, the RACI by role — R-058).
   contactEmail: text('contact_email'),
   /** Relationship owner (normalised to the person; the seed cites short names). */
   ownerPersonId: uuid('owner_person_id').references(() => persons.id),

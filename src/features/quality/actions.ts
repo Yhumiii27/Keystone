@@ -5,8 +5,8 @@
 //   connector's outbox (src/server/dal/quality.ts → integrations/vigie), "pending sync with Vigie" until Vigie takes it.
 //   No Server Function creates or edits an NCR ("New NCR" opens Vigie's report form).
 // - Deliverables are Keystone's: Start / To internal review / Submit to client / Start next revision after a rejection
-//   (the project team, not the client; R-114), the client's acceptance (PV) or rejection with comments (a client contact
-//   of the project's client organisation), the link to the issued document in the Codex index, and "New deliverable"
+//   (the project team; R-114), the client's acceptance (PV, signed outside Keystone) or rejection with comments recorded by
+//   the project's leads — PM of record, co-PM, deputy, director (D9-06: clients never see Keystone) —, the link to the issued document in the Codex index, and "New deliverable"
 //   (the project's manager or the director; R-115).
 // Each function validates the raw input, checks the viewer server-side with the screen's rules (src/domain/quality.ts:
 // not outside the workspace, project not read-only, the role / person that holds the step), writes with the viewer as
@@ -18,10 +18,9 @@ import { yearOfIso } from '@/domain/clock';
 import { DELIVERABLE_CREATOR_ROLES, deliverableActionFor, deliverableRefusalText, ncrActionFor, ncrRefusalText, ncrRequestText, parseNewDeliverable, producerNextOf, type ProducerTarget } from '@/domain/quality';
 import { NCR_VERIFIER_ROLES, deliverableStatus, ncrStatus, vigieSyncStatus, type NcrStatus, type VigieSyncStatus } from '@/server/db/codes';
 import { businessToday } from '@/server/clock';
-import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { getProject } from '@/server/dal/projects';
 import {
-  advanceNcr, createDeliverable, decideDeliverable, deliverableWbsOptions, getDeliverable, getNcr, linkDeliverableDocument, listDeliverableTypes, moveDeliverable, verifyNcr,
+  CLIENT_DECISION_REF_MAX, advanceNcr, createDeliverable, decideDeliverable, deliverableWbsOptions, getDeliverable, getNcr, linkDeliverableDocument, listDeliverableTypes, moveDeliverable, verifyNcr,
 } from '@/server/dal/quality';
 import { teamOwnerOptions } from '@/server/dal/team';
 import { getProjectContext } from '@/server/project-context';
@@ -33,7 +32,6 @@ export type QualityResult = { ok: true; toast: string } | { ok: false; error: st
 const INVALID = 'Invalid request';
 const UNKNOWN_PROJECT = 'Unknown project';
 const READ_ONLY = 'Quality is read-only for you';
-const TEAM_ONLY = 'Only the project team records this progress';
 const QUALITY_ONLY = 'Only the quality manager verifies and closes NCRs';
 const UNKNOWN_NCR = 'Unknown NCR';
 const UNKNOWN_DLV = 'Unknown deliverable';
@@ -63,6 +61,8 @@ interface Access {
   code: string;
   actor: { name: string; role: string };
   canEdit: boolean;
+  /** The viewer leads the project (PM of record, co-PM, deputy, or the director — R-041). */
+  isLead: boolean;
 }
 
 /** The project and the viewer's edit right on its Quality screen (outside workspace / read-only project → false). */
@@ -72,7 +72,7 @@ async function access(projectCode: unknown): Promise<Access | { error: string }>
   const project = await getProject(raw);
   if (!project) return { error: UNKNOWN_PROJECT };
   const ctx = await getProjectContext(project.code, 'quality');
-  return { code: project.code, actor: { name: ctx.viewer.name, role: ctx.viewer.role }, canEdit: ctx.canEdit('quality') };
+  return { code: project.code, actor: { name: ctx.viewer.name, role: ctx.viewer.role }, canEdit: ctx.canEdit('quality'), isLead: ctx.isLead };
 }
 
 const syncText = (s: VigieSyncStatus) => vigieSyncStatus.label(s);
@@ -85,7 +85,6 @@ export async function advanceNcrAction(input: { projectCode: string; number: str
   const a = await access(input?.projectCode);
   if ('error' in a) return { ok: false, error: a.error };
   if (!a.canEdit) return { ok: false, error: READ_ONLY };
-  if (a.actor.role === 'client') return { ok: false, error: TEAM_ONLY };
   const number = str(input?.number);
   const step = input?.step as NcrStatus;
   if (!NCR_NUMBER.test(number) || !ncrStatus.isCode(step)) return { ok: false, error: INVALID };
@@ -139,7 +138,6 @@ export async function moveDeliverableAction(input: { projectCode: string; number
   const a = await access(input?.projectCode);
   if ('error' in a) return { ok: false, error: a.error };
   if (!a.canEdit) return { ok: false, error: READ_ONLY };
-  if (a.actor.role === 'client') return { ok: false, error: TEAM_ONLY };
   const number = str(input?.number);
   const to = input?.to as ProducerTarget;
   if (!DLV_NUMBER.test(number) || !PRODUCER_TARGETS.includes(to)) return { ok: false, error: INVALID };
@@ -170,40 +168,40 @@ export async function moveDeliverableAction(input: { projectCode: string; number
 }
 
 /**
- * "Accept (PV)" / "Reject with comments" (register, drawer, My approvals): a submitted deliverable, decided by a client
- * contact of the project's client organisation. Accept stamps the business date (R-013) and the viewer; reject keeps the comments.
+ * "Record client acceptance" / "Record client rejection" (register, drawer — dialog with the date and the reference of the signed
+ * document). D9-06 (owner, 10 Nov 2026): clients never see Keystone — the PV is signed outside (DocuSign planned) and the
+ * project's leads (PM of record, co-PM, deputy, or the director) record "accepted by the client on … (reference)" or the
+ * rejection with its comments, on a submitted deliverable. Accept needs the reference; the date is not after the status date.
  */
-export async function decideDeliverableAction(input: { projectCode: string; number: string; decision: string; comments?: string | null }): Promise<QualityResult> {
-  const a = await access(input?.projectCode);
-  if ('error' in a) return { ok: false, error: a.error };
-  if (!a.canEdit) return { ok: false, error: READ_ONLY };
-  const number = str(input?.number);
-  const decision = input?.decision === 'accepted' || input?.decision === 'rejected' ? input.decision : null;
-  const comments = input?.comments == null ? null : typeof input.comments === 'string' && input.comments.length <= 2000 ? input.comments : undefined;
-  if (!DLV_NUMBER.test(number) || !decision || comments === undefined) return { ok: false, error: INVALID };
+export async function recordClientDecisionAction(projectCode: string, number: string, decision: string, values: Record<string, string>): Promise<FormDialogResult> {
+  const a = await access(projectCode);
+  if ('error' in a) return { error: await tr(a.error) };
+  if (!a.canEdit) return { error: await tr(READ_ONLY) };
+  const dlv = str(number);
+  const d0 = decision === 'accepted' || decision === 'rejected' ? decision : null;
+  const v = values && typeof values === 'object' ? values : {};
+  const text = (k: string, max: number) => (typeof v[k] === 'string' ? (v[k].length <= max ? v[k].trim() : undefined) : '');
+  const on = text('on', 10);
+  const reference = text('reference', CLIENT_DECISION_REF_MAX);
+  const comments = text('comments', 2000);
+  if (!DLV_NUMBER.test(dlv) || !d0 || on === undefined || reference === undefined || comments === undefined) return { error: await tr(INVALID) };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(on)) return { error: await tr('Enter the date of the client’s decision') };
+  if (d0 === 'accepted' && !reference) return { error: await tr('Enter the reference of the signed acceptance (PV)') };
+  if (on > (await businessToday())) return { error: await tr('The client’s decision cannot be after the status date') };
   try {
-    const [d, ctx] = await Promise.all([getDeliverable(a.code, number), getProjectContext(a.code, 'quality')]);
-    if (!d) return { ok: false, error: UNKNOWN_DLV };
-    const identity = await getApproverIdentity(ctx.viewer);
-    const viewer = { role: a.actor.role, canEdit: a.canEdit, isClientContact: identity.clientProjects.includes(a.code) };
-    if (deliverableActionFor(d, viewer)?.kind !== 'decide') {
+    const d = await getDeliverable(a.code, dlv);
+    if (!d) return { error: await tr(UNKNOWN_DLV) };
+    if (deliverableActionFor(d, { role: a.actor.role, canEdit: a.canEdit, isLead: a.isLead })?.kind !== 'decide') {
       refreshAll();
-      return { ok: false, error: deliverableRefusalText(d, 'decide') };
+      return { error: await tr(deliverableRefusalText(d, 'decide')) };
     }
-    await decideDeliverable(a.code, d.number, decision, a.actor, comments);
+    await decideDeliverable(a.code, d.number, d0, a.actor, { on, reference: reference || null, comments: comments || null });
     refreshAll();
-    return { ok: true, toast: `${d.number} · ${decision === 'accepted' ? 'Accepted' : 'Rejected'}` };
+    return { toast: await tr(`${d.number} · ${d0 === 'accepted' ? 'Client acceptance recorded' : 'Client rejection recorded'}`) };
   } catch (e) {
-    logError('decideDeliverableAction', e);
-    return { ok: false, error: NOT_SAVED };
+    logError('recordClientDecisionAction', e);
+    return { error: await tr(NOT_SAVED) };
   }
-}
-
-/** "Reject with comments" (drawer dialog): the FormDialog version of the rejection, answers translated. */
-export async function rejectDeliverableWithCommentsAction(projectCode: string, number: string, values: Record<string, string>): Promise<FormDialogResult> {
-  const comments = values && typeof values.comments === 'string' ? values.comments : '';
-  const r = await decideDeliverableAction({ projectCode, number, decision: 'rejected', comments });
-  return r.ok ? { toast: await tr(r.toast) } : { error: await tr(r.error) };
 }
 
 /** "Link a Codex document" (drawer's Document section): the issued document of the deliverable, a record of the project. */
@@ -211,7 +209,6 @@ export async function linkDeliverableDocumentAction(projectCode: string, number:
   const a = await access(projectCode);
   if ('error' in a) return { error: await tr(a.error) };
   if (!a.canEdit) return { error: await tr(READ_ONLY) };
-  if (a.actor.role === 'client') return { error: await tr(TEAM_ONLY) };
   const dlv = str(number);
   const doc = str(values?.doc);
   if (!DLV_NUMBER.test(dlv) || !doc) return { error: await tr(INVALID) };

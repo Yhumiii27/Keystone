@@ -234,6 +234,6 @@ describe('contingency (R-070 / R-071, A-8, C-4)', () => {
 
   it('only the portfolio director validates', () => {
     // The 8 personas: only the portfolio director decides (C-4).
-    expect((['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'] as const).map(isDrawDecider)).toEqual([true, false, false, false, false, false, false, false]);
+    expect((['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'] as const).map(isDrawDecider)).toEqual([true, false, false, false, false, false, false]);
   });
 });

@@ -16,8 +16,8 @@
 // - "Overdue actions" counts the open NCRs whose action is due on or before the as-of date (07 OQ5: the
 //   prototype listed the literal dates {30 Sep, 2 Oct}); the as-of date is the next weekly review after the business
 //   date (business date + 7 days, R-013 — on the demo data set 25 Sep + 7 = 2 Oct, the prototype's count).
-// - Step buttons follow the viewer: the client never advances NCRs nor produces deliverables, NCR closure is the quality
-//   manager's verification, and only a client contact of the project accepts or rejects (07 OQ14).
+// - Step buttons follow the viewer: NCR closure is the quality manager's verification, and the client's acceptance or
+//   rejection (signed outside Keystone) is recorded by the project's leads (D9-06; was the client contact, 07 OQ14).
 // Golden values: src/domain/quality.test.ts (prototype render values, src/features/quality/quality.golden.json).
 // Type-only import: a value import of '@/domain/approvals' loads the screen registry (icons), which breaks scripts/db-check.ts.
 import type { ApprovalItem } from '@/domain/approvals';
@@ -163,16 +163,16 @@ export interface QualityViewer {
 
 /**
  * What the viewer may record on an NCR from Keystone (sent to Vigie):
- * - `step`: the next step ("→ Root cause" in the log, "Move to Root cause" in the drawer) — any editor but the client;
+ * - `step`: the next step ("→ Root cause" in the log, "Move to Root cause" in the drawer) — any editor;
  *   never from Open: Containment is the NCR's qualification by Vigie's QHSE (D13, Vigie's rules — the prototype offered it);
  * - `verify`: the NCR is in Verification and the viewer is the quality manager: propose its closure ("→ Closed") or send it
  *   back to corrective action (drawer, My approvals) — Vigie's QHSE closes it or sends it back in Vigie (D13);
- * - null: open, closed, a request already waiting for Vigie, read-only, the client, or the verification of someone else.
+ * - null: open, closed, a request already waiting for Vigie, read-only, or the verification of someone else.
  */
 export type NcrAction = { kind: 'step'; target: NcrStatus } | { kind: 'verify' } | null;
 
 export function ncrActionFor(n: Pick<NcrLike, 'status' | 'requestedStatus'>, viewer: QualityViewer): NcrAction {
-  if (!viewer.canEdit || viewer.role === 'client' || n.status === 'closed' || n.requestedStatus) return null;
+  if (!viewer.canEdit || n.status === 'closed' || n.requestedStatus) return null;
   const next = ncrNextStatus(n.status);
   if (next === 'closed') return NCR_VERIFIER_ROLES.includes(viewer.role) ? { kind: 'verify' } : null;
   const step = ncrKeystoneStep(n.status);
@@ -289,16 +289,19 @@ export const RACI_LABEL: Record<RaciCode, string> = {
 };
 export const RACI_ORDER: readonly RaciCode[] = RACI_CODES;
 
-/** Who looks at the register: role, edit right on this project, and whether they are a client contact of its client. */
+/**
+ * Who looks at the register: role, edit right on this project, and whether they lead it (PM of record, co-PM, deputy, or the
+ * director) — D9-06: the leads record the client's decision on a submitted deliverable (the PV is signed outside Keystone).
+ */
 export interface DeliverableViewer extends QualityViewer {
-  isClientContact: boolean;
+  isLead: boolean;
 }
 
 /** Producer step of the register: Start (Planned), To internal review (In progress), Submit to client (Internal review). */
 export type ProducerTarget = 'in_progress' | 'internal_review' | 'submitted';
 export type DeliverableAction =
   | { kind: 'move'; to: ProducerTarget; label: string; variant: 'primary' | 'secondary' }
-  /** Submitted and the viewer is the project's client contact: Accept (PV) / Reject. */
+  /** Submitted and the viewer leads the project: record the client's acceptance (PV) / rejection (D9-06). */
   | { kind: 'decide' }
   | null;
 
@@ -313,9 +316,9 @@ const PRODUCER: Partial<Record<DeliverableStatus, { to: ProducerTarget; label: s
 /** The row action of the viewer (dlvRows canStart / canSubmit / canAccept), following the viewer (07 OQ14). */
 export function deliverableActionFor(d: Pick<DeliverableLike, 'status'>, viewer: DeliverableViewer): DeliverableAction {
   if (!viewer.canEdit) return null;
-  if (d.status === 'submitted') return viewer.isClientContact ? { kind: 'decide' } : null;
+  if (d.status === 'submitted') return viewer.isLead ? { kind: 'decide' } : null;
   const p = PRODUCER[d.status];
-  return p && viewer.role !== 'client' ? { kind: 'move', ...p } : null;
+  return p ? { kind: 'move', ...p } : null;
 }
 
 /** The producer step that follows a status (server-side check of "Start" / "To internal review" / "Submit to client"). */
@@ -332,7 +335,7 @@ export function deliverableRefusalText(d: Pick<DeliverableLike, 'number' | 'stat
       : d.status === 'submitted'
         ? wanted === 'move'
           ? 'This deliverable is already with the client'
-          : 'Only a client contact of the project accepts or rejects this deliverable'
+          : 'Only the project manager records the client’s decision on this deliverable'
         : wanted === 'decide'
           ? d.status === 'rejected'
             ? 'The client has already rejected this deliverable'
@@ -341,9 +344,9 @@ export function deliverableRefusalText(d: Pick<DeliverableLike, 'number' | 'stat
   return `${d.number} · ${reason}`;
 }
 
-/** Drawer hint (dlvVals.hint): a submitted deliverable seen by someone who cannot decide it. */
+/** Drawer hint (dlvVals.hint): a submitted deliverable seen by someone who cannot record the client's decision (D9-06). */
 export function deliverableHint(d: Pick<DeliverableLike, 'status'>, viewer: DeliverableViewer): string {
-  return d.status === 'submitted' && !viewer.isClientContact && viewer.role !== 'client' ? 'Switch to the Client role (bottom-left) to accept or reject.' : '';
+  return d.status === 'submitted' && !viewer.isLead ? 'The project manager records the client’s decision once the PV is signed.' : '';
 }
 
 /**
@@ -380,14 +383,17 @@ export interface DeliverableReviewLike {
   decidedOn: string;
   decidedBy: string;
   comments: string | null;
+  /** D9-06: reference of the signed document the decision was recorded from. */
+  reference?: string | null;
 }
 
 /**
- * "Rev C · Rejected 25 Sep · N. Bensaïd" (`t` translates the words and the date, shown with its year outside the business
+ * "Rev C · Rejected 25 Sep · N. Bensaïd" — D9-06: "Rev D · Accepted 2 Oct · PV-HLT-014 · R. Aubert" (the reference of the signed
+ * document, then who recorded it) (`t` translates the words and the date, shown with its year outside the business
  * year `year`; the comments are shown under it as typed).
  */
 export const reviewLineText = (r: DeliverableReviewLike, year: number, t: (s: string) => string = (s) => s) =>
-  `${t('Rev')} ${r.revision ?? '—'} · ${t(r.decision === 'accepted' ? 'Accepted' : 'Rejected')} ${t(fmtDOfIso(r.decidedOn, year))} · ${r.decidedBy}`;
+  `${t('Rev')} ${r.revision ?? '—'} · ${t(r.decision === 'accepted' ? 'Accepted' : 'Rejected')} ${t(fmtDOfIso(r.decidedOn, year))}${r.reference ? ` · ${r.reference}` : ''} · ${r.decidedBy}`;
 
 // ── New deliverable (R-115, Q-3b: added by the project manager) ─────────────────────────────────────────
 
@@ -475,10 +481,13 @@ export function ncrVerificationItems(
   }));
 }
 
-/** "Deliverable acceptance" items: submitted deliverables of the current project, for its client contact. */
+/**
+ * "Deliverable acceptance" items: submitted deliverables of the current project, for its leads to record the client's decision
+ * (D9-06) — no inline decision: the row opens the deliverable drawer (date and reference of the signed document).
+ */
 export function deliverableAcceptanceItems(ds: DeliverableLike[], code: string, hrefs: Pick<QualityItemHrefs, 'deliverable'>, year: number): ApprovalItem[] {
   return ds.filter((d) => d.status === 'submitted').map((d) => ({
     kind: 'deliverable', id: d.number, title: d.title, sub: `${d.typeLabel} · ${d.acceptanceText}`, who: d.raci.find((c) => c.role === 'R')?.name ?? '',
-    when: fmtDOfIso(d.dueOn, year), whenIso: d.dueOn, href: hrefs.deliverable(d.number), decision: { mode: 'deliverable', projectCode: code, number: d.number },
+    when: fmtDOfIso(d.dueOn, year), whenIso: d.dueOn, href: hrefs.deliverable(d.number), decision: null,
   }));
 }

@@ -6,7 +6,7 @@ import { fieldsText } from '@/i18n/data-text';
 import { makeT } from '@/i18n/translate';
 import { NOTIFICATION_ICON, type NotificationKind } from '@/server/db/codes';
 import {
-  DEFAULT_NOTIFICATION_MODES, FAMILY_OF_KIND, digestMail, digestSendKey, formOfModes, initialMailState, isClientOnly, mailRoute, modesOfForm, normaliseModes, noticeMail,
+  DEFAULT_NOTIFICATION_MODES, FAMILY_OF_KIND, digestMail, digestSendKey, formOfModes, initialMailState, mailRoute, modesOfForm, normaliseModes, noticeMail,
 } from './notification-mail';
 
 const t = makeT('fr');
@@ -16,23 +16,22 @@ describe('families and modes', () => {
   it('every notification kind has a family; what waits for an action is immediate by default, the rest goes to the digest', () => {
     expect(Object.keys(FAMILY_OF_KIND).sort()).toEqual(Object.keys(NOTIFICATION_ICON).sort());
     const kinds = Object.keys(FAMILY_OF_KIND) as NotificationKind[];
-    expect(Object.fromEntries(kinds.map((k) => [k, mailRoute(k, DEFAULT_NOTIFICATION_MODES, false)]))).toEqual({
+    expect(Object.fromEntries(kinds.map((k) => [k, mailRoute(k, DEFAULT_NOTIFICATION_MODES)]))).toEqual({
       approval: 'immediate', eco: 'immediate', request: 'immediate', task: 'immediate', mention: 'immediate',
       alert: 'digest', quality: 'digest', delivery: 'digest', invoice: 'digest', sync: 'digest',
     });
   });
 
-  it('a client receives at once what the others get in the digest; "no e-mail" stays their choice', () => {
-    expect(mailRoute('quality', DEFAULT_NOTIFICATION_MODES, true)).toBe('immediate');
-    expect(mailRoute('approval', { ...DEFAULT_NOTIFICATION_MODES, approvals: 'off' }, true)).toBe('off');
-    expect([isClientOnly(['client']), isClientOnly(['client', 'pm']), isClientOnly([])]).toEqual([true, false, false]);
+  it('"no e-mail" stays the person\'s choice (D9-06: the client accounts\' "digest becomes immediate" went with the Client role)', () => {
+    expect(mailRoute('quality', DEFAULT_NOTIFICATION_MODES)).toBe('digest');
+    expect(mailRoute('approval', { ...DEFAULT_NOTIFICATION_MODES, approvals: 'off' })).toBe('off');
   });
 
   it('the initial state: off before anything, then no transport, then the route', () => {
     const off = { ...DEFAULT_NOTIFICATION_MODES, tasks: 'off' as const };
     expect([
-      initialMailState('task', off, false, 'file'), initialMailState('task', DEFAULT_NOTIFICATION_MODES, false, 'none'),
-      initialMailState('task', DEFAULT_NOTIFICATION_MODES, false, 'file'), initialMailState('invoice', DEFAULT_NOTIFICATION_MODES, false, 'file'),
+      initialMailState('task', off, 'file'), initialMailState('task', DEFAULT_NOTIFICATION_MODES, 'none'),
+      initialMailState('task', DEFAULT_NOTIFICATION_MODES, 'file'), initialMailState('invoice', DEFAULT_NOTIFICATION_MODES, 'file'),
     ]).toEqual(['off', 'no_transport', 'immediate', 'digest']);
   });
 

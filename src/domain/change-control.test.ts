@@ -188,23 +188,21 @@ describe('drawer (crVals 4607–4610)', () => {
     expect(stepState(null)).toBeNull();
   });
 
-  it('who decides: pm, director (+ change control board, 07 OQ2), client; others none', () => {
-    expect(stepsOfRole('pm')).toEqual(['pm']);
+  it('who decides: pm (+ the client\'s decision it records, D9-06), director (+ change control board, 07 OQ2); others none', () => {
+    expect(stepsOfRole('pm')).toEqual(['pm', 'client']);
     expect(stepsOfRole('director')).toEqual(['director', 'ccb']);
-    expect(stepsOfRole('client')).toEqual(['client']);
     expect(stepsOfRole('quality')).toEqual([]);
     const cr8 = byId('CR-008');
     const decides = (role: Parameters<typeof stepsOfRole>[0], cr: ChangeRequestLike) => STEPS.filter((s) => canDecideStep(cr, s, { role }));
     // Deviation P-6b (delivery 8, R-069): the chain is sequential — CR-008 waits for the director only (the prototype let the
     // director decide the board step and the client its step at once, 07 OQ3).
     expect(decides('director', cr8)).toEqual(['director']);
-    expect(decides('client', cr8)).toEqual([]);
-    expect(decides('pm', cr8)).toEqual([]); // pm step already ok
+    expect(decides('pm', cr8)).toEqual([]); // pm step already ok, client step waits for the director
     expect(decides('pm', byId('CR-009'))).toEqual([]); // draft: submit first
     expect(decides('director', byId('CR-004'))).toEqual([]);
-    // Once the director approved, the client's step opens; then the board (recorded by the director).
+    // Once the director approved, the client's step opens (recorded by the PM, D9-06); then the board (recorded by the director).
     const afterDirector = { ...cr8, chain: cr8.chain.map((c) => (c.step === 'director' ? { ...c, decision: 'ok' as const } : c)) };
-    expect(decides('client', afterDirector)).toEqual(['client']);
+    expect(decides('pm', afterDirector)).toEqual(['client']);
     expect(decides('director', afterDirector)).toEqual([]);
     const afterClient = { ...afterDirector, chain: afterDirector.chain.map((c) => (c.step === 'client' ? { ...c, decision: 'ok' as const } : c)) };
     expect(decides('director', afterClient)).toEqual(['ccb']);
@@ -212,9 +210,9 @@ describe('drawer (crVals 4607–4610)', () => {
 
   it('hints', () => {
     expect(crHint(byId('CR-009'), 'director')).toBe('Submit the request to start the approval chain.');
-    expect(crHint(byId('CR-008'), 'quality')).toBe('Switch to Project manager, Portfolio director or Client (bottom-left) to decide.');
-    // R-069 (P-6b): the client's step waits for the director's.
-    expect(crHint(byId('CR-008'), 'client')).toBe('Waiting for Portfolio director');
+    expect(crHint(byId('CR-008'), 'quality')).toBe('Switch to Project manager or Portfolio director (bottom-left) to decide.');
+    // R-069 (P-6b): the client's step (recorded by the PM, D9-06) waits for the director's.
+    expect(crHint(byId('CR-008'), 'pm')).toBe('Waiting for Portfolio director');
     expect(crHint(byId('CR-008'), 'director')).toBe('');
     expect(crHint(byId('CR-004'), 'quality')).toBe('');
   });

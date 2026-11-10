@@ -29,7 +29,7 @@ vi.mock('@/server/session', async () => {
 import { GET } from '@/app/api/photos/[id]/route';
 import { POST } from '@/app/api/photos/route';
 import { PERSONAS } from '@/config/personas';
-import { clientSeesPhotos, type PhotoOwnerKey } from '@/domain/photos';
+import { type PhotoOwnerKey } from '@/domain/photos';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { addPhoto, listProjectPhotos, photoOwnerOf } from '@/server/dal/photos';
@@ -81,27 +81,25 @@ beforeEach(() => {
 describe('R-117 · punch photos follow the stored origin', () => {
   it('adding to an item raised on site needs the Site edit right, whatever register the request claims', async () => {
     // Site editors on HLT-026's team: director, PM (of record), member (Julien Wagner); the department head is off the team (R-041).
-    const site = { director: 200, pm: 200, depthead: 403, member: 200, englead: 403, quality: 403, procurement: 403, finance: 403, logistics: 403, client: 403 };
+    const site = { director: 200, pm: 200, depthead: 403, member: 200, englead: 403, quality: 403, procurement: 403, finance: 403, logistics: 403 };
     expect(await perRole(async () => (await upload(SITE_ITEM_FORGED)).status)).toEqual(site);
     expect(await perRole(async () => (await upload(SITE_ITEM)).status)).toEqual(site);
     // An item raised by an inspection follows Inspections & punch list, even when the request claims "site".
     expect(await perRole(async () => (await upload(ITP_ITEM_FORGED)).status)).toEqual({
-      director: 200, pm: 200, depthead: 403, member: 403, englead: 200, quality: 200, procurement: 403, finance: 403, logistics: 403, client: 403,
+      director: 200, pm: 200, depthead: 403, member: 403, englead: 200, quality: 200, procurement: 403, finance: 403, logistics: 403,
     });
   });
 
-  it('seeing: internal viewers see both; the client sees the inspection item’s photos only, never the Site item’s (X-15)', async () => {
+  it('seeing: every viewer sees both (D9-06: no client viewer any more)', async () => {
     const [sitePhoto] = (await listProjectPhotos('HLT-026', 'punch_item')).get('P-06')!;
     const [itpPhoto] = (await listProjectPhotos('HLT-026', 'punch_item')).get('P-02')!;
     const internal = { director: 200, pm: 200, depthead: 200, member: 200, englead: 200, quality: 200, procurement: 200, finance: 200, logistics: 200 };
-    expect(await perRole(async () => (await image(sitePhoto.id)).status)).toEqual({ ...internal, client: 403 });
-    expect(await perRole(async () => (await image(itpPhoto.id)).status)).toEqual({ ...internal, client: 200 });
+    expect(await perRole(async () => (await image(sitePhoto.id)).status)).toEqual(internal);
+    expect(await perRole(async () => (await image(itpPhoto.id)).status)).toEqual(internal);
     // The gate itself: a forged owner resolves to the stored origin.
-    session.role = 'client';
-    expect(await photoGate(SITE_ITEM_FORGED, 'view')).toEqual({ ok: false, status: 403, error: 'You cannot open this file' });
+    session.role = 'director';
+    expect(await photoGate(SITE_ITEM_FORGED, 'view')).toMatchObject({ ok: true });
     expect(await photoOwnerOf(sitePhoto.id)).toEqual({ kind: 'punch_item', code: 'HLT-026', ref: 'P-06', register: 'site' });
-    expect([clientSeesPhotos({ kind: 'punch_item', register: 'itp' }), clientSeesPhotos({ kind: 'punch_item', register: 'site' }), clientSeesPhotos({ kind: 'punch_item' })])
-      .toEqual([true, false, false]);
   });
 
   it('removing a Site item’s photo: the Site editors only (9 personas)', async () => {
@@ -114,7 +112,7 @@ describe('R-117 · punch photos follow the stored origin', () => {
     }
     expect(out).toEqual({
       director: 'ok', pm: 'ok', depthead: 'Photos are read-only for you', member: 'ok', englead: 'Photos are read-only for you', quality: 'Photos are read-only for you',
-      procurement: 'Photos are read-only for you', finance: 'Photos are read-only for you', logistics: 'Photos are read-only for you', client: 'Photos are read-only for you',
+      procurement: 'Photos are read-only for you', finance: 'Photos are read-only for you', logistics: 'Photos are read-only for you',
     });
   });
 

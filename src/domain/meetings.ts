@@ -82,6 +82,8 @@ export interface Meeting {
   title: string;
   series: MeetingSeries;
   type: MeetingType;
+  /** D9-25: the client attended — the meeting's decisions are client decisions. */
+  clientPresent: boolean;
   status: MeetingStatus;
   /** "29 Sep 2026". */
   dateText: string;
@@ -140,8 +142,11 @@ export type DecisionScope = (typeof DECISION_SCOPES)[number];
 export const DECISION_SCOPE_LABEL: Record<DecisionScope, string> = { all: 'All', client: 'With the client' };
 export const parseDecisionScope = (v: unknown): DecisionScope => (v === 'client' ? 'client' : 'all');
 
-/** A meeting with the client: an external meeting (the prototype's "decisions … with the client", mtgKpis 4866). */
-export const isClientMeeting = (m: Pick<Meeting, 'type'>) => m.type === 'external';
+/**
+ * A meeting with the client (the prototype's "decisions … with the client", mtgKpis 4866). D9-25 (owner, 10 Nov 2026): the
+ * "client present" box ticked on the meeting — no longer every external meeting (supplier reviews are external too).
+ */
+export const isClientMeeting = (m: Pick<Meeting, 'clientPresent'>) => m.clientPresent;
 
 /** Composer type segment (draftSeg 4861; default Action). */
 export const LINE_TYPES: readonly MeetingLineType[] = ['info', 'decision', 'action'];
@@ -438,14 +443,19 @@ export interface NewMeetingInput {
   location: string;
   invitees: string[];
   agenda: string[];
+  /** D9-25: the "Client present" box of the form. */
+  clientPresent: boolean;
 }
+
+/** A ticked checkbox of a form (FormDialog `checkbox` fields send 'yes', else ''). */
+export const isTicked = (v: string | null | undefined) => v === 'yes';
 
 const MEETING_TYPES: readonly MeetingType[] = ['internal', 'external'];
 export const MEETING_SERIES: readonly MeetingSeries[] = ['weekly_site', 'steering_committee', 'engineering_coordination', 'supplier_review', 'kick_off', 'one_off'];
 export const MAX = { title: 200, location: 120, name: 80, invitees: 40, points: 30, point: 200, note: 1000, due: 40 } as const;
 
 /**
- * "New meeting" form values (AF `meetings`: title*, type, series, date*, time, loc, invited*, agenda) → input of
+ * "New meeting" form values (AF `meetings`: title*, type, series, date*, time, loc, invited*, agenda, client present — D9-25) → input of
  * `createMeeting`. Errors are English source strings. Blank time → 09:00, blank location → Teams (prototype defaults).
  */
 export function parseNewMeeting(v: Record<string, string | undefined>, year: number): Parsed<NewMeetingInput> {
@@ -467,7 +477,7 @@ export function parseNewMeeting(v: Record<string, string | undefined>, year: num
   if (invitees.length > MAX.invitees || invitees.some((n) => n.length > MAX.name)) return { ok: false, error: 'Too many invitees' };
   const agenda = parseAgenda(v.agenda);
   if (agenda.length > MAX.points || agenda.some((p) => p.length > MAX.point)) return { ok: false, error: 'The agenda is too long' };
-  return { ok: true, value: { title, type, series, date, time, location, invitees, agenda } };
+  return { ok: true, value: { title, type, series, date, time, location, invitees, agenda, clientPresent: isTicked(v.client) } };
 }
 
 export interface MinutesLineInput {

@@ -98,8 +98,6 @@ describe('rights', () => {
       expect(await refreshCapexNeedsAction(), role).toEqual({ error: 'Only the director and the project managers read the subsidiaries’ machine needs' });
       expect(await setNeedAnswerStatusAction('RB-005', 'caduque'), role).toEqual({ error: 'Only the portfolio director answers the subsidiaries’ machine needs' });
     }
-    as('client');
-    await expect(recordNeedAnswerAction('CPX-APM-2026-01/B02', {})).rejects.toThrow('REDIRECT');
     as('pm', 'fr');
     expect(await createProjectFromNeedAction('CPX-SAI-2026-01/B03', draft())).toEqual({ error: 'Seul le directeur de portefeuille répond aux besoins machines des filiales' });
     expect((await view()).length).toBe(6); // K-14: RB-006

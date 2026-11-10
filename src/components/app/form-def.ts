@@ -1,7 +1,8 @@
 // Field model of the generic add-form dialog (docs/spec/01 §8.2). Pure helpers, shared by FormDialog and
 // by whoever builds form definitions from the prototype `AF` catalogue (server or client).
 
-export type FormFieldType = 'text' | 'number' | 'textarea' | 'select' | 'date';
+/** `checkbox` (D9-25): a box whose value is 'yes' when ticked, '' otherwise. */
+export type FormFieldType = 'text' | 'number' | 'textarea' | 'select' | 'date' | 'checkbox';
 export type FormOption = string | { value: string; label: string };
 
 export interface FormFieldDef {
@@ -63,9 +64,9 @@ export function resolveFormValues(fields: FormFieldDef[], values: FormValues): F
   return out;
 }
 
-/** afValid (logic 5120): every required non-select field is non-blank after trim. */
+/** afValid (logic 5120): every required non-select field is non-blank after trim (a checkbox is never required). */
 export function isFormValid(fields: FormFieldDef[], values: FormValues): boolean {
-  return fields.every((f) => !f.required || f.type === 'select' || !!(values[f.id] ?? '').trim());
+  return fields.every((f) => !f.required || f.type === 'select' || f.type === 'checkbox' || !!(values[f.id] ?? '').trim());
 }
 
 /**

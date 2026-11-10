@@ -1,20 +1,17 @@
-// Static render of the two screens (Server Components + client islands) on the seeded in-memory database: the
-// prototype's texts in EN and FR, the edit controls only for the viewers allowed to act (07 OQ14, 03 §8), the fixed
-// Documents labels (03 OQ2), Codex links, empty states.
+// Static render of the Lessons learned & closure screen (Server Components + client islands) on the seeded in-memory database:
+// the prototype's texts in EN and FR, the edit controls only for the viewers allowed to act (07 OQ14), empty states. D9-06: the
+// client portal's render cases were removed with the portal.
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-vi.mock('next/navigation', () => ({ usePathname: () => '/projects/HLT-026/client', useRouter: () => ({ push() {}, replace() {}, refresh() {} }), useSearchParams: () => new URLSearchParams() }));
+vi.mock('next/navigation', () => ({ usePathname: () => '/projects/HLT-026/closure', useRouter: () => ({ push() {}, replace() {}, refresh() {} }), useSearchParams: () => new URLSearchParams() }));
 import { createElement as h, type ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import type { ClientTab } from '@/domain/rexclient';
 import { I18nProvider } from '@/i18n/client';
 import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
-import { decideChangeStep } from '@/server/dal/changes';
-import { ClientView, type ClientCapabilities } from './client-view';
 import { recordVerb } from './i18n';
 import { RexView } from './rex-view';
-import { getClientScreen, getRexScreen } from './screen';
+import { getRexScreen } from './screen';
 
 const html = (el: ReactElement, lang: Lang) => renderToStaticMarkup(h(I18nProvider, { lang, children: el }));
 const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/\s+/g, ' ');
@@ -22,12 +19,6 @@ const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&#x27;
 async function rex(code: string, lang: Lang, canEdit: boolean) {
   return html(h(RexView, { code, view: await getRexScreen(code, makeT(lang), lang), canEdit, t: makeT(lang) }), lang);
 }
-async function client(code: string, tab: ClientTab, lang: Lang, can: ClientCapabilities) {
-  return html(h(ClientView, { code, view: await getClientScreen(code, tab, makeT(lang), lang), can, t: makeT(lang) }), lang);
-}
-const CLIENT: ClientCapabilities = { decide: true, raise: true };
-const DIRECTOR: ClientCapabilities = { decide: false, raise: true };
-const NONE: ClientCapabilities = { decide: false, raise: false };
 
 beforeAll(async () => {
   setDb(await openDatabase());
@@ -60,85 +51,8 @@ describe('Lessons learned & closure render', () => {
   });
 });
 
-describe('client portal render', () => {
-  it('Progress & milestones: tiles, Display segments, bars, milestones', async () => {
-    const m = await client('HLT-026', 'progress', 'en', CLIENT);
-    const x = text(m);
-    // Delivery 7 (R-073, C-2a): progress and planned value computed from the activities and BL1 (64 % / 71 % → 63 % / 76 %).
-    for (const s of ['Progress', '63%', 'Planned 76% by today', 'Forecast handover', '14 Jan 2027', 'Contract date 18 Dec 2026', '2 of 6', 'Awaiting your decision', 'Open issues',
-      'Display', 'Progress & milestones', 'Progress to date', 'Cumulative % complete · planned vs actual', 'Milestones', 'Contract 15 Mar · Forecast 1 Apr', 'Handover'])
-      expect(x).toContain(s);
-    expect(m.match(/height:76.3%/g)?.length).toBe(1);
-    expect(m).toContain('href="/projects/HLT-026/client?tab=decisions"');
-  });
-
-  it('Decisions: buttons for the client only', async () => {
-    // Deviation P-6b (delivery 8, R-069): CR-008 reaches the client once the portfolio director approved it.
-    let c = await client('HLT-026', 'decisions', 'en', CLIENT);
-    expect(text(c)).not.toContain('Budget · Schedule · +€85k on contract · -12 d on handover');
-    expect(c.match(/>Accept \(PV\)</g)?.length).toBe(2);
-    expect(c.match(/>Reject</g)?.length).toBe(2);
-    const d = await client('HLT-026', 'decisions', 'en', DIRECTOR);
-    expect(d).not.toContain('>Reject<');
-    expect(text(d)).toContain('Waiting for your decision');
-    await decideChangeStep('HLT-026', 'CR-008', 'director', 'ok', 'Marie Lefebvre');
-    c = await client('HLT-026', 'decisions', 'en', CLIENT);
-    expect(text(c)).toContain('Budget · Schedule · +€85k on contract · -12 d on handover');
-    expect(c.match(/>Reject</g)?.length).toBe(3);
-  });
-
-  it('Invoices: contract plan, summary, statement button', async () => {
-    const x = text(await client('HLT-026', 'invoices', 'fr', CLIENT));
-    for (const s of ['Factures et paiements', 'INV-2026-003', 'M3 Structure hors d’eau', 'Échéance 10 nov.', 'Synthèse du contrat', '5,52 M€', '+200 k€', 'Télécharger le relevé']) expect(x).toContain(s);
-  });
-
-  it('Issues: form for the client and the director only', async () => {
-    const c = await client('HLT-026', 'issues', 'en', CLIENT);
-    expect(c).toContain('placeholder="Describe a new issue or request"');
-    expect(text(c)).toContain('CI-07 · Raised 22 Sep');
-    expect(await client('HLT-026', 'issues', 'en', DIRECTOR)).toContain('Raise issue');
-    expect(await client('HLT-026', 'issues', 'en', NONE)).not.toContain('Raise issue');
-    expect(text(await client('NDC-031', 'issues', 'en', NONE))).toContain('No issue raised yet');
-  });
-
-  it('Documents: "Reference" header, Codex links, acknowledgement for the client', async () => {
-    const c = await client('HLT-026', 'docs', 'en', CLIENT);
-    expect(c).not.toContain('Column mapping');
-    expect(text(c)).toContain('Reference');
-    expect(text(c)).toContain('Released documents shared with you');
-    expect(c).not.toContain('>Deliverables<');
-    expect(c).toContain('href="/projects/HLT-026/documents?doc=PID-HLT-026"');
-    expect(c.match(/>Acknowledge receipt</g)?.length).toBe(1);
-    expect(c.match(/>Acknowledged</g)?.length).toBe(6);
-    const d = await client('HLT-026', 'docs', 'en', DIRECTOR);
-    expect(d).not.toContain('>Acknowledge receipt<');
-    expect(text(d)).toContain('Acknowledgment pending');
-    expect(text(await client('EWA-051', 'docs', 'en', NONE))).toContain('No document shared with you yet');
-  });
-
-  it('ERP-202 (internal): no invoice, €0k contract summary as in the prototype', async () => {
-    const x = text(await client('ERP-202', 'invoices', 'en', CLIENT));
-    for (const s of ['Internal project — no client billing', 'Contract value €0k', 'Invoiced €0k', 'Paid €0k', 'Approved changes —']) expect(x).toContain(s);
-  });
-
+describe('Add lesson learned form', () => {
   it('"Add lesson learned" submit is the verb ("Enregistrer"), not the dictionary noun "Fiche"', () => {
     expect([recordVerb('en'), recordVerb('fr'), makeT('fr')(recordVerb('fr'))]).toEqual(['Record', 'Enregistrer', 'Enregistrer']);
-  });
-
-  it('a project without data: empty states', async () => {
-    const x = text(await client('EWA-051', 'progress', 'en', NONE));
-    expect(x).toContain('No schedule recorded for this project');
-    expect(x).toContain('No milestone recorded for this project');
-    expect(text(await client('EWA-051', 'decisions', 'en', NONE))).toContain('Nothing waiting for you');
-  });
-
-  it('"Schedule" tab (S-9a): read-only summary Gantt and milestones, the Gantt PDF, no owners; empty state without a schedule', async () => {
-    const m = await client('HLT-026', 'planning', 'fr', NONE);
-    const x = text(m);
-    for (const s of ['Planning — référence vs prévision', 'Fin prévisionnelle', 'Lot de travaux', 'Jalons', 'Télécharger le PDF']) expect(x).toContain(s);
-    expect(x).not.toContain('R. Aubert');
-    // Only the export button: no edit control on this tab.
-    expect(m.match(/<button/g)?.length).toBe(1);
-    expect(text(await client('EWA-051', 'planning', 'en', NONE))).toContain('No schedule recorded for this project');
   });
 });

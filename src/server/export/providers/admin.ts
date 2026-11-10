@@ -17,7 +17,6 @@ import { getSettings } from '@/server/dal/settings';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook } from '../types';
 import { col, compact, filterLine, kpiSheet, param, sheet } from './common';
-import { projectFilter } from './scope';
 import { dataText, fieldsText } from '@/i18n/data-text';
 
 async function settingsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
@@ -47,7 +46,7 @@ async function settingsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
 async function machineTypesWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
   // A client sees only its own organisation's projects in the "Projects" column.
-  const [types, visible] = await Promise.all([listMachineTypes(), projectFilter(ctx)]);
+  const types = await listMachineTypes();
   return {
     title: t('Standard machine types'),
     sheets: [
@@ -57,7 +56,7 @@ async function machineTypesWorkbook(ctx: ExportContext): Promise<ExportWorkbook>
         col('deposit', t('Deposit'), 'percent'), col('delivery', t('Delivery'), 'percent'), col('acceptance', t('Acceptance'), 'percent'), col('projects', t('Projects'), 'text', 30),
       ], types.map((m) => ({
         code: m.displayCode, label: t(m.label), description: dataText(m.description, ctx.lang), calendar: t(m.calendarLabel), active: m.active, standard: m.isStandard, phases: m.phases.map((p) => t(p)).join(' → '),
-        budget: m.costTotalKeur, deposit: m.depositPct / 100, delivery: m.deliveryPct / 100, acceptance: m.acceptancePct / 100, projects: m.projects.filter((p) => visible(p.code)).map((p) => p.code).join(' · '),
+        budget: m.costTotalKeur, deposit: m.depositPct / 100, delivery: m.deliveryPct / 100, acceptance: m.acceptancePct / 100, projects: m.projects.map((p) => p.code).join(' · '),
       }))),
       sheet(t('Cost categories'), [col('type', t('Machine type'), 'text', 10), col('name', t('Category'), 'text', 30), col('costType', t('Type'), 'text', 14), col('budget', t('Budget'), 'money_keur')],
         types.flatMap((m) => m.costCategories.map((c) => ({ type: m.displayCode, name: dataText(c.name, ctx.lang), costType: t(c.typeLabel), budget: c.budgetKeur })))),
@@ -83,16 +82,14 @@ async function docTypesWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
 
 async function plumbingWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
-  const [activity, connectors, allFormats, audit, visible] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), projectFilter(ctx)]);
+  const [activity, connectors, allFormats, audit] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit()]);
   // D-7b: the import cards are hidden while imports are off; the export lists what the screen shows.
   const imports = visibleImportFormats(allFormats);
   const view = parsePlumbView(param(ctx, 'view'));
   const source = parseActivitySource(param(ctx, 'source'), activity.map((a) => a.kind));
-  // A client sees its own projects' events only; events without a project are company-wide and stay internal.
-  const own = <R extends { projectCode: string | null }>(r: R) => (ctx.viewer.role === 'client' ? !!r.projectCode && visible(r.projectCode) : true);
   const feed = sheet(t('Activity feed'), [col('when', t('Date'), 'datetime'), col('who', t('Who'), 'text', 18), col('what', t('What'), 'text', 60), col('kind', t('Source'), 'text', 14), col('project', t('Project'), 'text', 10)],
     // R-184 (NEW-D1-2): as on the screen — from the message key, else as written; names as typed.
-    ratesMaskedActivity(activity, !ctx.ratesMasked).filter((a) => (!source || a.kind === source) && own(a)).map((a) => ({ when: a.occurredAt, who: actorWhoT(a, t, ctx.lang), what: activityWhatT(a, t, ctx.lang), kind: a.kind, project: a.projectCode ?? '' })));
+    ratesMaskedActivity(activity, !ctx.ratesMasked).filter((a) => !source || a.kind === source).map((a) => ({ when: a.occurredAt, who: actorWhoT(a, t, ctx.lang), what: activityWhatT(a, t, ctx.lang), kind: a.kind, project: a.projectCode ?? '' })));
   const conn: ExportSheet = sheet(t('Connectors'), [
     col('name', t('System'), 'text', 20), col('data', t('Data'), 'text', 44), col('frequency', t('Frequency'), 'text', 18), col('direction', t('Direction'), 'text', 10), col('status', t('Status'), 'text', 10),
     col('last', t('Last sync'), 'datetime'), col('volume', t('Last volume'), 'text', 26), col('pending', t('Pending'), 'integer'), col('failed', t('Failed'), 'integer'), col('owner', t('Owner'), 'text', 16),
@@ -102,14 +99,14 @@ async function plumbingWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const formats = sheet(t('Import & export formats'), [col('name', t('Format'), 'text', 26), col('direction', t('Direction'), 'text', 10), col('description', t('Description'), 'text', 60)],
     imports.map((f) => ({ name: t(f.name), direction: t(f.direction === 'import' ? 'Import' : 'Export'), description: t(f.description) })));
   const trail = sheet(t('Audit trail'), [col('when', t('Date'), 'datetime'), col('who', t('Who'), 'text', 18), col('object', t('Object'), 'text', 18), col('change', t('Change'), 'text', 50), col('area', t('Area'), 'text', 18), col('project', t('Project'), 'text', 10)],
-    ratesMaskedAudit(audit, !ctx.ratesMasked).filter(own).map((a) => ({
+    ratesMaskedAudit(audit, !ctx.ratesMasked).map((a) => ({
       when: a.occurredAt, who: actorWhoT(a, t, ctx.lang), object: auditObjectT(a.object, t, ctx.lang), change: auditChangeT(a, t, ctx.lang), area: auditAreaT(a.area, t, ctx.lang),
       project: a.projectCode ?? '',
     })));
   const first = view === 'connectors' ? conn : view === 'imports' ? formats : view === 'audit' ? trail : feed;
   return {
     title: t('Activity, integrations & audit'),
-    filters: compact([filterLine(t('Source'), source), ctx.viewer.role === 'client' ? `${t('Client')}: ${ctx.viewer.organisation ?? '—'}` : null]),
+    filters: compact([filterLine(t('Source'), source)]),
     sheets: [first, ...[feed, conn, formats, trail].filter((s) => s !== first)],
   };
 }

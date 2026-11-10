@@ -35,12 +35,10 @@ describe('Plan Server Functions', () => {
     Object.assign(viewer, { role: 'director', canEdit: true, isMine: true, name: 'Marie Lefebvre', short: 'M. Lefebvre' });
   });
 
-  it('refuses read-only viewers, the client, unknown projects and projects without a plan', async () => {
+  it('refuses read-only viewers, unknown projects and projects without a plan', async () => {
     viewer.canEdit = false;
     expect(await editActivity('HLT-026', 'A1250', 'pct', '80')).toEqual({ error: 'This plan is read-only for you' });
     viewer.canEdit = true;
-    viewer.role = 'client';
-    expect(await saveProgress('HLT-026', { act: 'A1250 · x', pc: '80' })).toEqual({ error: 'This plan is read-only for you' });
     viewer.role = 'director';
     expect(await editActivity('NOPE-000', 'A1250', 'pct', '80')).toEqual({ error: 'Invalid request' });
     expect(await addWorkPackage('ALP-021', { name: 'X' })).toEqual({ error: 'This project has no plan yet' });
@@ -152,12 +150,10 @@ describe('Plan Server Functions', () => {
     const wp16 = before.activities.filter((a) => a.wbs === '1.6');
     expect(wp16.length).toBeGreaterThan(0);
     const linked = (d: typeof before) => d.activities.map((a) => [a.id, a.wbs, a.preds]);
-    // Read-only project / outside the workspace, the client, a plan editor who is not the manager.
+    // Read-only project / outside the workspace, a plan editor who is not the manager.
     viewer.canEdit = false;
     expect(await removeRow('HLT-026', 'wp', '1.6')).toEqual({ error: 'This plan is read-only for you' });
     viewer.canEdit = true;
-    viewer.role = 'client';
-    expect(await removeRow('HLT-026', 'wp', '1.6')).toEqual({ error: 'This plan is read-only for you' });
     Object.assign(viewer, { role: 'englead', isMine: false });
     expect(await removeRow('HLT-026', 'wp', '1.6')).toEqual({ error: 'Only the project manager or the director can do this' });
     Object.assign(viewer, { role: 'pm', isMine: true });

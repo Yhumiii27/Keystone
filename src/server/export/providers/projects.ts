@@ -5,7 +5,6 @@
 import { HEALTH_LABEL } from '@/domain/health';
 import { isRegisterView, matchesQuery } from '@/domain/lifecycle';
 import { buildRegisterModel } from '@/features/projects/register-model';
-import { projectAccessResolver } from '@/server/project-context';
 import { stage as stageCodec } from '@/server/db/codes';
 import { getRegisterData } from '@/server/dal/projects-register';
 import { registerExportProvider } from '../registry';
@@ -16,14 +15,12 @@ import { monthOfText } from './common';
 export async function projectsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   const { t, lang } = ctx;
   const data = await getRegisterData();
-  const access = ctx.viewer.role === 'client' ? await projectAccessResolver(ctx.viewer) : null;
-  const visible = access ? { ...data, projects: data.projects.filter((p) => !access(p).refused) } : data;
-  const model = buildRegisterModel(visible, ctx.zone, t, lang);
+  const model = buildRegisterModel(data, ctx.zone, t, lang);
   const status = ctx.params.get('status');
   const q = (ctx.params.get('q') ?? '').slice(0, 100);
   const viewParam = ctx.params.get('view');
   const view = isRegisterView(viewParam) ? viewParam : 'health';
-  const byCode = new Map(visible.projects.map((p) => [p.code, p]));
+  const byCode = new Map(data.projects.map((p) => [p.code, p]));
   const rows = model.rows.filter((r) => (!status || r.stage === status) && matchesQuery(r.search, q));
 
   const ident: ExportColumn[] = [

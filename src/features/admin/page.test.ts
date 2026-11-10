@@ -76,9 +76,6 @@ describe('/admin/settings', () => {
       expect(p.SettingsBody.props.canEdit, role).toBe(canEdit);
       expect(p.SettingsBody.props.directorOnlyNote, role).toBe(note);
     }
-    // R-042 (P-1): the client is sent home (was: the read-only page).
-    session.role = 'client';
-    await expect(SettingsPage()).rejects.toThrow('REDIRECT /');
     session.role = 'director';
     session.lang = 'fr';
     const view = parts(await SettingsPage()).SettingsBody.props.view as SettingsView;
@@ -105,8 +102,6 @@ describe('/admin/machine-types', () => {
       session.role = role;
       expect((await page()).MachineTypesBody.props.canEdit, role).toBe(canEdit);
     }
-    session.role = 'client'; // R-042 (P-1): sent home
-    await expect(page()).rejects.toThrow('REDIRECT /');
   });
 });
 
@@ -134,7 +129,5 @@ describe('/admin/integrations', () => {
       expect(p.PlumbingBody.props.canEdit, role).toBe(canEdit);
       if (unread) expect((p.PlumbingBody.props.view as PlumbingView).kpis[2].value).toBe(unread);
     }
-    session.role = 'client'; // R-042 (P-1): sent home
-    await expect(page()).rejects.toThrow('REDIRECT /');
   });
 });

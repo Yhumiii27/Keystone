@@ -52,10 +52,6 @@ describe('ECO and drawings Server Functions', () => {
       expect(await decideEcoApprovalAction({ number: 'ECO-2026-015', key: 'pm', decision: 'ok' })).toEqual({ ok: false, error: 'Change orders are outside your workspace' });
       expect(await requestEcoStepAction({ number: 'ECO-2026-017', step: 'impact_analysis' })).toEqual({ ok: false, error: 'Change orders are outside your workspace' });
     }
-    // R-042 (P-1): the client is sent home (was: the "outside your workspace" error).
-    as('client');
-    await expect(decideEcoApprovalAction({ number: 'ECO-2026-015', key: 'pm', decision: 'ok' })).rejects.toThrow('NEXT_REDIRECT');
-    await expect(requestEcoStepAction({ number: 'ECO-2026-017', step: 'impact_analysis' })).rejects.toThrow('NEXT_REDIRECT');
     as('pm');
     const invalid = { ok: false, error: 'Invalid request' };
     expect(await decideEcoApprovalAction({ number: 'ECO-2026-015', key: 'director', decision: 'ok' })).toEqual(invalid);

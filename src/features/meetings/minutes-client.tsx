@@ -15,13 +15,46 @@ import { cx } from '@/components/ds/cx';
 import { LINE_TYPES, lineKey, type LineRef } from '@/domain/meetings';
 import { useI18n } from '@/i18n/client';
 import type { MeetingLineType } from '@/server/db/codes';
-import { addMinutesLineAction, recordMinutesReadAction, sendMinutesAction, toggleMeetingActionAction } from './actions';
+import { addMinutesLineAction, recordMinutesReadAction, sendMinutesAction, setMeetingClientPresentAction, toggleMeetingActionAction } from './actions';
 import { LINE_COLOR, type ActionRowView, type AgendaPointView, type LineView, type PrepActionView } from './model';
 import s from './meetings.module.css';
 
 const TYPE_ICON: Record<MeetingLineType, Icon> = { action: ArrowBendDownRight, decision: Gavel, info: Info };
 const TYPE_LABEL: Record<MeetingLineType, string> = { info: 'Info', decision: 'Decision', action: 'Action' };
 const colorVar = (c: string) => ({ '--toggle-color': c }) as CSSProperties;
+
+// ── Client present (D9-25) ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The meeting's "Client present" box: a checkbox for the viewers who edit the project's Meetings (optimistic, reconciled on
+ * revalidation), else a tag when ticked. A meeting the client attended makes its decisions the project's client decisions.
+ */
+export function ClientPresentBox({ code, meeting, checked, label, canEdit }: { code: string; meeting: string; checked: boolean; label: string; canEdit: boolean }) {
+  const toast = useToast();
+  const [pending, startTransition] = useTransition();
+  const [value, setValue] = useOptimistic<boolean, boolean>(checked, (_, next) => next);
+  if (!canEdit) return checked ? <div className={s.block}><span className="tag tag-outline">{label}</span></div> : null;
+  return (
+    <div className={s.block}>
+      <label className={s.clientPresent}>
+        <input
+          type="checkbox"
+          checked={value}
+          disabled={pending}
+          onChange={(e) => {
+            const next = e.target.checked;
+            startTransition(async () => {
+              setValue(next);
+              const r = await setMeetingClientPresentAction({ code, meeting, clientPresent: next });
+              if (!r.ok) toast.show(r.error);
+            });
+          }}
+        />
+        {label}
+      </label>
+    </div>
+  );
+}
 
 // ── Action ticks ───────────────────────────────────────────────────────────────────────────────────────
 

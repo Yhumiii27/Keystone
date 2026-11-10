@@ -34,30 +34,29 @@ describe('My approvals registry', () => {
   });
 
   it('approver identities come from the database', async () => {
-    expect(await getApproverIdentity(PERSONA_BY_ROLE.depthead)).toMatchObject({ departments: ['Engineering'], managedProjects: [], clientProjects: [] });
+    expect(await getApproverIdentity(PERSONA_BY_ROLE.depthead)).toMatchObject({ departments: ['Engineering'], managedProjects: [] });
     expect((await getApproverIdentity(PERSONA_BY_ROLE.quality)).departments).toEqual(['Quality']);
     expect((await getApproverIdentity(PERSONA_BY_ROLE.pm)).managedProjects).toEqual(expect.arrayContaining(['HLT-026', 'PRS-038', 'QFR-015']));
-    expect((await getApproverIdentity(PERSONA_BY_ROLE.client)).clientProjects).toEqual(expect.arrayContaining(['HLT-026', 'PRS-038', 'QFR-015']));
-    expect(await getApproverIdentity(PERSONA_BY_ROLE.director)).toMatchObject({ departments: [], managedProjects: [], clientProjects: [] });
+    expect(await getApproverIdentity(PERSONA_BY_ROLE.director)).toMatchObject({ departments: [], managedProjects: [] });
   });
 
   it('seed queues on Harbor Line, per viewer', async () => {
-    expect(await queue('director')).toEqual(['po:PO-1082', 'cr:CR-008', 'invoice:INV-HC-7781', 'invoice:INV-BX-55120', 'invoice:INV-LE-2210']);
-    expect(await queue('pm')).toEqual(['po:PO-1082', 'eco:ECO-2026-015', 'rfq:RFQ-2026-031']);
+    // D9-06 (owner, 10 Nov 2026): the submitted deliverables wait for the client's signed PV, recorded by the project's leads —
+    // the director and the PM of record get them (the prototype's client contact did).
+    expect(await queue('director')).toEqual(['po:PO-1082', 'cr:CR-008', 'deliverable:D-014', 'deliverable:D-016', 'invoice:INV-HC-7781', 'invoice:INV-BX-55120', 'invoice:INV-LE-2210']);
+    expect(await queue('pm')).toEqual(['po:PO-1082', 'eco:ECO-2026-015', 'deliverable:D-014', 'deliverable:D-016', 'rfq:RFQ-2026-031']);
     expect(await queue('depthead')).toEqual(['request:RQ-043', 'request:RQ-041']);
     expect(await queue('englead')).toEqual([]);
     // The quality manager heads the Quality department (RQ-042) and is the next Codex approver of RPT-HLT-014.
     expect(await queue('quality')).toEqual(['request:RQ-042', 'delivery:BL-2026-0521', 'doc:RPT-HLT-014']);
     expect(await queue('procurement')).toEqual(['delivery:BL-2026-0521', 'rfq:RFQ-2026-031', 'invoice:INV-HC-7781', 'invoice:INV-BX-55120', 'invoice:INV-LE-2210']);
-    // Deviation P-6b (delivery 8, R-069): CR-008 reaches the client once the director approved it (last CR test below).
-    expect(await queue('client')).toEqual(['deliverable:D-014', 'deliverable:D-016']);
     expect(await queue('member')).toEqual([]);
   });
 
   it('"Decided this week" per viewer', async () => {
-    const decided = await Promise.all((['director', 'pm', 'depthead', 'englead', 'quality', 'procurement', 'client', 'member'] as const).map(async (r) => (await inbox(r)).decided));
+    const decided = await Promise.all((['director', 'pm', 'depthead', 'englead', 'quality', 'procurement', 'member'] as const).map(async (r) => (await inbox(r)).decided));
     // director: PO-1078 ordered · pm: 2 ECOs on the pm key + PO-1078 · englead: 4 ECOs · quality: 3 ECOs + RQ-036 (Quality)
-    expect(decided).toEqual([1, 3, 0, 4, 4, 0, 0, 0]);
+    expect(decided).toEqual([1, 3, 0, 4, 4, 0, 0]);
   });
 
   it('KPI tiles per persona (myApprKpis 4737 re-run on the prototype; deviations noted)', async () => {
@@ -69,16 +68,15 @@ describe('My approvals registry', () => {
     // 2·1·"—"·0, member 0·0·"—"·1, englead 0·0·"—"·5, quality 1·1·"18 Sep"·4, procurement 5·3·"25 Sep"·1, client 3·2·"30 Sep"·1.
     // Here "Oldest" is the earliest date (00 §7.16), requests carry their sent date, "Decided this week" counts the
     // viewer's own kinds only, and the quality manager also heads Quality (RQ-042) and approves RPT-HLT-014 in Codex.
-    expect(await Promise.all((['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'] as const).map(kpis))).toEqual([
-      ['5', '3', '10 Sep', '1'],
-      ['3', '3', '19 Sep', '3'],
+    // D9-06: the director and the PM also record the client's decision on D-014 and D-016 (+2 items, +1 type each).
+    expect(await Promise.all((['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'] as const).map(kpis))).toEqual([
+      ['7', '4', '10 Sep', '1'],
+      ['5', '4', '19 Sep', '3'],
       ['2', '1', '24 Sep', '0'],
       ['0', '0', '—', '0'],
       ['0', '0', '—', '4'],
       ['3', '3', '18 Sep', '4'],
       ['5', '3', '10 Sep', '0'],
-      // P-6b (R-069): the client's CR-008 waits for the director — 3 · 2 · 24 Sep → 2 · 1 · 25 Sep.
-      ['2', '1', '25 Sep', '0'],
     ]);
   });
 
@@ -99,35 +97,23 @@ describe('My approvals registry', () => {
       kind: 'cr', id: 'CR-008', title: 'Second steel crew — schedule recovery', sub: 'Budget · Schedule · +€85k · -12 d', when: '24 Sep', whenIso: '2026-09-24', who: 'R. Aubert',
       href: '/projects/HLT-026/changes?cr=CR-008', decision: { mode: 'change-request', projectCode: 'HLT-026', number: 'CR-008', step: 'director' },
     });
-    // The client's own line (FR) is checked once the director approved CR-008 (P-6b, R-069), below.
   });
 
   it('project-bound kinds follow the current project', async () => {
-    // NDC-031: two generated receipts waiting for QC; R. Aubert does not manage it (no PO), the client is not its client.
+    // NDC-031: two generated receipts waiting for QC; R. Aubert does not manage it (no PO).
     expect(await queue('quality', 'NDC-031')).toEqual(['request:RQ-042', 'delivery:BL-2026-0331', 'delivery:BL-2026-0332', 'doc:RPT-HLT-014']);
     expect(await queue('pm', 'NDC-031')).toEqual(['eco:ECO-2026-015', 'rfq:RFQ-2026-031']);
-    expect(await queue('client', 'NDC-031')).toEqual([]);
-    expect(await queue('director', 'WSA-044')).toEqual(['po:PO-5141', 'invoice:INV-HC-7781', 'invoice:INV-BX-55120', 'invoice:INV-LE-2210']);
+    // D9-06: + WSA-044's submitted deliverable (the client's decision the director may record).
+    expect(await queue('director', 'WSA-044')).toEqual(['po:PO-5141', 'deliverable:D-112', 'invoice:INV-HC-7781', 'invoice:INV-BX-55120', 'invoice:INV-LE-2210']);
     // Projects without data: no project-bound item (never Harbor Line's).
     expect(await queue('director', 'EWA-051')).toEqual(['invoice:INV-HC-7781', 'invoice:INV-BX-55120', 'invoice:INV-LE-2210']);
     expect(await queue('director', 'NOPE-999')).toEqual(['invoice:INV-HC-7781', 'invoice:INV-BX-55120', 'invoice:INV-LE-2210']);
   });
 
-  it('R-042 / R-043 (P-10a, P-10b): the client gets change requests and deliverables of their organisation\'s projects only', async () => {
-    for (const code of ['HLT-026', 'PRS-038', 'QFR-015', 'NDC-031', 'WSA-044']) {
-      const items = (await inbox('client', code)).items;
-      expect(items.filter((i) => i.kind !== 'cr' && i.kind !== 'deliverable'), code).toEqual([]);
-    }
-    // Another organisation's project: nothing, not even a global kind.
-    const counts = await approvalCountsByProject(PERSONA_BY_ROLE.client, ['HLT-026', 'NDC-031', 'WSA-044']);
-    expect([counts['NDC-031'], counts['WSA-044'], counts['HLT-026']]).toEqual([0, 0, (await inbox('client')).items.length]);
-    expect(await approvalCount(PERSONA_BY_ROLE.client, 'NDC-031')).toBe(0);
-  });
-
   it('badge counts: current project and per project', async () => {
-    expect(await approvalCount(PERSONA_BY_ROLE.director, 'HLT-026')).toBe(5);
+    expect(await approvalCount(PERSONA_BY_ROLE.director, 'HLT-026')).toBe(7); // D9-06: + D-014, D-016 (the client's decision to record)
     expect(await approvalCount(PERSONA_BY_ROLE.quality, 'HLT-026')).toBe(3);
-    expect(await approvalCountsByProject(PERSONA_BY_ROLE.director, ['HLT-026', 'WSA-044', 'EWA-051'])).toEqual({ 'HLT-026': 5, 'WSA-044': 4, 'EWA-051': 3 });
+    expect(await approvalCountsByProject(PERSONA_BY_ROLE.director, ['HLT-026', 'WSA-044', 'EWA-051'])).toEqual({ 'HLT-026': 7, 'WSA-044': 5, 'EWA-051': 3 }); // D9-06: WSA-044 + D-112
     expect(await approvalCountsByProject(PERSONA_BY_ROLE.procurement, ['HLT-026', 'NDC-031', 'RCF-019'])).toEqual({ 'HLT-026': 5, 'NDC-031': 6, 'RCF-019': 4 });
   });
 
@@ -156,17 +142,19 @@ describe('My approvals registry', () => {
     expect(await queue('pm')).not.toContain('stage:NDC-031');
   });
 
-  it('a decided CR step leaves the decider’s queue and counts as decided; the client decides next, then the board', async () => {
+  it('a decided CR step leaves the decider’s queue and counts as decided; the PM records the client\'s decision next (D9-06), then the board', async () => {
     await decideChangeStep('HLT-026', 'CR-008', 'director', 'ok', 'Marie Lefebvre');
     const d = await inbox('director');
     // Deviation P-6b (delivery 8, R-069): the chain is sequential — the board step the director records (07 OQ2) waits for the
     // client's decision, so it is not in the director's queue yet (the prototype listed it right away).
     expect(d.items.filter((i) => i.kind === 'cr')).toEqual([]);
     expect(d.decided).toBe(2);
-    expect(await queue('client')).toContain('cr:CR-008');
-    expect((await inbox('client', 'HLT-026', 'fr')).items[0].sub).toBe('Budget · Schedule · +85 k€ · -12 d');
-    await decideChangeStep('HLT-026', 'CR-008', 'client', 'rejected', 'Nadia Bensaïd');
-    expect(await queue('client')).toEqual(['deliverable:D-014', 'deliverable:D-016']);
+    // D9-06: the client step reaches the PM of record, who records the client's signed decision on Change control (no inline decision).
+    const step = (await inbox('pm')).items.find((i) => i.kind === 'cr' && i.id === 'CR-008');
+    expect([step?.sub, step?.decision]).toEqual(['Budget · Schedule · +€85k · -12 d · Client / sponsor', null]);
+    expect((await inbox('pm', 'HLT-026', 'fr')).items.find((i) => i.id === 'CR-008')?.sub).toBe('Budget · Schedule · +85 k€ · -12 d · Client / sponsor'); // the step label is translated where the row is shown
+    await decideChangeStep('HLT-026', 'CR-008', 'client', 'rejected', 'Romain Aubert');
+    expect(await queue('pm')).not.toContain('cr:CR-008');
     // Rejected: nothing left to decide on it for anyone.
     expect(await queue('director')).not.toContain('cr:CR-008');
   });

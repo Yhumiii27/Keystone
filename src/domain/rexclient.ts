@@ -1,29 +1,22 @@
-// Lessons learned & project closure (docs/spec/07 §2.7, logic 4997–5006) and the client portal "My project — client
-// view" (docs/spec/03 §8, logic 4679–4690, 5061): KPI tiles, register rows, closure checklist, satisfaction survey,
-// progress bars, milestones, decisions waiting / decided, invoices, contract summary, issues, shared documents and the
-// two action forms (AF `rex`, AF `client`). Pure functions over plain data shaped like the DAL rows; every string is
+// Lessons learned & project closure (docs/spec/07 §2.7, logic 4997–5006) and what the client status report keeps of the
+// former client portal (docs/spec/03 §8, logic 4679–4690, 5061; the portal itself was removed, D9-06 / D9-22): KPI tiles,
+// register rows, closure checklist, satisfaction survey, decisions waiting / decided, invoices, contract summary and the
+// action form AF `rex`. Pure functions over plain data shaped like the DAL rows; every string is
 // the prototype's English source (render through t()), amounts go through lib/format money(). Golden values:
 // rexclient.test.ts against rexclient.golden.json (scripts/proto-golden-rexclient.ts, the prototype run in node:vm).
 //
 // Deliberate fixes of prototype defects / gaps (docs/spec/00 §7.16, 03 OQ2, OQ6, OQ16, 07 OQ24):
-// - issue numbers are per project and zero-padded by the data layer (CI-08, CI-09, CI-10 — never "CI-010");
 // - invoices follow the contract billing plan (real invoice numbers, real due dates: "Due 10 Nov"), not the static
 //   BILLING rows ("F-2026-103", "Due 15 Oct") — the Delivery 3 billing source of truth (A-5);
-// - the Documents tab's ID column is "Reference" (the prototype bound the wrong key "Column mapping"), its sub-title
-//   and empty state talk to the client ("Released documents shared with you", "No document shared with you yet"),
-//   not about the engineering register ("Deliverables", "Own documents · …");
 // - decimals of the satisfaction survey follow the language ("4,5" in French).
 import { CR_TYPE_LABEL, currentStep } from '@/domain/change-control';
-import { scheduleMilestone, scheduleProgression, type MilestoneInput } from '@/domain/schedule-gantt';
 import type { Lang } from '@/i18n/translate';
 import { money } from '@/lib/format';
-import { yearOfIso } from './clock';
 import { BASE_CURRENCY, moneyIn, type CurrencyCode } from './currency';
 import {
-  CLOSURE_NEXT, DOCUMENT_STATUS_TAG, LESSON_APPLIES_TO, closureItemStatus, clientIssueStatus, docFamily, fmtDOfIso, lessonStatus,
-  lessonTheme, reportPeriod, reportPeriodLabel,
-  type ChangeStatus, type ChangeStep, type ChangeType, type ClientIssueStatus, type ClosureItemStatus, type DeliverableStatus, type DocFamily, type DocumentStatus,
-  type LessonStatus, type LessonTheme, type PaymentMilestoneStatus, type ReportPeriod, type StepDecision,
+  CLOSURE_NEXT, LESSON_APPLIES_TO, closureItemStatus, fmtDOfIso, lessonStatus, lessonTheme,
+  type ChangeStatus, type ChangeStep, type ChangeType, type ClosureItemStatus, type DeliverableStatus,
+  type LessonStatus, type LessonTheme, type PaymentMilestoneStatus, type StepDecision,
 } from '@/server/db/codes';
 
 export type Tone = 'accent' | 'outline' | 'neutral';
@@ -232,22 +225,7 @@ export function parseNewLesson(values: unknown): Parsed<NewLesson> {
   return { ok: true, value: { theme, whatHappened: what, impact: impact || null, recommendation: reco, appliesTo: apply } };
 }
 
-// ── Client portal ──────────────────────────────────────────────────────────────────────────────────────
-
-export type ClientTab = 'progress' | 'planning' | 'decisions' | 'invoices' | 'issues' | 'docs';
-/**
- * Display segments (`cpSeg`), default Progress & milestones. "Schedule" (`planning`, read-only summary Gantt and milestones
- * with its PDF) is not in the prototype: the owner's answer S-9a puts the plan in the client portal.
- */
-export const CLIENT_TABS: { value: ClientTab; label: string }[] = [
-  { value: 'progress', label: 'Progress & milestones' },
-  { value: 'planning', label: 'Schedule' },
-  { value: 'decisions', label: 'Decisions' },
-  { value: 'invoices', label: 'Invoices' },
-  { value: 'issues', label: 'Issues' },
-  { value: 'docs', label: 'Documents' },
-];
-export const parseClientTab = (v: unknown): ClientTab => CLIENT_TABS.find((o) => o.value === v)?.value ?? 'progress';
+// ── Client status report (the client portal's model, kept for the report the project team sends — D9-06) ──────────────────────────────────────────────────────────────────────────────────────
 
 export interface EvmLike {
   pv: readonly number[];
@@ -265,8 +243,11 @@ export interface ScheduleHeaderLike {
   milesText: string;
 }
 
-/** The five tiles (`cpKpis` 4681). Without schedule data the progress and dates read "—". */
-export function clientKpis(i: { evm: EvmLike | null; schedule: ScheduleHeaderLike | null; awaiting: number; openIssues: number }): Kpi[] {
+/**
+ * The tiles of the client status report (`cpKpis` 4681). Without schedule data the progress and dates read "—". D9-06: the
+ * "Open issues" tile went with the client portal's issues (clients never see Keystone).
+ */
+export function clientKpis(i: { evm: EvmLike | null; schedule: ScheduleHeaderLike | null; awaiting: number }): Kpi[] {
   const n = i.evm?.ev.length ?? 0;
   const evm = i.evm && n && i.evm.bac > 0 ? i.evm : null;
   const s = i.schedule;
@@ -280,39 +261,7 @@ export function clientKpis(i: { evm: EvmLike | null; schedule: ScheduleHeaderLik
     { label: 'Milestones', value: s ? s.milesText : '—', sub: s ? 'Reached' : '', alert: false },
     // The prototype paints this tile in the attention colour even at 0.
     { label: 'Awaiting your decision', value: String(i.awaiting), sub: 'Change requests and deliverables', alert: true },
-    { label: 'Open issues', value: String(i.openIssues), sub: 'Raised by you', alert: false },
   ];
-}
-
-export interface ProgressBar {
-  label: string;
-  /** Planned / actual heights in the 120px area ("71.3%"). */
-  planH: string;
-  actH: string;
-}
-
-/** Months up to the data date (`progression.slice(0, EVn)`): planned vs actual cumulative % of BAC. */
-export function clientProgress(chartMonths: readonly string[], evm: EvmLike): ProgressBar[] {
-  return scheduleProgression([...chartMonths], [...evm.pv], [...evm.ev], evm.bac)
-    .slice(0, evm.ev.length)
-    .map((p) => ({ label: p.label, planH: p.planH, actH: p.actH }));
-}
-
-export interface MilestoneRow {
-  name: string;
-  /** "15 Mar" / "13 Jan ’27". */
-  baseDate: string;
-  fcDate: string;
-  status: string;
-  /** Done neutral, Late accent, else outline. */
-  tone: Tone;
-}
-
-export function clientMilestones(ms: readonly MilestoneInput[], start: number, year: number): MilestoneRow[] {
-  return ms.map((m) => {
-    const v = scheduleMilestone(m, start, year);
-    return { name: v.name, baseDate: v.baseDate, fcDate: v.fcDate, status: v.statusLabel, tone: m.status === 'done' ? 'neutral' : m.status === 'late' ? 'accent' : 'outline' };
-  });
 }
 
 export interface ChangeRequestLike {
@@ -471,161 +420,4 @@ export function contractSummary(
     { k: 'Paid', v: moneyIn(c.paidKeur, cur, lang) },
     { k: 'Approved changes', v: c.approvedChangesKeur ? money(c.approvedChangesKeur, lang, { signed: true }) : '—' },
   ];
-}
-
-export interface IssueLike {
-  number: string;
-  title: string;
-  raisedOn: string;
-  status: ClientIssueStatus;
-  response: string;
-}
-
-export interface IssueRow {
-  id: string;
-  title: string;
-  /** "Raised 12 Aug" / "Raised today" (raised on the business date, R-013 — the prototype's status date). */
-  when: string;
-  status: string;
-  /** Closed neutral, Open accent, In progress outline. */
-  tone: Tone;
-  response: string;
-}
-
-export const ISSUE_TONE: Record<ClientIssueStatus, Tone> = { closed: 'neutral', open: 'accent', in_progress: 'outline' };
-
-export const issueRow = (i: IssueLike, today: string): IssueRow => ({
-  id: i.number, title: i.title, when: i.raisedOn === today ? 'Raised today' : `Raised ${fmtDOfIso(i.raisedOn, yearOfIso(today))}`, status: clientIssueStatus.label(i.status),
-  tone: ISSUE_TONE[i.status], response: i.response,
-});
-
-/** Issues not closed ("Open issues · Raised by you"). */
-export const openIssueCount = (issues: readonly Pick<IssueLike, 'status'>[]) => issues.filter((i) => i.status !== 'closed').length;
-
-export const ISSUE_MAX = 500;
-
-/** "Raise issue" text: trimmed, required, bounded. */
-export function parseIssueText(v: unknown): Parsed<string> {
-  const t = str(v);
-  if (!t) return { ok: false, error: 'Describe the issue or request' };
-  if (t.length > ISSUE_MAX) return { ok: false, error: 'The description is too long' };
-  return { ok: true, value: t };
-}
-
-export interface SharedDocLike {
-  number: string;
-  title: string;
-  typeLabel: string;
-  /** "26 Sep". */
-  dateText: string;
-  revision: string;
-  status: DocumentStatus;
-  statusLabel: string;
-  /** The client acknowledged the current revision. */
-  acknowledged: boolean;
-}
-
-export interface SharedDocRow {
-  id: string;
-  title: string;
-  typeLabel: string;
-  date: string;
-  rev: string;
-  status: string;
-  tone: Tone;
-  acknowledged: boolean;
-  /** "Acknowledged" tag or "Acknowledge receipt" button. */
-  ackLabel: 'Acknowledged' | 'Acknowledge receipt';
-}
-
-export const sharedDocRow = (d: SharedDocLike): SharedDocRow => ({
-  id: d.number, title: d.title, typeLabel: d.typeLabel, date: d.dateText, rev: d.revision, status: d.statusLabel, tone: DOCUMENT_STATUS_TAG[d.status].slice(4) as Tone,
-  acknowledged: d.acknowledged, ackLabel: d.acknowledged ? 'Acknowledged' : 'Acknowledge receipt',
-});
-
-/**
- * Fixed labels of the Documents tab. 03 OQ2 / A.3: the prototype bound three keys of the engineering register —
- * "Column mapping" (ID header), "Deliverables" (sub-title of a list that also holds minutes, HSE plans and drawings)
- * and "Own documents · files stay in the business tool…" (empty state); the rebuild uses client-facing strings.
- */
-export const DOCS_TAB = { idHeader: 'Reference', sub: 'Released documents shared with you', empty: 'No document shared with you yet' } as const;
-
-/**
- * Client document categories (Delivery 8, L-9 = a, R-138): the prototype's typed CLIENT_DOCS rows (defined, never
- * rendered) give way to categories computed from the Codex index — the documents shared with the client. One constant
- * maps a Codex type to its category; any other type falls back to its Codex family. Keys are stable; the order is the
- * prototype's (contract, minutes, HSE, accepted deliverables), then the families in Codex order. The owner's own list
- * can replace this constant. "HSE documents", not "HSE reports": the Codex HSE type is a prevention plan, and the
- * monthly safety statistics and incident reports are Vigie site-HSE records, never in the Codex index. "Monthly progress
- * reports" has no Codex type (Keystone's status report is not a Codex record): it is left out until the owner decides.
- */
-export const CLIENT_DOC_CATEGORY_OF_TYPE: Readonly<Record<string, { key: string; label: string }>> = {
-  CTR: { key: 'contract', label: 'Contract & amendments' },
-  MIN: { key: 'minutes', label: 'Meeting minutes' },
-  HSE: { key: 'hse', label: 'HSE documents' },
-  PV: { key: 'accepted', label: 'Accepted deliverables' },
-};
-/** Order of the categories: the typed ones above, then the Codex families (DOC_FAM order). */
-const CLIENT_DOC_CATEGORY_ORDER: readonly string[] = ['contract', 'minutes', 'hse', 'accepted', ...docFamily.codes];
-
-export interface SharedDocCategoryInput {
-  /** Codex type code ("MIN") and its EN label ("Meeting minutes"). */
-  type: string;
-  typeLabel: string;
-  family: DocFamily;
-  issuedOn: string;
-}
-
-export interface ClientDocCategory {
-  /** Stable key ("minutes", "hse", "eng"…). */
-  key: string;
-  /** EN source label ("Meeting minutes", "Engineering"). */
-  category: string;
-  fileCount: number;
-  /** The distinct type labels of its files (EN source, first-seen order). */
-  types: string[];
-  /** Description: the type labels joined with " · " (EN source). */
-  description: string;
-  /** Latest issue date of its files (ISO). */
-  latestIssuedOn: string;
-}
-
-/** Categories of the documents shared with the client, in a fixed order; a category without file is left out. */
-export function clientDocCategories(docs: readonly SharedDocCategoryInput[]): ClientDocCategory[] {
-  const by = new Map<string, ClientDocCategory>();
-  for (const d of docs) {
-    const c = CLIENT_DOC_CATEGORY_OF_TYPE[d.type] ?? { key: d.family, label: docFamily.label(d.family) };
-    const cur = by.get(c.key) ?? { key: c.key, category: c.label, fileCount: 0, types: [], description: '', latestIssuedOn: d.issuedOn };
-    cur.fileCount++;
-    if (!cur.types.includes(d.typeLabel)) cur.types.push(d.typeLabel);
-    if (d.issuedOn > cur.latestIssuedOn) cur.latestIssuedOn = d.issuedOn;
-    by.set(c.key, cur);
-  }
-  return CLIENT_DOC_CATEGORY_ORDER.flatMap((k) => {
-    const c = by.get(k);
-    return c ? [{ ...c, description: c.types.join(' · ') }] : [];
-  });
-}
-
-// ── Download status report (AF.client) ─────────────────────────────────────────────────────────────────
-
-export type ReportFormat = 'pdf' | 'pptx';
-/** Period options at the business date `today` (R-013: "September 2026" / "Q3 2026" on the demo data set's date). */
-export const clientReportPeriods = (today: string): { value: ReportPeriod; label: string }[] =>
-  reportPeriod.codes.map((c) => ({ value: c, label: reportPeriodLabel(c, today) }));
-export const CLIENT_REPORT_FORMATS: { value: ReportFormat; label: string }[] = [
-  { value: 'pdf', label: 'PDF' },
-  { value: 'pptx', label: 'PowerPoint' },
-];
-/** AF_RESULT.client toast. */
-export const REPORT_RESULT = 'Report downloaded';
-
-export function parseClientReport(values: unknown): Parsed<{ period: ReportPeriod; format: ReportFormat }> {
-  const v = record(values);
-  const period = str(v.period) || reportPeriod.codes[0];
-  const format = str(v.format) || CLIENT_REPORT_FORMATS[0].value;
-  if (!reportPeriod.isCode(period)) return { ok: false, error: 'Unknown period' };
-  const f = CLIENT_REPORT_FORMATS.find((o) => o.value === format);
-  if (!f) return { ok: false, error: 'Unknown format' };
-  return { ok: true, value: { period, format: f.value } };
 }

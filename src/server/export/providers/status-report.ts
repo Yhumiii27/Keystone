@@ -1,12 +1,11 @@
-// Weekly status report (PDF, chapter 4 exports) adapted to its audience (C-5 answer a, R-131) — one builder for the Trends
-// screen and the client portal:
+// Weekly status report (PDF, chapter 4 exports) adapted to its audience (C-5 answer a, R-131), built from the Trends screen:
 // - steering committee: everything — progress and EVM indices, float, risk exposure, the margin at completion (contract − EAC,
 //   C-10b; shown to the roles that see margins, director and PM), the contract and billing position, milestones, snapshot
 //   history, top risks, open changes and deliverables waiting for the client;
 // - internal: the steering content plus the resources assigned to the project (team, average and peak load);
-// - client: progress, milestones, change requests (waiting and decided), deliverables, invoices and the contract summary in the
-//   contract's currency, decisions waiting and open issues — no internal cost figure (no EAC, CPI, budget or margin).
-// A client viewer always gets the client report, whatever the URL or the last recorded report asks. `sections` trims the
+// - client (a report the project team sends to the client — clients never open Keystone, D9-06): progress, milestones, change
+//   requests (waiting and decided), deliverables, invoices and the contract summary in the contract's currency, decisions waiting
+//   — no internal cost figure (no EAC, CPI, budget or margin). The client issues went with the portal (D9-06). `sections` trims the
 // report as the "Generate status report" form does (full / summary + KPIs / KPIs only).
 import { withDerivedStatus } from '@/domain/change-control';
 import { contractFigures } from '@/domain/contract';
@@ -14,11 +13,11 @@ import { moneyIn } from '@/domain/currency';
 import { paymentTermsText } from '@/domain/payment-terms';
 import { canSeeMargins } from '@/domain/portfolio-finance';
 import { projectEacKeur } from '@/domain/kpis';
-import { clientScreenView } from '@/features/rexclient/model';
+import { clientReportView } from '@/features/rexclient/model';
 import { businessToday } from '@/server/clock';
 import { getBillingPlan, marginAtCompletion } from '@/server/dal/cashflow';
 import { getChangeControl } from '@/server/dal/changes';
-import { getClientPortal } from '@/server/dal/client';
+import { getClientReportData } from '@/server/dal/client-report';
 import { getContract } from '@/server/dal/contract';
 import { listDeliverables } from '@/server/dal/quality';
 import { getProjectTeam } from '@/server/dal/resources';
@@ -45,23 +44,18 @@ export function statusReportOptions(ctx: ExportContext, audience: ReportAudience
   const s = param(ctx, 'sections');
   const a = param(ctx, 'audience');
   return {
-    // The client portal always reports to the client.
-    audience: audience === 'client' ? 'client' : a && reportAudience.isCode(a) && a !== 'client' ? a : audience,
+    audience: a && reportAudience.isCode(a) ? a : audience,
     period: p && reportPeriod.isCode(p) ? p : 'month',
     sections: s && reportSections.isCode(s) ? s : 'full',
   };
 }
-
-/** C-5: the audience actually reported to — a client viewer always gets the client report. */
-export const effectiveAudience = (ctx: Pick<ExportContext, 'viewer'>, audience: ReportAudience): ReportAudience =>
-  ctx.viewer.role === 'client' ? 'client' : audience;
 
 const fmtK = (v: number, lang: string) => new Intl.NumberFormat(lang === 'fr' ? 'fr-FR' : 'en-GB', { maximumFractionDigits: 0 }).format(v) + ' k€';
 
 export async function statusReportDocument(ctx: ExportContext, options: StatusReportOptions): Promise<PdfDocument | null> {
   if (!ctx.project) return null;
   const { t, lang } = ctx;
-  const o: StatusReportOptions = { ...options, audience: effectiveAudience(ctx, options.audience) };
+  const o = options;
   const code = ctx.project.code;
   const [trends, schedule] = await Promise.all([getTrends(code), getScheduleData(code)]);
   if (!trends && !schedule) return null;
@@ -76,9 +70,9 @@ export async function statusReportDocument(ctx: ExportContext, options: StatusRe
     : null;
 
   if (o.audience === 'client') {
-    const [portal, billing, dlvs, today] = await Promise.all([getClientPortal(code), getBillingPlan(code), listDeliverables(code), businessToday()]);
-    const view = clientScreenView({
-      code, tab: 'progress', portal, billing: billing ? { internal: billing.internal } : null, today,
+    const [data, billing, dlvs, today] = await Promise.all([getClientReportData(code), getBillingPlan(code), listDeliverables(code), businessToday()]);
+    const view = clientReportView({
+      data, billing: billing ? { internal: billing.internal } : null, today,
       schedule: schedule && { header: schedule.header, milestones: schedule.milestones, pv: schedule.pv, ev: schedule.ev, bac: schedule.bac },
     }, t, lang);
     blocks.push({ kind: 'kpis', items: view.kpis.map((k) => ({ label: k.label, value: k.value, sub: k.sub || undefined })) });
@@ -93,7 +87,7 @@ export async function statusReportDocument(ctx: ExportContext, options: StatusRe
         // C-5: the changes (waiting for the client and decided), the deliverables and the invoices.
         const changes = [
           ...view.decisions.filter((d) => d.kind === 'change_request').map((d) => ({ id: d.id, title: d.title, detail: d.sub, state: t('Waiting for you') })),
-          ...view.decided.filter((d) => portal.decided.find((x) => x.id === d.id)?.kind === 'change_request').map((d) => ({ id: d.id, title: d.title, detail: '', state: `${d.state} · ${d.when}` })),
+          ...view.decided.filter((d) => data.decided.find((x) => x.id === d.id)?.kind === 'change_request').map((d) => ({ id: d.id, title: d.title, detail: '', state: `${d.state} · ${d.when}` })),
         ];
         blocks.push({ kind: 'heading', text: t('Changes') });
         blocks.push(changes.length
@@ -109,8 +103,6 @@ export async function statusReportDocument(ctx: ExportContext, options: StatusRe
           ? { kind: 'table', sheet: sheet(t('Invoices'), [col('no', t('Invoice'), 'text', 14), col('name', t('Milestone'), 'text', 36), col('amount', t('Amount'), 'text', 12), col('status', t('Status'), 'text', 12), col('payment', t('Payment'), 'text', 16)],
             view.invoices.map((i) => ({ no: i.no, name: i.name, amount: i.amount, status: i.status, payment: i.payment }))) }
           : { kind: 'paragraph', text: view.invoicesEmpty ?? t('No invoice issued yet'), muted: true });
-        const open = view.issues.filter((_, i) => portal.issues[i]?.status !== 'closed');
-        if (open.length) blocks.push({ kind: 'heading', text: t('Open issues') }, { kind: 'table', sheet: sheet(t('Issues'), [col('id', t('Issue'), 'text', 8), col('title', t('Title'), 'text', 40), col('when', t('Raised'), 'text', 12), col('status', t('Status'), 'text', 12), col('response', t('Response'), 'text', 36)], open.map((x) => ({ id: x.id, title: x.title, when: x.when, status: x.status, response: x.response }))) });
         if (view.summary) blocks.push({ kind: 'heading', text: t('Contract summary') }, { kind: 'fields', columns: 2, items: view.summary.map((r) => [r.k, r.v] as [string, string]) });
       }
     }
@@ -187,14 +179,12 @@ export async function statusReportDocument(ctx: ExportContext, options: StatusRe
 
 /**
  * Options of the Trends report: the last report recorded with "Generate status report" (`?report=latest` — its period,
- * audience, sections and manager note, so that the note never travels in the URL), else the URL's options. A client viewer
- * gets the client audience either way (`effectiveAudience`).
+ * audience, sections and manager note, so that the note never travels in the URL), else the URL's options.
  */
 export async function trendsReportOptions(ctx: ExportContext): Promise<StatusReportOptions> {
   if (param(ctx, 'report') === 'latest' && ctx.project) {
     const last = (await getTrends(ctx.project.code))?.reports[0];
-    if (last) return { audience: effectiveAudience(ctx, last.audience), period: last.period, sections: last.sections, note: ctx.viewer.role === 'client' ? null : last.note };
+    if (last) return { audience: last.audience, period: last.period, sections: last.sections, note: last.note };
   }
-  const o = statusReportOptions(ctx, 'steering');
-  return { ...o, audience: effectiveAudience(ctx, o.audience) };
+  return statusReportOptions(ctx, 'steering');
 }

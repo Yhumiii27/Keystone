@@ -7,7 +7,7 @@
 // Each one validates its raw input, checks the viewer may edit Meetings on this project (not outside the workspace, on the
 // project's team — R-041), checks the meeting belongs to the project, writes through the DAL with the viewer as the actor, then
 // revalidates. P-9b (R-050): the internal team creates meetings, adds notes and ticks actions; the transcript (import,
-// analysis, review, proposals) and "Send minutes" belong to the meeting's organiser and the project's PM; the client reads
+// analysis, review, proposals) and "Send minutes" belong to the meeting's organiser and the project's PM; the rest of the team
 // (a risk also needs the right to edit the risk register). Error messages are English source strings translated here.
 // R-008: transcript imports count in the upload rate limit and analyses in the analysis one (src/server/http/request-guard.ts).
 import { revalidatePath } from 'next/cache';
@@ -19,7 +19,7 @@ import { RISK_RESULT } from '@/features/risks/forms';
 import { transcriptAiInfo } from '@/server/ai/config';
 import {
   addMeetingLine, analyseTranscript, applyTranscriptToMinutes, createMeeting, getMeeting, listMeetingActivityOptions, readerOf, recordMinutesRead, sendMinutes,
-  toggleMeetingAction, type MeetingRow,
+  setMeetingClientPresent, toggleMeetingAction, type MeetingRow,
 } from '@/server/dal/meetings';
 import { MeetingLineError } from '@/server/dal/meetings-core';
 import { ensureFirstAgendaPoint } from '@/server/dal/meetings-screen';
@@ -61,13 +61,13 @@ const isIndex = (v: unknown): v is number => typeof v === 'number' && Number.isI
 
 type Gate = { ok: true; code: string; actor: string; ctx: ProjectContext } | { ok: false; error: string };
 
-/** Resolves the project and checks the viewer may edit Meetings on it (P-9b: never the client, who reads). */
+/** Resolves the project and checks the viewer may edit Meetings on it. */
 async function editable(code: unknown): Promise<Gate> {
   if (typeof code !== 'string' || !code) return { ok: false, error: 'Invalid request' };
   const project = await getProject(code);
   if (!project) return { ok: false, error: 'Unknown project' };
   const ctx = await getProjectContext(project.code, 'meetings');
-  if (!ctx.canEdit('meetings') || ctx.viewer.role === 'client') return { ok: false, error: READ_ONLY };
+  if (!ctx.canEdit('meetings')) return { ok: false, error: READ_ONLY };
   return { ok: true, code: project.code, actor: ctx.viewer.name, ctx };
 }
 
@@ -116,7 +116,7 @@ export async function createMeetingAction(code: string, values: Record<string, s
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
   const r = await write('createMeetingAction', () =>
-    createMeeting(g.code, { title: v.title, type: v.type, series: v.series, date: v.date, time: v.time, location: v.location, invitees: v.invitees, agenda: v.agenda }, g.actor),
+    createMeeting(g.code, { title: v.title, type: v.type, series: v.series, date: v.date, time: v.time, location: v.location, invitees: v.invitees, agenda: v.agenda, clientPresent: v.clientPresent }, g.actor),
   );
   if (!r.ok) return { error: await tr(r.error) };
   refresh(g.code);
@@ -163,6 +163,21 @@ export async function toggleMeetingActionAction(input: { code: string; meeting: 
   if (!line) return fail('Unknown agenda point');
   if (line.type !== 'action') return fail('Only actions can be ticked');
   const r = await write('toggleMeetingActionAction', () => toggleMeetingAction(g.meeting.number, input.point, input.position, g.actor, typeof input.done === 'boolean' ? { done: input.done } : {}));
+  if (!r.ok) return fail(r.error);
+  refresh(g.code);
+  return { ok: true, done: r.value };
+}
+
+/**
+ * D9-25 (owner, 10 Nov 2026): the meeting's "Client present" box — the decisions of a meeting the client attended are the
+ * project's client decisions. The viewers who may edit the project's Meetings (not only the minutes' writers); minutes already
+ * sent included (the box says who attended, not what the minutes say).
+ */
+export async function setMeetingClientPresentAction(input: { code: string; meeting: string; clientPresent: boolean }): Promise<MeetingActionResult> {
+  const g = await editableMeeting(input?.code, input?.meeting);
+  if (!g.ok) return fail(g.error);
+  if (typeof input.clientPresent !== 'boolean') return fail('Invalid request');
+  const r = await write('setMeetingClientPresentAction', () => setMeetingClientPresent(g.meeting.number, input.clientPresent, g.actor));
   if (!r.ok) return fail(r.error);
   refresh(g.code);
   return { ok: true, done: r.value };
@@ -319,8 +334,7 @@ export async function addProposalQuestionAction(code: string, meeting: string, p
 /**
  * S-11 a (R-037): a read receipt recorded in Keystone when a minutes recipient clicks "Open minutes" in "Distribution & read
  * receipts" (merely viewing the meeting does not count). Reading is not editing: the viewer only has to see the project's
- * meetings (getProjectContext — read-only projects and screens outside the workspace included; a client only on their
- * organisation's projects and the external meetings, P-10b). Nothing is recorded for a viewer who is not a recipient, the
+ * meetings (getProjectContext — read-only projects and screens outside the workspace included). Nothing is recorded for a viewer who is not a recipient, the
  * organizer, or a receipt already there. Returns whether a receipt was recorded.
  */
 export async function recordMinutesReadAction(input: { code: string; meeting: string }): Promise<{ ok: true; recorded: boolean } | { ok: false; error: string }> {
@@ -331,7 +345,7 @@ export async function recordMinutesReadAction(input: { code: string; meeting: st
   if (!project) return readFail('Unknown project');
   const ctx = await getProjectContext(project.code, 'meetings');
   const meeting = await getMeeting(input.meeting);
-  if (!meeting || meeting.projectCode !== project.code || (ctx.viewer.role === 'client' && meeting.type !== 'external')) return readFail('Unknown meeting');
+  if (!meeting || meeting.projectCode !== project.code) return readFail('Unknown meeting');
   if (meeting.status !== 'minutes_sent') return { ok: true, recorded: false };
   const reader = await readerOf(ctx.viewer);
   if (!reader) return { ok: true, recorded: false };

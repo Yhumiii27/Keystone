@@ -14,7 +14,7 @@ import {
 import { canSeeMargins } from './portfolio-finance';
 import { RATE_GRID_START, RATE_MULTIPLIER_DEFAULTS } from './rate-defaults';
 import {
-  canEditContract, canPreviewClientView, canSetBudgetRate, financeReadOnly, projectAccess, type ProjectFacts, type RightsViewer,
+  canEditContract, canSetBudgetRate, financeReadOnly, projectAccess, type ProjectFacts, type RightsViewer,
 } from './rights';
 import { fallbackSettingsDefaults, parseSettingsDefaults } from './settings-defaults';
 
@@ -23,13 +23,14 @@ const P = PROTO as any;
 const ROLES = PERSONAS.map((p) => p.role);
 const viewerOf = (role: RoleKey): RightsViewer => {
   const p = PERSONA_BY_ROLE[role];
-  return { role, personId: null, short: p.short, name: p.name, organisation: p.organisation };
+  return { role, personId: null, short: p.short, name: p.name };
 };
 
 describe('R-044 · the Finance role and persona', () => {
-  it('nine personas (ten with Logistics, R-158); Léa Marchand, Cost controller, Controls & planning; label and priority', () => {
-    expect(PERSONAS).toHaveLength(10);
-    expect(PERSONA_BY_ROLE.finance).toMatchObject({ name: 'Léa Marchand', title: 'Cost controller', short: 'L. Marchand', email: 'lea.marchand@epc2i.fr', department: 'Controls & planning', organisation: null });
+  it('nine personas (with Logistics, R-158, and without the client, D9-06); Léa Marchand, Cost controller, Controls & planning; label and priority', () => {
+    // D9-06 (owner, 10 Nov 2026): the Client persona is gone — 10 → 9.
+    expect(PERSONAS).toHaveLength(9);
+    expect(PERSONA_BY_ROLE.finance).toMatchObject({ name: 'Léa Marchand', title: 'Cost controller', short: 'L. Marchand', email: 'lea.marchand@epc2i.fr', department: 'Controls & planning' });
     expect(ROLE_LABEL.finance).toBe('Finance');
   });
 
@@ -54,12 +55,11 @@ describe('R-044 · the Finance role and persona', () => {
     expect(ROLES.filter((r) => canEditContract(r, lead))).toEqual(['director', 'pm', 'finance']);
     // A member-role deputy (lead on the project) gets no editing: Contract is not in a member's workspace.
     expect(canEditContract('member', lead)).toBe(false);
-    expect(canEditContract('client', lead)).toBe(false);
   });
 
   it('P-4 on the seed teams: the PM of record and a deputy edit, a PM-role team member or a PM off the team reads; Finance everywhere', () => {
     const facts: ProjectFacts = {
-      client: 'Port authority', pm: 'R. Aubert', pmPersonId: null,
+      pm: 'R. Aubert', pmPersonId: null,
       team: [
         { personId: 'x1', short: 'J. Wagner', name: 'Julien Wagner', role: 'deputy', primary: false },
         { personId: 'x2', short: 'F. Bertrand', name: 'Fabien Bertrand', role: 'team', primary: false },
@@ -83,17 +83,6 @@ describe('R-044 · the Finance role and persona', () => {
     expect(ROLES.filter(canSeeRates)).toEqual(['director', 'pm', 'finance']);
     // P-12 (c): the director and Finance edit the grid; the PMs read it.
     expect(ROLES.filter(canEditRates)).toEqual(['director', 'finance']);
-  });
-});
-
-describe('R-139 · "View as client" (P-11 a)', () => {
-  it('the director and the project leads (PM of record, co-PM, deputy); never the client', () => {
-    expect(ROLES.filter((r) => canPreviewClientView(r, { lead: false }))).toEqual(['director']);
-    expect(ROLES.filter((r) => canPreviewClientView(r, { lead: true }))).toEqual(ROLES.filter((r) => r !== 'client'));
-    const facts: ProjectFacts = { client: 'Port authority', pm: 'R. Aubert', pmPersonId: null, team: [{ personId: 'x', short: 'J. Wagner', name: 'Julien Wagner', role: 'deputy', primary: false }] };
-    const sees = (v: RightsViewer) => canPreviewClientView(v.role, projectAccess(v, facts));
-    expect([sees(viewerOf('director')), sees(viewerOf('pm')), sees(viewerOf('member')), sees(viewerOf('quality')), sees(viewerOf('client'))]).toEqual([true, true, true, false, false]);
-    expect(sees({ ...viewerOf('pm'), short: 'X. Other', name: 'Other PM' })).toBe(false);
   });
 });
 

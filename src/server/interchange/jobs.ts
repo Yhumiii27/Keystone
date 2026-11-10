@@ -35,16 +35,15 @@ export interface ImportViewer {
   name: string;
   short: string;
   role: RoleKey;
-  /** The viewer's person (signed-in users) and client organisation — the project team rights (R-041). */
+  /** The viewer's person (signed-in users) — the project team rights (R-041). */
   personId?: string | null;
-  organisation?: string | null;
 }
 
 /** The viewer's rights on a project for the import rules (R-041). */
 async function importRel(viewer: ImportViewer): Promise<(p: ProjectRow) => { member: boolean; lead: boolean }> {
   const teams = await listProjectTeams();
-  const v = { role: viewer.role, name: viewer.name, short: viewer.short, personId: viewer.personId ?? null, organisation: viewer.organisation ?? null };
-  return (p) => projectAccess(v, { client: p.client, clientInternal: p.clientInternal, pm: p.pm, pmPersonId: p.pmPersonId, team: teams.get(p.code) ?? [] });
+  const v = { role: viewer.role, name: viewer.name, short: viewer.short, personId: viewer.personId ?? null };
+  return (p) => projectAccess(v, { pm: p.pm, pmPersonId: p.pmPersonId, team: teams.get(p.code) ?? [] });
 }
 
 /** One preview row as the dialog shows it. */

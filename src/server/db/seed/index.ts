@@ -7,7 +7,6 @@ import { seedAftersales } from './aftersales';
 import { seedCatalogue } from './catalogue';
 import { seedChange } from './change';
 import { seedChapter4 } from './chapter4';
-import { seedClient } from './client';
 import { seedCollaboration } from './collaboration';
 import { ctxFromDb, newCtx, type SeedCtx } from './context';
 import { seedControl } from './control';
@@ -67,7 +66,6 @@ async function seedDelivery5(tx: Tx, ctx: SeedCtx): Promise<void> {
   await seedExecution(tx, ctx);
   await seedAftersales(tx, ctx);
   await seedSite(tx, ctx);
-  await seedClient(tx, ctx);
   await seedEngineering(tx, ctx);
   await seedSettings(tx);
   await seedVigieQuality(tx);

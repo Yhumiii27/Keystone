@@ -132,17 +132,17 @@ export async function getDashboardFor(id: string, userId: string, q?: Q): Promis
   return toRecord(row, userId, await sharesOf(db, row.d.ownerUserId === userId ? [row.d.id] : []));
 }
 
-/** People a dashboard can be shared with: active internal accounts (never a client or an external user), the owner excepted. */
+/** People a dashboard can be shared with: active internal accounts (never an external user), the owner excepted. */
 export async function dashboardShareCandidates(exceptUserId: string, q?: Q): Promise<DashboardPerson[]> {
   const db = q ?? (await getDb());
   const rows = await db
-    .select({ id: users.id, roles: users.roles, external: users.isExternal, clientId: users.clientId, title: users.title, fullName: persons.fullName, shortName: persons.shortName })
+    .select({ id: users.id, roles: users.roles, external: users.isExternal, title: users.title, fullName: persons.fullName, shortName: persons.shortName })
     .from(users)
     .innerJoin(persons, eq(persons.id, users.personId))
     .where(and(eq(users.active, true), ne(users.id, exceptUserId)))
     .orderBy(asc(users.sortOrder));
   return rows
-    .filter((r) => !r.clientId && isInternalUser({ roles: sortRoles(r.roles), external: r.external }))
+    .filter((r) => isInternalUser({ roles: sortRoles(r.roles), external: r.external }))
     .map((r) => ({ userId: r.id, name: nameOfPerson(r), title: r.title }));
 }
 

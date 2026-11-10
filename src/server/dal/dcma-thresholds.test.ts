@@ -42,10 +42,6 @@ describe('Settings › schedule quality thresholds (R-206, K-206b)', () => {
   it('the director only; audit with before / after and activity; the checks follow', async () => {
     for (const p of PERSONAS) {
       as(p.role);
-      if (p.role === 'client') {
-        await expect(setDcmaThresholdAction('lagsPct', '40')).rejects.toThrow('REDIRECT /');
-        continue;
-      }
       const r = await setDcmaThresholdAction('lagsPct', '40');
       if (p.role === 'director') expect(r).toEqual({ ok: true });
       else expect([p.role, 'error' in r]).toEqual([p.role, true]);

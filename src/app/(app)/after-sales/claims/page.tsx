@@ -34,7 +34,7 @@ export default async function WarrantyClaimsPage({ searchParams }: { searchParam
   const view = savViewOf(first(sp.view));
   const [{ t, lang }, access, zone] = await Promise.all([getI18n(), getScreenAccess('sav'), getZone()]);
   const data = await getSavScreen(zone);
-  const vigie = access.viewer.role !== 'client';
+  const vigie = true;
 
   let primary;
   if (access.canEdit) {

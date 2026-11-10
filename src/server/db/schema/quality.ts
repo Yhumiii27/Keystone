@@ -38,10 +38,15 @@ export const deliverables = pgTable(
     submittedOn: date('submitted_on', { mode: 'string' }),
     /** Client acceptance deadline of a submitted deliverable ("Accept by 2 Oct"; submission + 10 days). */
     acceptanceDueOn: date('acceptance_due_on', { mode: 'string' }),
-    /** Client acceptance (PV signed): date and signatory ("12 Mar · N. Bensaïd", "20 Mar · Bureau de contrôle"). */
+    /**
+     * Client acceptance (PV signed): date and signatory ("12 Mar · N. Bensaïd", "20 Mar · Bureau de contrôle"). D9-06 (owner,
+     * 10 Nov 2026): the PV is signed outside Keystone; the project's lead records the acceptance — `accepted_by_*` is then who
+     * recorded it and `acceptance_ref` the reference of the signed document ("12 Mar · PV-HLT-014").
+     */
     acceptedOn: date('accepted_on', { mode: 'string' }),
     acceptedByPersonId: uuid('accepted_by_person_id').references(() => persons.id),
     acceptedByName: text('accepted_by_name'),
+    acceptanceRef: text('acceptance_ref'),
     /** Client rejection ("25 Sep · comments issued") and the comments. */
     rejectedOn: date('rejected_on', { mode: 'string' }),
     rejectedByPersonId: uuid('rejected_by_person_id').references(() => persons.id),
@@ -73,7 +78,7 @@ export const deliverableRaci = pgTable(
 
 /**
  * Client review history of a deliverable (R-114, Q-3a): one row per client decision on a submitted revision — accepted (PV)
- * or rejected with its comments. A rejected deliverable goes back to In progress at the next revision and is submitted
+ * or rejected with its comments — recorded by the project's lead since D9-06 (the client never opens Keystone). A rejected deliverable goes back to In progress at the next revision and is submitted
  * again; the history keeps every refusal and its comments (the deliverable row only holds the latest decision).
  */
 export const deliverableReviews = pgTable('deliverable_reviews', {
@@ -87,5 +92,7 @@ export const deliverableReviews = pgTable('deliverable_reviews', {
   decidedByName: text('decided_by_name').notNull(),
   decidedByPersonId: uuid('decided_by_person_id').references(() => persons.id),
   comments: text('comments'),
+  /** D9-06: reference of the signed document the project's lead recorded the client's decision from (null before D9-06). */
+  reference: text('reference'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index('deliverable_reviews_deliverable_id_idx').on(t.deliverableId)]);

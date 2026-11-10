@@ -180,7 +180,5 @@ describe('site Server Functions', () => {
     expect(await saveDailyReportAction(HLT, { date: '24 sept. 2026', weather: 'clear', headcount: '', progress: 'Préparation zone de levage' }))
       .toEqual({ toast: 'Rapport journalier enregistré · DR-004', number: 'DR-004' });
     expect((await getSite(HLT))!.dailyReports.find((r) => r.number === 'DR-004')).toMatchObject({ reportOn: '2026-09-24', headcount: null, weather: 'clear' });
-    as('client', 'Nadia Bensaïd');
-    expect(await saveDailyReportAction(HLT, { progress: 'x' })).toEqual({ error: 'Le chantier est en lecture seule pour vous' });
   });
 });

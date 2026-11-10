@@ -25,11 +25,11 @@ import { codexDecisionToast, parseRejectComment, type CodexDecision } from '@/do
 import { canApproveDocument, parseDeposit } from '@/domain/documents';
 import { DEPOSIT_TYPES } from '@/server/db/codes';
 import {
-  CodexDecisionError, DepositInCodexOnlyError, acknowledgeDocument, depositInCodex, getDocumentRecord, getVaultDocument, recordDocumentDecision, syncCodexIndex,
+  CodexDecisionError, DepositInCodexOnlyError, depositInCodex, getDocumentRecord, getVaultDocument, recordDocumentDecision, syncCodexIndex,
 } from '@/server/dal/documents';
 import { getProject } from '@/server/dal/projects';
 import { canDepositInCodex, canSyncCodex } from '@/domain/rights';
-import { clientProjectCodes, getProjectContext, getScreenAccess, type ProjectContext } from '@/server/project-context';
+import { getProjectContext, getScreenAccess, type ProjectContext } from '@/server/project-context';
 import { codexConnectorMode } from '@/server/integrations/codex/config';
 import { getCodexConnector } from '@/server/integrations/codex/connector';
 import { codexSyncToastT } from '@/server/integrations/codex/display';
@@ -79,7 +79,7 @@ export async function depositInCodexAction(raw: unknown): Promise<DepositResult>
   const access = await vault(v.project);
   if ('error' in access) return access;
   const { ctx } = access;
-  if (!canDepositInCodex(ctx.viewer.role, ctx.outside, ctx.access)) return { error: await tr(NOT_TEAM) };
+  if (!canDepositInCodex(ctx.outside, ctx.access)) return { error: await tr(NOT_TEAM) };
   const inCodexOnly = async () => {
     const { t } = await getI18n();
     return { error: t(DEPOSIT_IN_CODEX), link: { href: v.revisionOf ? codexDocumentUrl(v.revisionOf) : codexHomeUrl(ctx.project.code), label: t('Open Codex') } };
@@ -182,22 +182,17 @@ export type DownloadResult = { ok: true; toast: string; link: { href: string; la
 
 /**
  * Download of the current revision (table icon, drawer "Download PDF", revision "Native" / "PDF"). D-2 = a (R-127): the
- * files are stored in Codex and Keystone keeps no download log — after the access checks (the vault's project, a client
- * only the documents shared with them on their own projects, P-10a / P-10b) the answer is the Codex hand-off toast, with a
- * link to the record in Codex except for a client. Nothing is written.
+ * files are stored in Codex and Keystone keeps no download log — after the access checks (the vault's project) the answer
+ * is the Codex hand-off toast, with a link to the record in Codex. Nothing is written.
  */
 export async function logDownloadAction(project: string, number: string, format: 'PDF' | 'Native' = 'PDF'): Promise<DownloadResult> {
   const access = await vault(project);
   if ('error' in access) return access;
-  const { ctx } = access;
   if (format !== 'PDF' && format !== 'Native') return { error: await tr('Invalid request') };
   const d = await findRecord(number);
   if (!d) return { error: await tr('Unknown document') };
-  // P-10a / P-10b: a client downloads only the documents shared with them on their own projects.
-  const client = ctx.viewer.role === 'client';
-  if (client && (!d.shared || !(await clientProjectCodes(ctx.viewer)).has(d.project))) return { error: await tr('Unknown document') };
   const { t } = await getI18n();
-  return { ok: true, toast: t(DOWNLOAD_IN_CODEX), link: client ? null : { href: codexDocumentUrl(d.number, d.revision, d.codexUrl), label: t('Open Codex') } };
+  return { ok: true, toast: t(DOWNLOAD_IN_CODEX), link: { href: codexDocumentUrl(d.number, d.revision, d.codexUrl), label: t('Open Codex') } };
 }
 
 /**
@@ -235,18 +230,4 @@ export async function syncCodexAction(project: string): Promise<DocActionResult>
   refreshAll();
   const toast = codexSyncToastT(records, mode, t, lang);
   return { ok: true, toast: outbox?.pending ? `${toast} · ${pendingSyncCountText(outbox.pending, lang)}` : toast };
-}
-
-/** Client portal "Acknowledge receipt" of a shared document's current revision (`engOv.ack[id|rev] = true`). */
-export async function acknowledgeDocumentAction(project: string, number: string): Promise<DocActionResult> {
-  const access = await vault(project);
-  if ('error' in access) return access;
-  const { ctx } = access;
-  if (ctx.viewer.role !== 'client' || !ctx.isMine) return { error: await tr('Only the client can acknowledge receipt') };
-  const d = await findRecord(number);
-  if (!d || d.project !== ctx.project.code || !d.shared) return { error: await tr('Unknown document') };
-  if (d.acknowledged) return { ok: true };
-  await acknowledgeDocument(number, ctx.viewer.name);
-  refreshAll();
-  return { ok: true };
 }

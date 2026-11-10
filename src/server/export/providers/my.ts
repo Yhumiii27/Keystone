@@ -15,7 +15,7 @@ import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook } from '../types';
 import { yearOfIso } from '@/domain/clock';
 import { col, filterLine, isoOf, kpiSheet, param, sheet, compact } from './common';
-import { currentProjectCode, projectFilter } from './scope';
+import { currentProjectCode } from './scope';
 import { dataText, fieldsText } from '@/i18n/data-text';
 
 /** Current project of a global screen: `?code=` (the header passes the shell's project), else the default one; a client's own. */
@@ -24,7 +24,7 @@ const currentProject = (ctx: ExportContext) => currentProjectCode(ctx, DEFAULT_P
 // ── Home ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 async function homeWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t, lang, viewer } = ctx;
-  const view = await getHomeView({ role: viewer.role, persona: viewer, projectCode: await currentProject(ctx), zone: ctx.zone, lang, organisation: viewer.organisation });
+  const view = await getHomeView({ role: viewer.role, persona: viewer, projectCode: currentProject(ctx), zone: ctx.zone, lang });
   const list = (l: typeof view.left): ExportSheet =>
     sheet(renderTxt(l.title, t), [col('title', t('Item'), 'text', 44), col('sub', t('Details'), 'text', 48), col('tag', t('Status'), 'text', 18)], l.rows.map((r) => ({
       title: renderTxt(r.title, t), sub: renderTxt(r.sub, t), tag: renderTxt(r.tag, t),
@@ -42,7 +42,7 @@ const dateOrText = (t: (s: string) => string, v: string, year: number) => (v && 
 // ── My projects ──────────────────────────────────────────────────────────────────────────────────────────────────────
 async function myProjectsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t, lang, viewer } = ctx;
-  const model = await getMyProjects(viewer, await currentProject(ctx), lang);
+  const model = await getMyProjects(viewer, currentProject(ctx), lang);
   const rows = model.cards.map((c) => ({
     code: c.project.code, name: dataText(c.project.name, ctx.lang), role: c.myRole ? t(c.myRole) : '', readOnly: c.readOnly, stage: t(c.project.status), pm: c.project.pm,
     client: dataText(c.project.client, ctx.lang), health: c.health ? t(HEALTH_LABEL[c.health]) : '—', progress: c.project.progress,
@@ -99,8 +99,7 @@ async function taskWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> 
   const id = (param(ctx, 'task') ?? param(ctx, 'id') ?? '').toUpperCase();
   if (!/^T-\d{1,6}$/.test(id)) return null;
   const d = await getTask(id);
-  // A client exports only their organisation's projects (P-10a), as the attachment download already enforces.
-  if (!d || !(await projectFilter(ctx))(d.project.code)) return null;
+  if (!d) return null;
   const a = d.activity;
   const fields: [string, string | number][] = [
     [t('Task'), d.id], [t('Title'), dataText(d.title, ctx.lang)], [t('Assignee'), d.assignee], [t('Project'), `${d.project.code} · ${dataText(d.project.name, ctx.lang)}`],
@@ -131,7 +130,7 @@ async function taskWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> 
 // ── My approvals ─────────────────────────────────────────────────────────────────────────────────────────────────────
 async function myApprovalsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t, lang, viewer } = ctx;
-  const inbox = await getApprovalInbox(viewer, { lang, projectCode: await currentProject(ctx) });
+  const inbox = await getApprovalInbox(viewer, { lang, projectCode: currentProject(ctx) });
   const view = inboxView(inbox.items, { decided: inbox.decided, roleTitle: viewer.title, filter: param(ctx, 'filter') });
   return {
     title: t('My approvals'),

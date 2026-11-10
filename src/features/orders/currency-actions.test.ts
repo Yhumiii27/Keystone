@@ -109,7 +109,6 @@ describe('purchase order currency (C-9)', () => {
       { name: 'S. Perrin', role: 'pm' }, // a PM, not on HLT-026's team
       { name: 'Nobody', role: 'procurement' },
       { name: 'Romain Aubert', role: 'admin' },
-      { name: 'Nadia Bensaïd', role: 'client' },
     ];
     for (const actor of wrong) await expect(setPurchaseOrderCurrency('PO-1100', 'USD', actor)).rejects.toThrow(READ_ONLY);
     expect((await getPurchaseOrder('PO-1100'))!.currency).toBe('EUR');

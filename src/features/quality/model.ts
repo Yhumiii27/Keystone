@@ -30,11 +30,8 @@ export interface QualityState {
   dlv: string | null;
 }
 
-/** Who looks at the screen, with what they may do on this project. */
-export interface QualityViewerCtx extends DeliverableViewer {
-  /** Links to Vigie are shown (Vigie is an internal application: not to the client). */
-  vigie: boolean;
-}
+/** Who looks at the screen, with what they may do on this project (every viewer is internal since D9-06: Vigie links shown). */
+export type QualityViewerCtx = DeliverableViewer;
 
 export interface KpiView {
   label: string;
@@ -110,8 +107,6 @@ export interface NcrTabView {
   filter: string;
   rows: NcrRowView[];
   empty: string | null;
-  /** "Mirrored from Vigie — NCRs are managed in Vigie" in the card header (viewers with Vigie links). */
-  mirrorNote: boolean;
 }
 
 const activityText = (n: Pick<NcrRow, 'activityCode' | 'activityName'>) => (n.activityCode ? n.activityCode + (n.activityName ? ' · ' + n.activityName : '') : '—');
@@ -156,12 +151,12 @@ export function ncrTabView(
       statusClass: ncrStatusTagOf(n.status),
       action: ncrRowAction(n, viewer, t),
       sync: sync ? sync.split(' · ').map(t).join(' · ') : null,
-      vigieUrl: viewer.vigie ? n.vigieUrl : null,
+      vigieUrl: n.vigieUrl,
     };
   });
   // A project Vigie reports no NCR for gets its own message (the prototype showed Harbor Line's NCRs, 00 §7.16).
   const empty = rows.length ? null : t(ncrs.length ? 'No non-conformance at this severity' : 'No non-conformance reported for this project');
-  return { kpis, chips, filter: state.filter ?? 'all', rows, empty, mirrorNote: viewer.vigie };
+  return { kpis, chips, filter: state.filter ?? 'all', rows, empty };
 }
 
 export interface RecordRow {
@@ -250,7 +245,7 @@ export function ncrDrawerView(
     partHref: n.partRef ? partRecordHref(n.partRef) : null,
     eco: ecoNumber ? { number: ecoNumber, href: ecoHref(ecoNumber) } : null,
     orders: (n.partRef ? input.ordersByPart[n.partRef] ?? [] : []).map((po) => ({ number: po, href: purchaseOrderHref(code, po) })),
-    vigieUrl: viewer.vigie ? n.vigieUrl : null,
+    vigieUrl: n.vigieUrl,
   };
 }
 
@@ -349,7 +344,7 @@ export interface DlvDrawerView {
   restart: string | null;
   /** Client decisions, newest first (R-114): "Rev C · Rejected 25 Sep · N. Bensaïd" and the comments as typed. */
   reviews: { line: string; comments: string | null }[];
-  /** "Accept (PV)" / "Reject with comments" (Submitted, the project's client contact). */
+  /** "Record client acceptance" / "Record client rejection" (Submitted, the project's leads — D9-06). */
   canDecide: boolean;
   planHref: string;
   /** Accepted deliverable: its acceptance certificate ("PV de réception") as a PDF (chapter 4 exports); null otherwise. */
@@ -387,7 +382,7 @@ export function dlvDrawerView(
     ],
     // R-148: the linked document's title as typed (or its seeded demo entry).
     document: doc ? { ...doc, title: doc.title ? dataText(doc.title, lang) : '' } : null,
-    canLinkDocument: viewer.canEdit && viewer.role !== 'client',
+    canLinkDocument: viewer.canEdit,
     depositType: depositTypeOf(d.type),
     documentOptions: input.documents.map((x) => ({ value: x.number, label: `${x.number} · ${dataText(x.title, lang)}` })),
     hint: t(deliverableHint(d, viewer)),

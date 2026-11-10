@@ -19,7 +19,7 @@ import { renderTxt } from './home';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const P = PROTO as any;
 const G = (GOLD as any).en;
-const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'] as const;
+const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'] as const;
 const TITLES: Record<string, string> = Object.fromEntries(Object.entries(P.PERSONAS as Record<string, [string, string]>).map(([r, [, title]]) => [r, title]));
 /** Projects each persona manages (projects.pm): R. Aubert → HLT-026. */
 const MANAGED: Record<string, string[]> = { pm: ['HLT-026'] };

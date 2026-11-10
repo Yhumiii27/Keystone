@@ -135,12 +135,12 @@ describe('ITP · commissioning Server Functions', () => {
   it('"Plan SAT": dates the system’s SAT step; refused before the status date, without a plan, or once the SAT is done', async () => {
     viewer.name = 'Romain Aubert';
     viewer.role = 'pm';
-    expect(await planSatAction('HLT-026', { system: 'Hoist mechanisms', date: '17 Dec 2026', client: 'N. Bensaïd', note: 'Punch A items closed' })).toEqual({ toast: 'SAT planned · invitation sent to the client' });
+    expect(await planSatAction('HLT-026', { system: 'Hoist mechanisms', date: '17 Dec 2026', client: 'N. Bensaïd', note: 'Punch A items closed' })).toEqual({ toast: 'SAT planned' }); // D9-06: no invitation from Keystone
     const c = (await getCommissioning('HLT-026'))!;
     expect(c.systems[1].cells.find((x) => x.step === 'sat')).toMatchObject({ status: 'planned', dateOn: '2026-12-17' });
     expect(c.satPlans.at(-1)).toMatchObject({ system: 'Hoist mechanisms', plannedOn: '2026-12-17', clientWitnesses: 'N. Bensaïd', prerequisites: 'Punch A items closed', plannedBy: 'Romain Aubert' });
     viewer.lang = 'fr';
-    expect(await planSatAction('HLT-026', { system: 'Structure', date: '10 déc. 2026' })).toEqual({ toast: 'SAT planifiée · invitation envoyée au client' });
+    expect(await planSatAction('HLT-026', { system: 'Structure', date: '10 déc. 2026' })).toEqual({ toast: 'SAT planifiée' });
     expect(await planSatAction('HLT-026', { date: '20 sept. 2026' })).toEqual({ error: 'La date de SAT ne peut pas précéder la date d’état' });
     viewer.lang = 'en';
     expect(await planSatAction('HLT-026', { system: 'Track', date: '10 Dec 2026' })).toEqual({ error: 'Unknown system' });
@@ -151,8 +151,7 @@ describe('ITP · commissioning Server Functions', () => {
     viewer.role = 'director';
     expect(await planSatAction('NDC-031', { system: 'Structure', date: '10 Dec 2026' })).toEqual({ error: 'Unknown system' });
     expect(await planSatAction('NDC-031', { date: '' })).toEqual({ error: 'Date is required' });
-    // R-015 / R-036: NDC-031's client has no client account in the demo — nobody to invite, the toast says so.
-    expect(await planSatAction('NDC-031', { date: '3 Feb 2027', client: 'K. Doucouré' })).toEqual({ toast: 'SAT planned · no client contact to invite' });
+    expect(await planSatAction('NDC-031', { date: '3 Feb 2027', client: 'K. Doucouré' })).toEqual({ toast: 'SAT planned' });
     expect(await getCommissioning('NDC-031')).toBeNull();
     const [audit] = await listAudit({ projectCode: 'NDC-031', limit: 1 });
     expect([audit.who, audit.object, audit.change, audit.area]).toEqual(['Marie Lefebvre', 'SAT · General', 'SAT planned 3 Feb 2027 · witnesses K. Doucouré', 'Commissioning']);

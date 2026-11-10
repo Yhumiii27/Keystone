@@ -15,7 +15,11 @@ const NOTIF_PROJECT: Record<string, string | null> = { n10: null };
 export async function seedPlatform(tx: Tx, ctx: SeedCtx): Promise<void> {
   const personOf = (name: string) => ctx.personByFull.get(name) ?? ctx.personByShort.get(name) ?? null;
 
-  const notifs = (PROTO.NOTIFS as ProtoNotif[]).map(([code, kind, title, body, when, read, screen, extra, audience], i) => ({
+  // D9-06: no client persona — the prototype's notices to the client (or opening the client portal) are not seeded.
+  const proto = (PROTO.NOTIFS as ProtoNotif[])
+    .map(([code, kind, title, body, when, read, screen, extra, audience]): ProtoNotif => [code, kind, title, body, when, read, screen, extra, audience.filter((r) => r !== 'client')])
+    .filter(([, , , , , , screen, , audience]) => screen !== 'client' && audience.length > 0);
+  const notifs = proto.map(([code, kind, title, body, when, read, screen, extra, audience], i) => ({
     row: {
       id: newId(), code, kind, title, body, occurredAt: parseStampText(when, DEMO_TODAY_ISO),
       projectId: NOTIF_PROJECT[code] === null ? null : must(ctx.projectByCode, NOTIF_PROJECT[code] ?? 'HLT-026', 'project'),

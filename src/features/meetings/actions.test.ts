@@ -61,10 +61,6 @@ describe('meetings Server Functions', () => {
     Object.assign(viewer, { name: 'Antoine Girard', short: 'A. Girard', role: 'englead', pm: false });
     expect(await sendMinutesAction({ code: 'HLT-026', meeting: 'MTG-118' })).toEqual(WRITERS);
     expect(await analyseTranscriptAction({ code: 'HLT-026', meeting: 'MTG-119', engine: 'claude' })).toEqual({ ok: false, error: 'Claude is not configured (ANTHROPIC_API_KEY)' });
-    // The client reads: no meeting, no note.
-    Object.assign(viewer, { name: 'Nadia Bensaïd', short: 'N. Bensaïd', role: 'client', pm: false });
-    expect(await createMeetingAction('HLT-026', NEW)).toEqual({ error: 'These meetings are read-only for you' });
-    expect(await addMinutesLineAction({ code: 'HLT-026', meeting: 'MTG-118', point: 0, type: 'info', text: 'x' })).toEqual({ ok: false, error: 'These meetings are read-only for you' });
   });
 
   it('refuses read-only viewers, unknown projects and meetings of another project — nothing is written', async () => {

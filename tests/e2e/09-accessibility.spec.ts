@@ -41,7 +41,7 @@ const GLOBAL = [
   '/resources/skills', '/resources/leave', '/resources/rates', '/admin/settings', '/admin/machine-types', '/admin/document-types', '/admin/integrations', '/catalogue/machines',
 ];
 const PROJECT = [
-  'client', 'documents', 'contract', 'billing', 'plan', 'schedule', 'budget', 'budget?tab=setup', 'hours', 'contingency', 'resources', 'meetings', 'meetings?view=decisions',
+  'documents', 'contract', 'billing', 'plan', 'schedule', 'budget', 'budget?tab=setup', 'hours', 'contingency', 'resources', 'meetings', 'meetings?view=decisions',
   'meetings?view=actions', 'stakeholders', 'interfaces', 'engineering', 'engineering/process', 'engineering/mechanical', 'engineering/electrical',
   'engineering/automation', 'pid', 'bom', 'risks', 'changes', 'quality', 'itp', 'site', 'shipments', 'commissioning', 'trends', 'closure', 'orders', 'deliveries',
 ];
@@ -64,7 +64,6 @@ const PERSONA_SCREENS: Record<Exclude<Role, 'director'>, string[]> = {
   procurement: ['/', '/projects/HLT-026/orders', '/purchasing/sourcing', '/purchasing/stock'],
   finance: ['/', '/portfolio/cash', '/resources/rates'],
   logistics: ['/', '/projects/HLT-026/shipments', '/projects/HLT-026/site'],
-  client: ['/', '/projects/HLT-026/client'],
 };
 
 for (const [role, paths] of Object.entries(PERSONA_SCREENS) as [Exclude<Role, 'director'>, string[]][])

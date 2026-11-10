@@ -163,7 +163,7 @@ describe('data access and gating', () => {
   });
 
   it('outside-workspace roles = the prototype for the 8 personas (contract: director, PM — procurement since P-4 no more; billing: director, PM)', () => {
-    for (const role of ['director', 'pm', 'procurement', 'client', 'depthead', 'member', 'englead', 'quality'] as RoleKey[])
+    for (const role of ['director', 'pm', 'procurement', 'depthead', 'member', 'englead', 'quality'] as RoleKey[])
       for (const screen of ['contract', 'billing'] as const)
         for (const lang of ['en', 'fr'] as const) {
           const g = G.scenarios[`${role === 'director' ? 'seed' : role}|${screen}|${lang}`];

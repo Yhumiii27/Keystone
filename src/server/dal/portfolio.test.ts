@@ -70,7 +70,7 @@ describe('portfolio DAL', () => {
   it('my projects: director seed and department head', async () => {
     const d = await getMyProjects(PERSONA_BY_ROLE.director, 'HLT-026', 'en');
     // A-3: the same population as the Overview (PRS-038 in, WSA-044 out).
-    expect(d.kpis.map((k) => k.value)).toEqual(['6', '3', '0', '5']);
+    expect(d.kpis.map((k) => k.value)).toEqual(['6', '3', '0', '7']); // D9-06: approvals + D-014, D-016
     expect(d.cards.map((c) => c.project.code)).toEqual(['HLT-026', 'NDC-031', 'RCF-019', 'ERP-202', 'MSR-012', 'PRS-038']);
     // R-073: HLT-026's progress computed from its activities (64 % → 63 %).
     expect(d.cards[0]).toMatchObject({ myRole: 'Portfolio director', progressPct: '63%', ind: { finishForecast: '14 Jan 2027', msLine: '23 Oct · Late' } });

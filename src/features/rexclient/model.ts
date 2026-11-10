@@ -1,21 +1,16 @@
-// View models of the Lessons learned & closure screen (docs/spec/07 §2.7, template 921–931) and of the client portal
-// "My project — client view" (docs/spec/03 §8, template 2180–2236): the domain figures (src/domain/rexclient.ts) and
-// the DAL rows turned into the translated strings, tag classes and links the components render. Pure (no I/O): `t`
-// and `lang` come from the page.
+// View models of the Lessons learned & closure screen (docs/spec/07 §2.7, template 921–931) and of the client status report
+// (the former client portal's figures, docs/spec/03 §8): the domain figures (src/domain/rexclient.ts) and the DAL rows turned
+// into the translated strings, tag classes and links the components render. Pure (no I/O): `t` and `lang` come from the page.
 import { LO, OK } from '@/components/app/tones';
-import { screenHref } from '@/config/screens';
 import {
-  CLIENT_TABS, DOCS_TAB, clientDecisions, clientKpis, clientMilestones, clientProgress, issueRow, openIssueCount, rexView, sharedDocRow,
-  contractSummary, invoiceRow, type ChangeRequestLike, type ClientDocCategory, type ClientTab, type ClosureMark, type DeliverableLike, type EvmLike,
+  clientDecisions, clientKpis, rexView, contractSummary, invoiceRow, type ChangeRequestLike, type ClosureMark, type DeliverableLike, type EvmLike,
   type Kpi, type ScheduleHeaderLike, type Tone,
 } from '@/domain/rexclient';
 import { yearOfIso } from '@/domain/clock';
-import { scheduleView, type GanttTask, type MilestoneInput, type ScheduleInput, type ScheduleMilestone } from '@/domain/schedule-gantt';
-import { slipText } from '@/features/schedule/i18n';
-import { dataText } from '@/i18n/data-text';
+import type { MilestoneInput } from '@/domain/schedule-gantt';
 import type { Lang, T } from '@/i18n/translate';
-import { fmtDOfIso, type ClosureItemStatus, type LessonStatus } from '@/server/db/codes';
-import type { ClientPortal } from '@/server/dal/client';
+import type { ClosureItemStatus, LessonStatus } from '@/server/db/codes';
+import type { ClientReportData } from '@/server/dal/client-report';
 import type { ProjectRex } from '@/server/dal/rex';
 import { dueText, exactText, milestoneText, subText } from './i18n';
 
@@ -87,13 +82,9 @@ export function rexScreenView(d: ProjectRex, t: T, lang: Lang): RexScreenView {
   };
 }
 
-// ── Client portal ──────────────────────────────────────────────────────────────────────────────────────
-
-/** `/projects/{code}/client` with `?tab=` (Progress & milestones is the default, no parameter). */
-export function clientHref(code: string, tab: ClientTab = 'progress'): string {
-  const base = screenHref('client', { code });
-  return tab === 'progress' ? base : `${base}?tab=${tab}`;
-}
+// ── Client status report ────────────────────────────────────────────────────────────────────────────────
+// D9-06 / D9-22: the client portal was removed (clients never see Keystone); its model remains for the client audience of the
+// status report the project team generates from Trends and sends (src/server/export/providers/status-report.ts).
 
 export interface ScheduleLike {
   header: ScheduleHeaderLike & { start: number; chartMonths: string[] };
@@ -110,151 +101,48 @@ export interface DecisionView {
   when: string;
   title: string;
   sub: string;
-  approveLabel: string;
-  /**
-   * Delivery 8 (R-140, X-11 shared): a change request's justification as typed (dataText — never t()), null when blank; `long`
-   * when it may need more than three lines (the row then offers "Show more").
-   */
-  why: { text: string; long: boolean } | null;
 }
 
-/** A justification that may not fit the three clamped lines of the portal row (R-140). */
-const isLongText = (s: string) => s.length > 180 || s.split('\n').length > 3;
-
-export interface ClientScreenView {
-  tab: ClientTab;
-  tabs: { value: ClientTab; label: string; href: string }[];
+export interface ClientReportView {
   kpis: KpiView[];
-  /** Null without schedule data (empty state). */
-  progress: { label: string; planH: string; actH: string }[] | null;
-  milestones: { name: string; baseDate: string; fcDate: string; status: string; tagClass: string }[];
   decisions: DecisionView[];
-  decided: { id: string; title: string; state: string; tagClass: string; when: string }[];
-  invoices: { no: string; name: string; amount: string; status: string; tagClass: string; payment: string }[];
-  /** Empty-state text of the invoices card (internal project / no billing plan), null when there are invoices. */
+  decided: { id: string; title: string; state: string; when: string }[];
+  invoices: { no: string; name: string; amount: string; status: string; payment: string }[];
+  /** Empty-state text of the invoices (internal project / no billing plan), null when there are invoices. */
   invoicesEmpty: string | null;
   summary: { k: string; v: string }[] | null;
-  /** Contract summary empty state (no billing plan), null when there is a summary (internal projects: €0k rows). */
-  summaryEmpty: string | null;
-  /** `when`: "Raised 22 Sep", followed by "· Answered 30 Sep" once the project manager answered (R-137). */
-  issues: { id: string; title: string; when: string; status: string; tagClass: string; response: string }[];
-  docs: { id: string; title: string; typeLabel: string; date: string; rev: string; status: string; tagClass: string; acknowledged: boolean; ackLabel: string }[];
-  /**
-   * "By category" strip above the table (L-9 = a, R-138): the categories of the shared documents computed from the Codex
-   * index, translated ("Meeting minutes · 2 files · Meeting minutes · Last issued 26 Sep"); empty when nothing is shared.
-   */
-  docCategories: DocCategoryView[];
-  docsLabels: { idHeader: string; sub: string; empty: string; byCategory: string };
-  /** "Schedule" tab (S-9a): the summary Gantt and the milestones, read-only; null on the other tabs / without a schedule. */
-  planning?: ClientPlanningView | null;
 }
 
-export interface DocCategoryView {
-  key: string;
-  /** Translated category ("Comptes rendus de réunion"). */
-  name: string;
-  /** "3 files" / « 3 fichiers ». */
-  files: string;
-  /** Translated type labels of its files, " · ". */
-  description: string;
-  /** "Last issued 26 Sep". */
-  latest: string;
-}
-
-/** Categories of the shared documents (R-138), translated: Keystone's vocabulary through t(), no typed text involved; dates against the business year `year`. */
-export const docCategoryViews = (cats: readonly ClientDocCategory[], t: T, year: number): DocCategoryView[] =>
-  cats.map((c) => ({
-    key: c.key,
-    name: t(c.category),
-    files: t(c.fileCount === 1 ? '1 file' : `${c.fileCount} files`),
-    description: c.types.map((x) => t(x)).join(' · '),
-    latest: `${t('Last issued')} ${t(fmtDOfIso(c.latestIssuedOn, year))}`,
-  }));
-
-/** Client portal "Schedule" tab (S-9a): the Schedule screen's Gantt (work packages without owners) and milestone list. */
-export interface ClientPlanningView {
-  months: string[];
-  tasks: GanttTask[];
-  milestones: Pick<ScheduleMilestone, 'name' | 'bL' | 'fL' | 'done'>[];
-  todayL: string;
-  /** Milestone list: translated name, "Baseline 15 Mar · Forecast 2 Apr", signed slip, status code and label. */
-  list: { name: string; dates: string; slipText: string; slipAlert: boolean; status: ScheduleMilestone['status']; statusLabel: string }[];
-  /** "Forecast finish 14 Jan 2027 · Baseline 15 Dec 2026". */
-  finish: string;
-}
-
-export function clientPlanningView(d: ScheduleInput, t: T, lang: Lang): ClientPlanningView {
-  const v = scheduleView(d);
-  return {
-    months: v.ganttMonths.map((m) => t(m)),
-    // Owners are internal (initials of the project team): the client view leaves them out.
-    tasks: v.tasks.map((x) => ({ ...x, name: exactText(x.name, lang), owner: '', slipText: slipText(x.slipText, lang) })),
-    milestones: v.milestones.map((m) => ({ name: exactText(m.name, lang), bL: m.bL, fL: m.fL, done: m.done })),
-    todayL: v.todayL,
-    list: v.milestones.map((m) => ({
-      name: exactText(m.name, lang), dates: `${t('Baseline')} ${t(m.baseDate)} ${t('· Forecast')} ${t(m.fcDate)}`, slipText: slipText(m.slipText, lang), slipAlert: m.slipAlert,
-      status: m.status, statusLabel: t(m.statusLabel),
-    })),
-    finish: `${t('Forecast finish')} ${t(d.header.finishText)} · ${t('Baseline')} ${t(d.header.baselineText)}`,
-  };
-}
-
-export interface ClientScreenInput {
-  code: string;
-  tab: ClientTab;
-  portal: ClientPortal;
+export interface ClientReportInput {
+  data: ClientReportData;
   schedule: ScheduleLike | null;
   /** The project has a billing plan, and it is an internal one (no client revenue). */
   billing: { internal: boolean } | null;
-  /** R-013: business date ("Raised today"). */
+  /** R-013: business date. */
   today: string;
 }
 
-export function clientScreenView({ code, tab, portal, schedule, billing, today }: ClientScreenInput, t: T, lang: Lang): ClientScreenView {
+export function clientReportView({ data, schedule, billing, today }: ClientReportInput, t: T, lang: Lang): ClientReportView {
   // The DAL lists the change requests / deliverables waiting for the client and those it decided; the domain derives both lists.
-  const all = [...portal.decisions, ...portal.decided];
+  const all = [...data.decisions, ...data.decided];
   const crs: ChangeRequestLike[] = all.flatMap((x) => (x.changeRequest ? [x.changeRequest] : []));
   const dlv: DeliverableLike[] = all.flatMap((x) => (x.deliverable ? [x.deliverable] : []));
   const year = yearOfIso(today);
   const dec = clientDecisions(crs, dlv, lang, year);
   const evm: EvmLike | null = schedule && schedule.ev.length ? { pv: schedule.pv, ev: schedule.ev, bac: schedule.bac } : null;
-  const kpis = clientKpis({ evm, schedule: schedule?.header ?? null, awaiting: dec.waiting.length, openIssues: openIssueCount(portal.issues) });
+  const kpis = clientKpis({ evm, schedule: schedule?.header ?? null, awaiting: dec.waiting.length });
   return {
-    tab,
-    tabs: CLIENT_TABS.map((o) => ({ value: o.value, label: t(o.label), href: clientHref(code, o.value) })),
     kpis: kpiViews(kpis, t, lang),
-    progress: schedule && evm ? clientProgress(schedule.header.chartMonths, evm).map((p) => ({ ...p, label: t(p.label) })) : null,
-    milestones: schedule
-      ? clientMilestones(schedule.milestones, schedule.header.start, year).map((m) => ({ name: exactText(m.name, lang), baseDate: t(m.baseDate), fcDate: t(m.fcDate), status: t(m.status), tagClass: tag(m.tone) }))
-      : [],
-    decisions: dec.waiting.map((d) => ({
-      kind: d.kind, kindLabel: t(d.kindLabel), id: d.id, when: t(d.when), title: exactText(d.title, lang), sub: t(d.sub), approveLabel: t(d.approveLabel),
-      // R-140 (X-11): the text as typed, apart from the translated sub-line.
-      why: d.justification ? { text: dataText(d.justification, lang) ?? d.justification, long: isLongText(d.justification) } : null,
-    })),
-    decided: dec.decided.map((d) => ({ id: d.id, title: exactText(d.title, lang), state: t(d.state), tagClass: tag(d.tone), when: t(d.when) })),
-    invoices: portal.invoices.map((i) => {
-      const r = invoiceRow({ milestone: i.milestone, amountKeur: i.amountKeur, status: i.status, invoiceNumber: i.invoiceNumber, dueOn: i.dueOn }, lang, year, portal.currency);
+    decisions: dec.waiting.map((d) => ({ kind: d.kind, kindLabel: t(d.kindLabel), id: d.id, when: t(d.when), title: exactText(d.title, lang), sub: t(d.sub) })),
+    decided: dec.decided.map((d) => ({ id: d.id, title: exactText(d.title, lang), state: t(d.state), when: t(d.when) })),
+    invoices: data.invoices.map((i) => {
+      const r = invoiceRow({ milestone: i.milestone, amountKeur: i.amountKeur, status: i.status, invoiceNumber: i.invoiceNumber, dueOn: i.dueOn }, lang, year, data.currency);
       return {
-        no: r.no, name: milestoneText(r.name, i.milestoneNumber, t, lang), amount: r.amount, status: t(r.status), tagClass: tag(r.tone),
+        no: r.no, name: milestoneText(r.name, i.milestoneNumber, t, lang), amount: r.amount, status: t(r.status),
         payment: r.payment.kind === 'due' ? dueText(r.payment.date, t, lang) : t(r.payment.text),
       };
     }),
-    invoicesEmpty: portal.invoices.length ? null : t(billing?.internal ? INTERNAL : 'No billing plan for this project yet'),
-    summary: portal.contract ? contractSummary(portal.contract, lang).map((r) => ({ k: t(r.k), v: r.v })) : null,
-    summaryEmpty: portal.contract ? null : t('No contract recorded for this project'),
-    issues: portal.issues.map((i) => {
-      const r = issueRow({ number: i.number, title: i.title, raisedOn: i.raisedOn, status: i.status, response: i.response }, today);
-      const when = i.answeredOn ? `${t(r.when)} · ${t('Answered')} ${t(fmtDOfIso(i.answeredOn, year))}` : t(r.when);
-      return { id: r.id, title: exactText(r.title, lang), when, status: t(r.status), tagClass: tag(r.tone), response: exactText(r.response, lang) };
-    }),
-    docs: portal.documents.map((d) => {
-      const r = sharedDocRow(d);
-      // R-148: Codex record titles as typed (or their seeded demo entry), whoever created them.
-      const title = exactText(r.title, lang);
-      return { id: r.id, title, typeLabel: t(r.typeLabel), date: t(r.date), rev: r.rev, status: t(r.status), tagClass: tag(r.tone), acknowledged: r.acknowledged, ackLabel: t(r.ackLabel) };
-    }),
-    docCategories: docCategoryViews(portal.documentCategories, t, year),
-    docsLabels: { idHeader: t(DOCS_TAB.idHeader), sub: t(DOCS_TAB.sub), empty: t(DOCS_TAB.empty), byCategory: t('By category') },
+    invoicesEmpty: data.invoices.length ? null : t(billing?.internal ? INTERNAL : 'No billing plan for this project yet'),
+    summary: data.contract ? contractSummary(data.contract, lang).map((r) => ({ k: t(r.k), v: r.v })) : null,
   };
 }

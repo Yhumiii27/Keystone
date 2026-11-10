@@ -62,8 +62,6 @@ export type ApprovalDecision =
   | { mode: 'delivery-qc'; projectCode: string; number: string }
   /** NCR in verification (quality manager): Approve → Closed, Reject → back to Corrective action; sent to Vigie (src/features/quality/actions.ts). */
   | { mode: 'ncr-verification'; projectCode: string; number: string }
-  /** Submitted deliverable (project's client contact): Approve → Accepted (PV), Reject → Rejected (src/features/quality/actions.ts). */
-  | { mode: 'deliverable'; projectCode: string; number: string }
   /**
    * Chapter 4: pending resource request (department side, same rules as /resources/approvals): Approve → task created,
    * Reject → asks the reason the PM sees (src/features/myapprovals/actions.ts → src/features/requests/actions.ts).
@@ -249,17 +247,18 @@ export const changeRequestSub = (cr: Pick<ChangeRequestForInbox, 'typesLabel' | 
 /**
  * Change requests of a project waiting for the viewer's step, decided inline (Approve → ok, Reject → rejected).
  * A CCB row names the step at the end of the sub line ("… · Change control board"), since the same request
- * already came by for the director's own step.
+ * already came by for the director's own step. D9-06: the client step (the client's signed decision the PM records, with its
+ * date and reference) has no inline decision — the row opens the request on Change control.
  */
 export function changeRequestItems(crs: ChangeRequestForInbox[], viewer: StepViewer, code: string, lang: Lang, year: number): ApprovalItem[] {
   return crs.flatMap((cr) => {
     const step = pendingStepFor(cr, viewer);
     if (!step) return [];
-    const sub = changeRequestSub(cr, lang) + (step === 'ccb' ? ' · ' + CR_STEP_LABEL.ccb : '');
+    const sub = changeRequestSub(cr, lang) + (step === 'ccb' || step === 'client' ? ' · ' + CR_STEP_LABEL[step] : '');
     return [
       item('cr', {
         id: cr.id, title: cr.title, sub, when: cr.date, who: cr.by,
-        href: href('changes', code, { cr: cr.id }), decision: { mode: 'change-request', projectCode: code, number: cr.id, step },
+        href: href('changes', code, { cr: cr.id }), decision: step === 'client' ? null : { mode: 'change-request', projectCode: code, number: cr.id, step },
       }, year),
     ];
   });

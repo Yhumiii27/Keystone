@@ -49,7 +49,7 @@ export interface ReportRun {
 export function viewerOfRecipient(r: Recipient): Persona {
   const role = activeRoleOf(r.roles) ?? 'member';
   return {
-    role, roles: r.roles, name: r.name, title: '', initials: '', short: r.short, email: r.email, organisation: r.organisation, department: null, personId: r.personId, userId: r.userId,
+    role, roles: r.roles, name: r.name, title: '', initials: '', short: r.short, email: r.email, department: null, personId: r.personId, userId: r.userId,
   };
 }
 
@@ -91,7 +91,7 @@ export async function runScheduledReports(on?: string, now: Date = new Date()): 
 
   const wanted: { key: SendKey; r: Recipient; projectCode: string | null }[] = [];
   for (const p of projects) {
-    const leads = (leadsOf.get(p.code) ?? []).map((id) => recipients.get(id)).filter((r): r is Recipient => !!r && r.roles.some((x) => x !== 'client'));
+    const leads = (leadsOf.get(p.code) ?? []).map((id) => recipients.get(id)).filter((r): r is Recipient => !!r && r.roles.length > 0);
     if (leads.length) run.projects++;
     for (const r of leads) wanted.push({ key: reportSendKey(r.personId, 'project_weekly', p.code, today), r, projectCode: p.code });
   }

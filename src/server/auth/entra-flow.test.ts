@@ -84,8 +84,8 @@ describe('demo mode (default)', () => {
     expect((await getViewer()).role).toBe('director'); // no cookie → director, as before
     jar.set('ks-role', 'pm');
     expect(await getViewer()).toMatchObject({ role: 'pm', name: 'Romain Aubert', roles: ['pm'], personId: null, userId: null });
-    jar.set('ks-role', 'client');
-    expect(await getViewer()).toMatchObject({ role: 'client', organisation: 'Port authority' });
+    jar.set('ks-role', 'client'); // D9-06: no client persona any more — an unknown persona falls back to the director
+    expect((await getViewer()).role).toBe('director');
     expect((await handleSignIn(new NextRequest(`${ORIGIN}/api/auth/sign-in`))).status).toBe(404);
     expect((await handleCallback(new NextRequest(`${ORIGIN}/api/auth/callback?code=x&state=y`))).status).toBe(404);
     expect((await handleSignOut(new NextRequest(`${ORIGIN}/api/auth/sign-out`, { method: 'POST' }))).status).toBe(404);
@@ -134,7 +134,7 @@ describe('Entra ID sign-in', () => {
     useSession(r);
     jar.set('ks-role', 'client'); // ignored with Entra ID
     const v = await getViewer();
-    expect(v).toMatchObject({ role: 'director', roles: ['director', 'pm'], name: 'Romain Aubert', short: 'R. Aubert', email: 'romain.aubert@epc2i.fr', userId: u!.id, personId: u!.personId, organisation: null });
+    expect(v).toMatchObject({ role: 'director', roles: ['director', 'pm'], name: 'Romain Aubert', short: 'R. Aubert', email: 'romain.aubert@epc2i.fr', userId: u!.id, personId: u!.personId });
   });
 
   it('creates the account of a directory person at the first sign-in, roles from mapped groups', async () => {
@@ -147,13 +147,7 @@ describe('Entra ID sign-in', () => {
     const u = await userOf('Hélène Sauvage');
     expect(u).toMatchObject({ personaRole: null, roles: ['quality'], entraObjectId: 'oid-helene', isExternal: false });
     useSession(r);
-    expect(await getViewer()).toMatchObject({ role: 'quality', roles: ['quality'], name: 'Hélène Sauvage', department: 'Quality', organisation: null });
-  });
-
-  it('gives a client user their own organisation (no more CLIENT_ORG constant)', async () => {
-    const r = await signIn({ oid: 'oid-nadia', email: 'n.bensaid@port-exemple.fr', roles: ['client'] });
-    useSession(r);
-    expect(await getViewer()).toMatchObject({ role: 'client', organisation: 'Port authority', title: 'Client — Port authority' });
+    expect(await getViewer()).toMatchObject({ role: 'quality', roles: ['quality'], name: 'Hélène Sauvage', department: 'Quality' });
   });
 
   it('refuses an unknown e-mail, without a session, and audits the attempt', async () => {
@@ -165,9 +159,9 @@ describe('Entra ID sign-in', () => {
     expect((await listAudit({ limit: 1 }))[0]).toMatchObject({ who: 'nobody@epc2i.fr', change: 'Sign-in refused · Unknown e-mail', area: 'Sign-in' });
   });
 
-  it('refuses tokens without a Keystone role, and client roles without an organisation', async () => {
+  it('refuses tokens without a Keystone role (D9-06: "client" is no Keystone role any more)', async () => {
     expect((await signIn({ oid: 'oid-julien', email: 'julien.wagner@epc2i.fr', roles: ['Other.App'] })).res.headers.get('location')).toBe(`${ORIGIN}/sign-in?error=no_role`);
-    expect((await signIn({ oid: 'oid-julien', email: 'julien.wagner@epc2i.fr', roles: ['client'] })).res.headers.get('location')).toBe(`${ORIGIN}/sign-in?error=no_organisation`);
+    expect((await signIn({ oid: 'oid-julien', email: 'julien.wagner@epc2i.fr', roles: ['client'] })).res.headers.get('location')).toBe(`${ORIGIN}/sign-in?error=no_role`);
     expect((await userOf('Julien Wagner'))!.entraObjectId).toBeNull(); // nothing linked by a refused sign-in
   });
 

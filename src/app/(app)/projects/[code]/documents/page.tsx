@@ -19,7 +19,7 @@ import { getCodexSyncState, getDocumentRecord, listDocumentTypes, listProjectDoc
 import { pageOf } from '@/domain/pagination';
 import { codexHomeUrl } from '@/server/integrations/codex/links';
 import { canDepositInCodex, canSyncCodex } from '@/domain/rights';
-import { clientProjectCodes, getProjectContext } from '@/server/project-context';
+import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 
 type SP = Record<string, string | string[] | undefined>;
@@ -29,7 +29,7 @@ export default async function DocumentsPage({ params, searchParams }: { params: 
   const [{ code }, sp] = await Promise.all([params, searchParams]);
   const ctx = await getProjectContext(code, 'docs');
   const project = ctx.project.code;
-  const canEdit = canDepositInCodex(ctx.viewer.role, ctx.outside, ctx.access);
+  const canEdit = canDepositInCodex(ctx.outside, ctx.access);
   const canSync = canSyncCodex(ctx.viewer.role, ctx.outside);
   const state: DocsState = {
     scope: parseScope(first(sp.scope)),
@@ -42,7 +42,7 @@ export default async function DocumentsPage({ params, searchParams }: { params: 
   };
   const deposit = canEdit ? first(sp.deposit) || null : null;
 
-  const [{ t, lang }, allDocs, sync, found, types, ownCodes] = await Promise.all([
+  const [{ t, lang }, docs, sync, record, types] = await Promise.all([
     getI18n(),
     // R-017: "Current project" reads the project's records and the QMS ones only; "All projects" — and the deposit dialog, whose
     // number preview skips every number in use — the whole vault (cached while the database is unchanged).
@@ -50,11 +50,7 @@ export default async function DocumentsPage({ params, searchParams }: { params: 
     getCodexSyncState(),
     state.doc ? getDocumentRecord(state.doc) : Promise.resolve(null),
     deposit ? listDocumentTypes() : Promise.resolve(null),
-    ctx.viewer.role === 'client' ? clientProjectCodes(ctx.viewer) : Promise.resolve(null),
   ]);
-  // The client: shared documents of their organisation's projects only (and no drawer on any other record).
-  const docs = ownCodes ? allDocs.filter((d) => d.shared && ownCodes.has(d.project)) : allDocs;
-  const record = found && (!ownCodes || docs.some((d) => d.number === found.number)) ? found : null;
 
   const view = vaultView({ project, docs, sync, state }, t, lang);
   const drawer = record ? drawerView({ project, record, state, viewer: ctx.viewer, canEdit }, t, lang) : null;
@@ -79,8 +75,8 @@ export default async function DocumentsPage({ params, searchParams }: { params: 
   return (
     <>
       <PageHeader screen="docs" projectCode={project} primary={primary} />
-      {/* R-033: "Open Codex" opens Codex in a new tab — not for a client (no Codex access). */}
-      <DocsVault project={project} view={view} canEdit={canSync} codexHref={ctx.viewer.role === 'client' ? null : codexHomeUrl(project)} t={t} />
+      {/* R-033: "Open Codex" opens Codex in a new tab. */}
+      <DocsVault project={project} view={view} canEdit={canSync} codexHref={codexHomeUrl(project)} t={t} />
       {drawer && <DocumentDrawer key={drawer.number} project={project} view={drawer} t={t} />}
       {dep && <DepositWizard key={deposit} view={dep} />}
     </>

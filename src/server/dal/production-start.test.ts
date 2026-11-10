@@ -40,7 +40,7 @@ describe('a new production database', () => {
 
   it('has no current project; the project Homes show the empty Home, the others work', async () => {
     expect(await resolveCurrentProject('HLT-026')).toBeNull();
-    for (const role of ['director', 'pm', 'quality', 'procurement', 'client'] as RoleKey[]) {
+    for (const role of ['director', 'pm', 'quality', 'procurement'] as RoleKey[]) {
       const v = await home(role, 'HLT-026');
       expect(v.kpis).toEqual([]);
       expect(v.left.rows).toEqual([{ title: NO_PROJECT_TITLE, sub: NO_PROJECT_SUB, tag: '', tagClass: '', href: '' }]);
@@ -78,9 +78,6 @@ describe('a new production database', () => {
     expect(await resolveCurrentProject('HLT-026')).toBe(created.code);
     // No storage location yet (entered in Settings): the Deliveries page reads no default put-away instead of failing.
     expect(await getPutAwayOptions(created.code)).toEqual({ locations: [], defaultLocation: '' });
-    // Another organisation's project is never a client's fallback: the client Home stays empty.
-    expect(await resolveCurrentProject(null, { role: 'client' })).toBeNull();
-    expect((await home('client')).left.rows[0]?.title).toBe(NO_PROJECT_TITLE);
     expect((await home('pm', null)).left.rows[0]?.title).not.toBe(NO_PROJECT_TITLE);
   });
 
@@ -97,17 +94,6 @@ describe('the demo database', () => {
   beforeAll(async () => {
     setDb(await openDatabase());
   }, 60_000);
-
-  it('the fallback of a client is a project of their organisation', async () => {
-    const theirs = (await listProjects()).filter((p) => p.client === 'Port authority').map((p) => p.code);
-    expect(theirs).toContain('HLT-026');
-    const client = { role: 'client', organisation: 'Port authority' };
-    expect(await resolveCurrentProject(null, client)).toBe('HLT-026');
-    expect(await resolveCurrentProject('GONE-001', client)).toBe('HLT-026');
-    // Another organisation's project is never current for a client (P-10a, R-042), nor any project without an organisation.
-    expect(await resolveCurrentProject('NDC-031', client)).toBe('HLT-026');
-    expect(await resolveCurrentProject(null, { role: 'client', organisation: null })).toBeNull();
-  });
 
   it('keeps HLT-026 as the default project and the prototype numbering floors', async () => {
     expect(await resolveCurrentProject(null)).toBe('HLT-026');

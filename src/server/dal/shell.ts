@@ -17,11 +17,9 @@ import { and, eq, sql } from 'drizzle-orm';
 import { cache } from 'react';
 import { personaOf, type Persona, type PersonaRef } from '@/config/personas';
 import { DEFAULT_PROJECT, canSee, screenHref, type RoleKey, type ScreenId } from '@/config/screens';
-import { clientSeesChangeRequest } from '@/domain/client-visibility';
 import { workdayOffsetOf } from '@/domain/clock';
 import { fiscalYearLabel } from '@/domain/portfolio';
 import { defaultDepartment } from '@/domain/requests';
-import { PURCHASING_SCREENS, clientRefusedProject, clientSeesMeeting, clientSeesTarget } from '@/domain/rights';
 import { dueTodayBadge, workingDayOf } from '@/domain/tasks';
 import { mapCrumbExtra } from '@/domain/worldmap';
 import { approvalCountsByProject } from '@/server/approvals';
@@ -29,7 +27,7 @@ import { businessToday } from '@/server/clock';
 import { ttlRead } from '@/server/cache/read-cache';
 import { getDb } from '@/server/db/client';
 import { ncrSeverity, ncrStatus } from '@/server/db/codes';
-import { changeRequests, meetings as meetingsTable, projects as projectsTable } from '@/server/db/schema';
+import { changeRequests, projects as projectsTable } from '@/server/db/schema';
 import { ncrHref } from '@/features/quality/links';
 import { getVigieQualityConnector } from '@/server/integrations/vigie/quality-connector';
 import { zoneLabelOf, zoneManagerLine, type ZoneEntry } from '@/domain/zones';
@@ -104,7 +102,7 @@ export const SHELL_BADGES_TTL_MS = 30_000;
 
 /** Cache key of a viewer: every field of the viewer the badges (and their rights) depend on. */
 export const viewerKey = (v: Persona) =>
-  JSON.stringify([v.role, v.roles, v.name, v.short, v.organisation, v.department, v.personId, v.userId, v.email]);
+  JSON.stringify([v.role, v.roles, v.name, v.short, v.department, v.personId, v.userId, v.email]);
 
 /** Global badges that do not depend on the viewer (every project's records). */
 interface SharedGlobalBadges { docs: string; eco: string; invoices: number; stock: string; sav: string; plumbing: string }
@@ -195,36 +193,17 @@ interface ProjectBadgeInputs {
   withData: Set<string>;
 }
 
-/**
- * Meetings with notes in progress per project code that a client sees (P-10b, `clientSeesMeeting`: the external meetings) —
- * her Meetings badge never counts the internal meetings.
- */
-async function clientMeetingsToWriteByProject(): Promise<Record<string, number>> {
-  const db = await getDb();
-  const rows = await db
-    .select({ code: projectsTable.code, type: meetingsTable.type, n: sql<number>`count(*)::int` })
-    .from(meetingsTable)
-    .innerJoin(projectsTable, eq(projectsTable.id, meetingsTable.projectId))
-    .where(eq(meetingsTable.status, 'notes_in_progress'))
-    .groupBy(projectsTable.code, meetingsTable.type);
-  const out: Record<string, number> = {};
-  for (const r of rows) if (clientSeesMeeting(r.type)) out[r.code] = (out[r.code] ?? 0) + r.n;
-  return out;
-}
-
-/** The project inputs that do not depend on the viewer (the client's Meetings count is the external meetings'). */
-type SharedProjectInputs = Omit<ProjectBadgeInputs, 'approvals' | 'meetings' | 'withData'> & {
-  meetings: Record<string, number>; clientMeetings: Record<string, number>; withData: string[];
-};
+/** The project inputs that do not depend on the viewer. */
+type SharedProjectInputs = Omit<ProjectBadgeInputs, 'approvals' | 'withData'> & { withData: string[] };
 
 async function sharedProjectInputs(): Promise<SharedProjectInputs> {
-  const [risks, changes, meetings, clientMeetings, interfaces, billing, deliveries, orders, eng, pid, quality, itp, site, projects] = await Promise.all([
-    riskBadges(), changesInReview(), meetingsToWriteByProject(), clientMeetingsToWriteByProject(), lateInterfacesByProject(), lateBillingMilestonesByProject(),
+  const [risks, changes, meetings, interfaces, billing, deliveries, orders, eng, pid, quality, itp, site, projects] = await Promise.all([
+    riskBadges(), changesInReview(), meetingsToWriteByProject(), lateInterfacesByProject(), lateBillingMilestonesByProject(),
     receiptsQcPendingByProject(), posAwaitingApprovalByProject(), engNavBadgesByProject(), pidBadgeByProject(), safe(criticalOpenNcrsByProject, {}),
     openPunchAByProject(), safe(siteBadgeByProject, {}), listProjects(),
   ]);
   const withData = projects.filter((p) => p.hasData).map((p) => p.code);
-  return { risks, changes, meetings, clientMeetings, interfaces, billing, deliveries, orders, eng, pid, quality, itp, site, withData };
+  return { risks, changes, meetings, interfaces, billing, deliveries, orders, eng, pid, quality, itp, site, withData };
 }
 
 /** The shared inputs of the shell, cached for every viewer (R-017, see SHELL_BADGES_TTL_MS). */
@@ -239,8 +218,8 @@ async function sharedShellInputs(): Promise<{ global: SharedGlobalBadges; projec
 async function projectBadgeInputs(who: PersonaRef, codes: string[], shared?: SharedProjectInputs): Promise<ProjectBadgeInputs> {
   const viewer = personaOf(who);
   const [approvals, base] = await Promise.all([approvalCountsByProject(viewer, codes), shared ?? sharedProjectInputs()]);
-  const { clientMeetings, withData, ...rest } = base;
-  return { ...rest, approvals, meetings: viewer.role === 'client' ? clientMeetings : base.meetings, withData: new Set(withData) };
+  const { withData, ...rest } = base;
+  return { ...rest, approvals, withData: new Set(withData) };
 }
 
 function badgesOf(code: string, inp: ProjectBadgeInputs): Badges {
@@ -265,22 +244,9 @@ function badgesOf(code: string, inp: ProjectBadgeInputs): Badges {
 /** Project entries that always carry a badge value ('' = none) on a project with data, as in the prototype. */
 const WITH_DATA_ENTRIES: ScreenId[] = ['meetings', 'interfaces', 'billing', 'itp', 'risks', 'changes', 'quality', 'orders', 'deliveries'];
 
-/** Entries of the client's workspace whose badge counts internal records: Quality's is the open critical NCRs (Vigie mirror). */
-const CLIENT_HIDDEN_BADGES: readonly ScreenId[] = ['quality', ...PURCHASING_SCREENS];
-
-/**
- * R-043 (P-1, P-10b): the badges a client receives — those of the entries of her workspace (`canSee`), never an NCR count or
- * a purchasing one. Applied here, in the DAL, so the internal counts never reach her browser (the sidebar props); other roles
- * get every badge.
- */
-function badgesFor(role: RoleKey, b: Badges): Badges {
-  if (role !== 'client') return b;
-  return Object.fromEntries(Object.entries(b).filter(([id]) => canSee('client', id as ScreenId) && !CLIENT_HIDDEN_BADGES.includes(id as ScreenId))) as Badges;
-}
-
 /** Badges of the project-dependent entries (Project section, orders, deliveries, My approvals) of one project. */
 export async function projectBadges(who: PersonaRef, code: string): Promise<Badges> {
-  return badgesFor(personaOf(who).role, badgesOf(code, await projectBadgeInputs(who, [code], (await sharedShellInputs()).projects)));
+  return badgesOf(code, await projectBadgeInputs(who, [code], (await sharedShellInputs()).projects));
 }
 
 // ── Sidebar data ──────────────────────────────────────────────────────────
@@ -294,10 +260,8 @@ export interface ShellNavData {
 }
 
 /**
- * Everything the sidebar needs, for the viewer (computed for every project; the client picks the current one). A role
- * stands for its demo persona (tests). R-043 (P-10b): a client gets the badges of her workspace only — no global badge (each
- * counts internal records of every project: Codex approvals, ECOs, invoices, stock, claims…), no NCR count, her Meetings badge
- * on the external meetings — so the internal counts never reach her browser.
+ * Everything the sidebar needs, for the viewer (computed for every project; the sidebar picks the current one). A role
+ * stands for its demo persona (tests).
  */
 export async function getShellNav(who: PersonaRef): Promise<ShellNavData> {
   const viewer = personaOf(who);
@@ -307,16 +271,14 @@ export async function getShellNav(who: PersonaRef): Promise<ShellNavData> {
 }
 
 async function computeShellNav(viewer: Persona): Promise<ShellNavData> {
-  const client = viewer.role === 'client';
-  // R-042 (P-10a): a client's sidebar and project switcher list their organisation's projects only.
-  const projects = (await listProjects()).filter((p) => !clientRefusedProject(viewer, p));
+  const projects = await listProjects();
   const codes = projects.map((p) => p.code);
   const shared = await sharedShellInputs();
-  const [global, inputs] = await Promise.all([client ? ({} as Badges) : globalBadges(viewer, shared.global), projectBadgeInputs(viewer, codes, shared.projects)]);
+  const [global, inputs] = await Promise.all([globalBadges(viewer, shared.global), projectBadgeInputs(viewer, codes, shared.projects)]);
   return {
     projects: projects.map((p) => ({ code: p.code, label: projectLabel(p), hasData: p.hasData })),
     globalBadges: global,
-    projectBadges: Object.fromEntries(codes.map((code) => [code, badgesFor(viewer.role, badgesOf(code, inputs))])),
+    projectBadges: Object.fromEntries(codes.map((code) => [code, badgesOf(code, inputs)])),
   };
 }
 
@@ -393,7 +355,6 @@ const STATIC_EXTRA: Partial<Record<ScreenId, string>> = {
   resources: 'all projects',
   plm: 'all projects',
   eco: 'all projects',
-  client: 'read-only except decisions and issues',
   doctypes: 'one circuit and one retention rule per type',
   mtypes: 'one template per product range · planning, costs, ITP, REX',
   catalogue: 'versions published to the subsidiaries (CAPEX application)',
@@ -440,21 +401,10 @@ export interface ShellNotification {
 }
 
 /**
- * Notifications delivered to the viewer (or the demo user of a role), bell order, with their read state. A client only gets
- * those about their organisation's projects and their workspace, never about NCRs or purchasing (R-042, R-043: P-1, P-10a,
- * P-10b) — a role audience reaches every client user, whatever their organisation.
+ * Notifications delivered to the viewer (or the demo user of a role), bell order, with their read state.
  */
 export async function notificationsFor(who: UserRef): Promise<ShellNotification[]> {
-  let rows = await listNotifications(who);
-  const viewer = typeof who === 'string' ? personaOf(who as RoleKey) : (who as Persona);
-  if (viewer.role === 'client') {
-    const projects = await listProjects();
-    const own = (code: string | null) => {
-      const p = projects.find((x) => x.code === (code ?? DEFAULT_PROJECT));
-      return !!p && !clientRefusedProject(viewer, p);
-    };
-    rows = rows.filter((n) => clientSeesTarget(n.screen, n.params, own(n.projectCode)));
-  }
+  const rows = await listNotifications(who);
   return rows.map((n) => ({
     id: n.id, kind: n.kind as NotifKind, title: n.title, sub: n.sub, when: n.when, read: n.read,
     // Portfolio-wide notifications (no project) target global screens; the default project is only a fallback.
@@ -500,14 +450,12 @@ const projectSub = (projectCode: string, ...labels: string[]) => ({ sub: [projec
  * Global search hits (≥ 2 characters). Projects come from the projects DAL. X-5 (R-052): purchase orders, change requests,
  * NCRs and risks are searched across the portfolio (every project the readers return, wizard-created ones included), each
  * hit opening its own project, with the project code in its sub-line; within each kind the current project's hits come
- * first, then the others in register order (3 per kind). Activities stay on the projects with data. A client gets
- * `searchShellClient`.
+ * first, then the others in register order (3 per kind). Activities stay on the projects with data.
  */
-export async function searchShell(query: string, currentCode: string, who: PersonaRef = 'director'): Promise<SearchHit[]> {
+/** Every viewer searches the same records (D9-06 removed the client's own search). */
+export async function searchShell(query: string, currentCode: string): Promise<SearchHit[]> {
   const q = query.trim().toLowerCase();
   if (q.length < 2) return [];
-  const viewer = personaOf(who);
-  if (viewer.role === 'client') return searchShellClient(q, currentCode, viewer);
   const has = (s: string) => s.toLowerCase().includes(q);
   const hits: SearchHit[] = [];
   const add = (xs: SearchHit[], max: number) => hits.push(...xs.slice(0, max));
@@ -557,28 +505,6 @@ export async function searchShell(query: string, currentCode: string, who: Perso
   // Drawings: the PDM vault mirror.
   const drawings = await safe(() => listDrawings(), []);
   add(drawings.filter((d) => has(d.number + ' ' + d.title)).map((d) => ({ kind: 'Drawing', title: `${d.number} · ${d.title}`, sub: `rev ${d.revision} · ${d.stateLabel}`, href: deepLink('drawings', { dwg: d.number }) })), 3);
-  return hits;
-}
-
-/**
- * The client's search (R-042, R-043: P-1, P-10a, P-10b): their organisation's projects (opening their portal) and, X-5
- * (R-052), the change requests of every project of their organisation that `clientSeesChangeRequest` lets them see, each
- * opening that project's Changes page, the current project's first — nothing outside their workspace (plan, parts,
- * people, ECOs, risks, drawings, activities), no purchase order, no NCR, nothing of another organisation.
- */
-async function searchShellClient(q: string, currentCode: string, viewer: Persona): Promise<SearchHit[]> {
-  const has = (s: string) => s.toLowerCase().includes(q);
-  const own = (await listProjects()).filter((p) => !clientRefusedProject(viewer, p));
-  const hits: SearchHit[] = own
-    .filter((p) => has(p.name + ' ' + p.code))
-    .slice(0, 4)
-    // R-148: the PM's name is typed data, never translated.
-    .map((p) => ({ kind: 'Project', title: p.name, sub: `${p.code} · ${p.status} · ${p.pm}`, subData: [p.pm], href: screenHref('client', { code: p.code }) }));
-  const crs = await Promise.all(own.map(async (p) => (await safe(() => listChangeRequestDetails(p.code), [])).map((cr) => ({ cr, code: p.code }))));
-  const seen = crs.flat().filter(({ cr }) => clientSeesChangeRequest(cr) && has(cr.id + ' ' + cr.title));
-  hits.push(...currentFirst(seen, (x) => x.code, currentCode, own).slice(0, 3).map(({ cr, code: c }) => ({
-    kind: 'Change request', title: `${cr.id} · ${cr.title}`, ...projectSub(c, cr.statusLabel), href: deepLink('changes', { cr: cr.id }, c),
-  })));
   return hits;
 }
 

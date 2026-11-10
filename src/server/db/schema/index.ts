@@ -24,7 +24,6 @@ export * from './quality';
 export * from './aftersales';
 export * from './site';
 export * from './cursus';
-export * from './client';
 export * from './engineering';
 export * from './settings';
 export * from './scheduling';

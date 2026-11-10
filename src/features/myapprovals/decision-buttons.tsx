@@ -26,7 +26,7 @@ import { decideReceiptFromInboxAction } from '@/features/deliveries/actions';
 import { decideDocumentFromInboxAction } from '@/features/docs/actions';
 import { decideEcoApprovalAction } from '@/features/eco/actions';
 import { decidePurchaseOrderAction } from '@/features/orders/actions';
-import { decideDeliverableAction, verifyNcrAction } from '@/features/quality/actions';
+import { verifyNcrAction } from '@/features/quality/actions';
 import { decideDrawDownAction } from '@/features/risks/actions';
 import { useI18n } from '@/i18n/client';
 import { decideChangeRequestAction, decideForcedStageChangeAction, decideResourceRequestAction } from './actions';
@@ -55,9 +55,6 @@ function recorder(decision: ApprovalDecision): (ok: boolean, note?: string) => P
     case 'ncr-verification':
       // Quality verification sent to Vigie (Approve → Closed, Reject → back to Corrective action; "… · Pending sync with Vigie").
       return (ok) => verifyNcrAction({ projectCode: decision.projectCode, number: decision.number, decision: ok ? 'approved' : 'rejected' });
-    case 'deliverable':
-      // The client's acceptance (PV) or rejection of a submitted deliverable.
-      return (ok) => decideDeliverableAction({ projectCode: decision.projectCode, number: decision.number, decision: ok ? 'accepted' : 'rejected' });
     case 'resource-request':
       // Approve → task created in the person's list; Reject → the reason the PM sees (Approvals screen rules).
       return (ok, note) => decideResourceRequestAction({ number: decision.number, decision: ok ? 'ok' : 'rejected', note });

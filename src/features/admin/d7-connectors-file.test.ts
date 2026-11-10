@@ -145,10 +145,6 @@ describe('R-020 — the connectors file', () => {
       expect(await connectorConfigAction('Sage X3')).toEqual({ ok: false, error: 'Activity & integrations is read-only for you' });
       expect(await saveConnectorConfigAction('Sage X3', { frequency: 'Hourly', dataScope: 'x', direction: 'import', enabled: false })).toEqual({ ok: false, error: 'Activity & integrations is read-only for you' });
     }
-    // R-042: the client is sent home from a screen outside their workspace.
-    as('client');
-    await expect(connectorConfigAction('Sage X3')).rejects.toThrow('NEXT_REDIRECT');
-    await expect(saveConnectorConfigAction('Sage X3', { frequency: 'Hourly', dataScope: 'x', direction: 'import', enabled: false })).rejects.toThrow('NEXT_REDIRECT');
     as('director');
     expect(await connectorConfigAction(42)).toEqual({ ok: false, error: 'Invalid request' });
     expect(await connectorConfigAction('Nope')).toEqual({ ok: false, error: 'Invalid request' });

@@ -1,6 +1,6 @@
 // Organisation seed: clients, departments, persons (unified), users (personas), zones, countries, cities.
 import { eq } from 'drizzle-orm';
-import { DEMO_CLIENT_ORG, PERSONAS, PERSONA_BY_ROLE } from '@/config/personas';
+import { PERSONAS, PERSONA_BY_ROLE } from '@/config/personas';
 import type { RoleKey } from '@/config/screens';
 import { initials, shortName } from '@/lib/format';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
@@ -8,6 +8,9 @@ import { clients, cities, countries, departmentCapacities, departments, persons,
 import type { Tx } from '../types';
 import { must, newId, type SeedCtx } from './context';
 import { seedFinanceUser, seedLogisticsUser } from './users';
+
+/** Organisation of the prototype's client persona (Nadia Bensaïd), kept as a contact person of that client (D9-06). */
+const CLIENT_CONTACT_ORG = 'Port authority';
 
 interface PersonDraft {
   id: string;
@@ -48,7 +51,8 @@ export function collectPersons(): PersonDraft[] {
   (PROTO.PEOPLE as [string, string][]).forEach(([name, title], i) => full(name, { jobTitle: title, poolPosition: i + 1 }));
   for (const [name, dept] of Object.entries(PROTO.DEPT_OF as Record<string, string>)) full(name, { departmentName: dept });
   for (const [role, [name, title]] of Object.entries(PROTO.PERSONAS as Record<string, [string, string]>))
-    full(name, role === 'client' ? { clientName: DEMO_CLIENT_ORG } : { jobTitle: title });
+    // The prototype's client persona stays a person of the client organisation (a contact), never a user (D9-06).
+    full(name, role === 'client' ? { clientName: CLIENT_CONTACT_ORG } : { jobTitle: title });
   for (const [dept, [name, title]] of Object.entries(PROTO.DEPTS as Record<string, [string, string]>)) full(name, { jobTitle: title, departmentName: dept });
   for (const [, , manager] of PROTO.ZONES as [string, string, string][]) full(manager);
   for (const [, , lead] of Object.values(PROTO.ENG_DISC as Record<string, [string, string, string, string]>)) full(lead);
@@ -102,13 +106,14 @@ export async function seedOrganisation(tx: Tx, ctx: SeedCtx): Promise<void> {
     })),
   );
 
-  // Users = the demo personas (R-039: one user per person; real users are added at their first Entra ID sign-in).
-  const userRows = Object.entries(PROTO.PERSONAS as Record<string, [string, string]>).map(([role, [name, title]], i) => {
+  // Users = the demo personas (R-039: one user per person; real users are added at their first Entra ID sign-in). D9-06: the
+  // prototype's client persona is no user any more (clients never see Keystone).
+  const userRows = Object.entries(PROTO.PERSONAS as Record<string, [string, string]>).filter(([role]) => role !== 'client').map(([role, [name, title]], i) => {
     const draft = drafts.find((p) => p.fullName === name)!;
     return {
       id: newId(), personaRole: role, roles: [role], personId: must(ctx.personByFull, name, 'person'), title, email: PERSONA_BY_ROLE[role as RoleKey].email,
       departmentId: draft.departmentName ? must(ctx.departmentByName, draft.departmentName, 'department') : null,
-      clientId: role === 'client' ? must(ctx.clientByName, DEMO_CLIENT_ORG, 'client') : null, isExternal: role === 'client', sortOrder: i + 1,
+      sortOrder: i + 1,
     };
   });
   for (const u of userRows) ctx.userByRole.set(u.personaRole, u.id);

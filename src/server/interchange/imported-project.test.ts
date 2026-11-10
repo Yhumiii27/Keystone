@@ -46,7 +46,7 @@ import { applyImport, startImport, type ImportViewer } from './jobs';
 type PageFn = (props: { params: Promise<{ code: string }>; searchParams: Promise<Record<string, string>> }) => Promise<unknown>;
 const SCREENS = [
   'plan', 'schedule', 'budget', 'trends', 'resources', 'changes', 'risks', 'contingency', 'hours', 'meetings', 'stakeholders', 'bom', 'quality', 'itp', 'site',
-  'closure', 'contract', 'billing', 'documents', 'engineering', 'interfaces', 'commissioning', 'deliveries', 'orders', 'client', 'pid',
+  'closure', 'contract', 'billing', 'documents', 'engineering', 'interfaces', 'commissioning', 'deliveries', 'orders', 'pid',
 ];
 const viewer = (role: keyof typeof PERSONA_BY_ROLE): ImportViewer => ({ name: PERSONA_BY_ROLE[role].name, short: PERSONA_BY_ROLE[role].short, role });
 let filesDir = '';

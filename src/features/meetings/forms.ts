@@ -39,6 +39,8 @@ export function meetingFormDef(t: T, lang: Lang, invitees: string, dataDate: str
       { id: 'loc', label: tr('Location'), type: 'text', defaultValue: 'Teams' },
       { id: 'invited', label: tr('Invitees'), type: 'text', defaultValue: invitees, required: true },
       { id: 'agenda', label: tr('Agenda (one point per line)'), type: 'textarea' },
+      // D9-25: a meeting attended by the client — its decisions are the project's client decisions.
+      { id: 'client', label: tr('Client present'), type: 'checkbox' },
     ],
   };
 }

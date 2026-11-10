@@ -20,7 +20,7 @@ import { getProject } from '@/server/dal/projects';
 import { teamOwnerOptions } from '@/server/dal/team';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
-import { INSPECTION_RESULT, PUNCH_RESULT, RESULT_RESULT, SAT_NOT_INVITED, SAT_RESULT } from './forms';
+import { INSPECTION_RESULT, PUNCH_RESULT, RESULT_RESULT, SAT_RESULT } from './forms';
 
 export type PunchStepResult = { ok: true } | { error: string };
 
@@ -84,7 +84,7 @@ export async function addInspectionAction(code: string, values: Record<string, s
 export async function addPunchItemAction(code: string, values: Record<string, string>): Promise<FormDialogResult> {
   const ok = await editable(code, 'itp');
   if ('error' in ok) return ok;
-  const parsed = parseNewPunch(strings(values), await teamOwnerOptions(ok.code), await businessToday(), { internal: ok.actor.role !== 'client' });
+  const parsed = parseNewPunch(strings(values), await teamOwnerOptions(ok.code), await businessToday(), { internal: true });
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
   // R-185: the equipment line of the item (the form offers it when the project has more than one line; else common).
@@ -93,7 +93,7 @@ export async function addPunchItemAction(code: string, values: Record<string, st
   try {
     await addPunchItem(ok.code, {
       description: v.description, location: v.location, category: v.category, source: v.source, owner: v.owner ? shortName(v.owner) : null, dueOn: v.dueOn,
-      origin: v.origin, ownerParty: v.ownerParty, ncrNumber: ok.actor.role === 'client' ? null : v.ncrNumber, equipment: equipment.value,
+      origin: v.origin, ownerParty: v.ownerParty, ncrNumber: v.ncrNumber, equipment: equipment.value,
     }, ok.actor);
   } catch {
     return { error: await tr('The change could not be saved') };
@@ -138,7 +138,7 @@ export async function advancePunchItemAction(code: string, number: string, from:
 /**
  * "Plan SAT" (AF `commissioning`, "Plan & invite"): records the plan and dates the system's SAT step. Systems: the
  * commissioning plan's, else the inspection template's (the prototype's `ITPSYS`; the plan is recorded, no grid created).
- * R-015 / R-036: the project's external client contacts are invited (bell and e-mail).
+ * D9-06: the client is invited outside Keystone (clients never see it).
  */
 export async function planSatAction(code: string, values: Record<string, string>): Promise<FormDialogResult> {
   const ok = await editable(code, 'commissioning');
@@ -147,16 +147,14 @@ export async function planSatAction(code: string, values: Record<string, string>
   const parsed = parsePlanSat(strings(values), systems, await businessToday());
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
-  let invited = 0;
   try {
-    invited = await planSat(ok.code, { system: v.system, date: v.date, clientWitnesses: v.clientWitnesses, prerequisites: v.prerequisites }, ok.actor);
+    await planSat(ok.code, { system: v.system, date: v.date, clientWitnesses: v.clientWitnesses, prerequisites: v.prerequisites }, ok.actor);
   } catch (e) {
     if (e instanceof Error && / is already done$/.test(e.message)) return { error: await tr('The SAT of this system is already done') };
     return { error: await tr('The change could not be saved') };
   }
   refresh(ok.code);
-  // R-015 / R-036: "invitation sent" only when a client contact was invited (none for a subsidiary or a client without account).
-  return { toast: await tr(invited ? SAT_RESULT : SAT_NOT_INVITED) };
+  return { toast: await tr(SAT_RESULT) };
 }
 
 const RESULT_CHANGED = 'This inspection has changed since you opened it';

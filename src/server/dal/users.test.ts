@@ -26,7 +26,7 @@ const personId = async (fullName: string) => {
 /** A real (signed-in) viewer for an account. */
 const viewerOf = async (userId: string, role: Persona['role']): Promise<Persona> => {
   const a = (await getUserAccount(userId))!;
-  return { role, roles: a.roles, name: a.fullName ?? a.shortName, title: a.title, initials: a.initials, short: a.shortName, email: a.email, organisation: a.organisation, department: a.department, personId: a.personId, userId: a.userId };
+  return { role, roles: a.roles, name: a.fullName ?? a.shortName, title: a.title, initials: a.initials, short: a.shortName, email: a.email, department: a.department, personId: a.personId, userId: a.userId };
 };
 
 describe('users', () => {
@@ -34,15 +34,15 @@ describe('users', () => {
     setDb(await openDatabase());
   }, 60_000);
 
-  it('seeds the 10 personas as users (R-044: + Finance; R-158: + Logistics), one per person, with the e-mail and department of personas.ts', async () => {
+  it('seeds the 9 personas as users (R-044: + Finance; R-158: + Logistics; D9-06: no client), one per person, with the e-mail and department of personas.ts', async () => {
     const accounts = await listUserAccounts();
     expect(accounts).toHaveLength(PERSONAS.length);
-    expect(PERSONAS).toHaveLength(10);
-    expect(new Set(accounts.map((a) => a.personId)).size).toBe(10);
+    expect(PERSONAS).toHaveLength(9); // D9-06: the Client persona is gone
+    expect(new Set(accounts.map((a) => a.personId)).size).toBe(9);
     for (const p of PERSONAS) {
       const a = accounts.find((x) => x.personaRole === p.role)!;
-      expect({ name: a.fullName, roles: a.roles, email: a.email, department: a.department, organisation: a.organisation, title: a.title }, p.role).toEqual({
-        name: p.name, roles: [p.role], email: p.email, department: p.department, organisation: p.organisation, title: p.title,
+      expect({ name: a.fullName, roles: a.roles, email: a.email, department: a.department, title: a.title }, p.role).toEqual({
+        name: p.name, roles: [p.role], email: p.email, department: p.department, title: p.title,
       });
     }
     const db = await getDb();
@@ -111,7 +111,7 @@ describe('users', () => {
     expect((await getScoreWeights('pm')).risk).not.toBe(0.9);
   });
 
-  it('owns projects by person for signed-in users and by organisation for clients', async () => {
+  it('owns projects by person for signed-in users (D9-06: no client organisation any more)', async () => {
     const projects = await listProjects();
     const hlt = projects.find((p) => p.code === 'HLT-026')!; // PM R. Aubert, client Port authority
     const db = await getDb();
@@ -123,9 +123,6 @@ describe('users', () => {
     expect(isMineProject(romain, hlt, teams)).toBe(true);
     expect(isMineProject({ ...romain, personId: await personId('Sophie Renard') }, hlt, teams)).toBe(false); // same short name cannot fake it
     expect(isMineProject(PERSONA_BY_ROLE.pm, hlt, teams)).toBe(true); // demo persona: short name
-    expect(isMineProject(PERSONA_BY_ROLE.client, hlt, teams)).toBe(true);
-    expect(isMineProject({ ...PERSONA_BY_ROLE.client, organisation: 'Nordvolt' }, hlt, teams)).toBe(false);
-    expect(isMineProject({ ...PERSONA_BY_ROLE.client, organisation: null }, hlt, teams)).toBe(false);
   });
 
   it('recognises the unique violation of a second account for the same person (retry of a racing first sign-in)', async () => {

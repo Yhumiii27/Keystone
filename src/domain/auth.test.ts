@@ -9,7 +9,7 @@ import {
 describe('roles', () => {
   it('orders roles from the broadest workspace and drops unknown values', () => {
     // R-044 (P-4, P-12 c): the Finance role, after procurement and before the team member; R-158: Logistics after Finance.
-    expect(ROLE_PRIORITY).toEqual(['director', 'pm', 'depthead', 'englead', 'quality', 'procurement', 'finance', 'logistics', 'member', 'client']);
+    expect(ROLE_PRIORITY).toEqual(['director', 'pm', 'depthead', 'englead', 'quality', 'procurement', 'finance', 'logistics', 'member']); // D9-06: no client role
     expect(sortRoles(['member', 'logistics', 'finance'])).toEqual(['finance', 'logistics', 'member']);
     expect(sortRoles(['member', 'pm', 'admin', 'pm', 42, 'director', 'finance'])).toEqual(['director', 'pm', 'finance', 'member']);
     expect(isRoleKey('quality')).toBe(true);
@@ -73,11 +73,11 @@ describe('identity e-mail', () => {
 });
 
 describe('sign-in decision', () => {
-  const user = (over: Partial<SignInUser> = {}): SignInUser => ({ userId: 'u1', personId: 'p1', entraObjectId: null, active: true, organisation: null, ...over });
-  const base = { oid: 'oid-1', email: 'romain.aubert@epc2i.fr', roles: ['pm' as const], byObjectId: null, persons: [{ personId: 'p1', organisation: null }], userOfPerson: null };
+  const user = (over: Partial<SignInUser> = {}): SignInUser => ({ userId: 'u1', personId: 'p1', entraObjectId: null, active: true, ...over });
+  const base = { oid: 'oid-1', email: 'romain.aubert@epc2i.fr', roles: ['pm' as const], byObjectId: null, persons: [{ personId: 'p1' }], userOfPerson: null };
 
   it('signs in the person of the e-mail, creating or reusing their user', () => {
-    expect(decideSignIn(base)).toEqual({ ok: true, personId: 'p1', userId: null, roles: ['pm'], organisation: null });
+    expect(decideSignIn(base)).toEqual({ ok: true, personId: 'p1', userId: null, roles: ['pm'] });
     expect(decideSignIn({ ...base, userOfPerson: user() })).toMatchObject({ ok: true, userId: 'u1' });
     expect(decideSignIn({ ...base, userOfPerson: user({ entraObjectId: 'oid-1' }) })).toMatchObject({ ok: true, userId: 'u1' });
   });
@@ -90,21 +90,20 @@ describe('sign-in decision', () => {
   it('refuses unknown, ambiguous or missing e-mails, other accounts, deactivated users and role-less tokens', () => {
     expect(decideSignIn({ ...base, email: null, persons: [] })).toEqual({ ok: false, reason: 'no_email' });
     expect(decideSignIn({ ...base, persons: [] })).toEqual({ ok: false, reason: 'unknown_user' });
-    expect(decideSignIn({ ...base, persons: [{ personId: 'p1', organisation: null }, { personId: 'p2', organisation: null }] })).toEqual({ ok: false, reason: 'ambiguous_user' });
+    expect(decideSignIn({ ...base, persons: [{ personId: 'p1' }, { personId: 'p2' }] })).toEqual({ ok: false, reason: 'ambiguous_user' });
     expect(decideSignIn({ ...base, userOfPerson: user({ entraObjectId: 'someone-else' }) })).toEqual({ ok: false, reason: 'account_mismatch' });
     expect(decideSignIn({ ...base, userOfPerson: user({ active: false }) })).toEqual({ ok: false, reason: 'inactive' });
     expect(decideSignIn({ ...base, byObjectId: user({ active: false, entraObjectId: 'oid-1' }) })).toEqual({ ok: false, reason: 'inactive' });
     expect(decideSignIn({ ...base, roles: [] })).toEqual({ ok: false, reason: 'no_role' });
   });
 
-  it('needs a client organisation for the client role (P-10a)', () => {
-    expect(decideSignIn({ ...base, roles: ['client'] })).toEqual({ ok: false, reason: 'no_organisation' });
-    expect(decideSignIn({ ...base, roles: ['client'], persons: [{ personId: 'p1', organisation: 'Port authority' }] })).toMatchObject({ ok: true, organisation: 'Port authority' });
-    expect(decideSignIn({ ...base, roles: ['client'], userOfPerson: user({ organisation: 'Nordvolt' }) })).toMatchObject({ ok: true, organisation: 'Nordvolt' });
+  it('D9-06: a token\'s "client" role is no Keystone role — sortRoles drops it, so a client-only token is refused', () => {
+    expect(sortRoles(['client', 'pm'])).toEqual(['pm']);
+    expect(decideSignIn({ ...base, roles: sortRoles(['client']) })).toEqual({ ok: false, reason: 'no_role' });
   });
 
   it('has a message for every refusal and failure, and an audit label for every refusal', () => {
-    for (const code of ['no_email', 'unknown_user', 'ambiguous_user', 'no_role', 'inactive', 'no_organisation', 'account_mismatch'] as const) {
+    for (const code of ['no_email', 'unknown_user', 'ambiguous_user', 'no_role', 'inactive', 'account_mismatch'] as const) {
       expect(SIGN_IN_ERROR[code]).toBeTruthy();
       expect(SIGN_IN_REFUSAL_LABEL[code]).toBeTruthy();
     }
@@ -115,11 +114,10 @@ describe('sign-in decision', () => {
 });
 
 describe('titles and paths', () => {
-  it('titles a client by organisation, staff by job title, else by highest role', () => {
-    expect(userTitle('Structural engineer', ['member'], null)).toBe('Structural engineer');
-    expect(userTitle(null, ['quality', 'depthead'], null)).toBe('Head of department');
-    expect(userTitle('Buyer', ['client'], 'Port authority')).toBe('Client — Port authority');
-    expect(userTitle(null, [], null)).toBe('Team member');
+  it('titles staff by job title, else by highest role', () => {
+    expect(userTitle('Structural engineer', ['member'])).toBe('Structural engineer');
+    expect(userTitle(null, ['quality', 'depthead'])).toBe('Head of department');
+    expect(userTitle(null, [])).toBe('Team member');
   });
 
   it('returns only to same-origin paths', () => {

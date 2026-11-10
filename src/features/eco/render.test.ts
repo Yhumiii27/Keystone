@@ -18,7 +18,7 @@ import { ecoDrawerView, ecoScreenView, type EcoState } from './model';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const G = GOLD as any;
 const LANGS: Lang[] = ['en', 'fr'];
-const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'] as const;
+const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'] as const;
 const S0: EcoState = { status: null, eco: null };
 
 /**

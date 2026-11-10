@@ -23,7 +23,8 @@ import { logError } from '@/server/log';
 
 export type DecisionResult = { ok: true; status: string } | { ok: false; error: string };
 
-const STEPS: readonly ChangeStep[] = ['pm', 'director', 'client', 'ccb'];
+// D9-06: the client step is recorded on Change control with the signed document's date and reference (never inline).
+const STEPS: readonly ChangeStep[] = ['pm', 'director', 'ccb'];
 const NOT_ALLOWED = 'Read-only — you cannot decide from this inbox';
 const NOT_YOURS = 'This decision is not waiting for you any more';
 const INVALID = 'Invalid request';

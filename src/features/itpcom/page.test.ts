@@ -52,7 +52,7 @@ function parts(tree: unknown): Record<string, El> {
 }
 const itp = async (sp: Record<string, string> = {}, code = 'HLT-026') => parts(await ItpPage({ params: Promise.resolve({ code }), searchParams: Promise.resolve(sp) }));
 const cm = async (code = 'HLT-026') => parts(await CommissioningPage({ params: Promise.resolve({ code }) }));
-const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'];
+const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'];
 /** R-041 (P-2): workspace personas not on the project's named team (Harbor Line has the seeded referents). */
 const OFF_TEAM: Record<string, string[]> = { 'HLT-026': [], 'NDC-031': ['englead', 'quality'] };
 const G = GOLDEN as any;

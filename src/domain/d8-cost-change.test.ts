@@ -18,7 +18,7 @@ import { indexAlert as portfolioIndexAlert } from './portfolio';
 import { makeT } from '@/i18n/translate';
 
 type D = ChainStepLike['decision'];
-const chain = (pm: D, director: D, client: D, ccb: D, approvers: (string | null)[] = ['Romain Aubert', 'Marie Lefebvre', 'Nadia Bensaïd', 'Marie Lefebvre']): ChainStepLike[] =>
+const chain = (pm: D, director: D, client: D, ccb: D, approvers: (string | null)[] = ['Romain Aubert', 'Marie Lefebvre', 'Romain Aubert', 'Marie Lefebvre']): ChainStepLike[] =>
   (['pm', 'director', 'client', 'ccb'] as const).map((step, i) => ({ step, decision: [pm, director, client, ccb][i], approver: approvers[i] }));
 const inReview = (c: ChainStepLike[]) => ({ status: 'in_review', chain: c });
 
@@ -76,8 +76,9 @@ describe('R-069 — the sequential chain (P-6b)', () => {
     expect(canDecideStep(cr8, 'director', { role: 'director' })).toBe(true);
     expect(canDecideStep(cr8, 'director', { role: 'director', name: 'Marie Lefebvre' })).toBe(true);
     expect(canDecideStep(cr8, 'director', { role: 'director', name: 'Someone Else' })).toBe(false);
-    expect(canDecideStep(cr8, 'client', { role: 'client' })).toBe(false);
-    expect(holdsStep(cr8, 'client', { role: 'client', name: 'Nadia Bensaïd' })).toBe(true);
+    // D9-06: the client's step is recorded by the PM (its named approver: the PM of record).
+    expect(canDecideStep(cr8, 'client', { role: 'pm' })).toBe(false);
+    expect(holdsStep(cr8, 'client', { role: 'pm', name: 'Romain Aubert' })).toBe(true);
     // The board has no named approver: its recorder's role (the director, P-6a).
     const board = inReview(chain('ok', 'ok', 'ok', 'pending'));
     expect([canDecideStep(board, 'ccb', { role: 'director', name: 'Anyone' }), canDecideStep(board, 'ccb', { role: 'pm' })]).toEqual([true, false]);
@@ -85,7 +86,8 @@ describe('R-069 — the sequential chain (P-6b)', () => {
 
   it('hints and the Pending value sub-line', () => {
     const cr8 = { status: 'in_review' as const, chain: chain('ok', 'pending', 'pending', 'pending') };
-    expect([crHint(cr8, 'client'), crHint(cr8, 'director'), crHint(cr8, 'pm')]).toEqual(['Waiting for Portfolio director', '', '']);
+    // D9-06: the PM holds the client step it records — it waits for the director's.
+    expect([crHint(cr8, 'pm'), crHint(cr8, 'director'), crHint(cr8, 'quality')]).toEqual(['Waiting for Portfolio director', '', 'Switch to Project manager or Portfolio director (bottom-left) to decide.']);
     const atClient = { status: 'in_review' as const, chain: chain('ok', 'ok', 'pending', 'pending') };
     expect(crHint(atClient, 'director')).toBe('Waiting for Client / sponsor');
     expect(awaitingStepsText([cr8, atClient, { status: 'draft', chain: chain('pending', 'pending', 'pending', 'pending') }])).toBe('Awaiting director · client');
@@ -100,13 +102,14 @@ describe('R-069 — the sequential chain (P-6b)', () => {
 });
 
 describe('R-015 (part) — the bell notice of the chain (X-6a)', () => {
-  const people = { pm: 'p-pm', directors: ['p-dir', 'p-dir2'], clientContacts: ['p-cli'], requester: 'p-req' };
+  const people = { pm: 'p-pm', directors: ['p-dir', 'p-dir2'], requester: 'p-req' };
   const cr = (status: string, c: ChainStepLike[]) => ({ id: 'CR-011', status: status as 'in_review', chain: c });
   it('in review → the current step’s approvers; decided → the requester; never the actor; none when nobody is left', () => {
     expect(crNoticeOf(cr('in_review', chain('pending', 'pending', 'pending', 'na')), people, null)).toEqual({ title: 'Change request awaiting your decision · CR-011', toPersonIds: ['p-pm'] });
     expect(crNoticeOf(cr('in_review', chain('ok', 'pending', 'pending', 'na')), people, 'p-pm')).toEqual({ title: 'Change request awaiting your decision · CR-011', toPersonIds: ['p-dir', 'p-dir2'] });
-    expect(crNoticeOf(cr('in_review', chain('ok', 'ok', 'pending', 'na')), people, 'p-dir')).toEqual({ title: 'Change request awaiting your decision · CR-011', toPersonIds: ['p-cli'] });
-    expect(crNoticeOf(cr('in_review', chain('ok', 'ok', 'ok', 'pending')), people, 'p-cli')?.toPersonIds).toEqual(['p-dir', 'p-dir2']);
+    // D9-06: the client step goes to the PM of record, who records the client's signed decision.
+    expect(crNoticeOf(cr('in_review', chain('ok', 'ok', 'pending', 'na')), people, 'p-dir')).toEqual({ title: 'Change request awaiting your decision · CR-011', toPersonIds: ['p-pm'] });
+    expect(crNoticeOf(cr('in_review', chain('ok', 'ok', 'ok', 'pending')), people, 'p-pm')?.toPersonIds).toEqual(['p-dir', 'p-dir2']);
     // The director who just decided is not told about the board step they record next — the other director is.
     expect(crNoticeOf(cr('in_review', chain('ok', 'ok', 'na', 'pending')), people, 'p-dir')?.toPersonIds).toEqual(['p-dir2']);
     expect(crNoticeOf(cr('approved', chain('ok', 'ok', 'ok', 'ok')), people, 'p-dir')).toEqual({ title: 'Change request approved · CR-011', toPersonIds: ['p-req'] });
@@ -114,7 +117,7 @@ describe('R-015 (part) — the bell notice of the chain (X-6a)', () => {
     expect(crNoticeOf(cr('approved', chain('ok', 'ok', 'ok', 'na')), people, 'p-req')).toBeNull();
     expect(crNoticeOf(cr('in_review', chain('pending', 'pending', 'pending', 'na')), people, 'p-pm')).toBeNull();
     expect(crNoticeOf(cr('draft', chain('pending', 'pending', 'pending', 'na')), people, null)).toBeNull();
-    expect(crNoticeOf(cr('in_review', chain('ok', 'ok', 'pending', 'na')), { ...people, clientContacts: [] }, null)).toBeNull();
+    expect(crNoticeOf(cr('in_review', chain('ok', 'ok', 'pending', 'na')), { ...people, pm: null }, null)).toBeNull();
     expect(crNoticeOf(cr('in_review', chain('ok', 'pending', 'pending', 'na')), { ...people, directors: ['p-dir', 'p-dir'] }, null)?.toPersonIds).toEqual(['p-dir']);
   });
 });

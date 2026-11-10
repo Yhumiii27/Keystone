@@ -25,8 +25,8 @@ import {
 import type { Tx } from '@/server/db/types';
 import { getVigieQualityConnector, type NcrProgressReceipt, type VigieNcr } from '@/server/integrations/vigie/quality-connector';
 import { vigieNcrListUrl, vigieNcrUrl, vigieReportNcrUrl } from '@/server/integrations/vigie/links';
-import { initialsOf, isClientContactOf, isIsoDate, managesProject, optionalText, projectOf, requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
-import { notifyDeliverableDecided, notifyDeliverableSubmitted } from './event-notices';
+import { initialsOf, isIsoDate, managesProject, optionalText, projectOf, requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
+import { notifyDeliverableDecided } from './event-notices';
 
 export type { Actor, NcrProgressReceipt, VigieNcr };
 export { vigieNcrListUrl, vigieNcrUrl, vigieReportNcrUrl };
@@ -161,6 +161,8 @@ export interface DeliverableRow {
   acceptanceDueOn: string | null;
   acceptedOn: string | null;
   acceptedBy: string | null;
+  /** D9-06: reference of the signed acceptance document recorded by the project's lead (null before D9-06). */
+  acceptanceRef: string | null;
   rejectedOn: string | null;
   reviewComments: string | null;
   /**
@@ -186,14 +188,19 @@ export interface DeliverableReview {
   decision: DeliverableReviewDecision;
   submittedOn: string | null;
   decidedOn: string;
-  /** "N. Bensaïd" (short form of the person when known). */
+  /** "N. Bensaïd" (short form of the person when known); since D9-06 the project lead who recorded the client's decision. */
   decidedBy: string;
   comments: string | null;
+  /** D9-06: reference of the signed document (null before D9-06). */
+  reference: string | null;
 }
 
 /** Display text of the acceptance fields (the prototype's `acc`); dates show their year outside the business year `year` (R-013). */
-export function acceptanceTextOf(d: Pick<DeliverableRow, 'status' | 'issueOn' | 'acceptanceDueOn' | 'acceptedOn' | 'acceptedBy' | 'rejectedOn'>, year: number): string {
-  if (d.status === 'accepted' && d.acceptedOn) return `${fmtDOfIso(d.acceptedOn, year)} · ${d.acceptedBy ?? '—'}`;
+export function acceptanceTextOf(
+  d: Pick<DeliverableRow, 'status' | 'issueOn' | 'acceptanceDueOn' | 'acceptedOn' | 'acceptedBy' | 'rejectedOn'> & { acceptanceRef?: string | null }, year: number,
+): string {
+  // D9-06: an acceptance recorded by the project's lead names the signed document ("12 Mar · PV-HLT-014"); older ones the signatory.
+  if (d.status === 'accepted' && d.acceptedOn) return `${fmtDOfIso(d.acceptedOn, year)} · ${d.acceptanceRef ?? d.acceptedBy ?? '—'}`;
   if (d.status === 'rejected' && d.rejectedOn) return `${fmtDOfIso(d.rejectedOn, year)} · comments issued`;
   if (d.status === 'submitted' && d.acceptanceDueOn) return `Accept by ${fmtDOfIso(d.acceptanceDueOn, year)}`;
   if (d.issueOn && (d.status === 'in_progress' || d.status === 'internal_review')) return `Issue ${fmtDOfIso(d.issueOn, year)}`;
@@ -229,7 +236,7 @@ async function loadDeliverables(projectCode: string, numbers?: string[]): Promis
   return rows.map(({ d, wbsName, doc }) => {
     const acceptedBy = shortOf(d.acceptedByName, d.acceptedByPersonId ? shortById.get(d.acceptedByPersonId) ?? null : null);
     const base = {
-      status: d.status, issueOn: d.issueOn, acceptanceDueOn: d.acceptanceDueOn, acceptedOn: d.acceptedOn, acceptedBy, rejectedOn: d.rejectedOn,
+      status: d.status, issueOn: d.issueOn, acceptanceDueOn: d.acceptanceDueOn, acceptedOn: d.acceptedOn, acceptedBy, acceptanceRef: d.acceptanceRef, rejectedOn: d.rejectedOn,
     };
     const cells = raci.filter((r) => r.deliverableId === d.id);
     return {
@@ -252,9 +259,10 @@ function reviewsOf(d: typeof deliverables.$inferSelect, rows: (typeof deliverabl
   const by = (personId: string | null, name: string) => (personId ? shortById.get(personId) ?? name : name);
   const list: DeliverableReview[] = rows.map((r) => ({
     revision: r.revision, decision: r.decision, submittedOn: r.submittedOn, decidedOn: r.decidedOn, decidedBy: by(r.decidedByPersonId, r.decidedByName), comments: r.comments,
+    reference: r.reference,
   }));
   const legacy = legacyRejection(d, rows);
-  if (legacy) list.unshift({ revision: legacy.revision, decision: 'rejected', submittedOn: legacy.submittedOn, decidedOn: legacy.decidedOn, decidedBy: by(legacy.decidedByPersonId, legacy.decidedByName), comments: legacy.comments });
+  if (legacy) list.unshift({ revision: legacy.revision, decision: 'rejected', submittedOn: legacy.submittedOn, decidedOn: legacy.decidedOn, decidedBy: by(legacy.decidedByPersonId, legacy.decidedByName), comments: legacy.comments, reference: null });
   return list;
 }
 
@@ -307,10 +315,9 @@ export async function moveDeliverable(
   projectCode: string, number: string, to: 'in_progress' | 'internal_review' | 'submitted', actor: Actor, on?: string, expected?: DeliverableStatus,
 ): Promise<void> {
   requireWorkspace('quality', actor, 'Quality');
-  if (actor.role === 'client') throw new Error('The client accepts or rejects submitted deliverables only');
   const day = on ?? (await businessToday());
   const db = await getDb();
-  const done = await db.transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     const { p, d } = await loadOne(tx, projectCode, number);
     if (expected && d.status !== expected) throw new Error(`${number} has moved on`);
     if (PRODUCER_NEXT[d.status] !== to) throw new Error(`${number} cannot move from ${deliverableStatus.label(d.status)} to ${deliverableStatus.label(to)}`);
@@ -346,44 +353,70 @@ export async function moveDeliverable(
             ? { text: `Started revision ${revision} of deliverable ${number} ${d.title} after the client's rejection`, kind: 'quality' }
             : undefined,
     });
-    return { title: d.title, actorPersonId: who.personId };
   });
-  // R-015: a submission asks the client contacts to accept (after the commit, best effort).
-  if (to === 'submitted') await notifyDeliverableSubmitted(projectCode, { number, title: done.title }, done.actorPersonId);
+  // D9-06: no notice to client contacts on a submission (clients never see Keystone; the PV is signed outside).
 }
 
+/** D9-06: what the project's lead records of the client's decision on a submitted deliverable (the PV is signed outside Keystone). */
+export interface ClientDecisionRecord {
+  /** Date of the client's decision (ISO; default the business date, R-013); never after the business date. */
+  on?: string;
+  /** Reference of the signed document (PV de réception, letter of comments…); required for an acceptance. */
+  reference?: string | null;
+  /** The client's comments (a rejection: "comments issued" when blank). */
+  comments?: string | null;
+}
+
+/** Longest reference of a signed document. */
+export const CLIENT_DECISION_REF_MAX = 120;
+
 /**
- * Client acceptance (PV de réception) or rejection of a submitted deliverable — the client contact of the project's
- * client organisation only (register, drawer, My approvals, client portal). Accept stamps the date and the viewer
- * ("25 Sep · N. Bensaïd"; `on` — default the business date, R-013); reject records the comments ("comments issued").
+ * Client acceptance (PV de réception) or rejection of a submitted deliverable. D9-06 (owner, 10 Nov 2026): clients never see
+ * Keystone — the PV is signed outside (DocuSign planned) and the project's lead (PM of record, co-PM, deputy, or the director)
+ * records "accepted by the client on … (reference of the signed document)" or the rejection with its comments. Accept stamps
+ * the date and the reference ("25 Sep · PV-HLT-014"); reject records the comments ("comments issued").
  */
 export async function decideDeliverable(
-  projectCode: string, number: string, decision: 'accepted' | 'rejected', actor: Actor, comments?: string | null, on?: string,
+  projectCode: string, number: string, decision: 'accepted' | 'rejected', actor: Actor, record: ClientDecisionRecord = {},
 ): Promise<void> {
   requireWorkspace('quality', actor, 'Quality');
-  const note = optionalText(comments, 'Comments');
-  const day = on ?? (await businessToday());
+  const note = optionalText(record.comments, 'Comments');
+  const reference = optionalText(record.reference, 'Signed document reference', CLIENT_DECISION_REF_MAX);
+  if (decision === 'accepted' && !reference) throw new Error('Enter the reference of the signed acceptance (PV)');
+  const today = await businessToday();
+  const day = record.on ?? today;
+  if (!isIsoDate(day)) throw new Error('Invalid date');
+  if (day > today) throw new Error('The client’s decision cannot be after the status date');
   const db = await getDb();
   const done = await db.transaction(async (tx) => {
     const { p, d } = await loadOne(tx, projectCode, number);
-    if (!(await isClientContactOf(tx, actor, p.clientId))) throw new Error('Only the client accepts or rejects deliverables');
+    if (!(await managesProject(tx, actor, p))) throw new Error('Only the project manager records the client’s decision');
     if (d.status !== 'submitted') throw new Error(`${number} is not submitted to the client`);
     const who = await whoIs(tx, actor);
     const at = new Date();
     if (decision === 'accepted')
-      await tx.update(deliverables).set({ status: 'accepted', acceptedOn: day, acceptedByPersonId: who.personId, acceptedByName: who.who, updatedAt: at }).where(eq(deliverables.id, d.id));
+      await tx.update(deliverables).set({ status: 'accepted', acceptedOn: day, acceptedByPersonId: who.personId, acceptedByName: who.who, acceptanceRef: reference, updatedAt: at }).where(eq(deliverables.id, d.id));
     else
       await tx.update(deliverables).set({ status: 'rejected', rejectedOn: day, rejectedByPersonId: who.personId, reviewComments: note ?? 'comments issued', updatedAt: at }).where(eq(deliverables.id, d.id));
     // R-114: every client decision is kept; the row only holds the latest one.
     await tx.insert(deliverableReviews).values({
       deliverableId: d.id, revision: d.revision, submittedOn: d.submittedOn, decision, decidedOn: day, decidedByName: who.who, decidedByPersonId: who.personId,
-      comments: decision === 'rejected' ? (note ?? 'comments issued') : note,
+      comments: decision === 'rejected' ? (note ?? 'comments issued') : note, reference,
     });
+    const ref = reference ? ` · ${reference}` : '';
     await trace(tx, who, {
-      objectRef: number, change: `status: Submitted → ${decision === 'accepted' ? 'Accepted (PV)' : 'Rejected'}${note ? ` · ${note}` : ''}`, area: 'Deliverables',
+      objectRef: number,
+      change: `status: Submitted → ${decision === 'accepted' ? 'Accepted (PV)' : 'Rejected'} · client decision of ${day}${ref}${note ? ` · ${note}` : ''}`, area: 'Deliverables',
       entityType: 'deliverable', entityId: d.id, projectId: p.id,
-      before: { status: 'submitted', revision: d.revision }, after: { status: decision, revision: d.revision, decidedOn: day }, reason: decision === 'rejected' ? note : null,
-      activity: { text: decision === 'accepted' ? `Accepted deliverable ${number} ${d.title} (PV signed)` : `Rejected deliverable ${number} ${d.title} · comments issued`, kind: 'client' },
+      before: { status: 'submitted', revision: d.revision },
+      after: { status: decision, revision: d.revision, decidedOn: day, reference },
+      reason: decision === 'rejected' ? note : null,
+      activity: {
+        text: decision === 'accepted'
+          ? `Recorded the client's acceptance of deliverable ${number} ${d.title} (PV signed${ref})`
+          : `Recorded the client's rejection of deliverable ${number} ${d.title} · comments issued`,
+        kind: 'client',
+      },
     });
     return { title: d.title, actorPersonId: who.personId };
   });
@@ -472,15 +505,18 @@ export async function linkDeliverableDocument(projectCode: string, number: strin
   });
 }
 
-/** Submitted deliverables waiting for the viewer's acceptance (client contact of the project's client; apprItems 4729). */
+/**
+ * Submitted deliverables whose client decision the viewer records (apprItems 4729): D9-06 — the project's leads (PM of record,
+ * co-PM, deputy) and the director, once the client has signed (or refused) the PV outside Keystone.
+ */
 export async function deliverableAcceptanceQueue(projectCode: string, actor: Actor): Promise<DeliverableRow[]> {
   const db = await getDb();
   const p = await projectOf(db, projectCode);
-  if (!(await isClientContactOf(db, actor, p.clientId))) return [];
+  if (!(await managesProject(db, actor, p))) return [];
   return (await loadDeliverables(projectCode)).filter((d) => d.status === 'submitted');
 }
 
-/** Deliverables the viewer accepted or rejected in Keystone (My approvals "Decided" count; the audit trail of decisions). */
+/** Client decisions the viewer recorded in Keystone (My approvals "Decided" count; the audit trail of decisions). */
 export async function deliverableDecidedCount(actor: Actor): Promise<number> {
   const db = await getDb();
   const { who } = await whoIs(db, actor);

@@ -93,7 +93,7 @@ export const persons = pgTable('persons', {
 
 /**
  * User accounts — one row per person (R-039). Real users are created at their first Microsoft Entra ID sign-in (R-038):
- * the token e-mail designates the person, the token roles (app roles or mapped groups) give `roles`. The 8 "View as"
+ * the token e-mail designates the person, the token roles (app roles or mapped groups) give `roles`. The 9 "View as"
  * personas (PERSONAS 3747) are seeded as users too, with their persona role, for the demo mode (KEYSTONE_AUTH=demo).
  */
 export const users = pgTable('users', {
@@ -110,12 +110,12 @@ export const users = pgTable('users', {
   entraObjectId: text('entra_object_id').unique(),
   /** Sign-in e-mail (lower case) of the last sign-in; the persona e-mail for the demo users. */
   email: text('email'),
-  /** Title under the user's name, EN source string ("Client — Port authority", the job title). */
+  /** Title under the user's name, EN source string (the job title, else the highest role's name). */
   title: text('title').notNull(),
   /** Department of the user (copied from the person at each sign-in; the staff directory stays the source). */
   departmentId: uuid('department_id').references(() => departments.id),
-  /** Client organisation of an external user (replaces the CLIENT_ORG constant). */
-  clientId: uuid('client_id').references(() => clients.id),
+  // D9-06 (owner, 10 Nov 2026): `client_id` (the client organisation of a client user) dropped with the Client role.
+  /** The person belongs to a client or partner organisation (persons.client_id) — never a delegation substitute. */
   isExternal: boolean('is_external').notNull().default(false),
   active: boolean('active').notNull().default(true),
   lastSignInAt: timestamp('last_sign_in_at', { withTimezone: true }),

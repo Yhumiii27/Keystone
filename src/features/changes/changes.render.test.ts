@@ -26,7 +26,7 @@ const viewData = (cc: ChangeControl): ChangesViewData => ({
 });
 const href = (q: { filter?: CrFilter; cr?: string | null }) => `/c?filter=${q.filter ?? 'all'}&cr=${q.cr ?? ''}`;
 
-function changes(cc: ChangeControl, lang: Lang, opts: { filter?: CrFilter; selected?: string | null; role?: 'director' | 'pm' | 'client' | 'quality'; canEdit?: boolean } = {}) {
+function changes(cc: ChangeControl, lang: Lang, opts: { filter?: CrFilter; selected?: string | null; role?: 'director' | 'pm' | 'quality'; canEdit?: boolean } = {}) {
   return html(
     h(ChangesView, {
       code: cc.projectCode, data: viewData(cc), filter: opts.filter ?? 'all', selected: opts.selected ?? null, role: opts.role ?? 'director', canEdit: opts.canEdit ?? true,
@@ -36,7 +36,7 @@ function changes(cc: ChangeControl, lang: Lang, opts: { filter?: CrFilter; selec
   );
 }
 
-function drawer(cc: ChangeControl, id: string, lang: Lang, role: 'director' | 'pm' | 'client' | 'quality' = 'director', canEdit = true) {
+function drawer(cc: ChangeControl, id: string, lang: Lang, role: 'director' | 'pm' | 'quality' = 'director', canEdit = true) {
   const cr = viewData(cc).crs.find((c) => c.id === id)!;
   return html(
     h(CrDrawerBody, { cr, code: cc.projectCode, ctx: { bac: cc.bac, contingency: cc.contingency }, role, canEdit, planHref: '/plan', budgetHref: '/budget', lang, t: changesT(makeT(lang), lang) }),
@@ -65,7 +65,8 @@ describe('Change control & baselines', () => {
     expect(hlt.changeRequests.map((c) => [c.id, c.status])).toEqual([
       ['CR-004', 'approved'], ['CR-006', 'approved'], ['CR-007', 'approved'], ['CR-008', 'in_review'], ['CR-009', 'draft'], ['CR-005', 'rejected'],
     ]);
-    expect(hlt.changeRequests[3].chain.map((s) => s.approver)).toEqual(['Romain Aubert', 'Marie Lefebvre', 'Nadia Bensaïd', 'Marie Lefebvre']);
+    // D9-06: the client's step is recorded by the PM of record (the client no longer sees Keystone).
+    expect(hlt.changeRequests[3].chain.map((s) => s.approver)).toEqual(['Romain Aubert', 'Marie Lefebvre', 'Romain Aubert', 'Marie Lefebvre']);
     expect([hlt.originalBudget, hlt.bac, hlt.contingency]).toEqual([4600, 4800, 150]);
     expect(hlt.baselines.map((b) => [b.code, b.setOn, b.state])).toEqual([
       ['BL0', '18 Jan 2026', 'superseded'], ['BL1', '12 Mar 2026', 'current'], ['BL2', 'Pending CR-009', 'proposed'],
@@ -147,7 +148,8 @@ describe('Change control & baselines', () => {
     expect(d8).toContain('Project manager Romain Aubert Approved');
     // the director decides the director step — and only it: the board's step waits for the client (P-6b, R-069)
     expect(d8).toContain('Portfolio director Marie Lefebvre Reject Approve Pending');
-    expect(d8).toContain('Client / sponsor Nadia Bensaïd Pending');
+    // D9-06: the client's step is recorded by the PM of record (named as its approver).
+    expect(d8).toContain('Client / sponsor Romain Aubert Pending');
     // R-169, P-6a: the director records the CCB decision (the prototype printed the cadence "Monthly · next 8 Oct").
     // Deviation P-6b (R-069): no decision buttons on the board's step before the client decided.
     expect(d8).toContain('Change control board Marie Lefebvre Pending');
@@ -156,26 +158,26 @@ describe('Change control & baselines', () => {
     // decision buttons name their step for screen readers
     expect(drawer(hlt, 'CR-008', 'en')).toContain('aria-label="Approve · Portfolio director"');
     expect(drawer(hlt, 'CR-008', 'fr')).toContain('aria-label="Refuser · Directrice de portefeuille"');
-    // P-6b: the client's step waits for the director's — no buttons, the hint says what it waits for.
-    const asClient = text(drawer(hlt, 'CR-008', 'en', 'client'));
-    expect(asClient).toContain('Client / sponsor Nadia Bensaïd Pending');
-    expect(asClient).not.toMatch(/\bApprove\b/);
-    expect(asClient).toContain('Waiting for Portfolio director');
-    expect(text(drawer(hlt, 'CR-008', 'fr', 'client'))).toContain('En attente de la directrice de portefeuille');
-    // Once the director approved: the client decides, then the board.
+    // P-6b: the client's step (recorded by the PM, D9-06) waits for the director's — no buttons, the hint says what it waits for.
+    const asPm = text(drawer(hlt, 'CR-008', 'en', 'pm'));
+    expect(asPm).toContain('Client / sponsor Romain Aubert Pending');
+    expect(asPm).not.toMatch(/\bApprove\b|Record approval/);
+    expect(asPm).toContain('Waiting for Portfolio director');
+    expect(text(drawer(hlt, 'CR-008', 'fr', 'pm'))).toContain('En attente de la directrice de portefeuille');
+    // Once the director approved: the PM records the client's decision (dialog: date, signed document), then the board.
     const step = (cc: ChangeControl, s: string) => ({
       ...cc, changeRequests: cc.changeRequests.map((c) => (c.id === 'CR-008' ? { ...c, chain: c.chain.map((x) => (x.step === s ? { ...x, decision: 'ok' as const } : x)) } : c)),
     });
     const afterDirector = step(hlt, 'director');
-    const clientNow = text(drawer(afterDirector, 'CR-008', 'en', 'client'));
-    expect(clientNow).toContain('Client / sponsor Nadia Bensaïd Reject Approve Pending');
-    expect(clientNow.match(/\bApprove\b/g)).toHaveLength(1);
-    expect(text(drawer(afterDirector, 'CR-008', 'en', 'client', false))).not.toMatch(/\bApprove\b/);
+    const pmNow = text(drawer(afterDirector, 'CR-008', 'en', 'pm'));
+    expect(pmNow).toContain('Client / sponsor Romain Aubert Record rejection Record approval Pending');
+    expect(pmNow).not.toMatch(/\bApprove\b/);
+    expect(text(drawer(afterDirector, 'CR-008', 'en', 'pm', false))).not.toMatch(/Record approval/);
     expect(text(drawer(afterDirector, 'CR-008', 'en'))).toContain('Waiting for Client / sponsor');
     const board = drawer(step(afterDirector, 'client'), 'CR-008', 'en');
     expect(text(board)).toContain('Change control board Marie Lefebvre Reject Approve Pending');
     expect(board).toContain('aria-label="Approve · Change control board"');
-    expect(text(drawer(hlt, 'CR-008', 'en', 'quality'))).toContain('Switch to Project manager, Portfolio director or Client (bottom-left) to decide.');
+    expect(text(drawer(hlt, 'CR-008', 'en', 'quality'))).toContain('Switch to Project manager or Portfolio director (bottom-left) to decide.');
     const d9 = text(drawer(hlt, 'CR-009', 'en'));
     expect(d9).toContain('Submit the request to start the approval chain.');
     expect(d9).toContain('Submit for review Open plan');
@@ -185,9 +187,9 @@ describe('Change control & baselines', () => {
     expect(d9ro).not.toContain('Submit');
     expect(d9ro).toContain('Open plan Open budget');
     const d7 = text(drawer(hlt, 'CR-007', 'en'));
-    expect(d7).toContain('Client / sponsor Nadia Bensaïd Not required');
+    expect(d7).toContain('Client / sponsor Romain Aubert Not required'); // D9-06: recorded by the PM
     // CR-005: chain not recorded in the dataset
-    expect(text(drawer(hlt, 'CR-005', 'en'))).toContain('Client / sponsor Nadia Bensaïd —');
+    expect(text(drawer(hlt, 'CR-005', 'en'))).toContain('Client / sponsor Romain Aubert —');
     const fr = text(drawer(hlt, 'CR-008', 'fr'));
     expect(fr).toContain('Émise par R. Aubert · 24 sept.');
     expect(fr).toContain('Financé par la provision · 57 % de la réserve');

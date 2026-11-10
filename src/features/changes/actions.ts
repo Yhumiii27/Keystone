@@ -19,6 +19,7 @@ import { getProject } from '@/server/dal/projects';
 import { recordStatusReport } from '@/server/dal/trends';
 import { getProjectContext, type ProjectContext } from '@/server/project-context';
 import { canSchedulePlan } from '@/features/plan/rights';
+import { businessToday } from '@/server/clock';
 import { getI18n } from '@/server/session';
 import { NEW_CR_RESULT, STATUS_REPORT_RESULT, parseNewChangeRequest, parseStatusReport } from './forms';
 
@@ -127,25 +128,34 @@ export async function submitChangeRequestAction(code: string, number: string): P
 
 /**
  * Approve / Reject one step of the approval chain. Only the persona owning the step decides it (pm — one of the project's
- * PMs or deputies, R-041 —, director, client; the change control board is recorded by the director), on a request in review
- * whose step is the current one (R-069, P-6b: a later step answers "Not yours to decide yet").
+ * PMs or deputies, R-041 —, director; the change control board is recorded by the director), on a request in review
+ * whose step is the current one (R-069, P-6b: a later step answers "Not yours to decide yet"). The client step is recorded
+ * with `recordClientChangeStepAction` (D9-06: the date and the reference of the signed document).
  * The status is re-derived from the chain by the DAL (approved → BL2 becomes current for CR-009).
  */
 export async function decideChangeStepAction(code: string, number: string, step: string, decision: string): Promise<ChangeActionResult> {
+  const { t } = await getI18n();
+  if (step === 'client') return { error: t('Record the client’s decision with its signed document') };
+  return decideStep(code, number, step, decision);
+}
+
+/** Shared by the step buttons and the client step's dialog: checks the viewer holds the current step, then records it. */
+async function decideStep(code: string, number: string, step: string, decision: string, comment?: string): Promise<ChangeActionResult> {
   const r = await editable(code, 'changes');
   if ('error' in r) return r;
   const { t } = await getI18n();
   if (!(CR_STEPS as string[]).includes(step) || (decision !== 'ok' && decision !== 'rejected')) return { error: t('Invalid request') };
   const s = step as ChangeStep;
   if (STEP_DECIDER[s] !== r.ctx.viewer.role) return { error: t('This approval step is not yours to decide') };
-  // R-041: the PM step belongs to the project's PMs (PM of record, co-PMs, deputies), not to any PM on its team.
-  if (s === 'pm' && !r.ctx.isLead) return { error: t('This approval step is not yours to decide') };
+  // R-041: the PM step (and, D9-06, the client's decision they record) belongs to the project's PMs (PM of record, co-PMs,
+  // deputies), not to any PM on its team.
+  if ((s === 'pm' || s === 'client') && !r.ctx.isLead) return { error: t('This approval step is not yours to decide') };
   const cr = await loadCr(r.ctx.project.code, number);
   if (!cr) return { error: t('Unknown change request') };
   if (stepWaitsForEarlier(cr, s)) return { error: t(NOT_YOURS_YET) };
   if (!canDecideStep(cr, s, { role: r.ctx.viewer.role })) return { error: t('This approval step is no longer pending') };
   try {
-    await decideChangeStep(r.ctx.project.code, cr.id, s, decision, r.ctx.viewer.name);
+    await decideChangeStep(r.ctx.project.code, cr.id, s, decision, r.ctx.viewer.name, comment);
   } catch (e) {
     // Decided meanwhile by someone else (R-010): the row is stale.
     refresh();
@@ -156,6 +166,29 @@ export async function decideChangeStepAction(code: string, number: string, step:
   await notifyChangeRequest(r.ctx.project.code, cr.id, r.ctx.viewer.name);
   refresh();
   return { ok: true };
+}
+
+/** Longest reference of a signed document (the client step's dialog). */
+const CLIENT_REF_MAX = 120;
+
+/**
+ * D9-06 (owner, 10 Nov 2026): the client step of a change request, recorded by the project manager from the client's signed
+ * decision (clients never see Keystone; DocuSign planned) — the date of the client's decision and the reference of the signed
+ * document (required for an approval), kept as the step's comment ("Client decision of 2026-09-24 · AV-HLT-003").
+ */
+export async function recordClientChangeStepAction(code: string, number: string, decision: string, values: Record<string, string>): Promise<ChangeFormResult> {
+  const { t } = await getI18n();
+  const v = values && typeof values === 'object' ? values : {};
+  const on = typeof v.on === 'string' ? v.on.trim() : '';
+  const reference = typeof v.reference === 'string' ? v.reference.trim() : '';
+  if (decision !== 'ok' && decision !== 'rejected') return { error: t('Invalid request') };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(on)) return { error: t('Enter the date of the client’s decision') };
+  if (on > (await businessToday())) return { error: t('The client’s decision cannot be after the status date') };
+  if (reference.length > CLIENT_REF_MAX) return { error: t('Invalid request') };
+  if (decision === 'ok' && !reference) return { error: t('Enter the reference of the signed document') };
+  const r = await decideStep(code, number, 'client', decision, `Client decision of ${on}${reference ? ` · ${reference}` : ''}`);
+  if ('error' in r) return r;
+  return { toast: await toastOf(decision === 'ok' ? 'Client approval recorded' : 'Client rejection recorded') };
 }
 
 /** "Generate status report" (AF `trends`): records the request; toast "Status report generated · PDF ready" (no PDF yet, 04 OQ9). */

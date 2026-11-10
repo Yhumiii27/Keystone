@@ -1,7 +1,6 @@
 // Export providers — Team & exchanges: Meetings & minutes, Stakeholders & RACI, Interface register.
 // Meetings: the register with its chip (`?filter=`), the decision and action registers (`?view=` puts the current one
 // first) and the client question bridge; PDF = the minutes of the selected meeting (`?meeting=`, else the screen's default).
-// A client exports what their screen shows (P-10b, R-043): external meetings only, no question bridge.
 // Stakeholders: the register and the RACI matrix. Interfaces: the register with the effective (late) status.
 import { MEETING_FILTER_LABEL, matchesFilter, parseMeetingFilter, parseMeetingsView, selectMeeting } from '@/domain/meetings';
 import { getMeetingsScreen } from '@/server/dal/meetings-screen';
@@ -34,18 +33,17 @@ function lineSheets(ctx: ExportContext, ms: MeetingRow[]): { decisions: ExportSh
 async function meetingsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   if (!ctx.project) return null;
   const { t } = ctx;
-  const client = ctx.viewer.role === 'client';
-  const data = await getMeetingsScreen(ctx.project.code, { client });
+  const data = await getMeetingsScreen(ctx.project.code);
   const view = parseMeetingsView(param(ctx, 'view'));
   const filter = parseMeetingFilter(param(ctx, 'filter'));
   const shown = data.meetings.filter((m) => matchesFilter(m, filter));
   const register = sheet(t('Meetings'), [
     col('number', t('Meeting'), 'text', 10), col('date', t('Date'), 'date'), col('time', t('Time'), 'text', 7), col('duration', t('Duration (min)'), 'integer'),
-    col('title', t('Title'), 'text', 40), col('series', t('Series'), 'text', 16), col('type', t('Type'), 'text', 14), col('location', t('Location'), 'text', 20),
+    col('title', t('Title'), 'text', 40), col('series', t('Series'), 'text', 16), col('type', t('Type'), 'text', 14), col('client', t('Client present'), 'boolean'), col('location', t('Location'), 'text', 20),
     col('organizer', t('Organizer'), 'text', 16), col('status', t('Status'), 'text', 18), col('minutes', t('Minutes'), 'text', 14), col('sent', t('Minutes sent'), 'date'),
     col('participants', t('Participants'), 'integer'), col('actions', t('Actions'), 'integer'),
   ], shown.map((m) => ({
-    number: m.number, date: m.startsOn, time: m.time, duration: m.durationMin, title: dataText(m.title, ctx.lang), series: t(m.seriesLabel), type: t(m.typeLabel), location: dataText(m.location, ctx.lang),
+    number: m.number, date: m.startsOn, time: m.time, duration: m.durationMin, title: dataText(m.title, ctx.lang), series: t(m.seriesLabel), type: t(m.typeLabel), client: m.clientPresent, location: dataText(m.location, ctx.lang),
     organizer: m.organizer, status: t(m.statusLabel), minutes: m.minutesNumber ?? '', sent: m.minutesSentOn, participants: m.participants.length, actions: m.actionCount,
   })));
   const { decisions, actions } = lineSheets(ctx, data.meetings);
@@ -57,7 +55,7 @@ async function meetingsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | nu
   return {
     title: t('Meetings & minutes'),
     filters: compact([filter !== 'all' ? `${t('Filter')}: ${t(MEETING_FILTER_LABEL[filter])}` : null]),
-    sheets: client ? order : [...order, questions],
+    sheets: [...order, questions],
   };
 }
 
@@ -65,7 +63,7 @@ async function meetingsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | nu
 async function minutesDocument(ctx: ExportContext): Promise<PdfDocument | null> {
   if (!ctx.project) return null;
   const { t } = ctx;
-  const data = await getMeetingsScreen(ctx.project.code, { client: ctx.viewer.role === 'client' });
+  const data = await getMeetingsScreen(ctx.project.code);
   const m = selectMeeting(data.meetings, param(ctx, 'meeting') ?? param(ctx, 'id'));
   if (!m) return null;
   const blocks: PdfBlock[] = [
@@ -104,11 +102,11 @@ async function stakeholdersWorkbook(ctx: ExportContext): Promise<ExportWorkbook 
   const sheets = [
     sheet(t('Stakeholders'), [
       col('name', t('Name'), 'text', 22), col('organisation', t('Organisation'), 'text', 22), col('role', t('Role'), 'text', 24), col('type', t('Type'), 'text', 14),
-      col('owner', t('Relationship owner'), 'text', 16), col('last', t('Last contact'), 'date'), col('stale', t('No contact > 30 days'), 'boolean'), col('influence', t('Influence'), 'integer'),
-      col('interest', t('Interest'), 'integer'), col('attitude', t('Attitude'), 'text', 12), col('email', t('E-mail'), 'text', 26), col('notes', t('Notes'), 'text', 40),
+      col('owner', t('Relationship owner'), 'text', 16), col('last', t('Last contact'), 'date'), col('stale', t('No contact > 30 days'), 'boolean'),
+      col('email', t('E-mail'), 'text', 26), col('notes', t('Notes'), 'text', 40),
     ], stakeholders.map((s) => ({
-      name: s.name, organisation: dataText(s.organisation, ctx.lang), role: dataText(s.role, ctx.lang), type: t(s.typeLabel), owner: s.owner, last: s.lastContactOn, stale: s.stale, influence: s.influence,
-      interest: s.interest, attitude: t(s.attitude), email: s.contactEmail ?? '', notes: dataText(s.notes, ctx.lang),
+      name: s.name, organisation: dataText(s.organisation, ctx.lang), role: dataText(s.role, ctx.lang), type: t(s.typeLabel), owner: s.owner, last: s.lastContactOn, stale: s.stale,
+      email: s.contactEmail ?? '', notes: dataText(s.notes, ctx.lang),
     }))),
   ];
   if (raci) {

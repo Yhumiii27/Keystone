@@ -76,24 +76,20 @@ export const modesLabel = (m: NotificationModes) => NOTIFICATION_FAMILIES.map((f
 
 export const sameModes = (a: NotificationModes, b: NotificationModes) => NOTIFICATION_FAMILIES.every((f) => a[f] === b[f]);
 
-/** How a notice of `kind` reaches a recipient by e-mail (client accounts: the digest becomes immediate). */
-export function mailRoute(kind: NotificationKind, modes: NotificationModes, isClient: boolean): NotificationMode {
-  const mode = modes[FAMILY_OF_KIND[kind] ?? 'alerts'];
-  return mode === 'digest' && isClient ? 'immediate' : mode;
+/** How a notice of `kind` reaches a recipient by e-mail (the client accounts' "digest becomes immediate" went with D9-06). */
+export function mailRoute(kind: NotificationKind, modes: NotificationModes): NotificationMode {
+  return modes[FAMILY_OF_KIND[kind] ?? 'alerts'];
 }
 
 export type MailState = 'immediate' | 'digest' | 'sending' | 'sent' | 'digested' | 'seen' | 'off' | 'no_transport' | 'no_address' | 'not_visible' | 'failed';
 
 /** The e-mail state a new recipient row starts in. */
-export function initialMailState(kind: NotificationKind, modes: NotificationModes, isClient: boolean, transport: 'none' | 'file'): MailState {
-  const route = mailRoute(kind, modes, isClient);
+export function initialMailState(kind: NotificationKind, modes: NotificationModes, transport: 'none' | 'file'): MailState {
+  const route = mailRoute(kind, modes);
   if (route === 'off') return 'off';
   if (transport === 'none') return 'no_transport';
   return route;
 }
-
-/** A person whose every role is the client's (an internal role opens every project read-only, R-041). */
-export const isClientOnly = (roles: readonly string[]) => roles.length > 0 && roles.every((r) => r === 'client');
 
 /** The idempotency key of a person's daily digest (one per person and business date, `reminder_sends`). */
 export const digestSendKey = (personId: string, today: string) => ({ personId, itemKey: 'notification_digest', slot: 'daily', occurrence: today });

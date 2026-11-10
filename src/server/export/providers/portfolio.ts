@@ -18,7 +18,6 @@ import { getPortfolioOverview } from '@/server/dal/portfolio';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportWorkbook } from '../types';
 import { col, compact, filterLine, kpiSheet, monthIso, monthOfText, param, pctNum, sheet } from './common';
-import { projectFilter } from './scope';
 import { dataText } from '@/i18n/data-text';
 
 const zoneLine = (ctx: ExportContext) => filterLine(ctx.t('Zone'), ctx.zone?.toUpperCase());
@@ -26,8 +25,8 @@ const zoneLine = (ctx: ExportContext) => filterLine(ctx.t('Zone'), ctx.zone?.toU
 // ── Overview ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 async function overviewWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t, lang } = ctx;
-  const [data, visible, th] = await Promise.all([getPortfolioOverview(ctx.zone, lang), projectFilter(ctx), healthThresholds()]);
-  const rows = data.rows.filter((p) => visible(p.code));
+  const [data, th] = await Promise.all([getPortfolioOverview(ctx.zone, lang), healthThresholds()]);
+  const rows = data.rows;
   // The rows already carry their metrics with the Settings thresholds (A-13); a client's subset recomputes the totals only.
   const kpis = rows.length === data.rows.length ? data.kpis : portfolioKpis(portfolioTotals(rows), lang, th);
   return {
@@ -46,7 +45,7 @@ async function overviewWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
       kpiSheet(ctx, kpis.map((k) => ({ label: t(k.label), value: k.value, sub: t(k.sub) }))),
       sheet(t('Needs attention'), [col('project', t('Project'), 'text', 10), col('title', t('Alert'), 'text', 44), col('detail', t('Details'), 'text', 60), col('action', t('Action'), 'text', 20)],
         // The alert texts are written in the export's language, typed names as typed (R-130, R-148): not translated again.
-        data.alerts.filter((a) => visible(a.code)).map((a) => ({ project: a.code ?? '', title: a.title, detail: a.detail, action: t(a.action) }))),
+        data.alerts.map((a) => ({ project: a.code ?? '', title: a.title, detail: a.detail, action: t(a.action) }))),
     ],
   };
 }
@@ -59,8 +58,7 @@ async function pfplanWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t, lang } = ctx;
   const f = param(ctx, 'filter');
   const filter = isPgFilter(f) ? f : 'all';
-  const [input, visible] = await Promise.all([getPortfolioSchedule(ctx.zone), projectFilter(ctx)]);
-  const scoped = { ...input, rows: input.rows.filter((r) => visible(r.project.code)) };
+  const scoped = await getPortfolioSchedule(ctx.zone);
   // L-8 (R-136): the window of the screen (`?from=`); the sheets list every row whatever the window.
   const model = portfolioScheduleModel(scoped, { filter, lang, from: parseWindowParam(param(ctx, 'from')) });
   const byCode = new Map(scoped.rows.map((r) => [r.project.code, r]));
@@ -89,8 +87,8 @@ async function pfplanWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
 // ── Projects map ─────────────────────────────────────────────────────────────────────────────────────────────────────
 async function worldmapWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
-  const [map, visible] = await Promise.all([getProjectsMap(ctx.zone), projectFilter(ctx)]);
-  const points = map.points.filter((p) => visible(p.project.code));
+  const map = await getProjectsMap(ctx.zone);
+  const points = map.points;
   const kpis = mapKpis(points.map((p) => ({ category: p.category, health: p.health, site: `${p.city}|${p.country}`, country: p.country })), map.unlocated, map.zone?.label ?? null);
   const CAT: Record<string, string> = { active: 'Active', pipeline: 'Pipeline', closed: 'Closed', other: 'Other' };
   return {
@@ -115,8 +113,7 @@ async function prioritisationWorkbook(ctx: ExportContext): Promise<ExportWorkboo
   const t = pfT(ctx.t, ctx.lang);
   const { lang } = ctx;
   const tab = parsePfTab(param(ctx, 'tab'));
-  const [{ candidates, ...data }, visible] = await Promise.all([getPrioritisationScreen(ctx.viewer, ctx.zone), projectFilter(ctx)]);
-  const scoped = { ...data, projects: data.projects.filter((p) => visible(p.code)) };
+  const { candidates, ...scoped } = await getPrioritisationScreen(ctx.viewer, ctx.zone);
   const view = prioritisationView(scoped, scoped.weights, t, lang);
   const ranked = rankByScore(scoped.projects, scoped.weights);
   const ranking = sheet(t('Ranking'), [
@@ -132,7 +129,7 @@ async function prioritisationWorkbook(ctx: ExportContext): Promise<ExportWorkboo
   const sheets = [ranking, weights, kpiSheet(ctx, view.kpis.map((k) => ({ label: k.label, value: k.value, sub: k.sub })))];
   if (tab === 'capacity') {
     const asked = param(ctx, 'project');
-    const cands = candidates.filter((c) => visible(c.code));
+    const cands = candidates;
     const candidate = cands.find((c) => c.code === asked) ?? cands[0] ?? null;
     const input = candidate ? await getCapacityScreen(candidate.code) : null;
     if (input) {
@@ -157,8 +154,7 @@ async function prioritisationWorkbook(ctx: ExportContext): Promise<ExportWorkboo
 // ── Cash flow & billing ──────────────────────────────────────────────────────────────────────────────────────────────
 async function cashWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const t = pfT(ctx.t, ctx.lang);
-  const [data, visible] = await Promise.all([getCashScreen(ctx.viewer.role, ctx.zone), projectFilter(ctx)]);
-  const scoped = { ...data, rows: data.rows.filter((r) => visible(r.code)) };
+  const scoped = await getCashScreen(ctx.viewer.role, ctx.zone);
   const view = cashView(scoped, t, ctx.lang);
   const bars = cashBars(scoped.forecast);
   return {

@@ -57,16 +57,13 @@ describe('R-051 — approval delegation', () => {
     expect(await queue('englead')).toEqual([]);
   });
 
-  it('refused declarations: oneself, a client, an end before the start, a past period, a client approver', async () => {
+  it('refused declarations: oneself, an end before the start, a past period, a malformed substitute', async () => {
     as('pm');
     const pm = await userOf('pm');
     expect(await declareDelegationAction({ substituteUserId: pm, startsOn: day(0), endsOn: day(7) })).toEqual({ ok: false, error: 'You cannot delegate to yourself' });
-    expect(await declareDelegationAction({ substituteUserId: await userOf('client'), startsOn: day(0), endsOn: day(7) })).toEqual({ ok: false, error: 'The substitute must be an internal user' });
     expect(await declareDelegationAction({ substituteUserId: await userOf('englead'), startsOn: day(7), endsOn: day(1) })).toEqual({ ok: false, error: 'The end date is before the start date' });
     expect(await declareDelegationAction({ substituteUserId: await userOf('englead'), startsOn: day(-9), endsOn: day(-1) })).toEqual({ ok: false, error: 'The period is already over' });
     expect(await declareDelegationAction({ substituteUserId: 'not-a-uuid', startsOn: day(0), endsOn: day(7) })).toEqual({ ok: false, error: 'The substitute must be an internal user' });
-    as('client');
-    await expect(declareDelegationAction({ substituteUserId: pm, startsOn: day(0), endsOn: day(7) })).resolves.toEqual({ ok: false, error: 'Only internal users can delegate their approvals' });
     expect(await (await getDb()).select().from(approvalDelegations)).toEqual([]);
   });
 
@@ -82,12 +79,15 @@ describe('R-051 — approval delegation', () => {
   });
 
   it('during the period the substitute gets the approver’s own items, marked "on behalf of"; the approver keeps them', async () => {
-    expect(await queue('englead')).toEqual(['po:PO-1082 ← Romain Aubert', 'eco:ECO-2026-015 ← Romain Aubert', 'rfq:RFQ-2026-031 ← Romain Aubert']);
-    expect(await queue('pm')).toEqual(['po:PO-1082', 'eco:ECO-2026-015', 'rfq:RFQ-2026-031']);
+    // D9-06: + the client's decisions to record on HLT-026's submitted deliverables (D-014, D-016), the PM's items too.
+    expect(await queue('englead')).toEqual([
+      'po:PO-1082 ← Romain Aubert', 'eco:ECO-2026-015 ← Romain Aubert', 'deliverable:D-014 ← Romain Aubert', 'deliverable:D-016 ← Romain Aubert', 'rfq:RFQ-2026-031 ← Romain Aubert',
+    ]);
+    expect(await queue('pm')).toEqual(['po:PO-1082', 'eco:ECO-2026-015', 'deliverable:D-014', 'deliverable:D-016', 'rfq:RFQ-2026-031']);
     const po = (await getApprovalInbox(PERSONA_BY_ROLE.englead, { projectCode: 'HLT-026' })).items[0];
     expect(po.onBehalfOf).toEqual({ name: 'Romain Aubert', delegationId: pmDelegation });
     expect(po.decision).toEqual(PO);
-    expect(await approvalCount(PERSONA_BY_ROLE.englead, 'HLT-026')).toBe(3);
+    expect(await approvalCount(PERSONA_BY_ROLE.englead, 'HLT-026')).toBe(5); // D9-06: + D-014, D-016
     // Banner of the substitute, the approver's own list, the director's list.
     const panel = await getDelegationPanel(PERSONA_BY_ROLE.englead, true);
     expect(panel.standingIn.map((d) => [d.approverName, d.from, d.to, d.canCancel])).toEqual([['Romain Aubert', '25 Sep 2026', '2 Oct 2026', false]]);
@@ -109,7 +109,7 @@ describe('R-051 — approval delegation', () => {
       }),
     );
     expect(html).toContain('Vous suppléez Romain Aubert · 25 sept. 2026 → 2 oct. 2026');
-    expect(html.match(/Pour le compte de Romain Aubert/g)).toHaveLength(3);
+    expect(html.match(/Pour le compte de Romain Aubert/g)).toHaveLength(5); // D9-06: + D-014, D-016
     expect(html).toContain('Suppléance');
     expect(html).toContain('Déclarer un suppléant');
     expect(html.match(/>Approuver</g)).toHaveLength(2); // PO and ECO decide inline; the RFQ is awarded on Sourcing
@@ -144,8 +144,8 @@ describe('R-051 — approval delegation', () => {
   it('no chaining: the head of engineering delegates to the PM — the PM gets her requests, the PM’s substitute does not', async () => {
     as('depthead');
     expect((await declareDelegationAction({ substituteUserId: await userOf('pm'), startsOn: day(0), endsOn: day(3) })).ok).toBe(true);
-    expect(await queue('pm')).toEqual(['eco:ECO-2026-015', 'rfq:RFQ-2026-031', 'request:RQ-043 ← Marion Kerviel', 'request:RQ-041 ← Marion Kerviel']);
-    expect(await queue('englead')).toEqual(['eco:ECO-2026-015 ← Romain Aubert', 'rfq:RFQ-2026-031 ← Romain Aubert']);
+    expect(await queue('pm')).toEqual(['eco:ECO-2026-015', 'deliverable:D-014', 'deliverable:D-016', 'rfq:RFQ-2026-031', 'request:RQ-043 ← Marion Kerviel', 'request:RQ-041 ← Marion Kerviel']);
+    expect(await queue('englead')).toEqual(['eco:ECO-2026-015 ← Romain Aubert', 'deliverable:D-014 ← Romain Aubert', 'deliverable:D-016 ← Romain Aubert', 'rfq:RFQ-2026-031 ← Romain Aubert']);
     as('englead');
     expect(await decideOnBehalfAction({ delegationId: pmDelegation, decision: { mode: 'resource-request', number: 'RQ-043' }, ok: true })).toEqual({ ok: false, error: 'This decision is not waiting for you any more' });
   });
@@ -171,11 +171,10 @@ describe('R-051 — approval delegation', () => {
     expect([audit.who, audit.reason]).toEqual(['Marie Lefebvre', 'Back early']);
   });
 
-  it('every persona: the panel loads; a client never declares nor stands in', async () => {
+  it('every persona: the panel loads and may declare (D9-06: no client persona any more)', async () => {
     for (const p of PERSONAS) {
       const panel = await getDelegationPanel(p, true);
-      expect([p.role, panel.canDeclare]).toEqual([p.role, p.role !== 'client']);
-      if (p.role === 'client') expect(panel).toMatchObject({ mine: [], standingIn: [], candidates: [] });
+      expect([p.role, panel.canDeclare]).toEqual([p.role, true]);
     }
   });
 });

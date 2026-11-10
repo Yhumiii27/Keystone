@@ -26,10 +26,10 @@ describe('change request ↔ plan activities (NEW-D2-2)', () => {
     expect([isPlanActivityCode('A1250'), isPlanActivityCode('WP-1.4_a'), isPlanActivityCode(''), isPlanActivityCode('A 1'), isPlanActivityCode(7)]).toEqual([true, true, false, false, false]);
   });
 
-  it('links are edited on open requests by the project team, never by the client', () => {
+  it('links are edited on open requests by the project team', () => {
     expect((['draft', 'in_review', 'approved', 'rejected'] as const).map(crActivitiesEditable)).toEqual([true, true, false, false]);
-    expect([canEditCrActivities({ role: 'pm' }, true), canEditCrActivities({ role: 'director' }, true), canEditCrActivities({ role: 'client' }, true), canEditCrActivities({ role: 'pm' }, false)])
-      .toEqual([true, true, false, false]);
+    expect([canEditCrActivities({ role: 'pm' }, true), canEditCrActivities({ role: 'director' }, true), canEditCrActivities({ role: 'pm' }, false)])
+      .toEqual([true, true, false]);
   });
 
   it('the next Reschedule applies the new duration of an approved request, once', () => {

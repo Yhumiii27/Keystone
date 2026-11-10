@@ -95,28 +95,28 @@ export async function getDelegation(id: string, today: string): Promise<Delegati
   return d ?? null;
 }
 
-/** Who can stand in: active internal accounts (never a client or an external user), the viewer excepted, in register order. */
+/** Who can stand in: active internal accounts (never an external user), the viewer excepted, in register order. */
 export async function delegationCandidates(exceptUserId: string | null): Promise<DelegationCandidate[]> {
   const db = await getDb();
   const rows = await db
-    .select({ id: users.id, roles: users.roles, external: users.isExternal, clientId: users.clientId, title: users.title, fullName: persons.fullName, shortName: persons.shortName })
+    .select({ id: users.id, roles: users.roles, external: users.isExternal, title: users.title, fullName: persons.fullName, shortName: persons.shortName })
     .from(users)
     .innerJoin(persons, eq(persons.id, users.personId))
     .where(eq(users.active, true))
     .orderBy(asc(users.sortOrder));
   return rows
-    .filter((r) => r.id !== exceptUserId && !r.clientId && isInternalUser({ roles: sortRoles(r.roles), external: r.external }))
+    .filter((r) => r.id !== exceptUserId && isInternalUser({ roles: sortRoles(r.roles), external: r.external }))
     .map((r) => ({ userId: r.id, name: r.fullName ?? r.shortName, title: r.title }));
 }
 
 async function delegationUser(q: Q, userId: string): Promise<(DelegationUser & { personId: string; name: string }) | null> {
   const [u] = await q
-    .select({ id: users.id, active: users.active, roles: users.roles, external: users.isExternal, clientId: users.clientId, personId: users.personId, fullName: persons.fullName, shortName: persons.shortName })
+    .select({ id: users.id, active: users.active, roles: users.roles, external: users.isExternal, personId: users.personId, fullName: persons.fullName, shortName: persons.shortName })
     .from(users)
     .innerJoin(persons, eq(persons.id, users.personId))
     .where(eq(users.id, userId));
   if (!u) return null;
-  return { userId: u.id, active: u.active, roles: sortRoles(u.roles), external: u.external || !!u.clientId, personId: u.personId, name: u.fullName ?? u.shortName };
+  return { userId: u.id, active: u.active, roles: sortRoles(u.roles), external: u.external, personId: u.personId, name: u.fullName ?? u.shortName };
 }
 
 /** The account a viewer acts with (signed-in user, or the demo user of the persona). */
@@ -225,7 +225,7 @@ export async function cancelDelegation(id: string, actor: { name: string; userId
 /** What the Delegation card of My approvals shows the viewer (`canEdit`: My approvals in their workspace). */
 export async function getDelegationPanel(viewer: Persona, canEdit: boolean): Promise<DelegationPanel> {
   const today = await businessToday();
-  const userId = viewer.role === 'client' ? null : await viewerUserId(viewer);
+  const userId = await viewerUserId(viewer);
   const empty: DelegationPanel = { canDeclare: false, mine: [], standingIn: [], upcomingFor: [], all: null, candidates: [], today };
   if (!userId) return empty;
   const live = (d: DelegationRow) => d.state === 'active' || d.state === 'upcoming';

@@ -95,7 +95,7 @@ describe('/projects/[code]/documents', () => {
     expect((await page({ deposit: 'NOPE-1' })).DepositWizard).toBeUndefined();
   });
 
-  it('NEW-D3-1 (R-047): the project’s internal team deposits, the director synchronises; the client deposits nowhere', async () => {
+  it('NEW-D3-1 (R-047): the project’s internal team deposits, the director synchronises', async () => {
     // NDC-031: PM S. Perrin, team P. Noguès, D. Roux, L. Marchand, F. Bertrand (procurement persona).
     const on = async (role: string, code: string) => {
       session.role = role;
@@ -108,20 +108,6 @@ describe('/projects/[code]/documents', () => {
     // HLT-026: the PM, the referents (engineering, quality), the team members.
     for (const role of ['pm', 'englead', 'quality', 'member', 'procurement']) expect(await on(role, 'HLT-026'), role).toEqual([true, true, false]);
     expect(await on('depthead', 'HLT-026')).toEqual([false, false, false]);
-    expect(await on('client', 'HLT-026')).toEqual([false, false, false]);
-    // P-10a: another organisation's vault is refused to the client.
-    session.role = 'client';
-    await expect(page({}, 'NDC-031')).rejects.toThrow('REDIRECT /');
-  });
-
-  it('P-10b (R-043): the client’s vault lists the documents shared with them on their organisation’s projects only', async () => {
-    session.role = 'client';
-    const v = (await page({ scope: 'all' })).DocsVault.props.view as VaultView;
-    const numbers = JSON.stringify(v);
-    expect(numbers).toContain('PID-HLT-026');
-    expect(numbers).not.toContain('LST-INS-026');
-    expect(numbers).not.toContain('NDC-031');
-    expect((await page({ doc: 'LST-INS-026' })).DocumentDrawer).toBeUndefined();
   });
 
   it('the approve button follows the named approver (quality for RPT-HLT-014) or the director', async () => {
@@ -132,9 +118,6 @@ describe('/projects/[code]/documents', () => {
     expect(await label('director')).toBe('Approve in Codex · Quality manager · G. Comte');
     expect(await label('quality')).toBe('Approve in Codex · Quality manager · G. Comte');
     expect(await label('pm')).toBeNull();
-    // P-10b: a record not shared with the client (pending approval) does not open for them.
-    session.role = 'client';
-    expect((await page({ doc: 'RPT-HLT-014' })).DocumentDrawer).toBeUndefined();
   });
 
   it('unknown project → not found', async () => {
@@ -154,8 +137,5 @@ describe('/admin/document-types', () => {
       session.role = role;
       expect(!!(await tree()).DocTypesRegister.props.editHref, role).toBe(edit);
     }
-    // R-042 (P-1): outside their workspace the client is sent home.
-    session.role = 'client';
-    await expect(tree()).rejects.toThrow('REDIRECT /');
   });
 });

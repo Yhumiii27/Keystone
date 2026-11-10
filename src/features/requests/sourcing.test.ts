@@ -129,10 +129,6 @@ describe('R-089 — the sourcing task goes to procurement', () => {
   it('"Name the person": every persona — only procurement and the director; the client never reaches the task sheet', async () => {
     for (const p of PERSONAS) {
       as(p.role);
-      if (p.role === 'client') {
-        await expect(nameSourcedPersonAction({ taskId: task, person: 'Julien Wagner' })).rejects.toThrow('REDIRECT');
-        continue;
-      }
       if (p.role === 'procurement' || p.role === 'director') continue;
       const r = await nameSourcedPersonAction({ taskId: task, person: 'Julien Wagner' });
       expect(r.ok, p.role).toBe(false);

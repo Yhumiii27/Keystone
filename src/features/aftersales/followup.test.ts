@@ -35,7 +35,7 @@ import { deliveredView } from './delivered';
 
 /** The prototype's today for after-sales dates (NOW_ISO, 30 Sep 2026): the pure rules take it explicitly since R-013. */
 const NOW = '2026-09-30';
-const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'] as const;
+const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement'] as const;
 const EDIT = { cover: 'warranty', owner: 'T. Kerbrat', cost: '8', next: 'Replace brake disc', eco: '', diagnosis: 'Worn brake disc lining' };
 
 describe('R-143 / R-144 rules', () => {
@@ -129,7 +129,7 @@ describe('R-143 / R-144 Server Functions', () => {
       outcome[role] = r.toast ? 'ok' : r.error!;
     }
     const ro = 'Warranty claims are read-only for you';
-    expect(outcome).toEqual({ director: 'ok', pm: 'ok', depthead: ro, member: ro, englead: ro, quality: 'ok', procurement: 'ok', client: 'NEXT_REDIRECT' });
+    expect(outcome).toEqual({ director: 'ok', pm: 'ok', depthead: ro, member: ro, englead: ro, quality: 'ok', procurement: 'ok' });
     expect((await getClaim('WC-016'))!.nextStep).toBe('By procurement');
     session.role = 'member';
     expect(await closeClaimAction('WC-014', 'diagnosed')).toEqual({ ok: false, error: ro });
