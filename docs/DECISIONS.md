@@ -409,3 +409,20 @@ Questionnaire https://claude.ai/artifact/4AAS3t3L6t8soKaQCNxRBh (`docs/decisions
 - **S-32 · Colonne « Qualité du planning » dans « Mes projets » (S-23)** : oui.
 - **S-33 · Alertes de la Vue d’ensemble** : le nombre affiché (8) suffit ; les alertes sont classées par urgence et importance, et non plus par type d’alerte.
 - **S-34 · Glissement fournisseur prévenu aux directeurs** : oui quand le glissement dure trop longtemps et que son impact sur le projet est important, selon des seuils réglables dans Paramètres.
+
+## Décisions en attente de la livraison 9 (réponses du 10/11/2026)
+
+Questionnaire https://claude.ai/artifact/8u6AejE5Fx9eHiMuedKKLt (`docs/decisions/questions-decisions-l9.json`). 12 réponses sur 38 ; les autres restent ouvertes.
+
+- **D9-01 · Les tailles de référence du classement des alertes du portefeuille conviennent-elles ?** (S-33 · S-34 · M-19 · R-139) : Oui, telles quelles ★
+- **D9-02 · La facturation en retard doit-elle passer en classe 1, avec les alertes qui touchent la date de fin ou le contrat ?** (S-33 · S-34 · M-19 · R-139) : Non, classe 2 (actuel) ★
+- **D9-03 · Relancer les directeurs quand un glissement fournisseur s’aggrave beaucoup dans le même épisode ?** (S-33 · S-34 · M-19 · R-139) : Non, une seule notification par épisode (actuel) ★
+- **D9-04 · Ouvrir plus tard d’autres données à la correction depuis Matrix (jours fériés, seuils de Paramètres) ?** (S-33 · S-34 · M-19 · R-139) : Ouvrir aussi les jours fériés et les seuils de Paramètres
+- **D9-05 · Afficher dans le fil d’activité les corrections faites depuis Matrix ?** (S-33 · S-34 · M-19 · R-139) : Non, le journal d’audit suffit (actuel) ★
+- **D9-06 · Dans l’aperçu « Voir comme le client », le directeur garde-t-il « Signaler un point » ?** (S-33 · S-34 · M-19 · R-139) : Autre réponse — *nous pouvons supprimer la vue et le profils client l'outil enverra des documents a signer par docusign si des points doivent être officielalisés avec les clients*
+- **D9-07 · Les autres rôles internes peuvent-ils encore ouvrir le portail client d’un projet par son adresse ?** (S-33 · S-34 · M-19 · R-139) : Non, les renvoyer vers la fiche du projet
+- **D9-08 · Réactiver la reprise des plannings existants (MS Project, Primavera P6) ?** (R-012 · R-060 · R-063 · R-065 · R-066 · R-091) : Autre réponse — *L'import sera soit en format MS Project, soit en format GanttProject*
+- **D9-09 · Qu’est-ce qui fait avancer la date de situation d’un projet ?** (R-012 · R-060 · R-063 · R-065 · R-066 · R-091) : Le chef de projet l’avance, Keystone la propose chaque vendredi ★
+- **D9-10 · Que doit enregistrer le gel hebdomadaire du vendredi ?** (R-012 · R-060 · R-063 · R-065 · R-066 · R-091) : CPI, SPI, EAC, marge, risques et avancement ★
+- **D9-11 · Une référence de planning proposée dont la demande de modification est rejetée : supprimée ou gardée ?** (R-012 · R-060 · R-063 · R-065 · R-066 · R-091) : Gardée, marquée « rejetée » ★
+- **D9-12 · Quand une ancienne demande est approuvée après une plus récente, quelle référence devient courante ?** (R-012 · R-060 · R-063 · R-065 · R-066 · R-091) : Garder la plus haute (BL3) ; « Re-baseline » passe par une demande après BL1 ★
