@@ -4,7 +4,7 @@ Réponses du responsable produit au questionnaire de la livraison 9 (`docs/DECIS
 `docs/decisions/questions-decisions-l9.json`, section « planning »). Éléments : R-012 (reprise des plannings), R-060 (date de
 référence et gel du vendredi), R-063 (règles des références de planning, S-3).
 
-Migration : `drizzle/0078_weekly_freeze.sql` (numéro donné par drizzle ; à renuméroter à l’intégration si un autre lot a pris
+Migration : `drizzle/0079_weekly_freeze.sql` (renumérotée à l’intégration : 0078 est pris par le lot Matrix ; texte d’origine :
 0078). Elle ne touche à aucune vue `pub_` (la table `status_snapshots` n’est lue par aucune).
 
 ## 1. D9-08 (R-012) — reprise des plannings MS Project et GanttProject
