@@ -134,7 +134,7 @@ describe('/projects/[code]/itp', () => {
 describe('/projects/[code]/commissioning', () => {
   it('HLT-026: header with "Plan SAT" (run form, defaults from the plan and the client contacts), the grid', async () => {
     const p = await cm();
-    expect(Object.keys(p)).toEqual(['PageHeader', 'CommissioningBody']);
+    expect(Object.keys(p)).toEqual(['PageHeader', 'CommissioningBody', 'CeConformityCard']); // R-160: the CE conformity card
     expect(p.PageHeader.props).toMatchObject({ screen: 'commissioning', projectCode: 'HLT-026' });
     const primary = p.PageHeader.props.primary as El;
     expect(primary.props).toMatchObject({ kind: 'sat', code: 'HLT-026', label: 'Plan SAT' });

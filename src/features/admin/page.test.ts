@@ -68,7 +68,8 @@ describe('/admin/settings', () => {
       session.role = role;
       const p = parts(await SettingsPage());
       // R-158: the Incoterms card under the lists; R-199: the company default of the reminders and reports, same editors.
-      expect(Object.keys(p)).toEqual(['PageHeader', 'SettingsBody', 'IncotermsCard', 'ReminderDefaultsCard']);
+      // R-160: the CE conformity checklists card, same editors.
+      expect(Object.keys(p)).toEqual(['PageHeader', 'SettingsBody', 'IncotermsCard', 'ReminderDefaultsCard', 'CeChecklistsCard']);
       expect(p.ReminderDefaultsCard.props, role).toMatchObject({ canEdit, transport: 'none', values: { offsets: '7,1', emailReminders: 'on', emailReports: 'on', overdue: 'on' } });
       expect(p.PageHeader.props.screen).toBe('settings');
       if (canEdit) expect(primaryName(p)).toBe('ResetSettingsButton');

@@ -99,6 +99,7 @@ import d9SQuality from './d9-s-quality.json';
 import d9SFollowup2 from './d9-s-followup2.json';
 import d9SAlerts from './d9-s-alerts.json';
 import d9RdRecurring from './d9-rd-recurring.json';
+import d9CeConformity from './d9-ce-conformity.json';
 
 export const EXTRA_FR: Record<string, string> = {
   ...common,
@@ -195,6 +196,7 @@ export const EXTRA_FR: Record<string, string> = {
   ...d9SFollowup2,
   ...d9SAlerts,
   ...d9RdRecurring,
+  ...d9CeConformity,
   ...d9Dashboards,
   ...d9Multilevel,
   ...d9VigieViews,

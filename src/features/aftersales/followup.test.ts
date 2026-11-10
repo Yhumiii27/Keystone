@@ -209,7 +209,8 @@ describe('R-143 / R-144 Server Functions', () => {
     session.role = 'quality';
     // R-013: delivered on the business date (25 Sep 2026 on the demo data set, not the prototype's 30 Sep).
     expect(await registerMachinesAction({ project: 'RCF-019', count: '2', name: 'Overhead crane 10 t', site: 'Lyon · clinic', delivered: '25 Sep 2026', warranty: '24 Sep 2028' })).toEqual({
-      toast: 'MCH-050, MCH-051 · Machines registered with their as-built configuration',
+      // R-160 (P2): RCF-019's line has no CE file — the machines are registered, with the warning.
+      toast: 'MCH-050, MCH-051 · Machines registered with their as-built configuration · CE file incomplete · EQ-01 · the handover is not blocked',
     });
     const m = (await getMachine('MCH-051'))!;
     expect([m.name, m.projectCode, m.deliveredOn, m.warrantyEndOn, m.warrantyStatus, m.site, m.parts.length]).toEqual(['Overhead crane 10 t #2', 'RCF-019', '2026-09-25', '2028-09-24', 'in_warranty', 'Lyon · clinic', 5]);

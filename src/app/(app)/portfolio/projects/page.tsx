@@ -4,12 +4,14 @@
 // stage-deliverable checklists with auto-advance, the Force stage change dialog and the New project wizard.
 // R-196: category filter (?cat=client|rd), shown when an R&D project exists.
 // R-187 (Arche K-02, K-10): under the register, the "Subsidiaries' machine needs" card (director and project managers).
+// R-160 (P2, D9-32): under it, the CE conformity card (machine lines with an incomplete CE file under Regulation 2023/1230).
 // S-23: the health view's "Schedule quality" column — DCMA checks that fail per live project (R-206 checks, read only).
 import { PageHeader } from '@/components/app/shell/page-header';
 import { canSee } from '@/config/role-screens';
 import { isLiveRow, isRegisterView } from '@/domain/lifecycle';
 import { isProjectCategory, type ProjectCategory } from '@/domain/project-category';
 import { NeedsCard } from '@/features/capex-needs/needs-card';
+import { CePortfolioCard } from '@/features/ce/portfolio-card';
 import { NewProjectButton } from '@/features/projects/new-project-button';
 import { ProjectsRegister } from '@/features/projects/register';
 import { buildRegisterModel } from '@/features/projects/register-model';
@@ -46,6 +48,8 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
         initialCategory={isProjectCategory(one(sp.cat)) ? (one(sp.cat) as ProjectCategory) : null}
       />
       <NeedsCard />
+      {/* R-160 (P2, D9-32): machine lines with an incomplete CE file placed on the market from 20 Jan 2027. */}
+      <CePortfolioCard codes={zone ? data.projects.filter((p) => p.zone === zone).map((p) => p.code) : null} />
     </>
   );
 }
