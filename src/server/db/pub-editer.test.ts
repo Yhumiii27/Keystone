@@ -51,11 +51,12 @@ describe('M-19: the function as Matrix finds it', () => {
 
 describe('M-19: the closed list', () => {
   it('refuses every table outside the list (rights, audit trail, connectors, outboxes, mirrors…)', async () => {
-    for (const table of ['users', 'audit_entries', 'connectors', 'app_settings', 'vigie_ncrs', 'codex_outbox', 'rate_roles', 'projet_inconnu', '']) {
+    for (const table of ['users', 'audit_entries', 'connectors', 'vigie_ncrs', 'codex_outbox', 'rate_roles', 'projet_inconnu', '']) {
       const r = await refusal(table, 'corriger', { id: '00000000-0000-0000-0000-000000000000' }, { name: 'x' });
       expect(r.code).toBe('P0K01');
       expect(r.message).toContain('non modifiable depuis Matrix');
-      expect(r.message).toContain('clients, persons, projects, reference_values, storage_locations, suppliers');
+      // D9-04 (migration 0078): the Settings thresholds (app_settings) are open too — pub-editer-settings.test.ts.
+      expect(r.message).toContain('app_settings, clients, persons, projects, reference_values, storage_locations, suppliers');
     }
   });
 
@@ -128,9 +129,8 @@ describe('M-19: reference lists (Settings)', () => {
     expect((await refusal('reference_values', 'ajouter', null, { list_key: 'riskCats', label: 'qualité FOURNISSEUR' })).message).toBe('« qualité FOURNISSEUR » est déjà dans la liste');
   });
 
-  it('refuses a new project status, a holiday, a location type and an unknown list', async () => {
+  it('refuses a new project status, a location type and an unknown list (holidays: D9-04, pub-editer-settings.test.ts)', async () => {
     expect((await refusal('reference_values', 'ajouter', null, { list_key: 'statuses', label: 'Pause' })).code).toBe('P0K03');
-    expect((await refusal('reference_values', 'ajouter', null, { list_key: 'holidays', label: '1 Nov · Toussaint' })).message).toContain('jour férié');
     expect((await refusal('reference_values', 'ajouter', null, { list_key: 'locTypes', label: 'Dock' })).message).toBe('Les types d\'emplacement sont fixes');
     expect((await refusal('reference_values', 'ajouter', null, { list_key: 'other', label: 'X' })).message).toContain('Liste « other » inconnue');
     expect((await refusal('reference_values', 'ajouter', null, { label: 'X' })).message).toBe('« list_key » est obligatoire');

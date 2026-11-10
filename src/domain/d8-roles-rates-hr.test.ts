@@ -14,7 +14,7 @@ import {
 import { canSeeMargins } from './portfolio-finance';
 import { RATE_GRID_START, RATE_MULTIPLIER_DEFAULTS } from './rate-defaults';
 import {
-  canEditContract, canPreviewClientView, canSetBudgetRate, financeReadOnly, projectAccess, type ProjectFacts, type RightsViewer,
+  canEditContract, canPreviewClientView, canSetBudgetRate, clientPortalSendsToProject, financeReadOnly, projectAccess, type ProjectFacts, type RightsViewer,
 } from './rights';
 import { fallbackSettingsDefaults, parseSettingsDefaults } from './settings-defaults';
 
@@ -94,6 +94,17 @@ describe('R-139 · "View as client" (P-11 a)', () => {
     const sees = (v: RightsViewer) => canPreviewClientView(v.role, projectAccess(v, facts));
     expect([sees(viewerOf('director')), sees(viewerOf('pm')), sees(viewerOf('member')), sees(viewerOf('quality')), sees(viewerOf('client'))]).toEqual([true, true, true, false, false]);
     expect(sees({ ...viewerOf('pm'), short: 'X. Other', name: 'Other PM' })).toBe(false);
+  });
+
+  it('D9-07: every other internal role is sent to the project sheet; the client and the previewers stay on the portal', () => {
+    for (const r of ROLES) {
+      expect(clientPortalSendsToProject(r, { lead: false })).toBe(r !== 'client' && r !== 'director');
+      expect(clientPortalSendsToProject(r, { lead: true })).toBe(false);
+    }
+    const facts: ProjectFacts = { client: 'Port authority', pm: 'R. Aubert', pmPersonId: null, team: [{ personId: 'x', short: 'J. Wagner', name: 'Julien Wagner', role: 'team', primary: false }] };
+    const sent = (v: RightsViewer) => clientPortalSendsToProject(v.role, projectAccess(v, facts));
+    // A team member (not a lead), quality and procurement are sent away; the PM of record and the director are not.
+    expect([sent(viewerOf('member')), sent(viewerOf('quality')), sent(viewerOf('procurement')), sent(viewerOf('pm')), sent(viewerOf('director'))]).toEqual([true, true, true, false, false]);
   });
 });
 

@@ -175,9 +175,16 @@ export const canSetBudgetRate = (role: string) => (BUDGET_RATE_ROLES as readonly
 /**
  * P-11 (answer a): the director and the project's leads (PM of record, co-PMs, deputies) preview the client portal of the
  * project — the "View as client" entry of the project screens' header and the preview banner of the portal. Other internal
- * roles keep the read-only outside view (P-1 = a); the client never previews.
+ * roles are sent to the project's sheet (D9-07, `clientPortalSendsToProject`); the client never previews.
  */
 export const canPreviewClientView = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) => role !== 'client' && (role === 'director' || a.lead);
+
+/**
+ * D9-07 (owner, 10 Nov 2026: « Non, les renvoyer vers la fiche du projet »): an internal role that may not preview the client
+ * portal (every role but the client, the director and the project's leads) is sent to the project's sheet (Plan) when it opens
+ * the portal's address; it no longer reads the portal outside its workspace.
+ */
+export const clientPortalSendsToProject = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) => role !== 'client' && !canPreviewClientView(role, a);
 
 // ── R-042 · Screens outside the client's workspace (P-1, P-10a) ─────────────────────────────────────────────────────
 
