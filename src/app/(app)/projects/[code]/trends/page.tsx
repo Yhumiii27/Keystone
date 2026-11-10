@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/app/shell/page-header';
 import { CardTitle } from '@/components/ds/Card';
 import { screenHref } from '@/config/screens';
 import { parseTrendKey, type TrendKey } from '@/domain/trends';
+import { canSeeMargins } from '@/domain/portfolio-finance';
 import { StatusReportButton } from '@/features/changes/change-buttons';
 import { changesT } from '@/features/changes/i18n';
 import { TrendsView } from '@/features/changes/trends-view';
@@ -56,7 +57,7 @@ export default async function TrendsPage({ params, searchParams }: { params: Pro
       <Stack>
         {drift && <DriftForecastCard drift={drift} t={i18n.t} lang={lang} />}
         <TrendsView
-          data={{ snapshots: data.snapshots, series: data.series, bac: data.bac, contingency: data.contingency, nextReport: data.nextReport?.text ?? null }}
+          data={{ snapshots: data.snapshots, series: data.series, bac: data.bac, contingency: data.contingency, nextReport: data.nextReport?.text ?? null, showMargin: canSeeMargins(ctx.viewer.role) }}
           selected={parseTrendKey(first(sp.kpi))}
           href={href}
           lang={lang}

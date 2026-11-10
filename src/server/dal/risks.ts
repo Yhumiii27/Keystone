@@ -7,7 +7,7 @@ import 'server-only';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { changedValues } from '@/domain/audit-trail';
 import { costIfOccurs, costOfLegacyEmv, emvOf } from '@/domain/risk';
-import { getDb } from '@/server/db/client';
+import { getDb, type DB } from '@/server/db/client';
 import {
   riskCategory, riskLevel, riskLevelOf, riskResponse, riskScore, riskStatus,
   type RiskCategory, type RiskLevel, type RiskResponse, type RiskStatus, type RiskTrend,
@@ -133,6 +133,24 @@ export async function getOpenRiskExposure(projectCode: string): Promise<number> 
     .innerJoin(projects, eq(projects.id, risks.projectId))
     .where(and(eq(projects.code, projectCode), eq(risks.status, 'open')));
   return Math.round(rows.reduce((a, r) => a + emvOf(costOf(r), r.probability), 0) * 100) / 100;
+}
+
+/** D9-10: open risks of every project — their number and Σ EMV (k€, two decimals), by project id (the Friday freeze). */
+export async function listOpenRiskTotals(q?: DB | Tx): Promise<Map<string, { count: number; emv: number }>> {
+  const db = q ?? (await getDb());
+  const rows = await db
+    .select({ projectId: risks.projectId, costKeur: risks.costKeur, emvKeur: risks.emvKeur, probability: risks.probability })
+    .from(risks)
+    .where(eq(risks.status, 'open'));
+  const out = new Map<string, { count: number; emv: number }>();
+  for (const r of rows) {
+    const t = out.get(r.projectId) ?? { count: 0, emv: 0 };
+    t.count++;
+    t.emv += emvOf(costOf(r), r.probability);
+    out.set(r.projectId, t);
+  }
+  for (const t of out.values()) t.emv = Math.round(t.emv * 100) / 100;
+  return out;
 }
 
 /** Everything the Risk register screen reads; null for an unknown project. */

@@ -165,14 +165,14 @@ describe('Change control Server Functions', () => {
     expect((await listProjectBaselines('HLT-026')).map((b) => [b.code, b.state, b.activityCount])).toEqual([
       ['BL0', 'superseded', 0], ['BL1', 'superseded', 21], ['BL2', 'superseded', 21], ['BL3', 'current', 21],
     ]);
-    // A rejected proposal stays proposed and empty (the PM's step comes first, P-6b).
+    // D9-11 (R-063): a rejected proposal is kept, marked rejected, empty, never current (the PM's step comes first, P-6b).
     as('pm', 'Romain Aubert');
     expect(await createChangeRequestAction('HLT-026', { title: 'New baseline BL4', type: 'schedule', impact: 'dates', wbs: '1', why: 'x' }, { proposeBaseline: true })).toMatchObject({ toast: expect.stringContaining('BL4 proposed') });
     as('director', 'Marie Lefebvre');
     expect(await decideChangeStepAction('HLT-026', 'CR-014', 'director', 'rejected')).toEqual({ error: 'Not yours to decide yet' });
     as('pm', 'Romain Aubert');
     expect(await decideChangeStepAction('HLT-026', 'CR-014', 'pm', 'rejected')).toEqual({ ok: true });
-    expect((await listProjectBaselines('HLT-026')).find((b) => b.code === 'BL4')).toMatchObject({ state: 'proposed', activityCount: 0 });
+    expect((await listProjectBaselines('HLT-026')).find((b) => b.code === 'BL4')).toMatchObject({ state: 'rejected', activityCount: 0 });
     // Security review: a client's request never proposes a baseline (S-1 / S-3: the PM and the director own baselines).
     as('client', 'Nadia Bensaïd');
     expect(await createChangeRequestAction('HLT-026', { title: 'New baseline BL5', type: 'schedule', impact: 'dates', wbs: '1', why: 'x' }, { proposeBaseline: true })).toEqual({

@@ -18,6 +18,8 @@ export interface TrendsViewData {
   contingency: number | null;
   /** "2 Oct". */
   nextReport: string | null;
+  /** D9-10: the viewer sees margins (`canSeeMargins`) — else the history has no margin column. */
+  showMargin?: boolean;
 }
 
 export interface TrendsViewProps {
@@ -80,11 +82,14 @@ export function TrendsView({ data, selected, href, lang, t }: TrendsViewProps) {
               <Th align="right">{t('Float')}</Th>
               <Th align="right">{t('Risk exposure')}</Th>
               <Th align="right">{t('Milestone slip')}</Th>
+              <Th align="right">{t('Open risks')}</Th>
+              <Th align="right">{t('Progress')}</Th>
+              {data.showMargin && <Th align="right">{t('Margin')}</Th>}
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.week}>
+              <tr key={`${r.week}-${r.date}`}>
                 <Td numeric>{r.week}</Td>
                 <Td color="var(--color-neutral-300)">{t(r.date)}</Td>
                 <Td align="right" numeric color={color(r.cpiLo)}>
@@ -105,6 +110,17 @@ export function TrendsView({ data, selected, href, lang, t }: TrendsViewProps) {
                 <Td align="right" numeric>
                   {t(r.slip)}
                 </Td>
+                <Td align="right" numeric>
+                  {r.risks}
+                </Td>
+                <Td align="right" numeric>
+                  {r.progress}
+                </Td>
+                {data.showMargin && (
+                  <Td align="right" numeric color={r.marginLo ? LO : undefined}>
+                    {r.margin}
+                  </Td>
+                )}
               </tr>
             ))}
           </tbody>

@@ -74,8 +74,17 @@ export const statusSnapshots = pgTable(
     riskEmvKeur: keur('risk_emv_keur').notNull(),
     milestoneSlipDays: integer('milestone_slip_days').notNull(),
     frozenAt: timestamp('frozen_at', { withTimezone: true }).notNull().defaultNow(),
+    // ── Delivery 9 (D9-10, R-060): the Friday freeze also records the open risks, the progress and the margin. Null on the
+    // rows frozen before (seed history) — shown "—".
+    /** Number of open risks at the freeze. */
+    riskCount: integer('risk_count'),
+    /** Physical progress 0–100 %, one decimal. */
+    progressPct: num('progress_pct'),
+    /** Margin at completion, whole % (C-10b); null for an internal project or without a billing plan. */
+    marginPct: num('margin_pct'),
   },
-  (t) => [unique().on(t.projectId, t.weekCode)],
+  // D9-10: one snapshot per project and status date (the week code "W39" repeats every year).
+  (t) => [unique('status_snapshots_project_id_status_date_unique').on(t.projectId, t.statusDate)],
 );
 
 /** Status reports generated from the Trends screen (AF.trends — the prototype only toasts, nothing is seeded). */

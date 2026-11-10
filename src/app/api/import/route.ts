@@ -1,11 +1,12 @@
 // File imports of Activity & integrations (chapter 4, S-9 and the Excel / CSV imports) — POST /api/import (multipart/form-data):
-// `file` plus `kind` ('schedule' = MS Project XML or P6 XER detected from the file, or a table kind: budget_lines, bom, parts,
+// `file` plus `kind` ('schedule' = MS Project XML, GanttProject or P6 XER detected from the file, or a table kind: budget_lines, bom, parts,
 // assignments), `mode` ('new' | 'update'), `code` (target project), and the schedule options `matchOn`, `baselines`,
 // `projectName`, `client`, `pm`. The file is checked (size, type, content) and stored by Keystone, the job recorded and the
 // file parsed: the answer is the next step (column mapping or preview) as JSON — nothing reaches the business tables before the
 // explicit confirmation (Server Function applyImportAction). A Route Handler rather than a Server Function: files up to 20 MB
 // (Server Function bodies are capped at 1 MB). The viewer is the "View as" persona; rights are checked in startImport.
-// D-7b: refused (403) while IMPORTS_ENABLED is off in src/domain/ch4-defaults.ts — the import cards are hidden then.
+// D-7b: refused (403) while IMPORTS_ENABLED is off in src/domain/ch4-defaults.ts — the import cards are hidden then. D9-08: on, for
+// MS Project XML and GanttProject only (ENABLED_IMPORT_KINDS; startImport refuses the other kinds).
 // R-008: same-origin only; at most RATE_LIMITS.import imports a minute per viewer (429 with Retry-After).
 import { IMPORTS_ENABLED, IMPORTS_OFF_MESSAGE, MAX_FILE_BYTES } from '@/domain/ch4-defaults';
 import { startImport } from '@/server/interchange/jobs';

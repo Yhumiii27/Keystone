@@ -108,9 +108,10 @@ export const milestoneStatus = codec<MilestoneStatus, string>([
 /** R-188: estimate class of a budget version (DIG-PRODI ±50 % / ±30 % / +10 −5 %; rules in src/domain/estimate-class.ts). */
 export type EstimateClass = 'E50' | 'E30' | 'E10';
 
-export type BaselineState = 'superseded' | 'current' | 'proposed';
+/** D9-11 (R-063): `rejected` = proposed by a change request that was rejected — kept, marked, never current. */
+export type BaselineState = 'superseded' | 'current' | 'proposed' | 'rejected';
 export const baselineState = codec<BaselineState, string>([
-  ['superseded', 'Superseded'], ['current', 'Current'], ['proposed', 'Proposed'],
+  ['superseded', 'Superseded'], ['current', 'Current'], ['proposed', 'Proposed'], ['rejected', 'Rejected'],
 ]);
 
 /** PIPE_PLAN windows (3665). */
@@ -1191,9 +1192,9 @@ export type ScheduleRunOutcome = 'ok' | 'cycle' | 'error';
 export type StoredFilePurpose = 'attachment' | 'transcript' | 'import' | 'export' | 'photo';
 
 /** Import jobs (S-9 and the Excel / CSV table imports of /admin/integrations). */
-export type ImportKind = 'mspdi' | 'xer' | 'budget_lines' | 'bom' | 'parts' | 'assignments';
+export type ImportKind = 'mspdi' | 'xer' | 'gan' | 'budget_lines' | 'bom' | 'parts' | 'assignments';
 export const importKind = codec<ImportKind, string>([
-  ['mspdi', 'MS Project XML'], ['xer', 'Primavera P6 XER'], ['budget_lines', 'Budget lines'], ['bom', 'Bill of materials'], ['parts', 'Parts catalogue'],
+  ['mspdi', 'MS Project XML'], ['xer', 'Primavera P6 XER'], ['gan', 'GanttProject'], ['budget_lines', 'Budget lines'], ['bom', 'Bill of materials'], ['parts', 'Parts catalogue'],
   ['assignments', 'Resource assignments'],
 ]);
 /** 'new' = create (a new project for schedules), 'update' = match existing rows (UID / Activity ID / reference). */

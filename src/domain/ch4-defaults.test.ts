@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_LANG } from '@/i18n/translate';
 import { BUILTIN_CALENDARS } from './calendar';
-import { CONNECTOR_SETTINGS_BY_IT, DEFAULT_HOLIDAY_SET, IMPORTS_ENABLED, PDF_DEFAULT_LANG } from './ch4-defaults';
+import { CONNECTOR_SETTINGS_BY_IT, DEFAULT_HOLIDAY_SET, ENABLED_IMPORT_KINDS, IMPORTS_ENABLED, PDF_DEFAULT_LANG } from './ch4-defaults';
 
 describe('chapter 4 defaults', () => {
   it('PDFs default to the session default language (French)', () => {
@@ -15,8 +15,9 @@ describe('chapter 4 defaults', () => {
     expect(BUILTIN_CALENDARS.map((c) => c.holidaySet)).toEqual([DEFAULT_HOLIDAY_SET, DEFAULT_HOLIDAY_SET, DEFAULT_HOLIDAY_SET, null]);
   });
 
-  it('D-7b: imports are off; D-7a: connectors are configured by IT outside Keystone', () => {
-    expect(IMPORTS_ENABLED).toBe(false);
+  it('D9-08: imports are on for MS Project and GanttProject only (D-7b lifted); D-7a: connectors are configured by IT outside Keystone', () => {
+    expect(IMPORTS_ENABLED).toBe(true);
+    expect(ENABLED_IMPORT_KINDS).toEqual(['mspdi', 'gan']);
     expect(CONNECTOR_SETTINGS_BY_IT).toBe(true);
   });
 });

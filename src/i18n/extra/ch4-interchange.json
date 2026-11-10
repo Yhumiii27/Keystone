@@ -136,5 +136,13 @@
   "Enabled": "Activé",
   "Disabled": "Désactivé",
   "Connectors are configured by IT outside Keystone: ask IT to change the frequency, the data, the direction or to enable or disable a connector. Credentials, addresses and tokens stay in the server configuration and in the remote system.": "Les connecteurs sont réglés par l’informatique, en dehors de Keystone : demandez à l’informatique de changer la fréquence, les données, le sens ou d’activer ou désactiver un connecteur. Les identifiants, adresses et jetons restent dans la configuration du serveur et dans le système distant.",
-  "Click to choose what to export": "Cliquer pour choisir quoi exporter"
+  "Click to choose what to export": "Cliquer pour choisir quoi exporter",
+  "The file is not a GanttProject file": "Le fichier n’est pas un fichier GanttProject",
+  "The file is neither an MS Project XML file (MSPDI) nor a GanttProject file (.gan)": "Le fichier n’est ni un fichier XML MS Project (MSPDI) ni un fichier GanttProject (.gan)",
+  "This import format is not available": "Ce format d’import n’est pas disponible",
+  "Custom columns are not imported": "Les colonnes personnalisées ne sont pas importées",
+  "Links to or from summary tasks are not imported ({0})": "Les liens vers ou depuis des tâches récapitulatives ne sont pas importés ({0})",
+  "Yearly holidays are repeated over the years of the schedule ({0})": "Les jours fériés annuels sont répétés sur les années du planning ({0})",
+  "Baselines beyond the eleventh are not imported ({0})": "Les références au-delà de la onzième ne sont pas importées ({0})",
+  "Resource holidays are not imported": "Les congés des ressources ne sont pas importés"
 }

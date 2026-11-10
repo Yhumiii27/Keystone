@@ -547,6 +547,13 @@
       "when": 1794051066045,
       "tag": "0077_vigie_request_outcome",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1794303240731,
+      "tag": "0078_weekly_freeze",
+      "breakpoints": true
     }
   ]
 }

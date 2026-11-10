@@ -29,7 +29,7 @@ import { openDatabase } from '@/server/db/open';
 import { getPlanData, getPlanSettings } from '@/server/dal/plan';
 import {
   addRelationshipAction, addTodoAction, removeRelationshipAction, removeTodoAction, rescheduleAction, setActivityCalendarAction, setBaselineAction,
-  setProjectCalendarAction, showBaselineAction, toggleTodoAction,
+  setDataDateAction, setProjectCalendarAction, showBaselineAction, toggleTodoAction,
 } from './scheduling-actions';
 
 const act = async (id: string) => (await getPlanData('HLT-026'))!.activities.find((a) => a.id === id)!;
@@ -151,5 +151,27 @@ describe('Plan scheduling Server Functions', () => {
     const seeded = (await listActivityTodos('HLT-026', 'A1250')).find((x) => !x.removable)!;
     expect(await removeTodoAction('HLT-026', 'A1250', seeded.number)).toEqual({ error: 'This to-do is managed in My work' });
     expect(await addTodoAction('HLT-026', 'A1250', 'x'.repeat(201))).toEqual({ error: 'A to-do holds at most 200 characters' });
+  });
+});
+
+// D9-09 (R-060): the data date is advanced by the project's PMs and the director, never after today nor backwards; toast EN / FR.
+describe('Plan · Data date (D9-09)', () => {
+  beforeAll(async () => {
+    setDb(await openDatabase());
+  }, 60_000);
+  beforeEach(() => Object.assign(viewer, { role: 'director', name: 'Marie Lefebvre', canEdit: true, isMine: true, lang: 'en' }));
+
+  it('the PM or the director advances it; the others are refused; the rules are checked on the server', async () => {
+    Object.assign(viewer, { role: 'englead', name: 'Antoine Girard', isMine: false });
+    expect(await setDataDateAction('WSA-044', { dataDate: '2026-09-18' })).toEqual({ error: 'Only the project manager or the director can do this' });
+    Object.assign(viewer, { role: 'pm', name: 'Romain Aubert', isMine: true });
+    expect(await setDataDateAction('WSA-044', { dataDate: '2026-09-28' })).toEqual({ error: 'The data date cannot be after today' });
+    expect(await setDataDateAction('WSA-044', { dataDate: 'soon' })).toEqual({ error: 'Enter a valid data date' });
+    expect(await setDataDateAction('WSA-044', { dataDate: '2026-09-18' })).toEqual({ toast: 'Data date · 18 Sep 2026' });
+    viewer.lang = 'fr';
+    expect(await setDataDateAction('WSA-044', { dataDate: '2026-09-11' })).toEqual({ error: 'La date de référence ne peut qu’avancer' });
+    expect(await setDataDateAction('WSA-044', { dataDate: '2026-09-25' })).toEqual({ toast: 'Date de référence · 25 sept. 2026' });
+    const settings = (await getPlanSettings('WSA-044'))!;
+    expect([settings.dataDate, settings.storedDataDate, settings.proposedDataDate]).toEqual(['2026-09-25', '2026-09-25', null]);
   });
 });

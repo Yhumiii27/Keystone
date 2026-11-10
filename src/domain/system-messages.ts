@@ -293,6 +293,18 @@ const MESSAGES = {
     (p, f) => `Occurrence suivante ${p.task} créée depuis ${p.previous} · échéance le ${f.date(p.due)}`,
   ),
   'task.recurrenceEnded': def({ previous: 'ref' }, (p) => `Recurrence ended with ${p.previous}`, (p) => `Récurrence terminée avec ${p.previous}`),
+  // D9-09 (R-060): the project's data date moved by its PM or the director (Plan › Data date; audit trail and activity feed).
+  'plan.dataDateSet': def(
+    { from: 'label', to: 'date' },
+    (p) => `Data date · ${p.from} → ${p.to}`,
+    (p, f) => `Date de référence · ${/^\d{4}-\d{2}-\d{2}$/.test(p.from) ? f.date(p.from) : f.label(p.from)} → ${f.date(p.to)}`,
+  ),
+  // D9-10 (R-060): the Friday freeze of a project's week (job friday-freeze; audit trail, area Trends).
+  'trends.weekFrozen': def(
+    { week: 'ref', date: 'date' },
+    (p) => `Weekly snapshot frozen · ${p.week} · ${p.date}`,
+    (p, f) => `Instantané hebdomadaire figé · ${p.week} · ${f.date(p.date)}`,
+  ),
 } as const;
 
 export type MessageKey = keyof typeof MESSAGES;

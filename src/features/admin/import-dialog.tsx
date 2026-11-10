@@ -34,14 +34,14 @@ import { fieldsText } from '@/i18n/data-text';
 
 /** EN labels of the import kinds (as importKind in src/server/db/codes.ts). */
 export const KIND_LABEL: Record<ImportKind, string> = {
-  mspdi: 'MS Project XML', xer: 'Primavera P6 XER', budget_lines: 'Budget lines', bom: 'Bill of materials', parts: 'Parts catalogue', assignments: 'Resource assignments',
+  mspdi: 'MS Project XML', xer: 'Primavera P6 XER', gan: 'GanttProject', budget_lines: 'Budget lines', bom: 'Bill of materials', parts: 'Parts catalogue', assignments: 'Resource assignments',
 };
 const TABLE_KINDS: TableKind[] = ['budget_lines', 'bom', 'parts', 'assignments'];
 
 const sizeText = (b: number) => (b < 1024 ? `${b} B` : b < 1024 * 1024 ? `${Math.round(b / 1024)} KB` : `${(b / (1024 * 1024)).toFixed(1)} MB`);
 
 export interface ImportDialogProps {
-  /** Card the file was given to: a schedule (MS Project / P6 — detected from the file) or an Excel / CSV table. */
+  /** Card the file was given to: a schedule (MS Project / GanttProject / P6 — detected from the file) or an Excel / CSV table. */
   card: 'schedule' | 'table';
   /** Card name (translated), the dialog title. */
   title: string;
@@ -85,14 +85,14 @@ export function ImportDialog({ card, title, file, onClose }: ImportDialogProps) 
     };
   }, [t]);
 
-  const scheduleKind: ImportKind = /\.xer$/i.test(file.name) ? 'xer' : 'mspdi';
+  const scheduleKind: ImportKind = /\.xer$/i.test(file.name) ? 'xer' : /\.gan$/i.test(file.name) ? 'gan' : 'mspdi';
   const tableKinds = setup ? TABLE_KINDS.filter((k) => setup.kinds.includes(k)) : [];
   const targetKind: ImportKind | null = card === 'schedule' ? scheduleKind : kind;
   const projects = useMemo(() => (setup && targetKind ? setup.projects[targetKind] : []), [setup, targetKind]);
   const needsProject = card === 'schedule' ? mode === 'update' : kind !== 'parts';
   // The chosen project when it is a target of the current kind, else the first one.
   const project = projects.some((p) => p.code === chosenProject) ? chosenProject : (projects[0]?.code ?? '');
-  const canSchedule = !!setup && (setup.kinds.includes('mspdi') || setup.kinds.includes('xer'));
+  const canSchedule = !!setup && (setup.kinds.includes('mspdi') || setup.kinds.includes('xer') || setup.kinds.includes('gan'));
   const ready = !!setup && !pending && (card === 'schedule' ? canSchedule : !!kind) && (!needsProject || !!project);
 
   const jobId = preview?.jobId ?? mapping?.jobId ?? null;

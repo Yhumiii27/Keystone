@@ -4,7 +4,7 @@
 //
 // Feature modules keep their own defaults next to their logic and reference the questionnaire id in a comment; add a
 // constant here only for rules shared by several modules.
-import { type CalendarCode, type StoredFilePurpose } from '@/server/db/codes';
+import { type CalendarCode, type ImportKind, type StoredFilePurpose } from '@/server/db/codes';
 import { BUILTIN_CALENDARS } from './calendar';
 import { DEFAULT_CPM_OPTIONS, type CpmOptions } from './cpm';
 
@@ -72,7 +72,7 @@ export const MAX_FILE_BYTES = 20 * 1024 * 1024;
 export const FILE_EXTENSIONS: Readonly<Record<StoredFilePurpose, readonly string[]>> = {
   attachment: ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'txt', 'csv', 'xlsx', 'xls', 'docx', 'doc', 'pptx', 'dwg', 'dxf', 'zip', 'msg', 'eml'],
   transcript: ['txt', 'vtt', 'srt'],
-  import: ['xml', 'xer', 'csv', 'xlsx', 'txt'],
+  import: ['xml', 'gan', 'xer', 'csv', 'xlsx', 'txt'],
   export: ['csv', 'xlsx', 'pdf', 'xml'],
   /** Photos of goods receipts, site daily reports and punch items (R-126, X-15 / SC-4a): images browsers display. */
   photo: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
@@ -102,9 +102,18 @@ export const PDF_DEFAULT_LANG: 'fr' | 'en' = 'fr';
  * The importers (src/server/interchange) and their tests stay; the tests turn this flag on with `vi.mock`. Turn it on here
  * when the owner asks for the one-time import at project start (S-9b). The "Export — …" cards are not imports and stay.
  */
-export const IMPORTS_ENABLED: boolean = false;
+export const IMPORTS_ENABLED: boolean = true;
 /** EN refusal of the import steps while IMPORTS_ENABLED is off (FR in src/i18n/extra/ch4-interchange.json). */
 export const IMPORTS_OFF_MESSAGE = 'Imports are not available for now';
+/**
+ * D9-08 (owner, 10 Nov 2026: « L'import sera soit en format MS Project, soit en format GanttProject »): imports are on again for
+ * the schedules of these two formats only — the one-time takeover of the existing schedules (S-9b). Primavera P6 XER and the
+ * Excel / CSV tables stay built and tested but are refused (`IMPORT_KIND_OFF_MESSAGE`) and their cards hidden. Who imports: the
+ * project's leads and the director (src/server/interchange/rights.ts).
+ */
+export const ENABLED_IMPORT_KINDS: readonly ImportKind[] = ['mspdi', 'gan'];
+/** EN refusal of an import kind outside ENABLED_IMPORT_KINDS. */
+export const IMPORT_KIND_OFF_MESSAGE = 'This import format is not available';
 /**
  * D-7a ("Par l'informatique, en dehors de l'application"): connectors are configured by IT outside Keystone. The
  * connector "Configure" dialog shows the stored settings read-only and the save Server Function refuses every change.

@@ -244,6 +244,8 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
           calendar={calendarChip}
           baseline={baselineChip}
           dataDate={dataDateText}
+          dataDateDefault={settings?.proposedDataDate ?? settings?.storedDataDate ?? dataDate}
+          dataDateProposed={settings?.proposedDataDate ? t(longDateText(settings.proposedDataDate)) : undefined}
           nextBaseline={nextBaselineCode(baselineCodes)}
           defaultEstimateClass={stageEstimateClass(ctx.project.stage)}
           baselineChangeRequestHref={canSnapshotFreely(baselineCodes) ? undefined : `${screenHref('changes', { code: projectCode })}?new=1&baseline=1`}

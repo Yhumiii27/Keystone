@@ -9,7 +9,8 @@ import {
   locationTypeShortLabel, machineTypeKpis, machineTypeUseText, paymentTerms, plumbingKpis, settingsKpis, thresholdText,
   type ActivityIcon, type PlumbView, type SettingsCardKey, type SettingsIcon,
 } from '@/domain/admin';
-import { IMPORTS_ENABLED } from '@/domain/ch4-defaults';
+import { ENABLED_IMPORT_KINDS, IMPORTS_ENABLED } from '@/domain/ch4-defaults';
+import { CARD_KINDS } from '@/server/interchange/rights';
 import { DEFAULT_CCB_THRESHOLD_KEUR } from '@/domain/change-control';
 import { DCMA_STANDARD, DCMA_THRESHOLD_FIELDS, type DcmaThresholdKey } from '@/domain/schedule-quality';
 import { DRIFT_STANDARD, DRIFT_THRESHOLD_FIELDS, type DriftThresholdKey } from '@/domain/drift-forecast';
@@ -22,7 +23,7 @@ import { connectorStateTone } from '@/domain/connectors';
 import { PACK_FAMILY_LABELS, type PackFamily } from '@/domain/engineering-pack';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
-import { calendar, costType, locationType, stampText, type ActivityKind, type CalendarCode, type CostType, type LocationType } from '@/server/db/codes';
+import { calendar, costType, locationType, stampText, type ActivityKind, type CalendarCode, type CostType, type ImportKind, type LocationType } from '@/server/db/codes';
 import type { ConnectorRow } from '@/server/dal/integrations';
 import type { MachineTypeRow } from '@/server/dal/mtypes';
 import type { ActivityRow, AuditRow } from '@/server/dal/notifications';
@@ -301,12 +302,22 @@ export interface PlumbingInput {
   auditPage?: { page: number; pages: number };
 }
 
+/** D9-08: the GanttProject import card (not in the prototype's IMPORTS list), shown after "MS Project XML". */
+export const GANTTPROJECT_CARD = {
+  name: 'GanttProject', description: 'Import a GanttProject schedule (.gan) into a new or existing project (WBS, tasks, links, milestones, calendar)',
+  icon: 'ph ph-file-arrow-down', direction: 'import' as const,
+};
+
 /**
  * Import / export cards listed on the screen. D-7b ("Ne traite rien pour le moment concernant les imports"): the import cards
- * (MS Project XML, Excel / CSV, Primavera P6 XER) only while IMPORTS_ENABLED is on; the "Export — …" cards always.
+ * only while IMPORTS_ENABLED is on; the "Export — …" cards always. D9-08: only the cards of an enabled format (MS Project XML,
+ * GanttProject — ENABLED_IMPORT_KINDS); the GanttProject card is added after MS Project XML.
  */
-export function visibleImportFormats<F extends { direction: 'import' | 'export' }>(formats: readonly F[], importsEnabled: boolean = IMPORTS_ENABLED): F[] {
-  return formats.filter((f) => importsEnabled || f.direction === 'export');
+export function visibleImportFormats<F extends { name: string; description: string; icon: string; direction: 'import' | 'export' }>(
+  formats: readonly F[], importsEnabled: boolean = IMPORTS_ENABLED, enabledKinds: readonly ImportKind[] = ENABLED_IMPORT_KINDS,
+): F[] {
+  const all: F[] = formats.some((f) => f.name === GANTTPROJECT_CARD.name) ? [...formats] : formats.flatMap((f) => (f.name === 'MS Project XML' ? [f, { ...f, ...GANTTPROJECT_CARD }] : [f]));
+  return all.filter((f) => f.direction === 'export' || (importsEnabled && (CARD_KINDS[f.name] ?? []).some((k) => enabledKinds.includes(k))));
 }
 
 const IMPORT_ICONS: readonly ImportIcon[] = ['file-arrow-down', 'file-xls', 'file-arrow-up', 'file-pdf'];

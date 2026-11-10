@@ -6,6 +6,7 @@ import 'server-only';
 import { and, asc, eq, gte, inArray, max, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { projectCalendarCode, projectDataDate } from '@/domain/ch4-defaults';
+import { proposedDataDate } from '@/domain/data-date';
 import { businessToday } from '@/server/clock';
 import { detectCycle } from '@/domain/cpm';
 import { yearOfIso } from '@/domain/clock';
@@ -525,6 +526,12 @@ export interface PlanCalendarOption {
 export interface PlanSettings {
   /** Project data date (ISO, S-4 default: the status date). */
   dataDate: string;
+  /** D9-09: the data date stored on the project (null = unset: the business date applies). */
+  storedDataDate: string | null;
+  /** D9-09: the Friday Keystone proposes as the next data date (null when the stored date is that Friday or later). */
+  proposedDataDate: string | null;
+  /** The business date (the data date never goes beyond it). */
+  today: string;
   /** Project calendar code (S-2 default when none is set). */
   calendarCode: string;
   /** Active company calendars plus the project's imported ones. */
@@ -545,6 +552,9 @@ export async function getPlanSettings(code: string): Promise<PlanSettings | null
   const run = runs[0];
   return {
     dataDate: projectDataDate(p, today),
+    storedDataDate: p.dataDate ?? null,
+    proposedDataDate: proposedDataDate(p.dataDate, today),
+    today,
     calendarCode: projectCalendarCode(p),
     calendars: cals.map((c) => ({ code: c.code, name: c.name, hoursPerDay: c.hoursPerDay })),
     baselines: bls,

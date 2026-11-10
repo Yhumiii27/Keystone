@@ -8,6 +8,7 @@
 // "W27 → W39") instead of literals, and the chart title counts the snapshots.
 import type { Lang } from '@/i18n/translate';
 import { money } from '@/lib/format';
+import { marginAlert } from './portfolio-finance';
 import { trendFrame, trendDelta } from '@/components/charts/primitives/geometry';
 
 export type TrendKey = 'cpi' | 'spi' | 'eac' | 'float' | 'risk' | 'slip';
@@ -26,6 +27,10 @@ export interface SnapshotLike {
   float: number;
   risk: number;
   slip: number;
+  /** D9-10 (R-060): open risks, progress 0–100 % and margin at completion % at the freeze; null / absent before. */
+  riskCount?: number | null;
+  progress?: number | null;
+  margin?: number | null;
 }
 
 /** `?kpi=` value → indicator (default CPI, `trendKpi` 3774). */
@@ -162,7 +167,15 @@ export interface SnapshotRowView {
   floatLo: boolean;
   risk: string;
   slip: string;
+  /** D9-10: "3" open risks, "42.5 %" progress, "18 %" margin; "—" for the rows frozen before. */
+  risks: string;
+  progress: string;
+  margin: string;
+  /** Margin below the attention threshold (portfolio-finance MARGIN_ALERT_PCT). */
+  marginLo: boolean;
 }
+
+const dash = '—';
 
 /** History rows, newest first; CPI/SPI below 0.97 and negative float in LO. */
 export function snapshotRows(snapshots: SnapshotLike[], lang: Lang): SnapshotRowView[] {
@@ -179,6 +192,10 @@ export function snapshotRows(snapshots: SnapshotLike[], lang: Lang): SnapshotRow
       floatLo: s.float < 0,
       risk: money(s.risk, lang),
       slip: s.slip + ' d',
+      risks: s.riskCount == null ? dash : String(s.riskCount),
+      progress: s.progress == null ? dash : `${s.progress.toFixed(1)} %`,
+      margin: s.margin == null ? dash : `${Math.round(s.margin)} %`,
+      marginLo: s.margin != null && marginAlert(s.margin),
     }))
     .reverse();
 }

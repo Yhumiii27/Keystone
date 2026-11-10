@@ -199,6 +199,15 @@ const RUNS: Record<JobName, () => Promise<JobOutcome>> = {
       },
     };
   },
+  // ── Delivery 9 · R-060 (D9-09, D9-10): the week's snapshot of every active project, and the data date proposed to its PM.
+  'friday-freeze': async (): Promise<JobOutcome> => {
+    const r = await (await import('@/server/dal/weekly-freeze')).runFridayFreeze();
+    return {
+      summary: `Friday freeze ${r.friday} · ${r.projects} projects · ${r.frozen} frozen · ${r.kept} already frozen · ${r.proposed} data dates proposed · ${r.alreadyProposed} already proposed · ${r.unaddressed} without recipient`,
+      counts: { projects: r.projects, frozen: r.frozen, kept: r.kept, proposed: r.proposed, alreadyProposed: r.alreadyProposed, unaddressed: r.unaddressed },
+      warn: r.unaddressed > 0,
+    };
+  },
 };
 
 export const JOB_DEFINITIONS: readonly JobDefinition[] = JOB_SCHEDULES.map((s) => ({ ...s, run: RUNS[s.name] }));

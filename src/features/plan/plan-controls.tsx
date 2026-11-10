@@ -3,7 +3,7 @@
 // the Calendar / Baseline toolbar chips, "Reschedule", "Set baseline", the drawer's calendar override, "Add relationship",
 // link removal and the to-do composer / ticks. Same look as the prototype; each calls a Server Function
 // (./scheduling-actions.ts) and reports in a toast. Rendered only for viewers allowed to use them (./rights.ts).
-import { ArrowsClockwise, Calendar, CaretDown, Check, FlagBanner, Plus, X } from '@phosphor-icons/react/dist/ssr';
+import { ArrowsClockwise, Calendar, CaretDown, Check, Clock, FlagBanner, Plus, X } from '@phosphor-icons/react/dist/ssr';
 import { useState, useTransition } from 'react';
 import { FormDialog } from '@/components/app/FormDialog';
 import type { FormDef } from '@/components/app/form-def';
@@ -17,7 +17,7 @@ import { Popover } from '@/components/ds/Popover';
 import { useToast } from '@/components/ds/Toast';
 import { useI18n } from '@/i18n/client';
 import {
-  addRelationshipAction, addTodoAction, removeRelationshipAction, removeTodoAction, rescheduleAction, setActivityCalendarAction, setBaselineAction,
+  addRelationshipAction, addTodoAction, removeRelationshipAction, removeTodoAction, rescheduleAction, setActivityCalendarAction, setBaselineAction, setDataDateAction,
   setProjectCalendarAction, showBaselineAction, toggleTodoAction, type PlanToastResult,
 } from './scheduling-actions';
 import s from './plan.module.css';
@@ -103,6 +103,36 @@ export function PickerChip({ kind, code, value, current, options, header, canCha
         </MenuItem>
       ))}
     </Popover>
+  );
+}
+
+/**
+ * D9-09 (R-060): « Data date » chip of the project's leads and the director — opens a dialog advancing the data date; preset with
+ * the Friday Keystone proposes (`proposed`), else the stored date. Never after the business date, never backwards (checked again
+ * on the server). `proposedText` (translated) marks the chip while a proposal waits.
+ */
+export function DataDateChip({
+  code, context, value, defaultIso, proposedText,
+}: { code: string; context: string; /** Translated current data date. */ value: string; /** ISO preset of the dialog. */ defaultIso: string; proposedText?: string }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const def: FormDef = {
+    title: 'Advance the data date',
+    submit: 'Set data date',
+    kind: 'run',
+    fields: [{ id: 'dataDate', label: 'Data date', type: 'date', required: true, defaultValue: defaultIso }],
+  };
+  return (
+    <>
+      <button type="button" className={cx('input', s.chip)} onClick={() => setOpen(true)} title={proposedText ? `${t('Proposed')} · ${proposedText}` : undefined}>
+        <Clock className={s.chipIcon} aria-hidden />
+        <span className={s.chipLabel}>{t('Data date')}</span>
+        {value}
+        {proposedText && <span className={s.chipLabel}>· {t('Proposed')} {proposedText}</span>}
+        <CaretDown className={s.chipIcon} aria-hidden />
+      </button>
+      {open && <FormDialog {...def} translate open context={context} onClose={() => setOpen(false)} onSubmit={(v) => setDataDateAction(code, v)} />}
+    </>
   );
 }
 

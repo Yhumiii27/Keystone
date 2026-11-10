@@ -28,6 +28,10 @@ export interface SnapshotRow {
   risk: number;
   /** Milestone slip, days. */
   slip: number;
+  /** D9-10: open risks, progress (0–100 %) and margin at completion (%) at the freeze; null on the rows frozen before. */
+  riskCount: number | null;
+  progress: number | null;
+  margin: number | null;
 }
 
 /** The six indicator series in week order (TKPI keys). */
@@ -88,7 +92,7 @@ export async function getTrends(projectCode: string): Promise<Trends | null> {
   if (!snaps.length) return null;
   const rows: SnapshotRow[] = snaps.map((s) => ({
     week: s.weekCode, statusDate: s.statusDate, dateText: shortDateOfIso(s.statusDate), cpi: s.cpi, spi: s.spi, eac: s.eacKeur,
-    float: s.floatDays, risk: s.riskEmvKeur, slip: s.milestoneSlipDays,
+    float: s.floatDays, risk: s.riskEmvKeur, slip: s.milestoneSlipDays, riskCount: s.riskCount ?? null, progress: s.progressPct ?? null, margin: s.marginPct ?? null,
   }));
   const next = addDaysIso(rows[rows.length - 1].statusDate, 7);
   return {
@@ -142,16 +146,24 @@ export interface SnapshotInput {
   floatDays: number;
   riskEmvKeur: number;
   milestoneSlipDays: number;
+  /** D9-10. */
+  riskCount?: number | null;
+  progressPct?: number | null;
+  marginPct?: number | null;
 }
 
-/** Freezes (or re-freezes) the snapshot of a status date — the weekly job of 11 §3.3. */
+/**
+ * Freezes (or re-freezes) the snapshot of a status date (tests, corrections). The Friday job (src/server/dal/weekly-freeze.ts)
+ * never overwrites a frozen week.
+ */
 export async function freezeSnapshot(projectCode: string, s: SnapshotInput): Promise<void> {
   const db = await getDb();
   const p = await requireProject(db, projectCode);
   const weekCode = `W${isoWeekOf(s.statusDate)}`;
   const values = {
     projectId: p.id, weekCode, statusDate: s.statusDate, cpi: s.cpi, spi: s.spi, eacKeur: s.eacKeur, floatDays: s.floatDays,
-    riskEmvKeur: s.riskEmvKeur, milestoneSlipDays: s.milestoneSlipDays, frozenAt: new Date(),
+    riskEmvKeur: s.riskEmvKeur, milestoneSlipDays: s.milestoneSlipDays, riskCount: s.riskCount ?? null, progressPct: s.progressPct ?? null,
+    marginPct: s.marginPct ?? null, frozenAt: new Date(),
   };
-  await db.insert(statusSnapshots).values(values).onConflictDoUpdate({ target: [statusSnapshots.projectId, statusSnapshots.weekCode], set: values });
+  await db.insert(statusSnapshots).values(values).onConflictDoUpdate({ target: [statusSnapshots.projectId, statusSnapshots.statusDate], set: values });
 }
