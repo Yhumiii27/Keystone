@@ -6,7 +6,8 @@
 import type { LinkType } from '@/server/db/codes';
 
 export type IsoDate = string;
-export type ScheduleFormat = 'mspdi' | 'xer';
+/** D9-08: 'gan' = GanttProject (./gan.ts). */
+export type ScheduleFormat = 'mspdi' | 'xer' | 'gan';
 
 /** A work calendar read from the file. Weekdays use ISO numbering (1 = Monday … 7 = Sunday). */
 export interface ImportedCalendar {

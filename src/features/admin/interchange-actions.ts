@@ -63,7 +63,7 @@ export async function previewTableAction(jobId: unknown, mapping: unknown, sheet
   return previewTable(jobId, clean, typeof sheet === 'string' ? sheet.slice(0, 120) : null, await importViewer());
 }
 
-const DONE_SCREEN: Record<ImportKind, ScreenId> = { mspdi: 'plan', xer: 'plan', budget_lines: 'budget', bom: 'bom', parts: 'plm', assignments: 'plan' };
+const DONE_SCREEN: Record<ImportKind, ScreenId> = { mspdi: 'plan', xer: 'plan', gan: 'plan', budget_lines: 'budget', bom: 'bom', parts: 'plm', assignments: 'plan' };
 
 /** Explicit confirmation: writes the import (refused when the data changed since the preview — the new preview is returned). */
 export async function applyImportAction(jobId: unknown): Promise<ImportStep & { href?: string }> {

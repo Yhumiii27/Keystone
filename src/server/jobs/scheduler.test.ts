@@ -117,7 +117,7 @@ describe('npm run worker', () => {
     expect(parseWorkerArgs([])).toEqual({ ok: true, args: { once: false, jobs: [] } });
     expect(parseWorkerArgs(['--once', '--job', 'plan-trash-purge', '--job', 'vigie-outbox', '--job', 'plan-trash-purge']))
       .toEqual({ ok: true, args: { once: true, jobs: ['plan-trash-purge', 'vigie-outbox'] } });
-    expect(parseWorkerArgs(['--job', 'friday-freeze'])).toEqual({ ok: false, error: 'Unknown job friday-freeze' });
+    expect(parseWorkerArgs(['--job', 'monday-freeze'])).toEqual({ ok: false, error: 'Unknown job monday-freeze' });
     expect(parseWorkerArgs(['--job'])).toEqual({ ok: false, error: 'Unknown job (missing)' });
     expect(parseWorkerArgs(['--every', '5'])).toEqual({ ok: false, error: 'Unknown option --every' });
   });

@@ -9,7 +9,7 @@ import { Segmented } from '@/components/ds/Segmented';
 import type { EstimateClass } from '@/domain/estimate-class';
 import type { T } from '@/i18n/translate';
 import type { PlanView } from './model';
-import { PickerChip, RescheduleButton, SetBaselineButton, type ChipOption } from './plan-controls';
+import { DataDateChip, PickerChip, RescheduleButton, SetBaselineButton, type ChipOption } from './plan-controls';
 import s from './plan.module.css';
 
 export interface PlanToolbarProps {
@@ -23,6 +23,10 @@ export interface PlanToolbarProps {
   baseline: { value: string; current: string; options: ChipOption[] };
   /** Translated data date ("25 sept. 2026"). */
   dataDate: string;
+  /** D9-09: preset of the « Data date » dialog (the proposed Friday, else the stored date, else today) — ISO. */
+  dataDateDefault: string;
+  /** D9-09: translated Friday Keystone proposes as the next data date; absent when none. */
+  dataDateProposed?: string;
   /** Next baseline code ("BL3"), the default name of "Set baseline". */
   nextBaseline: string;
   /** R-188: estimate class preset in "Set baseline" (class of the project's stage). */
@@ -34,7 +38,7 @@ export interface PlanToolbarProps {
   t: T;
 }
 
-export function PlanToolbar({ view, hrefs, code, context, calendar, baseline, dataDate, nextBaseline, defaultEstimateClass, baselineChangeRequestHref, canSchedule, t }: PlanToolbarProps) {
+export function PlanToolbar({ view, hrefs, code, context, calendar, baseline, dataDate, dataDateDefault, dataDateProposed, nextBaseline, defaultEstimateClass, baselineChangeRequestHref, canSchedule, t }: PlanToolbarProps) {
   return (
     <div className={s.toolbar}>
       <FilterGroup>
@@ -51,11 +55,15 @@ export function PlanToolbar({ view, hrefs, code, context, calendar, baseline, da
       </FilterGroup>
       <PickerChip kind="calendar" code={code} header={t('Project calendar')} canChange={canSchedule} {...calendar} />
       <PickerChip kind="baseline" code={code} header={t('Displayed baseline')} canChange={canSchedule} {...baseline} />
-      <div className={cx('input', s.chip, s.chipStatic)}>
-        <Clock className={s.chipIcon} aria-hidden />
-        <span className={s.chipLabel}>{t('Data date')}</span>
-        {dataDate}
-      </div>
+      {canSchedule ? (
+        <DataDateChip code={code} context={context} value={dataDate} defaultIso={dataDateDefault} proposedText={dataDateProposed} />
+      ) : (
+        <div className={cx('input', s.chip, s.chipStatic)}>
+          <Clock className={s.chipIcon} aria-hidden />
+          <span className={s.chipLabel}>{t('Data date')}</span>
+          {dataDate}
+        </div>
+      )}
       {canSchedule && (
         <div className={s.toolbarRight}>
           <RescheduleButton code={code} />

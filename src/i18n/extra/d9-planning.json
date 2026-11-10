@@ -1,0 +1,12 @@
+{
+  "Business date": "Date du jour",
+  "Advance the data date": "Avancer la date de référence",
+  "Set data date": "Fixer la date de référence",
+  "Enter a valid data date": "Saisissez une date de référence valide",
+  "The data date cannot be after today": "La date de référence ne peut pas dépasser aujourd’hui",
+  "The data date only moves forward": "La date de référence ne peut qu’avancer",
+  "The data date is already set to this date": "La date de référence est déjà à cette date",
+  "Progress (%)": "Avancement (%)",
+  "Margin (%)": "Marge (%)",
+  "Import a GanttProject schedule (.gan) into a new or existing project (WBS, tasks, links, milestones, calendar)": "Importer un planning GanttProject (.gan) dans un projet nouveau ou existant (WBS, tâches, liens, jalons, calendrier)"
+}

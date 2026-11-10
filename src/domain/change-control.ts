@@ -82,9 +82,9 @@ export type TagTone = 'accent' | 'outline' | 'neutral';
 /** crTag (4594): Approved → neutral · Rejected → outline · In review → accent · Draft → outline. */
 export const CR_STATUS_TONE: Record<ChangeStatus, TagTone> = { approved: 'neutral', rejected: 'outline', in_review: 'accent', draft: 'outline' };
 
-/** Baseline state tag (blRows 4605): Current → accent · Proposed → outline · Superseded → neutral. */
-export const BASELINE_TONE: Record<BaselineState, TagTone> = { current: 'accent', proposed: 'outline', superseded: 'neutral' };
-export const BASELINE_STATE_LABEL: Record<BaselineState, string> = { current: 'Current', proposed: 'Proposed', superseded: 'Superseded' };
+/** Baseline state tag (blRows 4605): Current → accent · Proposed → outline · Superseded → neutral; D9-11: Rejected → outline. */
+export const BASELINE_TONE: Record<BaselineState, TagTone> = { current: 'accent', proposed: 'outline', superseded: 'neutral', rejected: 'outline' };
+export const BASELINE_STATE_LABEL: Record<BaselineState, string> = { current: 'Current', proposed: 'Proposed', superseded: 'Superseded', rejected: 'Rejected' };
 
 /** Drawer state tag of a step (crVals.chain 4609). */
 export function stepState(decision: StepDecision | null): { label: string; tone: TagTone } | null {

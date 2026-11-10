@@ -20,7 +20,7 @@ import { findPerson, nameOf, nextNumber, recordActivity, requireProject, writeAu
 import {
   baselines, changeRequestSteps, changeRequestWbs, changeRequests, persons, projectControls, projects, users, wbsNodes,
 } from '@/server/db/schema';
-import { baselineNumber } from '@/domain/baseline-policy';
+import { REJECTED_BASELINE_STATE, approvedBaselineBecomesCurrent, baselineNumber } from '@/domain/baseline-policy';
 import { baselineSnapshotSize, createProposedBaseline, snapshotIntoBaseline } from './baselines';
 import { markBl1Deliverable } from './lifecycle';
 import { postApprovedChange } from './change-posting';
@@ -363,20 +363,33 @@ export async function decideChangeStep(
         // one frozen with its snapshot by the Schedule "Re-baseline" keeps it.
         const [proj] = await tx.select({ dataDate: projects.dataDate }).from(projects).where(eq(projects.id, p.id));
         const setOn = projectDataDate(proj ?? {}, await businessToday(tx));
+        // D9-12 (R-063): the highest baseline stays current — an older request approved after a newer one (BL2 after BL3)
+        // records its baseline as approved and superseded, BL3 stays current.
+        const [cur] = await tx.select({ code: baselines.code }).from(baselines).where(and(eq(baselines.projectId, p.id), eq(baselines.state, 'current')));
+        const makeCurrent = approvedBaselineBecomesCurrent(bl.code, cur?.code ?? null);
         if (!(await baselineSnapshotSize(bl.id, tx))) {
-          const n = await snapshotIntoBaseline(projectCode, bl.code, { actorName, makeCurrent: true, setOn }, tx);
+          const n = await snapshotIntoBaseline(projectCode, bl.code, { actorName, makeCurrent, setOn }, tx);
           changes.push(`${bl.code} snapshot · ${n} activities`);
-        } else {
+          if (!makeCurrent) await tx.update(baselines).set({ state: 'superseded', updatedAt: at }).where(eq(baselines.id, bl.id));
+        } else if (makeCurrent) {
           await tx.update(baselines).set({ state: 'superseded', updatedAt: at }).where(and(eq(baselines.projectId, p.id), eq(baselines.state, 'current')));
           await tx.update(baselines).set({ state: 'current', setOn, updatedAt: at }).where(eq(baselines.id, bl.id));
           // R-054 (L-2 "a"): a BLn ≥ 1 made current ticks « Planning BL1 posé » (snapshotIntoBaseline does it in the other branch).
           if (baselineNumber(bl.code) >= 1) await markBl1Deliverable(tx, p.id, actorName);
+        } else {
+          await tx.update(baselines).set({ state: 'superseded', setOn, updatedAt: at }).where(eq(baselines.id, bl.id));
         }
-        changes.push(`${bl.code} current`);
+        changes.push(makeCurrent ? `${bl.code} current` : `${bl.code} approved · superseded · ${cur?.code} stays current`);
       }
       // Delivery 7 (R-068, A-4): the approved change flows into the budget (BAC) and the contract (draft amendment), once.
       const posted = await postApprovedChange(tx, cr.id, actorName);
       if (posted?.amount) changes.push(`posted · BAC ${posted.bacBefore} → ${posted.bacAfter} k€${posted.amendmentLabel ? ' · amendment prepared' : ''}`);
+    }
+    if (status === 'rejected') {
+      // D9-11 (R-063): the baseline the rejected request proposed is kept, marked « rejetée » — listed, never current.
+      const marked = await tx.update(baselines).set({ state: REJECTED_BASELINE_STATE, updatedAt: at })
+        .where(and(eq(baselines.changeRequestId, cr.id), eq(baselines.state, 'proposed'))).returning({ code: baselines.code });
+      for (const b of marked) changes.push(`${b.code} rejected`);
     }
     await writeAudit(tx, {
       actorName: who, actorPersonId: actor?.id, objectRef: number, change: changes.join(' · '), area: 'Change control', entityType: 'change_request', entityId: cr.id, projectId: p.id,

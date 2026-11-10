@@ -136,12 +136,16 @@ describe('snapshot history (snapRows 4567)', () => {
   it('HLT-026 newest first with LO flags', () => {
     const rows = snapshotRows(snaps(HLT), 'en');
     expect(rows).toHaveLength(13);
+    // D9-10 (R-060): the history also shows open risks, progress and margin of the Friday freeze — "—" for the prototype's
+    // weeks, which never recorded them.
+    const none = { risks: '—', progress: '—', margin: '—', marginLo: false };
     expect(rows[0]).toEqual({
-      week: 'W39', date: '25 Sep', cpi: '0.92', cpiLo: true, spi: '0.90', spiLo: true, eac: '€5.24M', float: '−27 d', floatLo: true, risk: '€340k', slip: '39 d',
+      week: 'W39', date: '25 Sep', cpi: '0.92', cpiLo: true, spi: '0.90', spiLo: true, eac: '€5.24M', float: '−27 d', floatLo: true, risk: '€340k', slip: '39 d', ...none,
     });
     expect(rows[12]).toEqual({
-      week: 'W27', date: '3 Jul', cpi: '0.99', cpiLo: false, spi: '0.99', spiLo: false, eac: '€4.85M', float: '+4 d', floatLo: false, risk: '€180k', slip: '0 d',
+      week: 'W27', date: '3 Jul', cpi: '0.99', cpiLo: false, spi: '0.99', spiLo: false, eac: '€4.85M', float: '+4 d', floatLo: false, risk: '€180k', slip: '0 d', ...none,
     });
+    expect(snapshotRows([{ ...snaps(HLT)[0], riskCount: 4, progress: 42.25, margin: 12 }], 'en')[0]).toMatchObject({ risks: '4', progress: '42.3 %', margin: '12 %', marginLo: true });
     // W30: CPI 0.97 is not below the 0.97 threshold
     expect(rows[9]).toMatchObject({ week: 'W30', cpi: '0.97', cpiLo: false, float: '−3 d' });
   });

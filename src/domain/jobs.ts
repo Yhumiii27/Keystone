@@ -1,6 +1,6 @@
 // Scheduled jobs (R-006) — pure rules of the worker (src/server/jobs): which jobs exist and how often they run, what the
-// plan-trash purge and the orphan-file prune remove, and when a lease is free. The Friday freeze is not a job yet: what it
-// records and what moves the data date wait for the owner's answer to S-4 (DELIVERY-6 §8).
+// plan-trash purge and the orphan-file prune remove, and when a lease is free. The Friday freeze (`friday-freeze`, D9-09 / D9-10)
+// freezes each project's week and proposes the data date to its PM; it never moves the data date itself.
 //
 // Defaults (owner to confirm, docs/delivery-7/notes-platform-web.md):
 // - outbox redelivery (Vigie, Cursus): every 5 minutes — what Keystone recorded reaches Vigie / Cursus within minutes
@@ -63,6 +63,10 @@ export type JobName =
   // ── Delivery 9 · R-015 (X-6a): the portfolio alert rules (R-130) as notices — each new alert to the project's leads and the
   // directors, once while it lasts (a reminder job).
   | 'indicator-alerts'
+  // ── Delivery 9 · R-060 (D9-09, D9-10): the Friday weekly freeze — one snapshot per project and Friday (CPI, SPI, EAC, margin, risks,
+  // progress), and the data date proposed to the PM of record (never advanced by Keystone). A reminder job: the Friday morning run
+  // freezes and proposes; a run on a later day of the week catches the same Friday up, once.
+  | 'friday-freeze'
   ;
 
 export interface JobSchedule {
@@ -136,6 +140,8 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
   // ── Delivery 9 · R-015: the indicator alerts, every morning (before the digest, which carries them).
   { name: 'indicator-alerts', everyMs: 24 * HOUR, leaseMs: 30 * MIN, firstDelayMs: 95_000, daily: 'reminders' },
   { name: 'notification-digest', everyMs: 24 * HOUR, leaseMs: 30 * MIN, firstDelayMs: 100_000, daily: 'reminders' },
+  // ── Delivery 9 · R-060 (D9-09, D9-10): every morning at the reminders hour; only the week's Friday is frozen and proposed, once.
+  { name: 'friday-freeze', everyMs: 24 * HOUR, leaseMs: 30 * MIN, firstDelayMs: 105_000, daily: 'reminders' },
 ];
 
 export const JOB_NAMES: readonly JobName[] = JOB_SCHEDULES.map((j) => j.name);

@@ -11,7 +11,7 @@ const NOW = new Date('2026-10-11T12:00:00Z');
 const ago = (days: number) => new Date(NOW.getTime() - days * day);
 
 describe('jobs and schedules', () => {
-  it('the jobs: outboxes (Vigie, Cursus, Codex — R-124) every 5 min, plan-trash purge hourly, orphan prune daily, Codex index read hourly (R-033; no Friday freeze: S-4 open)', () => {
+  it('the jobs: outboxes (Vigie, Cursus, Codex — R-124) every 5 min, plan-trash purge hourly, orphan prune daily, Codex index read hourly (R-033), the Friday freeze (R-060, D9-09 / D9-10)', () => {
     expect(JOB_SCHEDULES.map((j) => [j.name, j.everyMs / 60_000, j.leaseMs / 60_000])).toEqual([
       ['vigie-outbox', 5, 15], ['cursus-outbox', 5, 15], ['codex-outbox', 5, 15], ['plan-trash-purge', 60, 15], ['orphan-files-prune', 1440, 60],
       // Delivery 8 · platform-ops: backups wake every 5 min (a snapshot when due, R-004); antivirus rescan daily (R-175).
@@ -36,15 +36,17 @@ describe('jobs and schedules', () => {
       ['deadline-reminders', 1440, 30], ['scheduled-reports', 1440, 60],
       // Delivery 9 (R-036, R-015): immediate e-mails left waiting, the indicator alerts, the daily digest.
       ['notification-mails', 5, 15], ['indicator-alerts', 1440, 30], ['notification-digest', 1440, 30],
+      // Delivery 9 (R-060, D9-09 / D9-10): the Friday freeze and the data date proposal, every morning at the reminders hour.
+      ['friday-freeze', 1440, 30],
     ]);
     expect(JOB_SCHEDULES.filter((j) => j.daily === 'night').map((j) => j.name)).toEqual(['cursus-tasks']);
     expect(NIGHT_JOBS_AT).toBe('02:00');
     // Owner's answer of 17 Oct 2026 (R-121): the jobs that send reminders to people run in the morning; technical jobs keep
     // their intervals.
     expect(JOB_SCHEDULES.filter((j) => j.daily === 'reminders').map((j) => j.name)).toEqual([
-      'site-prerequisite-alerts', 'undeclared-resource-alerts', 'deadline-reminders', 'scheduled-reports', 'indicator-alerts', 'notification-digest',
+      'site-prerequisite-alerts', 'undeclared-resource-alerts', 'deadline-reminders', 'scheduled-reports', 'indicator-alerts', 'notification-digest', 'friday-freeze',
     ]);
-    expect(JOB_NAMES).not.toContain('friday-freeze');
+    expect(JOB_NAMES).toContain('friday-freeze');
     // Staggered first runs.
     expect(new Set(JOB_SCHEDULES.map((j) => j.firstDelayMs)).size).toBe(JOB_SCHEDULES.length);
     expect([isJobName('plan-trash-purge'), isJobName('nope'), isJobName(undefined)]).toEqual([true, false, false]);

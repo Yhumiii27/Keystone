@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="Sample conveyor retrofit" company="Port authority" webLink="http://" view-date="2026-01-01" view-index="0" gantt-divider-location="374" resource-divider-location="300" version="3.2.3247" locale="fr_FR">
+    <description><![CDATA[Synthetic GanttProject fixture (delivery 9, D9-08).]]></description>
+    <view zooming-state="default:2" id="gantt-chart">
+        <field id="tpd3" name="Nom" width="200" order="0"/>
+    </view>
+    <calendars>
+        <day-types>
+            <day-type id="0"/>
+            <day-type id="1"/>
+            <default-week id="1" name="default" sun="1" mon="0" tue="0" wed="0" thu="0" fri="0" sat="1"/>
+            <only-show-weekends value="false"/>
+            <overriden-day-types/>
+            <days/>
+        </day-types>
+        <date year="2026" month="1" date="19" type="HOLIDAY"><![CDATA[Site closed]]></date>
+        <date year="" month="5" date="1" type="HOLIDAY"><![CDATA[Fête du travail]]></date>
+        <date year="2026" month="1" date="31" type="WORKING_DAY"/>
+    </calendars>
+    <tasks empty-milestones="true">
+        <taskproperties>
+            <taskproperty id="tpd0" name="type" type="default" valuetype="icon"/>
+            <taskproperty id="tpd3" name="name" type="default" valuetype="text"/>
+            <taskproperty id="tpc0" name="Lot" type="custom" valuetype="text"/>
+        </taskproperties>
+        <task id="0" name="Engineering" color="#8cb6ce" meeting="false" start="2026-01-05" duration="15" complete="60" expand="true">
+            <task id="1" name="Basic design" color="#8cb6ce" meeting="false" start="2026-01-05" duration="5" complete="100" expand="true">
+                <notes><![CDATA[Frozen with the client]]></notes>
+                <depend id="2" type="2" difference="0" hardness="Strong"/>
+                <depend id="3" type="1" difference="2" hardness="Strong"/>
+            </task>
+            <task id="2" name="Detailed design" color="#8cb6ce" meeting="false" start="2026-01-12" duration="10" complete="40" expand="true">
+                <depend id="5" type="3" difference="-1" hardness="Strong"/>
+                <customproperty taskproperty-id="tpc0" value="L1"/>
+            </task>
+            <task id="3" name="Long-lead orders" color="#8cb6ce" meeting="false" start="2026-01-07" duration="8" complete="0" thirdDate="2026-01-08" thirdDate-constraint="1" expand="true">
+                <depend id="4" type="4" difference="0" hardness="Strong"/>
+            </task>
+        </task>
+        <task id="4" name="Site works" color="#8cb6ce" meeting="false" start="2026-02-02" duration="10" complete="0" expand="true">
+            <task id="5" name="Installation" color="#8cb6ce" meeting="false" start="2026-02-02" duration="10" complete="0" expand="true">
+                <depend id="6" type="2" difference="0" hardness="Strong"/>
+            </task>
+        </task>
+        <task id="6" name="Handover" color="#000000" meeting="true" start="2026-02-16" duration="0" complete="0" expand="true"/>
+    </tasks>
+    <resources>
+        <resource id="0" name="Design office" function="Default:0" contacts="" phone=""/>
+        <resource id="1" name="Site crew" function="Default:0" contacts="" phone=""/>
+    </resources>
+    <allocations>
+        <allocation task-id="2" resource-id="0" function="Default:0" responsible="true" load="50.0"/>
+        <allocation task-id="5" resource-id="1" function="Default:0" responsible="true" load="200.0"/>
+        <allocation task-id="9" resource-id="1" function="Default:0" responsible="true" load="100.0"/>
+    </allocations>
+    <vacations>
+        <vacation start="2026-02-09" end="2026-02-13" resourceid="1"/>
+    </vacations>
+    <previous>
+        <previous-tasks name="Plan initial">
+            <previous-task id="1" start="2026-01-05" duration="5" meeting="false" super="false"/>
+            <previous-task id="2" start="2026-01-12" duration="8" meeting="false" super="false"/>
+            <previous-task id="6" start="2026-02-13" duration="0" meeting="true" super="false"/>
+        </previous-tasks>
+    </previous>
+    <roles roleset-name="Default"/>
+</project>

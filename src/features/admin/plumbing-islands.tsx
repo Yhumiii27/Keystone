@@ -52,7 +52,9 @@ export function ConnectorActions({ name, label, canSync }: { name: string; label
 /** The six IMPORTS cards (EN names, as stored): what each one does. */
 type Card = { direction: 'import'; card: 'schedule' | 'table'; kinds: ImportKind[]; accept: string } | { direction: 'export'; format: ExportCardFormat };
 const CARDS: Record<string, Card> = {
-  'MS Project XML': { direction: 'import', card: 'schedule', kinds: ['mspdi', 'xer'], accept: '.xml,.xer,application/xml,text/xml' },
+  'MS Project XML': { direction: 'import', card: 'schedule', kinds: ['mspdi', 'gan'], accept: '.xml,.gan,application/xml,text/xml' },
+  // D9-08: the GanttProject card (added by visibleImportFormats); either schedule card detects the format from the file.
+  GanttProject: { direction: 'import', card: 'schedule', kinds: ['mspdi', 'gan'], accept: '.gan,.xml,application/xml,text/xml' },
   'Excel / CSV': { direction: 'import', card: 'table', kinds: ['budget_lines', 'bom', 'parts', 'assignments'], accept: '.csv,.txt,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
   'Primavera P6 XER': { direction: 'import', card: 'schedule', kinds: ['mspdi', 'xer'], accept: '.xer,.xml,.txt' },
   'Export — MS Project XML': { direction: 'export', format: 'xml' },

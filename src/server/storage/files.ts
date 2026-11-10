@@ -72,13 +72,13 @@ export function setFilesRoot(dir: string | null): void {
 /** Canonical MIME type per extension. */
 export const MIME_OF_EXT: Readonly<Record<string, string>> = {
   pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp',
-  txt: 'text/plain', csv: 'text/csv', vtt: 'text/vtt', srt: 'application/x-subrip', xml: 'application/xml', xer: 'text/plain',
+  txt: 'text/plain', csv: 'text/csv', vtt: 'text/vtt', srt: 'application/x-subrip', xml: 'application/xml', gan: 'application/xml', xer: 'text/plain',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xls: 'application/vnd.ms-excel',
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', doc: 'application/msword',
   pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', dwg: 'image/vnd.dwg', dxf: 'image/vnd.dxf',
   zip: 'application/zip', msg: 'application/vnd.ms-outlook', eml: 'message/rfc822',
 };
-const TEXT_EXT = new Set(['txt', 'csv', 'vtt', 'srt', 'xml', 'xer', 'eml', 'dxf']);
+const TEXT_EXT = new Set(['txt', 'csv', 'vtt', 'srt', 'xml', 'gan', 'xer', 'eml', 'dxf']);
 const ZIP_EXT = new Set(['xlsx', 'docx', 'pptx', 'zip']);
 const OLE_EXT = new Set(['xls', 'doc', 'msg']);
 

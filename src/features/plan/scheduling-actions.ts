@@ -11,6 +11,7 @@ import { setActivityCalendar, setProjectCalendar } from '@/server/dal/calendars'
 import { addActivityLink, getPlanData, getPlanSettings, removeActivityLink } from '@/server/dal/plan';
 import { getProject } from '@/server/dal/projects';
 import { rescheduleIfAutomatic, rescheduleProject, showProjectBaseline } from '@/server/dal/schedule';
+import { DataDateError, setProjectDataDate } from '@/server/dal/weekly-freeze';
 import { isLinkType, type LinkType } from '@/server/db/codes';
 import { getProjectContext, type ProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
@@ -124,6 +125,28 @@ export async function showBaselineAction(code: string, baselineCode: string): Pr
   await showProjectBaseline(r.ctx.project.code, bl, r.ctx.viewer.name);
   refresh(r.ctx.project.code, 'all');
   return { ok: true, toast: baselineShownText(bl, lang) };
+}
+
+// ── Data date (D9-09, R-060) ──────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * « Data date » chip: the project's leads or the director advance the data date (Keystone proposes the latest Friday every week,
+ * src/server/dal/weekly-freeze.ts, and never moves it alone). Never after the business date, never backwards. Audited.
+ */
+export async function setDataDateAction(code: string, values: Record<string, string>): Promise<PlanDialogResult> {
+  const r = await allowed(code, 'schedule');
+  if ('error' in r) return r;
+  const { t } = await getI18n();
+  const next = str(values?.dataDate).trim();
+  let res: Awaited<ReturnType<typeof setProjectDataDate>>;
+  try {
+    res = await setProjectDataDate(r.ctx.project.code, next, r.ctx.viewer.name);
+  } catch (e) {
+    if (e instanceof DataDateError) return { error: t(e.message) };
+    throw e;
+  }
+  refresh(r.ctx.project.code, 'all');
+  return { toast: `${t('Data date')} · ${t(longDateText(res.to))}` };
 }
 
 // ── Calendars (S-2) ───────────────────────────────────────────────────────────────────────────────────────────────

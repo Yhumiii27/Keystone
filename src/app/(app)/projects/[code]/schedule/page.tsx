@@ -29,6 +29,8 @@ import { getScheduleData } from '@/server/dal/schedule';
 import { getScheduleQuality } from '@/server/dal/schedule-quality';
 import { ScheduleQualityCards } from '@/features/schedule/schedule-quality-card';
 import { getProjectContext } from '@/server/project-context';
+import { canSnapshotFreely } from '@/domain/baseline-policy';
+import { listProjectBaselines } from '@/server/dal/baselines';
 import { getI18n } from '@/server/session';
 import { projectLabelText } from '@/i18n/data-text';
 
@@ -85,8 +87,18 @@ export default async function SchedulePage({
     return `${base}?${u.toString()}`;
   };
 
+  // D9-12 (R-063): after BL1, « Re-baseline » always goes through a change request — the button opens the Change control form
+  // proposing the next baseline, as the Plan's « Set baseline » (S-3).
+  const freeSnapshot = data && ctx.canEdit('schedule') ? canSnapshotFreely((await listProjectBaselines(ctx.project.code)).map((b) => b.code)) : true;
   const primary =
-    data && ctx.canEdit('schedule') ? <RebaselineButton code={ctx.project.code} context={projectLabelText(ctx.project, lang)} defaultClass={stageEstimateClass(ctx.project.stage)} /> : undefined;
+    data && ctx.canEdit('schedule') ? (
+      <RebaselineButton
+        code={ctx.project.code}
+        context={projectLabelText(ctx.project, lang)}
+        defaultClass={stageEstimateClass(ctx.project.stage)}
+        changeRequestHref={freeSnapshot ? undefined : `${screenHref('changes', { code: ctx.project.code })}?new=1&baseline=1`}
+      />
+    ) : undefined;
 
   return (
     <>

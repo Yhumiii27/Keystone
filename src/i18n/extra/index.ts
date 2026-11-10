@@ -88,6 +88,7 @@ import d9MatrixSubsidiaries from './d9-matrix-subsidiaries.json';
 import d9CatalogueScreen from './d9-catalogue-screen.json';
 import d9Reminders from './d9-reminders.json';
 import d9UxA11y from './d9-ux-a11y.json';
+import d9Planning from './d9-planning.json';
 import d9Delegations from './d9-delegations.json';
 import d9Dashboards from './d9-dashboards.json';
 import d9Multilevel from './d9-multilevel.json';
@@ -198,4 +199,5 @@ export const EXTRA_FR: Record<string, string> = {
   ...d9Dashboards,
   ...d9Multilevel,
   ...d9VigieViews,
+  ...d9Planning,
 };
