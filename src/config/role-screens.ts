@@ -41,6 +41,12 @@ base.member.push('shipments');
 // activities (OWN) but had no Plan; they now have it, read-only except the % complete of their own activities.
 base.member.push('plan');
 base.procurement.push('plan');
+// R-159 (P1, D9-31): quality follows the orders' inspections and issues their release notes on the Purchase orders screen (the
+// orders themselves read-only: `qualityReadOnly`, src/domain/rights.ts).
+base.quality.push('orders');
+// R-162 (P4, D9-34): Finance keeps the reference exchange rates and the hedging alert thresholds in Settings (the rest of Settings
+// stays the director's).
+base.finance.push('settings');
 // P-8b (R-089): an approved request for a contract role becomes a task for procurement to find and name the person — procurement
 // gets My work (and the task sheet) to work it. A consequence of the answer, listed for the owner to confirm.
 base.procurement.push('mywork');

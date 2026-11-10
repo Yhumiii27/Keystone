@@ -9,6 +9,10 @@ import { cashView } from '@/features/pfinance/model';
 import { getCashScreen } from '@/server/dal/pfinance';
 import { getI18n, getViewer, getZone } from '@/server/session';
 import { getScreenAccess } from '@/server/project-context';
+import { canSeeFxExposure } from '@/domain/rights';
+import { FxExposureCard } from '@/features/fx/fx-exposure-card';
+import { businessToday } from '@/server/clock';
+import { getPortfolioFxExposure } from '@/server/dal/fx';
 
 export default async function CashFlowPage() {
   // R-042 (P-1): a client is sent home before anything is read.
@@ -16,10 +20,13 @@ export default async function CashFlowPage() {
   const [{ t: t0, lang }, zone, viewer] = await Promise.all([getI18n(), getZone(), getViewer()]);
   const t = pfT(t0, lang);
   const data = await getCashScreen(viewer.role, zone);
+  const fx = canSeeFxExposure(viewer.role) ? await getPortfolioFxExposure(await businessToday()) : null;
   return (
     <>
       <PageHeader screen="cash" />
       <CashView view={cashView(data, t, lang)} t={t} />
+      {/* R-162 (P4): the portfolio's FX exposure — one line per project and currency (Finance and the director). */}
+      {fx && <FxExposureCard lines={fx.lines} thresholds={fx.thresholds} t={t0} lang={lang} portfolio />}
     </>
   );
 }

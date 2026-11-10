@@ -61,7 +61,7 @@ beforeAll(async () => {
 
 describe('workspace roles (D5_SCREEN_ROLES mirrors ROLE_SCREENS)', () => {
   it('every Delivery 5 screen has the same role list as src/config/screens.ts', () => {
-    // R-044 Finance has no Delivery 5 screen; R-158 Logistics reads the Site and the Settings (in their lists).
+    // R-044 Finance has no Delivery 5 screen but Settings (R-162); R-158 Logistics reads the Site and the Settings (in their lists).
     const roles: RoleKey[] = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'finance', 'logistics', 'client'];
     for (const [screen, list] of Object.entries(D5_SCREEN_ROLES)) {
       expect(roles.filter((r) => canSee(r, screen as ScreenId)), screen).toEqual([...list]);

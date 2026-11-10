@@ -21,11 +21,20 @@ import { listIncoterms } from '@/server/dal/incoterms';
 import { readReminderDefaults } from '@/server/dal/reminder-preferences';
 import { getSettings } from '@/server/dal/settings';
 import { getScreenAccess } from '@/server/project-context';
+import { CURRENCIES, BASE_CURRENCY } from '@/domain/currency';
+import { referenceRateOn } from '@/domain/fx-exposure';
+import { canEditFxRates } from '@/domain/rights';
+import { FxSettingsCard } from '@/features/fx/fx-settings-card';
+import { businessToday } from '@/server/clock';
+import { listReferenceRates, readFxThresholds } from '@/server/dal/fx';
 import { getI18n } from '@/server/session';
 
 export default async function SettingsPage() {
   const [{ t, lang }, access, data, incoterms, reminders] = await Promise.all([getI18n(), getScreenAccess('settings'), getSettings(), listIncoterms(), readReminderDefaults()]);
   const canEdit = access.canEdit && canEditSettings(access.viewer.role);
+  // R-162 (P4): the reference exchange rates and the hedging alert thresholds — Finance and the director edit them.
+  const [fxRates, fxThresholds, today] = await Promise.all([listReferenceRates(), readFxThresholds(), businessToday()]);
+  const fxRows = fxRates.map((r) => ({ ...r, current: referenceRateOn(fxRates, r.currency, today) === r }));
   return (
     <>
       <PageHeader screen="settings" primary={canEdit ? <ResetSettingsButton /> : undefined} />
@@ -34,6 +43,7 @@ export default async function SettingsPage() {
       <IncotermsCard rows={incotermsView(incoterms, t, lang)} canEdit={canEdit} createForm={incotermFormDef(t, true)} editForm={incotermFormDef(t, false)} />
       {/* R-199 / R-036: the company default of the reminders and weekly reports, same editors. */}
       <ReminderDefaultsCard values={formOfPrefs(reminders)} canEdit={canEdit} transport={getConfig().mail.transport} />
+      <FxSettingsCard rates={fxRows} thresholds={fxThresholds} currencies={CURRENCIES.filter((c) => c !== BASE_CURRENCY)} canEdit={access.canEdit && canEditFxRates(access.viewer.role)} />
     </>
   );
 }

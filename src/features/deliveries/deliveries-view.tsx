@@ -83,7 +83,10 @@ export function DeliveriesBody({ code, view, canEdit, canQc, registerForms, phot
                     <span className={s.sub}>{r.sub}</span>
                   </div>
                 </td>
-                <td className={s.po}>{r.po}</td>
+                <td className={s.po}>
+                  {r.po}
+                  {r.noRelease && <span className={cx('tag', 'tag-accent', s.noRelease)}>{t('No release note')}</span>}
+                </td>
                 <td>{r.supplier}</td>
                 <td className={s.refs}>{r.lines}</td>
                 <Td align="right" numeric nowrap>

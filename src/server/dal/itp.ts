@@ -25,6 +25,8 @@ import {
 import { findPerson, nameOf } from '@/server/db/helpers';
 import { documents, itpInspections, itpPlanSystems, itpPlans, machineTypeItpSystems, machineTypes, persons, projectEquipments, projects, punchItems, vigieNcrs } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
+import type { PoInspectionResult } from '@/domain/expediting';
+import { supplierFatsOfItp } from './expediting';
 import { vigieNcrUrl } from '@/server/integrations/vigie/links';
 import { isClientContactOf, isIsoDate, optionalDate, optionalText, projectOf, requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
 import { afterPunchItemChange } from './shipment-reception';
@@ -58,6 +60,8 @@ export interface ItpInspectionRow {
   resultComment: string | null;
   /** Vigie NCRs reported from this inspection (Vigie echoes the inspection, Q-6b / V-3), Vigie order. */
   ncrs: { number: string; vigieUrl: string }[];
+  /** R-159: the supplier FATs (purchase order inspections) tied to this FAT point — "PO-1078/I-2" and its result. */
+  supplierFats?: { ref: string; result: PoInspectionResult; resultOn: string | null }[];
 }
 
 export interface ItpPlan {
@@ -150,10 +154,11 @@ async function loadPlan(q: Q, projectCode: string, plan: PlanRow, line: PlanLine
     .leftJoin(documents, eq(documents.id, itpInspections.recordDocumentId))
     .where(eq(itpInspections.planId, plan.id))
     .orderBy(asc(itpInspections.position));
-  const [[mt], ncrRows] = await Promise.all([
+  const [[mt], ncrRows, fats] = await Promise.all([
     q.select({ label: machineTypes.label }).from(machineTypes).where(eq(machineTypes.code, plan.machineTypeCode)),
     q.select({ number: vigieNcrs.number, vigieRef: vigieNcrs.vigieRef, inspection: vigieNcrs.inspectionNumber }).from(vigieNcrs)
       .where(and(eq(vigieNcrs.projectCode, projectCode), isNotNull(vigieNcrs.inspectionNumber))).orderBy(asc(vigieNcrs.position)),
+    supplierFatsOfItp(plan.projectId, q),
   ]);
   return {
     projectCode, equipment: line ? { ref: line.ref, label: line.label } : null, template: mt?.label ?? plan.machineTypeCode, systems: await planSystemsOf(q, plan),
@@ -162,6 +167,7 @@ async function loadPlan(q: Q, projectCode: string, plan: PlanRow, line: PlanLine
       reference: i.reference, plannedOn: i.plannedOn, result: i.result, resultLabel: itpResult.label(i.result), recordRef: i.recordRef, recordInCodex: !!doc, isCustom: i.isCustom,
       resultOn: i.resultOn, inspector: i.inspectorName, clientWitness: i.clientWitness, resultComment: i.resultComment,
       ncrs: ncrRows.filter((n) => n.inspection === i.number).map((n) => ({ number: n.number, vigieUrl: vigieNcrUrl({ number: n.number, vigieRef: n.vigieRef }) })),
+      ...(fats.has(i.id) ? { supplierFats: fats.get(i.id) } : {}),
     })),
     customCount: rows.filter((r) => r.i.isCustom).length,
   };

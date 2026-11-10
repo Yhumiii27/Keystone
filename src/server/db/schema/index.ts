@@ -40,3 +40,4 @@ export * from './delegations';
 export * from './risk-analysis';
 export * from './dashboards';
 export * from './multilevel';
+export * from './expediting';

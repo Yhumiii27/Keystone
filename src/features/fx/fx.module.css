@@ -1,0 +1,14 @@
+/* R-162 — reference exchange rates (Settings), FX exposure (Contract, Cash flow). Nocturne tokens only. */
+.scroll { overflow-x: auto; min-width: 0; }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nowrap { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.muted { font-size: 12px; color: var(--color-neutral-400); }
+.sub { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-neutral-500); }
+.actions { text-align: right; white-space: nowrap; }
+.thresholds { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.threshold { display: grid; grid-template-columns: minmax(0, 1fr) 120px auto; gap: 10px; align-items: center; font-size: 12.5px; }
+.alert { color: var(--color-accent-300); }
+.alerts { display: flex; gap: 6px; flex-wrap: wrap; }
+@media (max-width: 640px) {
+  .threshold { grid-template-columns: 1fr; }
+}

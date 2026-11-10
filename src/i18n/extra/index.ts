@@ -82,6 +82,7 @@ import d9Gantt from './d9-gantt.json';
 import d9RiskAnalysis from './d9-risk-analysis.json';
 import d9Shipments from './d9-shipments.json';
 import d9ShipmentsB from './d9-shipments-b.json';
+import d9ExpeditingFx from './d9-expediting-fx.json';
 import d9CapexNeeds from './d9-capex-needs.json';
 import d9InternalClient from './d9-internal-client.json';
 import d9MatrixSubsidiaries from './d9-matrix-subsidiaries.json';
@@ -185,6 +186,7 @@ export const EXTRA_FR: Record<string, string> = {
   ...d9RiskAnalysis,
   ...d9Shipments,
   ...d9ShipmentsB,
+  ...d9ExpeditingFx,
   ...d9Reminders,
   ...d9UxA11y,
   ...d9Delegations,
