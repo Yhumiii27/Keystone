@@ -1,6 +1,6 @@
 # Keystone PM — reste à développer
 
-Inventaire initial du 2026-10-10, mis à jour le 2026-11-07 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
+Inventaire initial du 2026-10-10, mis à jour le 2026-11-10 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
 
 **Méthode.** Onze relectures indépendantes ont croisé les 195 décisions produit (`docs/DECISIONS.md`), les écarts et questions ouvertes de `DELIVERY-1.md` à `DELIVERY-6.md`, `docs/BACKLOG.md`, les marqueurs du code (TODO, simulations, constantes du prototype), la spécification fonctionnelle (`docs/spec/`) et la préparation à la production. Chaque point a ensuite été vérifié dans le code, catégorie par catégorie : ce qui existait déjà a été écarté (153 candidats), les doublons fusionnés, puis un contrôle de complétude a ajouté ce qui manquait. Le détail, avec les preuves relevées dans le code pour chaque point, est dans `docs/reste-a-developper.json` ; ce document et la page sont produits par `npm run remaining:page`.
 
@@ -8,15 +8,15 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-11-07 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 130 faits, 28 en cours, 53 à faire, sur 211 points.
+**Avancement** : 130 faits, 28 en cours, 57 à faire, sur 215 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
 | Bloquant production | 15 | ≈ 102 |
-| Prochaine étape | 22 | ≈ 184 |
+| Prochaine étape | 26 | ≈ 200 |
 | À décider | 26 | ≈ 191 |
 | Plus tard | 18 | ≈ 121 |
-| **Total** | **81** | **≈ 597** |
+| **Total** | **85** | **≈ 613** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
@@ -24,12 +24,12 @@ L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il
 |---|---:|
 | Non commencé | 32 |
 | Partiel | 9 |
-| Attend le responsable produit | 28 |
+| Attend le responsable produit | 32 |
 | Attend un système externe | 12 |
 
 | Domaine | Bloquant production | Prochaine étape | À décider | Plus tard | Restants | Faits |
 |---|---:|---:|---:|---:|---:|---:|
-| Plateforme et mise en production | 6 | 4 | 0 | 2 | 12 | 15 |
+| Plateforme et mise en production | 6 | 8 | 0 | 2 | 16 | 15 |
 | Authentification, utilisateurs et droits | 1 | 0 | 2 | 0 | 3 | 14 |
 | Intégrations avec les autres systèmes | 5 | 6 | 2 | 6 | 19 | 7 |
 | Projets, cycle de vie et modèles par type de machine | 0 | 1 | 2 | 1 | 4 | 6 |
@@ -101,6 +101,10 @@ Décisions à prendre et données à fournir avant de pouvoir développer. Les q
 - **R-182** Décider si les factures client sont émises et encaissées dans Sage X3 — Service finance : processus de facturation client dans Sage X3 (numérotation légale, encaissements, facturation électronique)
 - **R-189** Vues de suivi pour le CAPEX : jalons, avancement côté vente, avenants, réserves — Réponse P-05 (données financières visibles par la filiale)
 - **R-192** Sécurité machine : HazOp / AMDEC, ATEX, condition PSSR avant mise en service — Vigie : porte-t-il HazID / HazOp / AMDEC / PSSR ?
+- **R-212** Envoyer en signature électronique (DocuSign) les documents à officialiser avec un client — Cadrage avec le responsable produit et la DSI (compte DocuSign, documents concernés)
+- **R-213** Portail fournisseur pour recevoir les devis des consultations — Cadrage avec le responsable produit et la DSI
+- **R-214** Lire le fichier XML de numérotation des articles et l’échanger avec 3DX — Fichier XML de numérotation fourni par l’ingénierie
+- **R-215** Créer depuis le planning les voyages liés à un projet (Cursus pour l’administratif et le médical) — Fonction ou API de Cursus pour recevoir le voyage ; cadrage avec Cursus
 
 ### 1.3 Ce qui attend les autres applications
 
@@ -119,7 +123,7 @@ Décisions à prendre et données à fournir avant de pouvoir développer. Les q
 
 ## 2. Liste détaillée par domaine
 
-### 2.1 Plateforme et mise en production (12 restants, 15 faits)
+### 2.1 Plateforme et mise en production (16 restants, 15 faits)
 
 **R-003 · Héberger une instance multi-utilisateur (bêta puis production)** — *Bloquant production · partiel · effort M* · **en cours (Livraison 8)**  
 La PR #1 (ouverte, non fusionnée) apporte un Dockerfile Coolify : un seul conteneur next start sur le port 3000, PGlite et fichiers sur un volume /data. Il reste à la rebaser sur la livraison 6, construire et tester l’image, ajouter NEXT_PUBLIC_CODEX_URL aux arguments de build, configurer TLS et domaine, et protéger l’accès tant que l’authentification manque. Ensuite viennent la préproduction et la production avec PostgreSQL et un worker ; leur cible (Azure, serveur interne ou cloud) reste à décider. Analyse comparative du 25 oct. 2026 : l’hébergement d’une instance multi-utilisateur est un prérequis de production (bloquant), rappelé par l’analyse comparative ; aucun changement de priorité.  
@@ -160,6 +164,22 @@ Les Paramètres (catégories de risques et de coûts, compétences, types de liv
 **R-210 · Application Windows (.exe) à côté de l’accès web** — *Prochaine étape · non commencé · effort M* · **en cours (Livraison 9)**  
 Le responsable produit (31 oct. 2026, questionnaire L9-X2) : l’accès web reste la solution pour accéder à Keystone de n’importe où ; une application Windows (.exe), installable par ceux qui le souhaitent, coexiste avec lui pour laisser le choix à l’utilisateur. Fenêtre native (WebView2) sur le serveur Keystone d’EPC2i, connexion Microsoft habituelle, sans serveur local.  
 *Avancement : 31 oct. 2026 : application construite (C# Windows Forms + WebView2, .NET 10, Keystone.exe autonome win-x64, docs/delivery-9/notes-r210-windows-app.md) ; compilée sous Linux, fabrication à la demande (windows-app.yml). Reste : essai sur un PC Windows avec un serveur hébergé (I-1a), signature de code et mode de diffusion (DSI). · Sources : Questionnaire de la livraison 9, L9-X2 (31 oct. 2026)*
+
+**R-212 · Envoyer en signature électronique (DocuSign) les documents à officialiser avec un client** — *Prochaine étape · attend le responsable produit · effort M*  
+Le responsable produit (10 nov. 2026, D9-06) : les clients ne voient pas Keystone ; un point à officialiser avec un client (PV, décision) part en signature par DocuSign. Nouvel outil : compte DocuSign d’EPC2i et accord de la DSI ; document signé rangé dans Codex.  
+*Attend : Cadrage avec le responsable produit et la DSI (compte DocuSign, documents concernés) · Sources : Questionnaire des décisions en attente (10 nov. 2026)*
+
+**R-213 · Portail fournisseur pour recevoir les devis des consultations** — *Prochaine étape · attend le responsable produit · effort M*  
+Le responsable produit (10 nov. 2026, D9-17) : les devis des consultations arrivent par un portail fournisseur. Nouvel outil, à cadrer (accès des fournisseurs, sécurité, lien avec Sage X3).  
+*Attend : Cadrage avec le responsable produit et la DSI · Sources : Questionnaire des décisions en attente (10 nov. 2026)*
+
+**R-214 · Lire le fichier XML de numérotation des articles et l’échanger avec 3DX** — *Prochaine étape · attend le responsable produit · effort M*  
+Le responsable produit (10 nov. 2026, D9-18) : la numérotation des articles vient d’un fichier XML sur un serveur local. Lire ce fichier d’abord, puis tester s’il peut être hébergé et communiqué à 3DX depuis le serveur.  
+*Attend : Fichier XML de numérotation fourni par l’ingénierie · Sources : Questionnaire des décisions en attente (10 nov. 2026)*
+
+**R-215 · Créer depuis le planning les voyages liés à un projet (Cursus pour l’administratif et le médical)** — *Prochaine étape · attend le responsable produit · effort M*  
+Le responsable produit (10 nov. 2026, D9-35) : un voyage lié à un projet se crée depuis le planning de Keystone ; l’administratif et le médical restent dans Cursus selon la destination ; un voyage hors projet se crée dans Cursus.  
+*Attend : Fonction ou API de Cursus pour recevoir le voyage ; cadrage avec Cursus · Sources : Questionnaire des décisions en attente (10 nov. 2026)*
 
 **R-018 · Mémoriser les préférences par utilisateur (langue, menu, projet, zone)** — *Plus tard · partiel · effort S*  
 Une fois l’authentification en place, stocker en base, par utilisateur, la langue (français par défaut, choix FR/EN suivant l’utilisateur sur tous ses postes, X-1), l’état du menu, le dernier projet, la zone et les préférences de notification, qui vivent aujourd’hui dans des cookies du navigateur.  
@@ -241,7 +261,7 @@ Choisir si les rôles (directeur, CP, chef de service, achats, qualité, futur r
 
 **R-179 · Choisir la connexion des clients avant d'ouvrir le portail** — *À décider · attend le responsable produit · effort M*  
 Le responsable produit a retenu « pas d'accès client au lancement » (I-2b) ; le portail est construit mais le client n'est qu'un profil de démonstration rattaché à une organisation codée en dur. Avant d'ouvrir le portail, décider du mode de connexion des clients (invités Entra B2B ou lien par e-mail), de leur rattachement à une organisation et des conditions d'utilisation, puis le brancher.  
-*Avancement :  25 oct. 2026 (responsable produit) : tout ce à quoi la filiale (client interne) accédait dans Keystone remonte désormais dans Arche par les vues pub_, plus dans Keystone ; le portail Keystone ne concerne plus que les clients externes. · Attend : Décision du responsable produit et de la DSI sur la date d'ouverture du portail et le mode de connexion client · Sources : I-2b, 00 §8.12, 00 §10 I-2, P-10c, DELIVERY-6.md §4 (Client portal), §8 P-1*
+*Avancement :  25 oct. 2026 (responsable produit) : tout ce à quoi la filiale (client interne) accédait dans Keystone remonte désormais dans Arche par les vues pub_, plus dans Keystone ; le portail Keystone ne concerne plus que les clients externes. 10 nov. 2026 : sans objet (portail client retiré, D9-22). · Attend : Décision du responsable produit et de la DSI sur la date d'ouverture du portail et le mode de connexion client · Sources : I-2b, 00 §8.12, 00 §10 I-2, P-10c, DELIVERY-6.md §4 (Client portal), §8 P-1*
 
 **~~R-038 · Remplacer « Voir en tant que » par la connexion Microsoft Entra ID~~** — *Bloquant production · non commencé · effort L* · **fait (Livraison 7)**  
 Connexion OIDC Entra ID (session serveur, connexion, déconnexion, redirection via proxy.ts) à la place du cookie ks-role, avec le même fournisseur que Cursus, Vigie et Codex, et « Voir en tant que » réservé à la démo. Aujourd’hui n’importe qui peut se déclarer directeur et une requête sans cookie s’exécute en directeur. Aucun compte client n’est ouvert au lancement (I-2b).  
@@ -629,7 +649,7 @@ Le responsable produit doit décider avec la finance, les achats et la logistiqu
 
 **R-100 · Décider comment les devis fournisseurs entrent dans les consultations** — *À décider · attend le responsable produit · effort M*  
 Une consultation créée dans Keystone ne reçoit jamais de devis : elle ne peut être ni comparée ni attribuée, et le KPI « délai moyen » reste vide. Avant de construire l’écrivain, le responsable produit doit choisir entre la saisie par l’acheteur, l’import X3 et un portail fournisseur.  
-*Attend : Réponse du responsable produit (SC-7a « je dois me renseigner ») · Sources : SC-7a, SC-7, 08 #3, #4, DELIVERY-4.md §6, §8, DELIVERY-6.md §8 A-12, docs/delivery-6/notes-whatif-kpis.md §5.6*
+*Avancement :  10 nov. 2026 (D9-17) : portail fournisseur (nouvel outil, R-213) à cadrer. · Attend : Réponse du responsable produit (SC-7a « je dois me renseigner ») · Sources : SC-7a, SC-7, 08 #3, #4, DELIVERY-4.md §6, §8, DELIVERY-6.md §8 A-12, docs/delivery-6/notes-whatif-kpis.md §5.6*
 
 **~~R-096 · Réception refusée : NC fournisseur Vigie pré-remplie et alerte acheteur~~** — *Prochaine étape · non commencé · effort S* · **fait (Livraison 8)**  
 Sur un refus total ou partiel à la réception, proposer « Déclarer la NC fournisseur dans Vigie », pré-rempli avec le fournisseur, la commande, l’article et la quantité refusée, et notifier l’acheteur. Aujourd’hui le refus ne fait que mettre la marchandise en quarantaine. Le côté Keystone (lien et notification) peut se construire dès maintenant, mais le pré-remplissage dépend de Vigie.  
@@ -655,7 +675,7 @@ L’assistant « Importer une liste » ne lit aucun fichier : 27 lignes, mapping
 
 **R-101 · Trancher qui est maître du référentiel articles (3DX / PDM ou Keystone)** — *À décider · attend le responsable produit · effort M*  
 Le responsable produit pense que les numéros d’articles PLM sont attribués par SolidWorks 3DX ; l’ingénierie doit le confirmer, ainsi que le système visé (3DEXPERIENCE ou SolidWorks PDM). Si c’est le cas, la création d’articles dans Keystone devient une reprise en lecture, Keystone n’ajoutant que ses données techniques.  
-*Attend : Confirmation de l’ingénierie (A-1b, marqué Bloquant production) · Sources : A-1b, E-1a, E-1b, 09 §5.9, DECISIONS.md « À traiter en priorité », DELIVERY-4.md §3*
+*Avancement :  10 nov. 2026 (D9-18) : numérotation par un fichier XML sur un serveur local — lire ce fichier d’abord (fichier attendu), puis tester l’hébergement et l’échange avec 3DX. · Attend : Confirmation de l’ingénierie (A-1b, marqué Bloquant production) · Sources : A-1b, E-1a, E-1b, 09 §5.9, DECISIONS.md « À traiter en priorité », DELIVERY-4.md §3*
 
 **~~R-102 · Mettre en place la validation des articles par l’ingénierie~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 8)**  
 La création n’exige que le minimum ; le responsable ingénierie fait passer l’article de « Non validé » à « Validé », refusé sans code HS, restriction export, délai et référence fabricant (E-1b). « Périmé » et « Obsolète » ne viennent que d’un ECO diffusé dans Vigie (E-1a). Aujourd’hui aucun changement de statut n’existe.  
@@ -709,7 +729,7 @@ La table client_communications et son DAL sont conservés mais inaccessibles : f
 
 **R-192 · Sécurité machine : HazOp / AMDEC, ATEX, condition PSSR avant mise en service** — *À décider · non commencé · effort M*  
 HazOp / AMDEC machine, zonage ATEX machine et condition « PSSR obtenu » avant la mise en service avec produit, lus dans Vigie (miroir) et bloquants dans Keystone.  
-*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. · Attend : Vigie : porte-t-il HazID / HazOp / AMDEC / PSSR ? · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
+*Avancement : Consigné le 22 oct. 2026 (lien avec l’application CAPEX) ; à valider avant de construire. 10 nov. 2026 (D9-20) : sans objet pour Keystone — les études de sécurité relèvent du service SSE Groupe et de ses outils. · Attend : Vigie : porte-t-il HazID / HazOp / AMDEC / PSSR ? · Sources : Responsable produit, 22 oct. 2026 (application CAPEX dédiée, DIG-PRODI v4.0), docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md*
 
 **~~R-112 · Saisir les résultats d’inspection ITP et ouvrir une NC Vigie en cas d’échec~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 7)**  
 La qualité et le responsable ingénierie enregistrent le résultat (conforme, non conforme) et, pour un point témoin, le représentant client présent (Q-6a). Un résultat non conforme ouvre le formulaire NC de Vigie pré-rempli (projet, inspection, système, article) et le numéro Vigie s’affiche sur l’inspection à la synchro (Q-6b). Aujourd’hui les résultats sont en lecture seule.  
@@ -823,15 +843,15 @@ Remplacer l’horizon fixe de janvier 2026 à décembre 2027 par une fenêtre de
 
 **R-142 · Préciser l’onglet Planning du portail client et les PDF de planning** — *À décider · attend le responsable produit · effort S*  
 À confirmer par le responsable produit : le nom et la place de l’onglet « Planning », et si le client voit le plan d’activités détaillé (il ne voit aujourd’hui que le Gantt des lots). Faut-il aussi un Gantt PDF qui va jusqu’à la fin prévue, au lieu des 13 mois de l’écran ? Et une variante interne du PDF du plan, avec les coûts ?  
-*Attend : Réponses du responsable produit (DELIVERY-6 §8 S-9a) · Sources : S-9a, DELIVERY-6.md §8 S-9a, docs/delivery-6/notes-exports.md §1, §7.2, §7.3, §7.5*
+*Avancement :  10 nov. 2026 : sans objet (portail client retiré, D9-23). · Attend : Réponses du responsable produit (DELIVERY-6 §8 S-9a) · Sources : S-9a, DELIVERY-6.md §8 S-9a, docs/delivery-6/notes-exports.md §1, §7.2, §7.3, §7.5*
 
 **R-139 · Ajouter l’entrée « Voir comme le client » pour le directeur et le CP** — *Plus tard · partiel · effort S* · **en cours (Livraison 8)**  
 Appliquer P-11 : ajouter dans le projet une entrée « Voir comme le client » qui ouvre le portail en lecture seule, sans décision possible, et la réserver au directeur et au CP du projet. Aujourd’hui le portail ne s’ouvre que par lien. Tout rôle interne peut l’ouvrir en lecture seule, hors de son espace. Le directeur y garde « Signaler un point ».  
-*Avancement : Livraison 8 : « Voir comme le client » pour le directeur et les responsables du projet (P-11 a) ; question ouverte sur « Signaler un problème » du directeur. · Sources : P-11, 01 OQ8, DELIVERY-6.md §4 « internal people preview the client view (P-11) »*
+*Avancement : Livraison 8 : « Voir comme le client » pour le directeur et les responsables du projet (P-11 a) ; question ouverte sur « Signaler un problème » du directeur. 10 nov. 2026 (D9-06, D9-22, D9-23) : les clients ne voient pas Keystone — portail et profil Client retirés (lot « d9-noclient » en cours). · Sources : P-11, 01 OQ8, DELIVERY-6.md §4 « internal people preview the client view (P-11) »*
 
 **R-141 · Recueillir l’enquête de satisfaction client par le portail** — *Plus tard · attend le responsable produit · effort M*  
 À la clôture, un questionnaire sur les 5 critères est envoyé au client sur son portail et ses notes arrivent dans Keystone. Aujourd’hui l’enquête est en lecture seule avec les notes du prototype.  
-*Attend : Ouverture de l’accès client au portail (I-2b : pas d’accès client au lancement) · Sources : Q-9, I-2b, 07 §2.7, DELIVERY-5.md §4*
+*Avancement :  10 nov. 2026 : sans objet (portail client retiré, D9-22). · Attend : Ouverture de l’accès client au portail (I-2b : pas d’accès client au lancement) · Sources : Q-9, I-2b, 07 §2.7, DELIVERY-5.md §4*
 
 **~~R-137 · Faire traiter par le CP les points soulevés par le client~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 7)**  
 Appliquer L-6 : le CP est prévenu quand un point est soulevé, le prend en charge (Ouvert → En cours → Clos) depuis un espace interne et rédige la réponse ; le client est prévenu de la réponse et de la clôture (notification Keystone, l’e-mail n’envoyant rien, X-6). Aujourd’hui un point peut seulement être créé : il reste « Ouvert » avec l’accusé automatique, le CP n’est pas notifié et ne voit le registre qu’en lecture seule, hors de son espace.  
@@ -959,35 +979,35 @@ isoOfDayOffset calcule une date fausse pour un décalage négatif : −1 jour ou
 
 **R-159 · P1 · Relance fournisseurs et inspections usine (à valider)** — *À décider · non commencé · effort L*  
 Proposition : avancement de fabrication par commande, jalons d’inspection et FAT fournisseurs, bons de libération et alertes de délai pour les commandes longues. Existent seulement les commandes (date attendue, activité qui en a besoin, drapeau « en retard » quand l’activité a démarré), les réceptions et annonces de livraison, et des points ITP d’étape FAT non reliés aux commandes ni aux fournisseurs.  
-*Attend : Validation de la proposition par le responsable produit · Sources : BACKLOG.md §2 P1, DELIVERY-6.md §9*
+*Avancement :  10 nov. 2026 (D9-31) : lancée — lot « d9-p1p4 » en cours. · Attend : Validation de la proposition par le responsable produit · Sources : BACKLOG.md §2 P1, DELIVERY-6.md §9*
 
 **R-160 · P2 · Conformité CE et dossier technique machine (à valider)** — *À décider · non commencé · effort XL*  
 Proposition : analyse de risques, exigences essentielles, déclaration UE de conformité, dossier technique et notices, liés aux livrables. Aujourd’hui seuls existent un type de livrable « Certificats (CE, levage…) » et une ligne « Déclaration CE & certificats de conformité » du dossier de transfert, sans aucun outil. À arbitrer vite : le règlement Machines (UE) 2023/1230 s’applique à partir du 20 janv. 2027, dans environ 3 mois.  
-*Attend : Validation de la proposition et du périmètre réglementaire par le responsable produit · Sources : BACKLOG.md §2 P2, DELIVERY-6.md §9*
+*Avancement :  10 nov. 2026 (D9-32) : lancée avant janvier 2027 — lot « d9-p2ce » en cours. · Attend : Validation de la proposition et du périmètre réglementaire par le responsable produit · Sources : BACKLOG.md §2 P2, DELIVERY-6.md §9*
 
 **R-161 · P3 · Réclamations contractuelles et pénalités (à valider)** — *À décider · non commencé · effort L*  
 Proposition : registre des réclamations client et fournisseur chiffrées, et pénalités de retard calculées depuis le planning, liées aux CR et au contrat. Aujourd’hui le contrat ne porte qu’un texte « Pénalités de retard ». Analyse comparative du 25 oct. 2026 : les pénalités de retard contractuelles (LD) et les scénarios de récupération sont une fonction différenciante du marché (Deltek) ; la proposition P3 n’est pas validée. Priorité suggérée P3, à décider.  
-*Attend : Validation de la proposition par le responsable produit · Sources : BACKLOG.md §2 P3, DELIVERY-6.md §9, Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+*Avancement :  10 nov. 2026 (D9-33) : plus tard. · Attend : Validation de la proposition par le responsable produit · Sources : BACKLOG.md §2 P3, DELIVERY-6.md §9, Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **R-162 · P4 · Exposition de change par projet et alertes de couverture (à valider)** — *À décider · non commencé · effort M*  
 Au-delà de la décision C-9 (devise par contrat et commande, consolidation en euros, R-075), la proposition P4 ajoute les cours de référence, l’exposition de change par projet et des alertes de couverture. Le responsable produit a retenu l’option b de C-9 et non l’option c (module P4 complet) : P4 reste à valider et vient après R-075. Aujourd’hui seul un code devise EUR/USD est stocké sur le projet et une catégorie de risque « Financier / change » existe.  
-*Attend : Validation de la proposition par le responsable produit (non retenue dans la réponse C-9) ; R-075 d’abord · Sources : BACKLOG.md §2 P4, C-9, docs/decisions/questions.json C-9 option c*
+*Avancement :  10 nov. 2026 (D9-34) : lancée — lot « d9-p1p4 » en cours. · Attend : Validation de la proposition par le responsable produit (non retenue dans la réponse C-9) ; R-075 d’abord · Sources : BACKLOG.md §2 P4, C-9, docs/decisions/questions.json C-9 option c*
 
 **R-163 · P5 · Missions et mobilisation internationale (à valider)** — *À décider · partiel · effort L*  
 Proposition : ordres de mission, voyages et indemnités journalières, liés à Cursus et au planning chantier. Le module Chantier affiche déjà le plan de rotation (dates de mission, hébergement, voyage) et des lignes de coûts de mission, toutes deux semées sans écriture, les visas et vaccins lus dans Cursus, et envoie une demande de voyage à Cursus ; manquent les ordres de mission, les indemnités journalières et la saisie des rotations. À valider selon ce que Cursus gère déjà.  
-*Avancement : Livraison 8 : la saisie des rotations existe désormais dans la fiche chantier (R-118) ; le reste de la proposition attend sa validation. · Attend : Validation par le responsable produit ; partage des rôles avec Cursus · Sources : BACKLOG.md §2 P5, DELIVERY-6.md §9*
+*Avancement : Livraison 8 : la saisie des rotations existe désormais dans la fiche chantier (R-118) ; le reste de la proposition attend sa validation. 10 nov. 2026 (D9-35) : voyage lié à un projet créé depuis le planning de Keystone, administratif et médical dans Cursus — à cadrer avec Cursus. · Attend : Validation par le responsable produit ; partage des rôles avec Cursus · Sources : BACKLOG.md §2 P5, DELIVERY-6.md §9*
 
 **R-164 · P6 · Offres et chiffrage avant-vente (à valider)** — *À décider · non commencé · effort XL*  
 Proposition : chiffrage depuis les modèles de type de machine, marge, aide au go / no-go et conversion en BL1 à la signature. Dépend des standards par type de machine (R-053).  
-*Attend : Validation de la proposition ; standards par type de machine (A-2, L-3a) · Sources : BACKLOG.md §2 P6, A-2, L-3a, L-5a*
+*Avancement :  10 nov. 2026 (D9-36) : remplacée par un logiciel catalogue / module commercial dédié, géré par EPC2i, qui publiera le catalogue dans Arche et Keystone (hors Keystone). · Attend : Validation de la proposition ; standards par type de machine (A-2, L-3a) · Sources : BACKLOG.md §2 P6, A-2, L-3a, L-5a*
 
 **R-165 · P7 · Outillage et étalonnage (à valider)** — *À décider · non commencé · effort M*  
 Proposition : parc d’outillage, affectation aux chantiers, échéances d’étalonnage et certificats (ISO 9001 §7.1.5). Seule existe la liste des équipements d’un chantier (expédié, location locale ou client, avec confirmation), sans parc, sans étalonnage ni certificat.  
-*Attend : Validation de la proposition par le responsable produit · Sources : BACKLOG.md §2 P7, DELIVERY-6.md §9*
+*Avancement :  10 nov. 2026 (D9-37) : abandonnée — outillage mécanique sans étalonnage ; seuls les équipements de laboratoire en ont. · Attend : Validation de la proposition par le responsable produit · Sources : BACKLOG.md §2 P7, DELIVERY-6.md §9*
 
 **R-166 · P8 · Application chantier hors ligne (à valider)** — *À décider · non commencé · effort XL*  
 Proposition : version tablette des écrans Chantier, Réserves et Livraisons avec saisie hors ligne et synchronisation (rapports journaliers, photos, réceptions). Suppose d’abord la tablette en ligne (X-4, R-146) et le stockage des photos (X-15, R-126) ; la réponse X-4 a retenu la tablette en ligne, pas l’appli hors ligne. Analyse comparative du 25 oct. 2026 : une application mobile / chantier hors ligne (rapports journaliers, photos, réserves) est un standard du marché (Procore, Smartsheet) ; aujourd’hui les photos passent par /api/photos sur navigateur et la proposition P8 n’est pas validée. Priorité suggérée P2, à valider par le responsable produit.  
-*Attend : Validation de la proposition ; X-4 et X-15 réalisés d’abord · Sources : BACKLOG.md §2 P8, X-4, X-15, Analyse comparative avec les solutions du commerce, 25 oct. 2026*
+*Avancement :  10 nov. 2026 (D9-38) : lancée — lot à venir. · Attend : Validation de la proposition ; X-4 et X-15 réalisés d’abord · Sources : BACKLOG.md §2 P8, X-4, X-15, Analyse comparative avec les solutions du commerce, 25 oct. 2026*
 
 **R-207 · Automatisations sans code (règles si / alors, approbations automatiques)** — *Plus tard · non commencé · effort XL*  
 Offrir un éditeur de règles si / alors (déclencheur, condition, action : notifier, changer un statut, créer une tâche, approuver automatiquement sous un seuil) configurable par les administrateurs. Standard du marché (monday, Smartsheet). Aujourd’hui les circuits d’approbation sont codés en dur (src/server/approvals/). Analyse comparative du 25 oct. 2026 : priorité P3, à décider.  
@@ -999,6 +1019,7 @@ Module demandé mais à cadrer avec le responsable produit avant construction : 
 
 ## 3. Mises à jour
 
+- 2026-11-10 — Questionnaire des décisions en attente (38 réponses) appliqué : portail client retiré, planning (import MS Project / GanttProject, date de situation, gel du vendredi, références), P1, P2, P4 et P8 lancées, P7 abandonnée ; nouveaux points R-212 à R-215.
 - 2026-11-07 — Demandes M-19 (fonction keystone.pub_editer, liste fermée de tables) et Vigie D12/D13 (connecteur Vigie par vues et fonctions pub_) traitées.
 - 2026-11-05 — S-33 : alertes du portefeuille classées par urgence et importance. S-34 : glissement fournisseur remonté aux directeurs (durée 10 j.o. et impact 5 j.o. sur la fin du projet, réglables).
 - 2026-11-05 — Réponses S-29 à S-32 appliquées : filtre Équipement hérité du lot, glissement fournisseur dans les alertes du portefeuille et seuil réglable, qualité du planning dans « Mes projets ».
