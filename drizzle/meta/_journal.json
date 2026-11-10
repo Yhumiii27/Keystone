@@ -568,6 +568,20 @@
       "when": 1794317706534,
       "tag": "0080_expediting_fx",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1794319651909,
+      "tag": "0081_ce_conformity",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1794319656596,
+      "tag": "0082_ce_conformity_defaults",
+      "breakpoints": true
     }
   ]
 }

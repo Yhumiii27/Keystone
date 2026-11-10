@@ -8,8 +8,8 @@ maintenant, avant janvier 2027 »). Sources : `docs/BACKLOG.md` § 2 P2, `docs/r
 
 | Pièce | Où | Rôle |
 |---|---|---|
-| Tables | `drizzle/0078_ce_conformity.sql` (générée) | `ce_checklist_items` (listes de référence de Paramètres), `ce_files` (un dossier CE par ligne d’équipement, contraintes de valeurs, colonne `version` R-010) |
-| Données de référence, déclencheur | `drizzle/0079_ce_conformity_defaults.sql` (personnalisée) | les deux listes par défaut sur **toute** base (démonstration et production), rejouable (`ON CONFLICT DO NOTHING`) ; déclencheur `ce_files_row_version` (`ks_bump_row_version` de 0069) |
+| Tables | `drizzle/0081_ce_conformity.sql` (générée) | `ce_checklist_items` (listes de référence de Paramètres), `ce_files` (un dossier CE par ligne d’équipement, contraintes de valeurs, colonne `version` R-010) |
+| Données de référence, déclencheur | `drizzle/0082_ce_conformity_defaults.sql` (personnalisée) | les deux listes par défaut sur **toute** base (démonstration et production), rejouable (`ON CONFLICT DO NOTHING`) ; déclencheur `ce_files_row_version` (`ks_bump_row_version` de 0069) |
 | Règles pures | `src/domain/ce-conformity.ts` (+ `ce-conformity.test.ts`, 15 tests de valeurs) | listes de choix, listes par défaut, lecture du formulaire, droits, état du dossier (calculé), date de mise sur le marché, date d’application |
 | Lecture / écriture | `src/server/dal/ce-conformity.ts` | listes, dossiers d’un projet, liste portefeuille, enregistrement (audit avant / après, activité, verrou optimiste R-010), écrivains des listes |
 | Server Functions | `src/features/ce/actions.ts` | `saveCeFileAction`, `addCeChecklistItemAction`, `setCeChecklistItemActiveAction`, `resetCeChecklistsAction` |
