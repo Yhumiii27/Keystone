@@ -1011,6 +1011,7 @@ Au-delà de la décision C-9 (devise par contrat et commande, consolidation en e
 
 ## 3. Mises à jour
 
+- 2026-11-10 — PR #76 fusionnée dans main : décisions D9-04, D9-08 à D9-12, P1 (R-159), P2 (R-160), P4 (R-162) et suppression du portail client (D9-06) ; correctif e2e (accord client au-dessus du tiroir).
 - 2026-11-10 — Lots intégrés : planning (D9-08 à D9-12), corrections Matrix des fériés et seuils (D9-04), portail client retiré (D9-06, D9-25, D9-26), P1 inspections et FAT, P4 change, P2 conformité CE.
 - 2026-11-10 — D9-30 : demande déposée chez Codex (lire les projets dans keystone.pub_projets), Yhumiii27/Codex#28.
 - 2026-11-10 — Questionnaire des décisions en attente (38 réponses) appliqué : portail client retiré, planning (import MS Project / GanttProject, date de situation, gel du vendredi, références), P1, P2, P4 et P8 lancées, P7 abandonnée ; nouveaux points R-212 à R-215.

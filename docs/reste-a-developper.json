@@ -306,6 +306,10 @@
   {
    "date": "2026-11-10",
    "text": "Lots intégrés : planning (D9-08 à D9-12), corrections Matrix des fériés et seuils (D9-04), portail client retiré (D9-06, D9-25, D9-26), P1 inspections et FAT, P4 change, P2 conformité CE."
+  },
+  {
+   "date": "2026-11-10",
+   "text": "PR #76 fusionnée dans main : décisions D9-04, D9-08 à D9-12, P1 (R-159), P2 (R-160), P4 (R-162) et suppression du portail client (D9-06) ; correctif e2e (accord client au-dessus du tiroir)."
   }
  ],
  "items": [
