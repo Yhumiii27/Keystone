@@ -23,7 +23,7 @@
     "load:check": "tsx --conditions=react-server scripts/load/measure.ts --budget --runs=3"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "0.135.0",
+    "@anthropic-ai/sdk": "1.1.0",
     "@electric-sql/pglite": "^0.5.10",
     "@phosphor-icons/react": "^2.1.10",
     "d3-geo": "^3.1.1",
