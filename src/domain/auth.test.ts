@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   AuthConfigError, ROLE_PRIORITY, SIGN_IN_ERROR, SIGN_IN_REFUSAL_LABEL, activeRoleOf, decideSignIn, emailFromClaims, isPublicPath, isRoleKey,
-  isSignInError, normaliseEmail, parseGroupRoleMap, roleOfAppRole, rolesFromClaims, safeReturnTo, sortRoles, userTitle, type SignInUser,
+  isSignInError, normaliseEmail, parseGroupRoleMap, roleOfAppRole, rolesFromClaims, rolesFromClavisAccess, safeReturnTo, sortRoles, userTitle, type SignInUser,
 } from './auth';
 
 describe('roles', () => {
@@ -54,6 +54,14 @@ describe('roles', () => {
     expect(rolesFromClaims({ groups: ['g-qual'] }, map)).toEqual(['depthead', 'quality']);
     expect(rolesFromClaims({ roles: 'pm' as unknown, groups: null }, map)).toEqual([]);
     expect(rolesFromClaims({})).toEqual([]);
+  });
+
+  it('reads the role of a clavis.pub_acces row only when the access opens now', () => {
+    expect(rolesFromClavisAccess({ role: 'pm', ouvert: true })).toEqual(['pm']);
+    expect(rolesFromClavisAccess({ role: 'pm', ouvert: false })).toEqual([]);
+    expect(rolesFromClavisAccess({ role: 'unknown', ouvert: true })).toEqual([]);
+    expect(rolesFromClavisAccess({ role: null, ouvert: true })).toEqual([]);
+    expect(rolesFromClavisAccess(null)).toEqual([]);
   });
 });
 

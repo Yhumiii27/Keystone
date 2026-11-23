@@ -259,6 +259,8 @@ const VARS = {
   CURSUS_DIRECTORY: onOff.optional(),
   // Central sign-in of Clavis (23 Nov 2026): an unknown e-mail creates its person from the ID token (name, e-mail).
   KEYSTONE_PERSONS_FROM_TOKEN: onOff.optional(),
+  // One database (owner, 23 Nov 2026): the rights of a person are read in clavis.pub_acces at sign-in and on every request.
+  KEYSTONE_ACCESS_FROM_CLAVIS: onOff.optional(),
   // D12 / D13: Vigie is read through its pub_ views and written through its pub_ functions on the shared server (no API).
   VIGIE_SOURCE: z
     .string()

@@ -24,7 +24,7 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { setViewAs } from '@/server/actions/preferences';
 import { setActiveRole } from '@/server/actions/auth';
 import { setDb, getDb } from '@/server/db/client';
@@ -163,6 +163,34 @@ describe('Entra ID sign-in', () => {
     expect((await signIn({ oid: 'oid-julien', email: 'julien.wagner@epc2i.fr', roles: ['Other.App'] })).res.headers.get('location')).toBe(`${ORIGIN}/sign-in?error=no_role`);
     expect((await signIn({ oid: 'oid-julien', email: 'julien.wagner@epc2i.fr', roles: ['client'] })).res.headers.get('location')).toBe(`${ORIGIN}/sign-in?error=no_role`);
     expect((await userOf('Julien Wagner'))!.entraObjectId).toBeNull(); // nothing linked by a refused sign-in
+  });
+
+  it('reads the role and the access in clavis.pub_acces at sign-in and on every request (KEYSTONE_ACCESS_FROM_CLAVIS)', async () => {
+    useEntra({ KEYSTONE_ACCESS_FROM_CLAVIS: 'on' });
+    const db = await getDb();
+    const oid = '11111111-2222-4333-8444-555555555555';
+    // Stand-in of the view Matrix publishes on the shared server (same columns Keystone reads).
+    await db.execute(sql.raw('create schema if not exists clavis'));
+    await db.execute(sql.raw('create table clavis.pub_acces (personne_id uuid, application text, role text, ouvert boolean)'));
+    try {
+      await db.execute(sql`insert into clavis.pub_acces values (${oid}, 'keystone', 'quality', true), (${oid}, 'codex', 'admin', true)`);
+      // The token's roles are not used: the role is the one IT set in Clavis.
+      const r = await signIn({ oid, email: 'julien.wagner@epc2i.fr', roles: ['Keystone.Director'] });
+      expect(r.res.headers.get('location')).toBe(`${ORIGIN}/projects/HLT-026/plan?tab=gantt`);
+      useSession(r);
+      expect(await getViewer()).toMatchObject({ name: 'Julien Wagner', role: 'quality', roles: ['quality'] });
+      // A change in Clavis applies at the next page.
+      await db.execute(sql`update clavis.pub_acces set role = 'pm' where application = 'keystone'`);
+      expect(await getViewer()).toMatchObject({ role: 'pm', roles: ['pm'] });
+      // Access closed (withdrawn, person deactivated, application closed): the session ends, a new sign-in is refused.
+      await db.execute(sql`update clavis.pub_acces set ouvert = false where application = 'keystone'`);
+      await expect(getViewer()).rejects.toThrow('REDIRECT:/sign-in?error=session');
+      expect((await signIn({ oid, email: 'julien.wagner@epc2i.fr', roles: ['Keystone.Director'] })).res.headers.get('location')).toBe(`${ORIGIN}/sign-in?error=no_role`);
+    } finally {
+      await db.execute(sql.raw('drop schema clavis cascade'));
+    }
+    // The view cannot be read: refused (fail closed), never the token's roles.
+    expect((await signIn({ oid, email: 'julien.wagner@epc2i.fr', roles: ['Keystone.Director'] })).res.headers.get('location')).toBe(`${ORIGIN}/sign-in?error=failed`);
   });
 
   it('keeps a person on the Microsoft account it was first linked to', async () => {

@@ -13,11 +13,17 @@
 //   ENTRA_GROUP_ROLES             optional JSON { "<group object id>": "pm" | ["pm", "englead"] }
 //   KEYSTONE_PERSONS_FROM_TOKEN   on | off (default): an e-mail no person has creates the person from the token (name,
 //                                 e-mail) — for a provider that holds the directory (Clavis), never for Entra ID alone
+//   KEYSTONE_ACCESS_FROM_CLAVIS   on | off (default): the person's Keystone role and whether Keystone opens for them are
+//                                 read in clavis.pub_acces (shared server) at sign-in and on every request, not in the token
 import { AuthConfigError, parseGroupRoleMap, type GroupRoleMap } from '@/domain/auth';
 
 export { AuthConfigError };
 
 export type AuthMode = 'demo' | 'entra';
+
+/** KEYSTONE_ACCESS_FROM_CLAVIS=on: the rights come from clavis.pub_acces (shared server), read on every request. */
+export const accessFromClavis = (e: Record<string, string | undefined> = process.env): boolean =>
+  (e.KEYSTONE_ACCESS_FROM_CLAVIS ?? '').trim().toLowerCase() === 'on';
 
 type Env = Record<string, string | undefined>;
 
@@ -61,6 +67,8 @@ export interface EntraConfig {
   groupRoles: GroupRoleMap;
   /** An unknown e-mail creates its person from the token (KEYSTONE_PERSONS_FROM_TOKEN=on). */
   personsFromToken: boolean;
+  /** Rights read in clavis.pub_acces at sign-in and on every request (KEYSTONE_ACCESS_FROM_CLAVIS=on). */
+  accessFromClavis: boolean;
   session: SessionConfig;
 }
 
@@ -121,6 +129,7 @@ export function entraConfig(e: Env = env()): EntraConfig {
     postLogoutRedirectUri: postLogout,
     groupRoles: parseGroupRoleMap(e.ENTRA_GROUP_ROLES),
     personsFromToken: (e.KEYSTONE_PERSONS_FROM_TOKEN ?? '').trim().toLowerCase() === 'on',
+    accessFromClavis: accessFromClavis(e),
     session: sessionConfig(e),
   };
 }

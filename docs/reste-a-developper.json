@@ -1,6 +1,6 @@
 {
  "generated": "2026-10-10",
- "updated": "2026-11-10",
+ "updated": "2026-11-23",
  "branch": "main-2a2fep",
  "history": [
   {
@@ -306,6 +306,10 @@
   {
    "date": "2026-11-10",
    "text": "Lots intégrés : planning (D9-08 à D9-12), corrections Matrix des fériés et seuils (D9-04), portail client retiré (D9-06, D9-25, D9-26), P1 inspections et FAT, P4 change, P2 conformité CE."
+  },
+  {
+   "date": "2026-11-23",
+   "text": "Connexion centrale par Clavis : personne créée depuis le jeton (KEYSTONE_PERSONS_FROM_TOKEN, Yhumiii27/Keystone#78) ; rôle et ouverture de Keystone lus dans clavis.pub_acces à la connexion et à chaque requête (KEYSTONE_ACCESS_FROM_CLAVIS)."
   }
  ],
  "items": [

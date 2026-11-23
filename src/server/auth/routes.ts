@@ -4,7 +4,9 @@ import 'server-only';
 // ENTRA_REDIRECT_URI (stable behind a reverse proxy); refusals land on /sign-in?error=<code> (a public page), never back
 // on the sign-in route, so a refused account cannot loop through Microsoft.
 import { NextResponse, type NextRequest } from 'next/server';
-import { AUTH_PATHS, activeRoleOf, emailFromClaims, rolesFromClaims, safeReturnTo, type SignInError } from '@/domain/auth';
+import { AUTH_PATHS, activeRoleOf, emailFromClaims, rolesFromClaims, rolesFromClavisAccess, safeReturnTo, type SignInError } from '@/domain/auth';
+import type { RoleKey } from '@/config/screens';
+import { readClavisAccess } from '@/server/integrations/clavis/access';
 import { recordSignOut, signInUser } from '@/server/dal/users';
 import { authMode, entraConfig, sessionConfig, type EntraConfig, type SessionConfig } from './config';
 import { pkceChallenge, randomToken, safeEqual } from './crypto';
@@ -92,10 +94,18 @@ export async function handleCallback(req: NextRequest): Promise<Response> {
   }
   const oid = typeof claims.oid === 'string' && claims.oid ? claims.oid : null;
   if (!oid) return fail('token');
+  // One database (KEYSTONE_ACCESS_FROM_CLAVIS): the role comes from clavis.pub_acces, not from the token.
+  let roles: RoleKey[];
+  try {
+    roles = cfg.accessFromClavis ? rolesFromClavisAccess(await readClavisAccess(oid)) : rolesFromClaims(claims, cfg.groupRoles);
+  } catch (e) {
+    console.error('[auth] clavis.pub_acces not read:', e instanceof Error ? e.message : e);
+    return fail('failed', true);
+  }
   let result;
   try {
     result = await signInUser({
-      oid, email: emailFromClaims(claims), roles: rolesFromClaims(claims, cfg.groupRoles),
+      oid, email: emailFromClaims(claims), roles,
       // Central sign-in of Clavis: the directory is Clavis's, a person Keystone does not know yet is created from the token.
       createPerson: cfg.personsFromToken ? { name: typeof claims.name === 'string' ? claims.name : null } : undefined,
     });

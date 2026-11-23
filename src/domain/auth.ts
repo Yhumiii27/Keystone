@@ -108,6 +108,16 @@ export function rolesFromClaims(claims: IdentityClaims, groupMap: GroupRoleMap =
   return sortRoles(out);
 }
 
+/**
+ * The Keystone roles of a person's row in clavis.pub_acces (KEYSTONE_ACCESS_FROM_CLAVIS): the role IT set in Clavis when
+ * the access opens now (`ouvert`), else none. An unknown role value gives none (fail closed).
+ */
+export function rolesFromClavisAccess(row: Record<string, unknown> | null | undefined): RoleKey[] {
+  if (!row || row.ouvert !== true) return [];
+  const k = roleOfAppRole(row.role);
+  return k ? [k] : [];
+}
+
 const EMAIL_RE = /^[^\s@<>()[\]\\,;:"]+@[^\s@<>()[\]\\,;:"]+\.[^\s@<>()[\]\\,;:"]+$/;
 
 /** A normalised e-mail address (trimmed, lower case) or null when the value is not shaped like one. */
