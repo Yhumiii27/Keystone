@@ -11,6 +11,8 @@
 //   ENTRA_REDIRECT_URI            https://<host>/api/auth/callback (registered as a Web redirect URI)
 //   ENTRA_POST_LOGOUT_REDIRECT_URI optional; default <origin of the redirect URI>/sign-in?signedOut=1
 //   ENTRA_GROUP_ROLES             optional JSON { "<group object id>": "pm" | ["pm", "englead"] }
+//   KEYSTONE_PERSONS_FROM_TOKEN   on | off (default): an e-mail no person has creates the person from the token (name,
+//                                 e-mail) — for a provider that holds the directory (Clavis), never for Entra ID alone
 import { AuthConfigError, parseGroupRoleMap, type GroupRoleMap } from '@/domain/auth';
 
 export { AuthConfigError };
@@ -57,6 +59,8 @@ export interface EntraConfig {
   redirectUri: string;
   postLogoutRedirectUri: string;
   groupRoles: GroupRoleMap;
+  /** An unknown e-mail creates its person from the token (KEYSTONE_PERSONS_FROM_TOKEN=on). */
+  personsFromToken: boolean;
   session: SessionConfig;
 }
 
@@ -116,6 +120,7 @@ export function entraConfig(e: Env = env()): EntraConfig {
     redirectUri,
     postLogoutRedirectUri: postLogout,
     groupRoles: parseGroupRoleMap(e.ENTRA_GROUP_ROLES),
+    personsFromToken: (e.KEYSTONE_PERSONS_FROM_TOKEN ?? '').trim().toLowerCase() === 'on',
     session: sessionConfig(e),
   };
 }

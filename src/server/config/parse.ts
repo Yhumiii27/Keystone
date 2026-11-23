@@ -257,6 +257,8 @@ const VARS = {
   CURSUS_EVENTS_KEY: z.string().min(16, 'must be at least 16 characters').optional(),
   // R-027 (NEW-CURSUS-2): staff directory import from Cursus, off until Cursus publishes its directory endpoint.
   CURSUS_DIRECTORY: onOff.optional(),
+  // Central sign-in of Clavis (23 Nov 2026): an unknown e-mail creates its person from the ID token (name, e-mail).
+  KEYSTONE_PERSONS_FROM_TOKEN: onOff.optional(),
   // D12 / D13: Vigie is read through its pub_ views and written through its pub_ functions on the shared server (no API).
   VIGIE_SOURCE: z
     .string()

@@ -219,6 +219,22 @@ export function decideSignIn(input: {
 }
 
 /**
+ * Names of a person created at their first sign-in through a directory that Keystone does not hold (KEYSTONE_PERSONS_FROM_TOKEN,
+ * the central sign-in of Clavis): "Lucie Fontaine" → short name "L. Fontaine", initials "LF". Without a name, the e-mail's
+ * local part stands for it ("lucie.fontaine" → "Lucie Fontaine").
+ */
+export function personNamesFromToken(name: string | null, email: string): { fullName: string; shortName: string; initials: string } {
+  const fromEmail = email.split('@')[0].split(/[._-]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
+  const fullName = (name ?? '').replace(/\s+/g, ' ').trim().slice(0, 120) || fromEmail || email;
+  const parts = fullName.split(' ');
+  const first = parts[0] ?? '';
+  const last = parts.slice(1).join(' ');
+  const shortName = last ? `${first[0]}. ${last}` : fullName;
+  const initials = ((first[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase() || '?';
+  return { fullName, shortName, initials };
+}
+
+/**
  * Title under the user's name (EN source string): their job title, else the name of their highest role.
  */
 export function userTitle(jobTitle: string | null | undefined, roles: readonly RoleKey[]): string {

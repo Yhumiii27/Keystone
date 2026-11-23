@@ -146,4 +146,24 @@ describe('users', () => {
     const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(users).where(eq(users.personId, await personId('Olivier Blanc')));
     expect(n).toBe(1);
   });
+
+  it('creates the person of an unknown e-mail from the token only when asked (central sign-in of Clavis)', async () => {
+    const db = await getDb();
+    const plain = await signInUser({ oid: 'oid-lucie', email: 'lucie.fontaine@epc-groupe.com', roles: ['pm'] });
+    expect(plain).toEqual({ ok: false, reason: 'unknown_user' });
+    const r = await signInUser({ oid: 'oid-lucie', email: 'lucie.fontaine@epc-groupe.com', roles: ['pm'], createPerson: { name: 'Lucie Fontaine' } });
+    expect(r.ok && r.created).toBe(true);
+    const [p] = await db.select().from(persons).where(eq(persons.email, 'lucie.fontaine@epc-groupe.com'));
+    expect(p).toMatchObject({ fullName: 'Lucie Fontaine', initials: 'LF' });
+    // The short name is unique: the demo data set already has an "L. Fontaine".
+    expect(p.shortName).toMatch(/^L\. Fontaine( \(\d+\))?$/);
+    // The next sign-in finds the account by its object id: no second person.
+    const again = await signInUser({ oid: 'oid-lucie', email: 'lucie.fontaine@epc-groupe.com', roles: ['pm'], createPerson: { name: 'Lucie Fontaine' } });
+    expect(again.ok && !again.created).toBe(true);
+    const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(persons).where(eq(persons.email, 'lucie.fontaine@epc-groupe.com'));
+    expect(n).toBe(1);
+    // Without a role nothing is created.
+    expect(await signInUser({ oid: 'oid-x', email: 'x.y@epc-groupe.com', roles: [], createPerson: { name: 'X Y' } })).toEqual({ ok: false, reason: 'unknown_user' });
+    expect(await db.select().from(persons).where(eq(persons.email, 'x.y@epc-groupe.com'))).toHaveLength(0);
+  });
 });

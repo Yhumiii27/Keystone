@@ -7,7 +7,7 @@ import 'server-only';
 import { and, arrayOverlaps, asc, eq, inArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { RoleKey } from '@/config/screens';
-import { ROLE_LABEL, SIGN_IN_REFUSAL_LABEL, decideSignIn, sortRoles, userTitle, type SignInPerson, type SignInRefusal, type SignInUser } from '@/domain/auth';
+import { ROLE_LABEL, SIGN_IN_REFUSAL_LABEL, decideSignIn, personNamesFromToken, sortRoles, userTitle, type SignInPerson, type SignInRefusal, type SignInUser } from '@/domain/auth';
 import { systemMessage } from '@/domain/system-messages';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import { writeAudit } from '@/server/db/helpers';
@@ -100,6 +100,11 @@ export interface SignInInput {
   email: string | null;
   /** Keystone roles granted by the token (domain/auth rolesFromClaims). */
   roles: RoleKey[];
+  /**
+   * KEYSTONE_PERSONS_FROM_TOKEN: when no person has the token e-mail, create one from the token (name, e-mail) instead of
+   * refusing the sign-in — the directory is held by the provider (Clavis).
+   */
+  createPerson?: { name: string | null };
   at?: Date;
 }
 
@@ -121,12 +126,15 @@ export async function signInUser(input: SignInInput): Promise<SignInResult> {
         .select({ userId: users.id, personId: users.personId, entraObjectId: users.entraObjectId, active: users.active })
         .from(users)
         .where(eq(users.entraObjectId, input.oid));
-      const matched = input.email
+      let matched = input.email
         ? await tx
             .select({ personId: persons.id })
             .from(persons)
             .where(sql`lower(${persons.email}) = ${input.email}`)
         : [];
+      if (!linked && !matched.length && input.createPerson && input.email && roles.length) {
+        matched = [{ personId: await createPersonFromToken(tx, input.createPerson.name, input.email) }];
+      }
       let ofPerson: SignInUser | null = null;
       if (!linked && matched.length === 1) {
         const [u] = await tx
@@ -182,6 +190,16 @@ export async function signInUser(input: SignInInput): Promise<SignInResult> {
     if (isUniqueViolation(e, ['users_person_id_unique', 'users_entra_object_id_unique'])) return run();
     throw e;
   }
+}
+
+/** A person created at their first sign-in through Clavis: names from the token, a unique short name, last in order. */
+async function createPersonFromToken(tx: Q, name: string | null, email: string): Promise<string> {
+  const n = personNamesFromToken(name, email);
+  let shortName = n.shortName;
+  for (let i = 2; (await tx.select({ id: persons.id }).from(persons).where(eq(persons.shortName, shortName))).length; i++) shortName = `${n.shortName} (${i})`;
+  const [{ max }] = await tx.select({ max: sql<number>`coalesce(max(${persons.sortOrder}), 0)::int` }).from(persons);
+  const [row] = await tx.insert(persons).values({ fullName: n.fullName, shortName, initials: n.initials, email, sortOrder: max + 1 }).returning({ id: persons.id });
+  return row.id;
 }
 
 /** A unique-constraint violation on one of `constraints` (the driver error may be wrapped in Drizzle's query error). */

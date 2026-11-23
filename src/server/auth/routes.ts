@@ -94,7 +94,11 @@ export async function handleCallback(req: NextRequest): Promise<Response> {
   if (!oid) return fail('token');
   let result;
   try {
-    result = await signInUser({ oid, email: emailFromClaims(claims), roles: rolesFromClaims(claims, cfg.groupRoles) });
+    result = await signInUser({
+      oid, email: emailFromClaims(claims), roles: rolesFromClaims(claims, cfg.groupRoles),
+      // Central sign-in of Clavis: the directory is Clavis's, a person Keystone does not know yet is created from the token.
+      createPerson: cfg.personsFromToken ? { name: typeof claims.name === 'string' ? claims.name : null } : undefined,
+    });
   } catch (e) {
     console.error('[auth] sign-in failed:', e);
     return fail('failed', true);
