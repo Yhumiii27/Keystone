@@ -23,6 +23,8 @@ Keystone PM is EPC2i's project and portfolio management tool. It is a Next.js 16
 
 - **CAPEX application (owner, 22 Oct 2026; `docs/dig-prodi/`).** The subsidiaries' plant CAPEX (DIG-PRODI method: 4 phases, gates G1/G2/G3, living dossiers) is a separate sibling app, not Keystone. Data are shared through the EPC2I PostgreSQL server (one schema per tool, `pub_` views); Keystone owns the machine catalogue, the answers to machine needs and the EPC2i projects, and publishes progress views for the CAPEX app. Keystone-side work: R-185 to R-194 (`docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md`). Do not build CAPEX-level features (subsidiary profiles, DIG-PRODI gates) in Keystone.
 
+- **One database, rights from Clavis (owner, 23 Nov 2026).** Signed in through Clavis (`ENTRA_ISSUER` = Clavis), a person Keystone does not know is created from the token (`KEYSTONE_PERSONS_FROM_TOKEN=on`), and with `KEYSTONE_ACCESS_FROM_CLAVIS=on` the role and whether Keystone opens are read in `clavis.pub_acces` (shared server, granted by Matrix) at sign-in and on every request (`src/server/integrations/clavis/access.ts`, `rolesFromClavisAccess`); a failed read refuses (fail closed), the token's roles are not used.
+
 ## Rules from the product owner
 
 - **Language.** Reply to the user in French. Code, identifiers and commit messages stay in English. UI strings are English source strings translated through `src/i18n`; French is the default language.
