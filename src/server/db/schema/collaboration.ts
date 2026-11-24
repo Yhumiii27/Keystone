@@ -11,6 +11,7 @@ import type {
   TranscriptProposalStatus, TranscriptProposalType, TranscriptSource,
 } from '../codes';
 import { id, timestamps } from './_common';
+import { filled, numbered, oneOf, shaped, within } from './_checks';
 import { documents } from './documents';
 import { storedFiles } from './files';
 import { persons } from './organisation';
@@ -53,7 +54,15 @@ export const meetings = pgTable('meetings', {
   /** MEETINGS order 1…n; created meetings come first, in creation order (`createdSortOrder`, MTG-130 → −999870). */
   sortOrder: integer('sort_order').notNull(),
   ...timestamps,
-}, (t) => [index('meetings_project_id_idx').on(t.projectId)]);
+}, (t) => [
+  index('meetings_project_id_idx').on(t.projectId),
+  shaped('meetings_number_shape', t.number, numbered('MTG-', 3)),
+  filled('meetings_title_filled', t.title),
+  oneOf<MeetingSeries>()('meetings_series_domain', t.series, ['weekly_site', 'steering_committee', 'engineering_coordination', 'supplier_review', 'kick_off', 'one_off']),
+  oneOf<MeetingType>()('meetings_type_domain', t.type, ['internal', 'external']),
+  within('meetings_duration_min_range', t.durationMin, 1, null),
+  oneOf<MeetingStatus>()('meetings_status_domain', t.status, ['scheduled', 'notes_in_progress', 'minutes_sent']),
+]);
 
 /** Invitees, attendance and read receipts of the minutes (`invited`, `present`, `read`). */
 export const meetingParticipants = pgTable(
@@ -70,7 +79,10 @@ export const meetingParticipants = pgTable(
     minutesRecipient: boolean('minutes_recipient').notNull().default(false),
     minutesReadOn: date('minutes_read_on', { mode: 'string' }),
   },
-  (t) => [unique().on(t.meetingId, t.name)],
+  (t) => [
+  unique().on(t.meetingId, t.name),
+  filled('meeting_participants_name_filled', t.name),
+],
 );
 
 /** Agenda points (`agenda[].pt`). */
@@ -82,7 +94,10 @@ export const meetingAgendaPoints = pgTable(
     position: integer('position').notNull(),
     title: text('title').notNull(),
   },
-  (t) => [unique().on(t.meetingId, t.position)],
+  (t) => [
+  unique().on(t.meetingId, t.position),
+  filled('meeting_agenda_points_title_filled', t.title),
+],
 );
 
 /** Minutes lines per agenda point: info / decision / action (owner, due, done, task created on "Send minutes"). */
@@ -108,7 +123,11 @@ export const meetingLines = pgTable(
     origin: text('origin').$type<MeetingLineOrigin>().notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [unique().on(t.agendaPointId, t.position)],
+  (t) => [
+  unique().on(t.agendaPointId, t.position),
+  oneOf<MeetingLineType>()('meeting_lines_type_domain', t.type, ['info', 'decision', 'action']),
+  oneOf<MeetingLineOrigin>()('meeting_lines_origin_domain', t.origin, ['seed', 'transcript', 'manual']),
+],
 );
 
 /**
@@ -138,7 +157,10 @@ export const meetingTranscripts = pgTable('meeting_transcripts', {
   importedAt: timestamp('imported_at', { withTimezone: true }),
   importedByPersonId: uuid('imported_by_person_id').references(() => persons.id),
   importedByName: text('imported_by_name'),
-});
+}, (t) => [
+  oneOf<TranscriptSource>()('meeting_transcripts_source_domain', t.source, ['teams', 'paste', 'file']),
+  oneOf<TranscriptAnalyzer>()('meeting_transcripts_analyzer_domain', t.analyzer, ['prototype', 'local', 'claude']),
+]);
 
 /** Decisions and actions proposed by the transcript analysis. */
 export const meetingTranscriptProposals = pgTable(
@@ -164,7 +186,11 @@ export const meetingTranscriptProposals = pgTable(
     /** What the proposal became ("T-2345", "R-21", minutes line id…). */
     appliedRef: text('applied_ref'),
   },
-  (t) => [primaryKey({ columns: [t.meetingId, t.position] })],
+  (t) => [
+  primaryKey({ columns: [t.meetingId, t.position] }),
+  oneOf<TranscriptProposalType>()('meeting_transcript_proposals_type_domain', t.type, ['decision', 'action', 'risk', 'question']),
+  oneOf<TranscriptProposalStatus>()('meeting_transcript_proposals_status_domain', t.status, ['rejected', 'proposed', 'applied', 'accepted']),
+],
 );
 
 /** Internal ⇄ client question bridge (MTG_EXCHANGE 3712: HLT-026 × 3, NDC-031 × 2). */
@@ -183,7 +209,10 @@ export const clientQuestions = pgTable('client_questions', {
   state: text('state').$type<ClientQuestionState>().notNull(),
   answer: text('answer'),
   ...timestamps,
-}, (t) => [index('client_questions_project_id_idx').on(t.projectId)]);
+}, (t) => [
+  index('client_questions_project_id_idx').on(t.projectId),
+  oneOf<ClientQuestionState>()('client_questions_state_domain', t.state, ['open', 'answered']),
+]);
 
 /** Stakeholder register (STAKEHOLDERS 3714: HLT-026 × 8). Stale when the last contact is more than 30 days old. */
 export const stakeholders = pgTable('stakeholders', {
@@ -206,7 +235,11 @@ export const stakeholders = pgTable('stakeholders', {
   /** Register order (added stakeholders are appended). */
   position: integer('position').notNull(),
   ...timestamps,
-}, (t) => [index('stakeholders_project_id_idx').on(t.projectId)]);
+}, (t) => [
+  index('stakeholders_project_id_idx').on(t.projectId),
+  filled('stakeholders_name_filled', t.name),
+  oneOf<StakeholderType>()('stakeholders_type_domain', t.type, ['client', 'internal', 'supplier', 'authority', 'third_party']),
+]);
 
 /** RACI matrix of a project (RACI 3715: HLT-026, 6 columns × 7 rows). Columns are dynamic. */
 export const raciMatrices = pgTable('raci_matrices', {
@@ -223,7 +256,10 @@ export const raciColumns = pgTable(
     position: integer('position').notNull(),
     label: text('label').notNull(),
   },
-  (t) => [primaryKey({ columns: [t.matrixId, t.position] })],
+  (t) => [
+  primaryKey({ columns: [t.matrixId, t.position] }),
+  filled('raci_columns_label_filled', t.label),
+],
 );
 
 /** Matrix rows (responsibilities: "Design release (BPE)"). */
@@ -235,7 +271,10 @@ export const raciRows = pgTable(
     position: integer('position').notNull(),
     label: text('label').notNull(),
   },
-  (t) => [unique().on(t.matrixId, t.position)],
+  (t) => [
+  unique().on(t.matrixId, t.position),
+  filled('raci_rows_label_filled', t.label),
+],
 );
 
 /** Non-empty cells (empty = no row). */
@@ -246,5 +285,8 @@ export const raciCells = pgTable(
     columnPosition: integer('column_position').notNull(),
     code: text('code').$type<RaciCode>().notNull(),
   },
-  (t) => [primaryKey({ columns: [t.rowId, t.columnPosition] })],
+  (t) => [
+  primaryKey({ columns: [t.rowId, t.columnPosition] }),
+  oneOf<RaciCode>()('raci_cells_code_domain', t.code, ['A', 'B', 'C', 'R', 'I']),
+],
 );

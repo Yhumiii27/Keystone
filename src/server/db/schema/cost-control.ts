@@ -3,6 +3,7 @@
 // idempotent (an approval re-run, two concurrent decisions or a retry never post the same request twice).
 import { index, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { id, keur } from './_common';
+import { oneOf } from './_checks';
 import { changeRequests } from './change';
 import { contractAmendments } from './contract';
 import { persons } from './organisation';
@@ -29,4 +30,7 @@ export const changeRequestPostings = pgTable('change_request_postings', {
   postedAt: timestamp('posted_at', { withTimezone: true }).notNull().defaultNow(),
   postedByPersonId: uuid('posted_by_person_id').references(() => persons.id),
   postedByName: text('posted_by_name').notNull(),
-}, (t) => [index('change_request_postings_project_id_idx').on(t.projectId)]);
+}, (t) => [
+  index('change_request_postings_project_id_idx').on(t.projectId),
+  oneOf<PostingAmendmentOutcome>()('change_request_postings_amendment_outcome_domain', t.amendmentOutcome, ['prepared', 'exists', 'not_contractual', 'no_contract']),
+]);

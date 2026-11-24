@@ -37,6 +37,9 @@ describe('NNNN_punch_unified_renumber (R-117, custom, before the unique-key swap
   it('a database with the two registers: Site items renumbered after the ITP items, categories and parties backfilled, then the swap', async () => {
     // The state before delivery 8: the per-register key, the Site items numbered P-01…P-03, no category, ITP items without party
     // — and none of Harbor Line's EQ-02 demo data (R-185 part 2: its item P-09) nor its shipment's reception (R-158 lot B: P-10).
+    // The shape CHECK of the punch numbers came later (0084_formats_in_database, R-N02): the migration's temporary numbers
+    // ("TMP-<id>") predate it.
+    await db.execute(sql.raw('ALTER TABLE punch_items DROP CONSTRAINT punch_items_number_shape'));
     await db.execute(sql.raw(`DELETE FROM punch_items WHERE number IN ('P-09', 'P-10')`));
     await db.execute(sql.raw('ALTER TABLE punch_items DROP CONSTRAINT punch_items_project_id_number_unique'));
     await db.execute(sql.raw('ALTER TABLE punch_items ADD CONSTRAINT punch_items_project_id_register_number_unique UNIQUE("project_id","register","number")'));
@@ -71,6 +74,7 @@ describe('NNNN_punch_unified_renumber (R-117, custom, before the unique-key swap
 
   it('numbers past 99 keep every digit; a new database (no punch item) is left to the seed', async () => {
     const fresh = await openDatabase();
+    await fresh.execute(sql.raw('ALTER TABLE punch_items DROP CONSTRAINT punch_items_number_shape'));
     await fresh.execute(sql.raw('DELETE FROM punch_items'));
     await run(fresh, RENUMBER);
     expect(await rows(fresh, 'SELECT count(*)::int AS n FROM punch_items')).toEqual([{ n: 0 }]);

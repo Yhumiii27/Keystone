@@ -5,6 +5,7 @@
 import { date, index, integer, pgTable, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { AwardRule, Incoterm, PoOrigin, PoStatus, ReceiptAttachmentKind, ReceiptStatus, RfqStatus, SupplierGrade, SupplierInvoiceStatus } from '../codes';
 import { eur, id, num, timestamps } from './_common';
+import { CURRENCY_RE, filled, numbered, oneOf, shaped, within } from './_checks';
 import { parts } from './catalogue';
 import { storedFiles } from './files';
 import { persons } from './organisation';
@@ -45,7 +46,14 @@ export const rfqs = pgTable('rfqs', {
   /** RFQS order; RFQs created in Keystone are listed first (lower value). */
   position: integer('position').notNull(),
   ...timestamps,
-});
+}, (t) => [
+  shaped('rfqs_number_shape', t.number, '^RFQ-[0-9]{4}-[0-9]{3,}$'),
+  filled('rfqs_title_filled', t.title),
+  within('rfqs_quantity_range', t.quantity, 0, null),
+  oneOf<RfqStatus>()('rfqs_status_domain', t.status, ['draft', 'open', 'comparing', 'awarded']),
+  oneOf<AwardRule>()('rfqs_award_rule_domain', t.awardRule, ['lowest_tco', 'technical_first', 'lowest_price', 'pm_decides']),
+  oneOf<Incoterm>()('rfqs_incoterm_domain', t.incoterm, ['DAP', 'EXW', 'FCA', 'DDP']),
+]);
 
 /** Supplier quotes of an RFQ (`quotes: [supplier, unit price €, lead weeks, terms, grade, score]`). */
 export const rfqQuotes = pgTable(
@@ -64,7 +72,10 @@ export const rfqQuotes = pgTable(
     score: integer('score').notNull(),
     position: integer('position').notNull(),
   },
-  (t) => [unique().on(t.rfqId, t.supplierId)],
+  (t) => [
+  unique().on(t.rfqId, t.supplierId),
+  oneOf<SupplierGrade>()('rfq_quotes_grade_domain', t.grade, ['A', 'B', 'C']),
+],
 );
 
 /**
@@ -107,7 +118,15 @@ export const purchaseOrders = pgTable('purchase_orders', {
   /** Order of the project's list (genPOs order; new orders appended). */
   position: integer('position').notNull(),
   ...timestamps,
-}, (t) => [index('purchase_orders_project_id_idx').on(t.projectId), index('purchase_orders_needed_for_activity_id_idx').on(t.neededForActivityId), index('purchase_orders_status_idx').on(t.status)]);
+}, (t) => [
+  index('purchase_orders_project_id_idx').on(t.projectId),
+  index('purchase_orders_needed_for_activity_id_idx').on(t.neededForActivityId),
+  index('purchase_orders_status_idx').on(t.status),
+  shaped('purchase_orders_number_shape', t.number, numbered('PO-', 4)),
+  oneOf<PoStatus>()('purchase_orders_status_domain', t.status, ['draft', 'ordered', 'cancelled', 'received', 'awaiting_approval', 'partially_received']),
+  oneOf<PoOrigin>()('purchase_orders_origin_domain', t.origin, ['x3', 'shortfall', 'rfq', 'spares']),
+  shaped('purchase_orders_currency_shape', t.currency, CURRENCY_RE),
+]);
 
 /** Order lines (`lines: [ref, ordered qty, received qty]`). */
 export const poLines = pgTable(
@@ -126,7 +145,11 @@ export const poLines = pgTable(
     unitPriceEur: eur('unit_price_eur').notNull(),
     position: integer('position').notNull(),
   },
-  (t) => [unique().on(t.poId, t.partId)],
+  (t) => [
+  unique().on(t.poId, t.partId),
+  within('po_lines_ordered_qty_range', t.orderedQty, 0, null),
+  within('po_lines_received_qty_range', t.receivedQty, 0, null),
+],
 );
 
 /** Goods receipts / deliveries (HLT_DELIV 3468 + genDeliv 4449; announced in Keystone: BL-2026-0600…). */
@@ -156,7 +179,12 @@ export const goodsReceipts = pgTable('goods_receipts', {
   /** Order of the project's list (genDeliv order; announced receipts appended). */
   position: integer('position').notNull(),
   ...timestamps,
-}, (t) => [index('goods_receipts_project_id_idx').on(t.projectId), index('goods_receipts_po_id_idx').on(t.poId)]);
+}, (t) => [
+  index('goods_receipts_project_id_idx').on(t.projectId),
+  index('goods_receipts_po_id_idx').on(t.poId),
+  shaped('goods_receipts_number_shape', t.number, '^BL-[0-9]{4}-[0-9]{4,}$'),
+  oneOf<ReceiptStatus>()('goods_receipts_status_domain', t.status, ['rejected', 'accepted', 'received', 'announced', 'qc_pending', 'partially_rejected']),
+]);
 
 /** Receipt lines (`lines: [ref, ordered, delivered, accepted, rejected, location]`). */
 export const receiptLines = pgTable(
@@ -172,7 +200,13 @@ export const receiptLines = pgTable(
     putAwayLocationId: uuid('put_away_location_id').notNull().references(() => storageLocations.id),
     position: integer('position').notNull(),
   },
-  (t) => [unique().on(t.receiptId, t.partId)],
+  (t) => [
+  unique().on(t.receiptId, t.partId),
+  within('receipt_lines_ordered_qty_range', t.orderedQty, 0, null),
+  within('receipt_lines_delivered_qty_range', t.deliveredQty, 0, null),
+  within('receipt_lines_accepted_qty_range', t.acceptedQty, 0, null),
+  within('receipt_lines_rejected_qty_range', t.rejectedQty, 0, null),
+],
 );
 
 /** Receipt documents (delivery note, certificates: `docs[]`) and photos (`photos` count; file names unknown in the seed). */
@@ -187,7 +221,10 @@ export const receiptAttachments = pgTable('receipt_attachments', {
   addedByPersonId: uuid('added_by_person_id').references(() => persons.id),
   position: integer('position').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [index('receipt_attachments_receipt_id_idx').on(t.receiptId)]);
+}, (t) => [
+  index('receipt_attachments_receipt_id_idx').on(t.receiptId),
+  oneOf<ReceiptAttachmentKind>()('receipt_attachments_kind_domain', t.kind, ['photo', 'document']),
+]);
 
 /**
  * Supplier invoices (INVOICES 3531) checked against the order and the goods receipt (3-way match `match3` 4663).
@@ -225,4 +262,9 @@ export const supplierInvoices = pgTable('supplier_invoices', {
   pushedToApAt: timestamp('pushed_to_ap_at', { withTimezone: true }),
   position: integer('position').notNull(),
   ...timestamps,
-}, (t) => [index('supplier_invoices_po_id_idx').on(t.poId)]);
+}, (t) => [
+  index('supplier_invoices_po_id_idx').on(t.poId),
+  filled('supplier_invoices_number_filled', t.number),
+  shaped('supplier_invoices_currency_shape', t.currency, CURRENCY_RE),
+  oneOf<SupplierInvoiceStatus>()('supplier_invoices_status_domain', t.status, ['rejected', 'blocked', 'paid', 'awaiting_receipt', 'no_po', 'approved_for_payment']),
+]);

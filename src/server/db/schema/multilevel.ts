@@ -7,6 +7,7 @@ import { check, date, index, integer, pgTable, text, timestamp, unique, uuid } f
 import { sql } from 'drizzle-orm';
 import type { LinkType } from '../codes';
 import { id, timestamps } from './_common';
+import { filled, oneOf, ordered } from './_checks';
 import { persons } from './organisation';
 import { activities } from './planning';
 import { projects } from './portfolio';
@@ -30,7 +31,11 @@ export const activityCodeTypes = pgTable(
     position: integer('position').notNull(),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.name), check('activity_code_types_kind_check', sql`${t.kind} in ('site', 'custom')`)],
+  (t) => [
+  unique().on(t.projectId, t.name),
+  check('activity_code_types_kind_check', sql`${t.kind} in ('site', 'custom')`),
+  filled('activity_code_types_name_filled', t.name),
+],
 );
 
 /** Values of a stored code type ("Z1" · "Hall A"). */
@@ -46,7 +51,11 @@ export const activityCodeValues = pgTable(
     position: integer('position').notNull(),
     ...timestamps,
   },
-  (t) => [unique().on(t.typeId, t.code)],
+  (t) => [
+  unique().on(t.typeId, t.code),
+  filled('activity_code_values_code_filled', t.code),
+  filled('activity_code_values_label_filled', t.label),
+],
 );
 
 /** One value per type and activity. */
@@ -96,7 +105,14 @@ export const supplierScheduleActivities = pgTable(
     position: integer('position').notNull(),
     ...timestamps,
   },
-  (t) => [unique().on(t.scheduleId, t.code), check('supplier_schedule_activities_pct_check', sql`${t.percentComplete} between 0 and 100`)],
+  (t) => [
+  unique().on(t.scheduleId, t.code),
+  check('supplier_schedule_activities_pct_check', sql`${t.percentComplete} between 0 and 100`),
+  filled('supplier_schedule_activities_code_filled', t.code),
+  filled('supplier_schedule_activities_name_filled', t.name),
+  ordered('supplier_schedule_activities_committed_finish_order', t.committedStart, t.committedFinish),
+  ordered('supplier_schedule_activities_actual_finish_order', t.actualStart, t.actualFinish),
+],
 );
 
 /** Logic inside a supplier schedule. */
@@ -114,6 +130,7 @@ export const supplierScheduleLinks = pgTable(
     unique().on(t.predecessorId, t.successorId),
     index('supplier_schedule_links_schedule_id_idx').on(t.scheduleId),
     index('supplier_schedule_links_successor_id_idx').on(t.successorId),
+    oneOf<LinkType>()('supplier_schedule_links_type_domain', t.type, ['FS', 'SS', 'FF', 'SF']),
   ],
 );
 

@@ -10,6 +10,7 @@ import { sql } from 'drizzle-orm';
 import { check, date, index, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { BaselineSource, BaselineState, BudgetChangeStatus, EstimateClass, ChangeStatus, ChangeStep, ChangeType, ContractImpact, StepDecision } from '../codes';
 import { id, keur, timestamps } from './_common';
+import { allOf, filled, numbered, oneOf, ordered, shaped, within } from './_checks';
 import { persons } from './organisation';
 import { activities, wbsNodes } from './planning';
 import { projects } from './portfolio';
@@ -52,7 +53,14 @@ export const changeRequests = pgTable(
     costCategoryCode: text('cost_category_code'),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.number)],
+  (t) => [
+  unique().on(t.projectId, t.number),
+  shaped('change_requests_number_shape', t.number, numbered('CR-', 3)),
+  filled('change_requests_title_filled', t.title),
+  allOf<ChangeType>()('change_requests_types_domain', t.types, ['budget', 'scope', 'schedule']),
+  oneOf<ChangeStatus>()('change_requests_status_domain', t.status, ['draft', 'approved', 'rejected', 'in_review']),
+  oneOf<ContractImpact>()('change_requests_contract_impact_domain', t.contractImpact, ['none', 'price', 'dates', 'price_dates']),
+],
 );
 
 /** Approval chain (HLT_CRS_X.chain: pm, director, client, ccb). */
@@ -67,7 +75,11 @@ export const changeRequestSteps = pgTable(
     decidedAt: timestamp('decided_at', { withTimezone: true }),
     comment: text('comment'),
   },
-  (t) => [primaryKey({ columns: [t.changeRequestId, t.step] })],
+  (t) => [
+  primaryKey({ columns: [t.changeRequestId, t.step] }),
+  oneOf<ChangeStep>()('change_request_steps_step_domain', t.step, ['client', 'pm', 'director', 'ccb']),
+  oneOf<StepDecision>()('change_request_steps_decision_domain', t.decision, ['pending', 'rejected', 'ok', 'na']),
+],
 );
 
 /** WBS elements a change applies to (HLT_CRS_X.wbs), with the allocated amount when known. */
@@ -117,7 +129,13 @@ export const budgetChangeLines = pgTable('budget_change_lines', {
   meta: text('meta').notNull(),
   changeRequestId: uuid('change_request_id').references(() => changeRequests.id),
   position: integer('position').notNull(),
-}, (t) => [index('budget_change_lines_project_id_idx').on(t.projectId), index('budget_change_lines_change_request_id_idx').on(t.changeRequestId)]);
+}, (t) => [
+  index('budget_change_lines_project_id_idx').on(t.projectId),
+  index('budget_change_lines_change_request_id_idx').on(t.changeRequestId),
+  shaped('budget_change_lines_number_shape', t.number, numbered('CR-', 3)),
+  filled('budget_change_lines_title_filled', t.title),
+  oneOf<BudgetChangeStatus>()('budget_change_lines_status_domain', t.status, ['pending', 'approved', 'rejected']),
+]);
 
 /** Baselines (BASELINES 3504). BL2 is pending CR-009 (no set date yet). */
 export const baselines = pgTable(
@@ -154,7 +172,14 @@ export const baselines = pgTable(
     estimateClass: text('estimate_class').$type<EstimateClass>(),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.code), check('baselines_estimate_class_check', sql`${t.estimateClass} in ('E50', 'E30', 'E10')`)],
+  (t) => [
+  unique().on(t.projectId, t.code),
+  check('baselines_estimate_class_check', sql`${t.estimateClass} in ('E50', 'E30', 'E10')`),
+  shaped('baselines_code_shape', t.code, '^BL[0-9]+$'),
+  filled('baselines_name_filled', t.name),
+  oneOf<BaselineState>()('baselines_state_domain', t.state, ['rejected', 'superseded', 'current', 'proposed']),
+  oneOf<BaselineSource>()('baselines_source_domain', t.source, ['seed', 'snapshot', 'change_request', 'import']),
+],
 );
 
 /**
@@ -183,5 +208,12 @@ export const baselineActivities = pgTable(
     totalFloatDays: integer('total_float_days'),
     position: integer('position').notNull(),
   },
-  (t) => [unique().on(t.baselineId, t.activityCode), index('baseline_activities_activity_id_idx').on(t.activityId)],
+  (t) => [
+  unique().on(t.baselineId, t.activityCode),
+  index('baseline_activities_activity_id_idx').on(t.activityId),
+  filled('baseline_activities_name_filled', t.name),
+  within('baseline_activities_duration_days_range', t.durationDays, 0, null),
+  within('baseline_activities_percent_complete_range', t.percentComplete, 0, 100),
+  ordered('baseline_activities_finish_date_order', t.startDate, t.finishDate),
+],
 );

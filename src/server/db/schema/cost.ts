@@ -3,6 +3,7 @@
 import { index, integer, pgTable, primaryKey, text, unique, uuid } from 'drizzle-orm/pg-core';
 import type { CostType } from '../codes';
 import { id, keur, rowVersion, timestamps } from './_common';
+import { filled, oneOf, within } from './_checks';
 import { wbsNodes } from './planning';
 import { projects } from './portfolio';
 
@@ -25,7 +26,12 @@ export const costCategories = pgTable(
     version: rowVersion(),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.code)],
+  (t) => [
+  unique().on(t.projectId, t.code),
+  filled('cost_categories_code_filled', t.code),
+  filled('cost_categories_name_filled', t.name),
+  oneOf<CostType>()('cost_categories_cost_type_domain', t.costType, ['labor', 'material', 'equipment', 'subcontract', 'fees', 'reserve']),
+],
 );
 
 /**
@@ -45,7 +51,10 @@ export const wpBudgets = pgTable('wp_budgets', {
   eacKeur: keur('eac_keur').notNull(),
   position: integer('position').notNull(),
   ...timestamps,
-}, (t) => [index('wp_budgets_project_id_idx').on(t.projectId)]);
+}, (t) => [
+  index('wp_budgets_project_id_idx').on(t.projectId),
+  filled('wp_budgets_name_filled', t.name),
+]);
 
 /** Commercial-offer supplier quotes (HLT_OFFER 3097 / generated OFFER). Months index chartMonths. */
 export const offerQuotes = pgTable('offer_quotes', {
@@ -66,7 +75,12 @@ export const offerQuotes = pgTable('offer_quotes', {
   deliveryMonth: integer('delivery_month').notNull(),
   acceptanceMonth: integer('acceptance_month'),
   leadWeeks: integer('lead_weeks').notNull(),
-}, (t) => [index('offer_quotes_project_id_idx').on(t.projectId)]);
+}, (t) => [
+  index('offer_quotes_project_id_idx').on(t.projectId),
+  within('offer_quotes_deposit_pct_range', t.depositPct, 0, 100),
+  within('offer_quotes_delivery_pct_range', t.deliveryPct, 0, 100),
+  within('offer_quotes_acceptance_pct_range', t.acceptancePct, 0, 100),
+]);
 
 /** Other cost streams (HLT_STREAMS 3098 / generated STREAMS): name + basis; monthly values when known. */
 export const costStreams = pgTable('cost_streams', {
@@ -75,7 +89,10 @@ export const costStreams = pgTable('cost_streams', {
   position: integer('position').notNull(),
   name: text('name').notNull(),
   basis: text('basis').notNull(),
-}, (t) => [index('cost_streams_project_id_idx').on(t.projectId)]);
+}, (t) => [
+  index('cost_streams_project_id_idx').on(t.projectId),
+  filled('cost_streams_name_filled', t.name),
+]);
 
 export const costStreamPeriods = pgTable(
   'cost_stream_periods',

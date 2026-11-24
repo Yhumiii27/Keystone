@@ -4,6 +4,7 @@
 import { integer, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import type { ScoreAxis } from '../codes';
 import { num } from './_common';
+import { filled, oneOf } from './_checks';
 import { departments, persons, users } from './organisation';
 import { projects } from './portfolio';
 
@@ -14,7 +15,10 @@ export const scoreAxes = pgTable('score_axes', {
   label: text('label').notNull(),
   defaultWeight: num('default_weight').notNull(),
   position: integer('position').notNull(),
-});
+}, (t) => [
+  oneOf<ScoreAxis>()('score_axes_code_domain', t.code, ['client', 'risk', 'fit', 'margin', 'res']),
+  filled('score_axes_label_filled', t.label),
+]);
 
 /** Score 1–5 of a project on an axis (SCORES 3540, obsolete codes remapped; for `risk`, 5 = low risk). */
 export const portfolioScores = pgTable(

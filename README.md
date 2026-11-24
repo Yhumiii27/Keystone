@@ -12,7 +12,7 @@ reconstruction en Next.js 16 du prototype Claude Design `design/Keystone PM v8.d
   infalsifiable, traduction française contrôlée, kit d’exploitation, rôle Finance et grille de taux datée, circuit séquentiel des
   demandes de modification, connecteurs Vigie / Cursus / Codex côté Keystone, liste de réserves unique et fiche chantier ; plan dans
   `docs/DELIVERY-8-PLAN.md`)
-- Reste à développer (inventaire du 10 octobre 2026, tenu à jour à chaque développement) : `docs/RESTE-A-DEVELOPPER.md`
+- Reste à faire : liste commune de la suite tenue dans Norma (`reste-a-faire/keystone.json` du dépôt `Yhumiii27/Norma`), page https://claude.ai/artifact/Rs7kooJdowShdYUqNS8jQf
 - Décisions du responsable produit (questionnaire) : `docs/DECISIONS.md`
 - Consignes pour les sessions Claude : `CLAUDE.md`
 - Évolutions demandées et proposées : `docs/BACKLOG.md`

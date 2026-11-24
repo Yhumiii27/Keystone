@@ -4,6 +4,7 @@
 import { date, index, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { DeliverableReviewDecision, DeliverableStatus, DeliverableType, RaciCode } from '../codes';
 import { id, timestamps } from './_common';
+import { filled, numbered, oneOf, shaped } from './_checks';
 import { documents } from './documents';
 import { persons } from './organisation';
 import { wbsNodes } from './planning';
@@ -59,7 +60,13 @@ export const deliverables = pgTable(
   },
   // K-11 (Arche, R-193): the incremental read of pub_livrables (`maj_le > …`, maj_le = updated_at) reaches this index through the
   // security_barrier view (timestamptz comparisons are leakproof); docs/delivery-9/notes-share-views.md § 8.
-  (t) => [unique().on(t.projectId, t.number), index('deliverables_updated_at_idx').on(t.updatedAt)],
+  (t) => [
+  unique().on(t.projectId, t.number),
+  index('deliverables_updated_at_idx').on(t.updatedAt),
+  shaped('deliverables_number_shape', t.number, numbered('D-', 3)),
+  filled('deliverables_title_filled', t.title),
+  oneOf<DeliverableStatus>()('deliverables_status_domain', t.status, ['rejected', 'planned', 'submitted', 'accepted', 'in_progress', 'internal_review']),
+],
 );
 
 /** RACI-B of a deliverable: R produces, A signs off, C consulted, I informed, B backup (names as the register shows them). */
@@ -73,7 +80,11 @@ export const deliverableRaci = pgTable(
     personId: uuid('person_id').references(() => persons.id),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [unique().on(t.deliverableId, t.role)],
+  (t) => [
+  unique().on(t.deliverableId, t.role),
+  oneOf<RaciCode>()('deliverable_raci_raci_role_domain', t.role, ['A', 'B', 'C', 'R', 'I']),
+  filled('deliverable_raci_name_filled', t.name),
+],
 );
 
 /**
@@ -95,4 +106,7 @@ export const deliverableReviews = pgTable('deliverable_reviews', {
   /** D9-06: reference of the signed document the project's lead recorded the client's decision from (null before D9-06). */
   reference: text('reference'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [index('deliverable_reviews_deliverable_id_idx').on(t.deliverableId)]);
+}, (t) => [
+  index('deliverable_reviews_deliverable_id_idx').on(t.deliverableId),
+  oneOf<DeliverableReviewDecision>()('deliverable_reviews_decision_domain', t.decision, ['rejected', 'accepted']),
+]);

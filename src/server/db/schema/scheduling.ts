@@ -3,6 +3,7 @@
 import { boolean, date, integer, jsonb, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { ScheduleRunOutcome } from '../codes';
 import { id, num, timestamps } from './_common';
+import { filled, oneOf } from './_checks';
 import { persons } from './organisation';
 import { projects } from './portfolio';
 
@@ -30,7 +31,10 @@ export const calendars = pgTable('calendars', {
   externalUid: text('external_uid'),
   position: integer('position').notNull(),
   ...timestamps,
-});
+}, (t) => [
+  filled('calendars_code_filled', t.code),
+  filled('calendars_name_filled', t.name),
+]);
 
 /** Exceptions of one calendar: an extra non-working day (closure) or an exceptional working day (Saturday worked). */
 export const calendarExceptions = pgTable(
@@ -66,4 +70,6 @@ export const scheduleRuns = pgTable('schedule_runs', {
   message: text('message'),
   /** Free details (cycle path, changed activity codes…). */
   details: jsonb('details').$type<Record<string, unknown>>().notNull().default({}),
-});
+}, (t) => [
+  oneOf<ScheduleRunOutcome>()('schedule_runs_outcome_domain', t.outcome, ['ok', 'error', 'cycle']),
+]);

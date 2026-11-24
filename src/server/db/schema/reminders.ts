@@ -3,6 +3,7 @@
 // app setting `reminders.defaults` (Settings, the director). Relative imports only (drizzle-kit loads this file directly).
 import { boolean, date, index, integer, jsonb, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import { id } from './_common';
+import { oneOf } from './_checks';
 import { persons, users } from './organisation';
 
 /** A user's own choices; no row = the company default. */
@@ -45,5 +46,10 @@ export const reminderSends = pgTable(
     emailError: text('email_error'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [unique('reminder_sends_key_unique').on(t.personId, t.itemKey, t.slot, t.occurrence), index('reminder_sends_run_on_idx').on(t.runOn)],
+  (t) => [
+  unique('reminder_sends_key_unique').on(t.personId, t.itemKey, t.slot, t.occurrence),
+  index('reminder_sends_run_on_idx').on(t.runOn),
+  oneOf<'reminder' | 'report' | 'digest' | 'alert'>()('reminder_sends_kind_domain', t.kind, ['reminder', 'alert', 'digest', 'report']),
+  oneOf<'sent' | 'off' | 'no_transport' | 'no_address' | 'failed'>()('reminder_sends_email_status_domain', t.emailStatus, ['failed', 'sent', 'off', 'no_transport', 'no_address']),
+],
 );

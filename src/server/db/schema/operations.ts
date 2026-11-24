@@ -8,6 +8,7 @@ import type {
   LessonTheme, MachineTypeCode, PunchCategory, PunchOwnerParty, PunchRegister, PunchSource, PunchStatus,
 } from '../codes';
 import { id, num, timestamps } from './_common';
+import { filled, numbered, oneOf, shaped } from './_checks';
 import { documents } from './documents';
 import { persons } from './organisation';
 import { machineTypes, projectEquipments, projects } from './portfolio';
@@ -38,7 +39,13 @@ export const projectInterfaces = pgTable(
     position: integer('position').notNull(),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.number)],
+  (t) => [
+  unique().on(t.projectId, t.number),
+  shaped('project_interfaces_number_shape', t.number, numbered('IF-', 2)),
+  filled('project_interfaces_title_filled', t.title),
+  oneOf<KeystoneSide>()('project_interfaces_keystone_side_domain', t.keystoneSide, ['electrical', 'mechanical', 'site', 'process', 'automation']),
+  oneOf<InterfaceStatus>()('project_interfaces_status_domain', t.status, ['open', 'frozen', 'received']),
+],
 );
 
 // ── Inspection & test plan, punch lists (07 §2.4, 10 §3.6) ─────────────────────────────────────────────
@@ -80,7 +87,11 @@ export const itpPlanSystems = pgTable(
     position: integer('position').notNull(),
     name: text('name').notNull(),
   },
-  (t) => [primaryKey({ columns: [t.planId, t.position] }), unique().on(t.planId, t.name)],
+  (t) => [
+  primaryKey({ columns: [t.planId, t.position] }),
+  unique().on(t.planId, t.name),
+  filled('itp_plan_systems_name_filled', t.name),
+],
 );
 
 /** Inspections and tests of a plan ("I-03 Paint thickness (DFT)"); results recorded by `recordItpResult` (Q-6a, R-112). */
@@ -121,7 +132,14 @@ export const itpInspections = pgTable(
     resultRecordedAt: timestamp('result_recorded_at', { withTimezone: true }),
     ...timestamps,
   },
-  (t) => [unique().on(t.planId, t.number)],
+  (t) => [
+  unique().on(t.planId, t.number),
+  shaped('itp_inspections_number_shape', t.number, numbered('I-', 2)),
+  filled('itp_inspections_name_filled', t.name),
+  oneOf<ItpPointType>()('itp_inspections_point_type_domain', t.pointType, ['review', 'hold', 'witness', 'surveillance']),
+  oneOf<ItpStage>()('itp_inspections_stage_domain', t.stage, ['fat', 'sat', 'workshop', 'site']),
+  oneOf<ItpResult>()('itp_inspections_result_domain', t.result, ['planned', 'failed', 'scheduled', 'passed', 'reserved']),
+],
 );
 
 /**
@@ -169,7 +187,16 @@ export const punchItems = pgTable(
   },
   // K-11 (Arche, R-193): the incremental read of pub_reserves (`maj_le > …`, maj_le = updated_at) reaches this index through the
   // security_barrier view; docs/delivery-9/notes-share-views.md § 8.
-  (t) => [unique().on(t.projectId, t.number), index('punch_items_updated_at_idx').on(t.updatedAt)],
+  (t) => [
+  unique().on(t.projectId, t.number),
+  index('punch_items_updated_at_idx').on(t.updatedAt),
+  oneOf<PunchRegister>()('punch_items_register_domain', t.register, ['site', 'itp']),
+  shaped('punch_items_number_shape', t.number, numbered('P-', 2)),
+  oneOf<PunchCategory>()('punch_items_category_domain', t.category, ['A', 'B', 'C']),
+  oneOf<PunchSource>()('punch_items_source_domain', t.source, ['sat', 'itp', 'site_walk', 'client_inspection', 'reception']),
+  oneOf<PunchOwnerParty>()('punch_items_owner_party_domain', t.ownerParty, ['client', 'keystone']),
+  oneOf<PunchStatus>()('punch_items_status_domain', t.status, ['open', 'closed', 'in_progress']),
+],
 );
 
 // ── Commissioning & handover dossier (07 §2.6) ─────────────────────────────────────────────────────────
@@ -186,7 +213,10 @@ export const commissioningSystems = pgTable(
     name: text('name').notNull(),
     position: integer('position').notNull(),
   },
-  (t) => [unique().on(t.projectId, t.name)],
+  (t) => [
+  unique().on(t.projectId, t.name),
+  filled('commissioning_systems_name_filled', t.name),
+],
 );
 
 /** One cell of the commissioning grid: a system × step with its status and date or blocking reference ("Blocked · IF-02"). */
@@ -202,7 +232,11 @@ export const commissioningSteps = pgTable(
     blockingRef: text('blocking_ref'),
     position: integer('position').notNull(),
   },
-  (t) => [unique().on(t.systemId, t.step)],
+  (t) => [
+  unique().on(t.systemId, t.step),
+  oneOf<CommissioningStep>()('commissioning_steps_step_domain', t.step, ['sat', 'mechanical_completion', 'pre_commissioning', 'commissioning', 'handover']),
+  oneOf<CommissioningCellStatus>()('commissioning_steps_status_domain', t.status, ['done', 'planned', 'in_progress', 'blocked']),
+],
 );
 
 /** SAT plans recorded with "Plan SAT" (AF.commissioning: system, date, client witnesses, prerequisites). */
@@ -233,7 +267,10 @@ export const handoverItems = pgTable(
     status: text('status').$type<HandoverItemStatus>().notNull(),
     position: integer('position').notNull(),
   },
-  (t) => [unique().on(t.projectId, t.position)],
+  (t) => [
+  unique().on(t.projectId, t.position),
+  oneOf<HandoverItemStatus>()('handover_items_status_domain', t.status, ['draft', 'ready', 'partial', 'missing']),
+],
 );
 
 // ── Lessons learned, closure, satisfaction (07 §2.7) ───────────────────────────────────────────────────
@@ -259,7 +296,13 @@ export const lessonsLearned = pgTable(
     ...timestamps,
   },
   // Matrix D22 (K-11 pattern): pub_rex.maj_le = updated_at, read incrementally by Matrix's unified REX.
-  (t) => [unique().on(t.projectId, t.number), index('lessons_learned_updated_at_idx').on(t.updatedAt)],
+  (t) => [
+  unique().on(t.projectId, t.number),
+  index('lessons_learned_updated_at_idx').on(t.updatedAt),
+  shaped('lessons_learned_number_shape', t.number, numbered('LL-', 2)),
+  oneOf<LessonTheme>()('lessons_learned_theme_domain', t.theme, ['client', 'quality', 'site', 'procurement', 'hse', 'engineering', 'planning']),
+  oneOf<LessonStatus>()('lessons_learned_status_domain', t.status, ['validated', 'proposed', 'applied']),
+],
 );
 
 /** Project closure checklist (CLOSURE 3733: HLT-026 × 10). */
@@ -276,7 +319,10 @@ export const closureItems = pgTable(
     position: integer('position').notNull(),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.position)],
+  (t) => [
+  unique().on(t.projectId, t.position),
+  oneOf<ClosureItemStatus>()('closure_items_status_domain', t.status, ['done', 'in_progress', 'not_started']),
+],
 );
 
 /** Customer-satisfaction survey (SATISFACTION 3734: HLT-026 × 5 criteria, 0–5 by 0.5). */

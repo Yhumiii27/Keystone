@@ -4,6 +4,7 @@
 import { boolean, integer, pgTable, text } from 'drizzle-orm/pg-core';
 import type { LocationType, SupplierGrade } from '../codes';
 import { id, num, timestamps } from './_common';
+import { filled, oneOf, within } from './_checks';
 
 /**
  * Suppliers and manufacturers: the 8 companies of the supplier scorecard (SUPPLIERS 3538) plus every other company the
@@ -32,7 +33,13 @@ export const suppliers = pgTable('suppliers', {
   isInternal: boolean('is_internal').notNull().default(false),
   position: integer('position').notNull(),
   ...timestamps,
-});
+}, (t) => [
+  filled('suppliers_name_filled', t.name),
+  within('suppliers_on_time_delivery_pct_range', t.onTimeDeliveryPct, 0, 100),
+  within('suppliers_quality_acceptance_pct_range', t.qualityAcceptancePct, 0, 100),
+  within('suppliers_ncr_rate_pct_range', t.ncrRatePct, 0, 100),
+  oneOf<SupplierGrade>()('suppliers_grade_domain', t.grade, ['A', 'B', 'C']),
+]);
 
 /** Storage locations & workshops (SETTINGS0.locations; Settings › "Stock locations & workshops"). */
 export const storageLocations = pgTable('storage_locations', {
@@ -49,4 +56,7 @@ export const storageLocations = pgTable('storage_locations', {
    */
   active: boolean('active').notNull().default(true),
   ...timestamps,
-});
+}, (t) => [
+  filled('storage_locations_name_filled', t.name),
+  oneOf<LocationType>()('storage_locations_location_type_domain', t.type, ['central_warehouse', 'workshop', 'site_store', 'consignment', 'quarantine']),
+]);

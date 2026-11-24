@@ -6,6 +6,7 @@ import type {
   ContingencyDrawStatus, ContingencyLinkType, ReportAudience, ReportPeriod, ReportSections, RiskCategory, RiskResponse, RiskStatus, RiskTrend,
 } from '../codes';
 import { id, keur, num, rowVersion, timestamps } from './_common';
+import { filled, numbered, oneOf, shaped, within } from './_checks';
 import { persons } from './organisation';
 import { activities } from './planning';
 import { projects } from './portfolio';
@@ -50,7 +51,17 @@ export const risks = pgTable(
     version: rowVersion(),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.number), index('risks_activity_id_idx').on(t.activityId)],
+  (t) => [
+  unique().on(t.projectId, t.number),
+  index('risks_activity_id_idx').on(t.activityId),
+  shaped('risks_number_shape', t.number, numbered('R-', 2)),
+  filled('risks_title_filled', t.title),
+  within('risks_probability_range', t.probability, 1, 5),
+  within('risks_impact_range', t.impact, 1, 5),
+  oneOf<RiskResponse>()('risks_response_domain', t.response, ['avoid', 'mitigate', 'transfer', 'accept']),
+  oneOf<RiskStatus>()('risks_status_domain', t.status, ['open', 'closed']),
+  oneOf<RiskTrend>()('risks_trend_domain', t.trend, ['up', 'flat', 'down']),
+],
 );
 
 /**
@@ -84,7 +95,10 @@ export const statusSnapshots = pgTable(
     marginPct: num('margin_pct'),
   },
   // D9-10: one snapshot per project and status date (the week code "W39" repeats every year).
-  (t) => [unique('status_snapshots_project_id_status_date_unique').on(t.projectId, t.statusDate)],
+  (t) => [
+  unique('status_snapshots_project_id_status_date_unique').on(t.projectId, t.statusDate),
+  shaped('status_snapshots_week_code_shape', t.weekCode, '^W[0-9]{1,2}$'),
+],
 );
 
 /** Status reports generated from the Trends screen (AF.trends — the prototype only toasts, nothing is seeded). */
@@ -100,7 +114,12 @@ export const statusReports = pgTable('status_reports', {
   statusDate: date('status_date', { mode: 'string' }).notNull(),
   generatedByPersonId: uuid('generated_by_person_id').references(() => persons.id),
   generatedAt: timestamp('generated_at', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [index('status_reports_project_id_idx').on(t.projectId)]);
+}, (t) => [
+  index('status_reports_project_id_idx').on(t.projectId),
+  oneOf<ReportPeriod>()('status_reports_period_domain', t.period, ['month', 'quarter', 'since_start']),
+  oneOf<ReportAudience>()('status_reports_audience_domain', t.audience, ['client', 'internal', 'steering']),
+  oneOf<ReportSections>()('status_reports_sections_domain', t.sections, ['full', 'summary', 'kpis']),
+]);
 
 /**
  * Contingency provision of a project (CONTINGENCY 3720: HLT-026 initial 150 k€). Projects without a row use
@@ -143,4 +162,8 @@ export const contingencyDraws = pgTable('contingency_draws', {
   decidedByPersonId: uuid('decided_by_person_id').references(() => persons.id),
   decidedAt: timestamp('decided_at', { withTimezone: true }),
   decisionComment: text('decision_comment'),
-}, (t) => [index('contingency_draws_register_id_idx').on(t.registerId)]);
+}, (t) => [
+  index('contingency_draws_register_id_idx').on(t.registerId),
+  oneOf<ContingencyLinkType>()('contingency_draws_linked_entity_type_domain', t.linkedEntityType, ['change_request', 'risk', 'ncr']),
+  oneOf<ContingencyDrawStatus>()('contingency_draws_status_domain', t.status, ['rejected', 'submitted', 'validated']),
+]);

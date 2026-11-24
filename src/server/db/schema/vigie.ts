@@ -14,6 +14,7 @@ import type {
   NcrSeverity, NcrSource, NcrStatus, NcrVerificationDecision, VigieRequestOutcome, VigieResultCode, VigieSyncStatus,
 } from '../codes';
 import { eur, id, keur } from './_common';
+import { oneOf } from './_checks';
 import { persons } from './organisation';
 
 /** ECOs as Vigie reports them (seed: the prototype's ECOS 3432 with their derived status, 6 rows). */
@@ -53,7 +54,11 @@ export const vigieEcos = pgTable('vigie_ecos', {
   lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }).notNull(),
   /** Share D12 (Matrix): when Vigie released the ECO (its pub_ view), for the release-date KPI; null until released or synced. */
   releasedAt: timestamp('released_at', { withTimezone: true }),
-});
+}, (t) => [
+  oneOf<EcoType>()('vigie_ecos_eco_type_domain', t.type, ['rev', 'sub', 'asm', 'sup', 'obs']),
+  oneOf<EcoStatus>()('vigie_ecos_status_domain', t.status, ['draft', 'rejected', 'released', 'impact_analysis', 'in_approval']),
+  oneOf<Interchangeability>()('vigie_ecos_interchangeability_domain', t.interchangeability, ['yes', 'no']),
+]);
 
 /** Approval keys of an ECO and their state in Vigie (englead, quality, pm). */
 export const vigieEcoApprovals = pgTable(
@@ -67,7 +72,11 @@ export const vigieEcoApprovals = pgTable(
     decidedByName: text('decided_by_name'),
     decidedAt: timestamp('decided_at', { withTimezone: true }),
   },
-  (t) => [primaryKey({ columns: [t.ecoId, t.key] })],
+  (t) => [
+  primaryKey({ columns: [t.ecoId, t.key] }),
+  oneOf<EcoApproverKey>()('vigie_eco_approvals_approval_key_domain', t.key, ['pm', 'quality', 'englead']),
+  oneOf<EcoDecision>()('vigie_eco_approvals_decision_domain', t.decision, ['pending', 'rejected', 'ok']),
+],
 );
 
 /** Parts an ECO affects, by catalogue reference (`parts[]`). */
@@ -115,7 +124,11 @@ export const vigieEcoEffectivity = pgTable(
     fittedRevision: text('fitted_revision'),
     position: integer('position').notNull(),
   },
-  (t) => [primaryKey({ columns: [t.ecoId, t.targetType, t.targetRef] })],
+  (t) => [
+  primaryKey({ columns: [t.ecoId, t.targetType, t.targetRef] }),
+  oneOf<EcoTargetType>()('vigie_eco_effectivity_target_type_domain', t.targetType, ['project', 'machine']),
+  oneOf<EcoDisposition>()('vigie_eco_effectivity_disposition_domain', t.disposition, ['na', 'update', 'pinned', 'retrofit']),
+],
 );
 
 /**
@@ -159,7 +172,17 @@ export const vigieEcoProgress = pgTable('vigie_eco_progress', {
   vigieResultCode: text('vigie_result_code').$type<VigieResultCode>(),
   vigieResult: text('vigie_result'),
   vigieProcessedAt: timestamp('vigie_processed_at', { withTimezone: true }),
-}, (t) => [index('vigie_eco_progress_eco_id_idx').on(t.ecoId)]);
+}, (t) => [
+  index('vigie_eco_progress_eco_id_idx').on(t.ecoId),
+  oneOf<EcoProgressKind>()('vigie_eco_progress_kind_domain', t.kind, ['approval', 'step']),
+  oneOf<EcoApproverKey>()('vigie_eco_progress_approval_key_domain', t.approvalKey, ['pm', 'quality', 'englead']),
+  oneOf<Exclude<EcoDecision, 'pending'>>()('vigie_eco_progress_decision_domain', t.decision, ['rejected', 'ok']),
+  oneOf<EcoStatus>()('vigie_eco_progress_target_status_domain', t.targetStatus, ['draft', 'rejected', 'released', 'impact_analysis', 'in_approval']),
+  oneOf<EcoStatus>()('vigie_eco_progress_from_status_domain', t.fromStatus, ['draft', 'rejected', 'released', 'impact_analysis', 'in_approval']),
+  oneOf<VigieSyncStatus>()('vigie_eco_progress_sync_status_domain', t.syncStatus, ['pending', 'failed', 'sent', 'refused']),
+  oneOf<VigieRequestOutcome>()('vigie_eco_progress_vigie_outcome_domain', t.vigieOutcome, ['rejected', 'applied', 'received']),
+  oneOf<VigieResultCode>()('vigie_eco_progress_vigie_result_code_domain', t.vigieResultCode, ['stale', 'refused', 'not_found', 'invalid']),
+]);
 
 // ── Non-conformities (NCR) — Vigie mirror (user decision: Vigie owns project NCRs, the 8D, causes and action plans) ──
 
@@ -217,7 +240,12 @@ export const vigieNcrs = pgTable(
     /** Share D01: Cursus matricule of the NCR owner ("EMP-0018"), as Vigie sends it; null for an external owner or until synced. */
     ownerMatricule: text('owner_matricule'),
   },
-  (t) => [unique().on(t.projectCode, t.number)],
+  (t) => [
+  unique().on(t.projectCode, t.number),
+  oneOf<NcrSeverity>()('vigie_ncrs_severity_domain', t.severity, ['minor', 'major', 'critical']),
+  oneOf<NcrSource>()('vigie_ncrs_source_domain', t.source, ['client', 'workshop', 'site_inspection', 'goods_receipt', 'survey', 'audit', 'design']),
+  oneOf<NcrStatus>()('vigie_ncrs_status_domain', t.status, ['open', 'closed', 'containment', 'root_cause', 'corrective_action', 'verification']),
+],
 );
 
 /**
@@ -257,7 +285,16 @@ export const vigieNcrProgress = pgTable('vigie_ncr_progress', {
   vigieResultCode: text('vigie_result_code').$type<VigieResultCode>(),
   vigieResult: text('vigie_result'),
   vigieProcessedAt: timestamp('vigie_processed_at', { withTimezone: true }),
-}, (t) => [index('vigie_ncr_progress_ncr_id_idx').on(t.ncrId)]);
+}, (t) => [
+  index('vigie_ncr_progress_ncr_id_idx').on(t.ncrId),
+  oneOf<NcrProgressKind>()('vigie_ncr_progress_kind_domain', t.kind, ['step', 'verification']),
+  oneOf<NcrVerificationDecision>()('vigie_ncr_progress_decision_domain', t.decision, ['approved', 'rejected']),
+  oneOf<NcrStatus>()('vigie_ncr_progress_from_status_domain', t.fromStatus, ['open', 'closed', 'containment', 'root_cause', 'corrective_action', 'verification']),
+  oneOf<NcrStatus>()('vigie_ncr_progress_target_status_domain', t.targetStatus, ['open', 'closed', 'containment', 'root_cause', 'corrective_action', 'verification']),
+  oneOf<VigieSyncStatus>()('vigie_ncr_progress_sync_status_domain', t.syncStatus, ['pending', 'failed', 'sent', 'refused']),
+  oneOf<VigieRequestOutcome>()('vigie_ncr_progress_vigie_outcome_domain', t.vigieOutcome, ['rejected', 'applied', 'received']),
+  oneOf<VigieResultCode>()('vigie_ncr_progress_vigie_result_code_domain', t.vigieResultCode, ['stale', 'refused', 'not_found', 'invalid']),
+]);
 
 // ── Site HSE — Vigie mirror (prevention plans, inductions, permits, near-miss register) ───────────────────
 
@@ -282,5 +319,9 @@ export const vigieHseItems = pgTable(
     position: integer('position').notNull(),
     lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }).notNull(),
   },
-  (t) => [unique().on(t.projectCode, t.position)],
+  (t) => [
+  unique().on(t.projectCode, t.position),
+  oneOf<HseItemKind>()('vigie_hse_items_kind_domain', t.kind, ['prevention_plan', 'induction', 'permit', 'register']),
+  oneOf<HseStatus>()('vigie_hse_items_status_domain', t.status, ['pending', 'recorded', 'ready', 'signed']),
+],
 );

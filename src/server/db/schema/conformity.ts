@@ -4,6 +4,7 @@
 import { sql } from 'drizzle-orm';
 import { boolean, check, date, index, integer, jsonb, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core';
 import { id, rowVersion, timestamps } from './_common';
+import { filled } from './_checks';
 import { projectEquipments, projects } from './portfolio';
 
 /**
@@ -25,7 +26,12 @@ export const ceChecklistItems = pgTable(
     isDefault: boolean('is_default').notNull().default(false),
     ...timestamps,
   },
-  (t) => [unique('ce_checklist_items_kind_code_unique').on(t.kind, t.code), check('ce_checklist_items_kind_check', sql`${t.kind} in ('ehsr', 'techfile')`)],
+  (t) => [
+  unique('ce_checklist_items_kind_code_unique').on(t.kind, t.code),
+  check('ce_checklist_items_kind_check', sql`${t.kind} in ('ehsr', 'techfile')`),
+  filled('ce_checklist_items_code_filled', t.code),
+  filled('ce_checklist_items_title_filled', t.title),
+],
 );
 
 /** The CE file of one equipment line (all its units share the design, hence the file). Created at the first save. */

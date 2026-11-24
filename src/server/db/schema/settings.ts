@@ -4,6 +4,7 @@
 import { boolean, integer, jsonb, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { ConnectorDirection, ConnectorKind, ConnectorStatus, ImportFormatDirection, ReferenceListKey } from '../codes';
 import { id, timestamps } from './_common';
+import { filled, oneOf } from './_checks';
 import { persons } from './organisation';
 
 /**
@@ -26,7 +27,12 @@ export const referenceValues = pgTable(
     isDefault: boolean('is_default').notNull(),
     ...timestamps,
   },
-  (t) => [unique().on(t.listKey, t.code)],
+  (t) => [
+  unique().on(t.listKey, t.code),
+  oneOf<ReferenceListKey>()('reference_values_list_key_domain', t.listKey, ['skills', 'costCats', 'statuses', 'riskCats', 'delivTypes', 'holidays', 'locTypes']),
+  filled('reference_values_code_filled', t.code),
+  filled('reference_values_label_filled', t.label),
+],
 );
 
 /** Key / value settings ("health.thresholds" = { risk: 0.97, off: 0.9 }) with the last editor. */
@@ -36,7 +42,9 @@ export const appSettings = pgTable('app_settings', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   updatedByName: text('updated_by_name'),
   updatedByPersonId: uuid('updated_by_person_id').references(() => persons.id),
-});
+}, (t) => [
+  filled('app_settings_key_filled', t.key),
+]);
 
 /**
  * Connectors to the systems of record (CONNECTORS 3570: 9) plus Vigie. Rows of kind `vigie` / `cursus` show the live
@@ -66,7 +74,12 @@ export const connectors = pgTable('connectors', {
   configuredAt: timestamp('configured_at', { withTimezone: true }),
   configuredByName: text('configured_by_name'),
   ...timestamps,
-});
+}, (t) => [
+  filled('connectors_name_filled', t.name),
+  oneOf<ConnectorKind>()('connectors_kind_domain', t.kind, ['static', 'vigie', 'cursus']),
+  oneOf<ConnectorDirection>()('connectors_direction_domain', t.direction, ['import', 'export', 'both']),
+  oneOf<ConnectorStatus>()('connectors_status_domain', t.status, ['ok', 'warning', 'error', 'ready']),
+]);
 
 /** Synchronisations run from "Sync now" (simulated for connectors without an implementation). */
 export const connectorSyncRuns = pgTable('connector_sync_runs', {
@@ -88,4 +101,7 @@ export const importFormats = pgTable('import_formats', {
   /** Phosphor class ("ph ph-file-xls"). */
   icon: text('icon').notNull(),
   direction: text('direction').$type<ImportFormatDirection>().notNull(),
-});
+}, (t) => [
+  filled('import_formats_name_filled', t.name),
+  oneOf<ImportFormatDirection>()('import_formats_direction_domain', t.direction, ['import', 'export']),
+]);

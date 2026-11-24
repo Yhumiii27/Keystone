@@ -4,6 +4,7 @@ import { index, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } fro
 import type { ActivityKind, NotificationKind } from '../codes';
 import type { MailState } from '../../../domain/notification-mail';
 import { id } from './_common';
+import { filled, numbered, oneOf, shaped } from './_checks';
 import { persons, users } from './organisation';
 import { projects } from './portfolio';
 
@@ -30,7 +31,12 @@ export const notifications = pgTable('notifications', {
   /** Bell-panel order (NOTIFS order; new notifications are prepended with a lower value). */
   sortOrder: integer('sort_order').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [index('notifications_project_id_idx').on(t.projectId)]);
+}, (t) => [
+  index('notifications_project_id_idx').on(t.projectId),
+  shaped('notifications_code_shape', t.code, numbered('n', 1)),
+  oneOf<NotificationKind>()('notifications_kind_domain', t.kind, ['quality', 'approval', 'request', 'sync', 'alert', 'delivery', 'eco', 'mention', 'invoice', 'task']),
+  filled('notifications_title_filled', t.title),
+]);
 
 /** Delivery of a notification to a user, with the per-user read state (replaces `state.readNotifs`). */
 export const notificationRecipients = pgTable(
@@ -52,6 +58,7 @@ export const notificationRecipients = pgTable(
   (t) => [
     primaryKey({ columns: [t.notificationId, t.userId] }), index('notification_recipients_user_id_idx').on(t.userId),
     index('notification_recipients_mail_state_idx').on(t.mailState),
+    oneOf<MailState>()('notification_recipients_mail_state_domain', t.mailState, ['failed', 'sent', 'immediate', 'digest', 'sending', 'digested', 'seen', 'off', 'no_transport', 'no_address', 'not_visible']),
   ],
 );
 
@@ -79,6 +86,7 @@ export const activityEvents = pgTable('activity_events', {
   /** Share D18 (Matrix): keystone.pub_journal is read by period. */
   index('activity_events_occurred_at_idx').on(t.occurredAt),
   index('activity_events_project_id_idx').on(t.projectId),
+  oneOf<ActivityKind>()('activity_events_kind_domain', t.kind, ['client', 'snapshot', 'quality', 'request', 'sync', 'delivery', 'eco', 'invoice', 'stock', 'comment', 'change']),
 ]);
 
 /**

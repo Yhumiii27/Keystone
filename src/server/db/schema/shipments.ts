@@ -12,6 +12,7 @@ import type { ReceptionGap, ReceptionLoadState } from '@/domain/shipment-recepti
 import type { LoadType, ShipmentMode, ShipmentStatus } from '@/domain/shipments';
 import type { ShippingDocKind } from '@/domain/shipping-documents';
 import { eur, id, num, timestamps } from './_common';
+import { COUNTRY_RE, filled, shaped, within } from './_checks';
 import { parts } from './catalogue';
 import { risks } from './control';
 import { documents } from './documents';
@@ -155,6 +156,7 @@ export const shipmentItems = pgTable('shipment_items', {
   check('shipment_items_kind_check', sql`(${t.partId} is not null) or (${t.description} is not null)`),
   check('shipment_items_quantity_check', sql`${t.quantity} > 0`),
   index('shipment_items_load_id_idx').on(t.loadId),
+  shaped('shipment_items_origin_country_shape', t.originCountry, COUNTRY_RE),
 ]);
 
 /** The reason given for a packing-control gap (decision 4), valid for the difference it was given for (`delta`). */
@@ -197,6 +199,9 @@ export const shipmentReceptionLines = pgTable('shipment_reception_lines', {
   index('shipment_reception_lines_item_id_idx').on(t.itemId),
   check('shipment_reception_lines_state_check', sql`${t.loadState} is null or ${t.loadState} in ('received', 'missing', 'damaged')`),
   check('shipment_reception_lines_kind_check', sql`(${t.itemId} is null) = (${t.loadState} is not null)`),
+  within('shipment_reception_lines_received_qty_range', t.receivedQty, 0, null),
+  within('shipment_reception_lines_missing_qty_range', t.missingQty, 0, null),
+  within('shipment_reception_lines_damaged_qty_range', t.damagedQty, 0, null),
 ]);
 
 /** Lot B — the punch items (réserves, R-117 list) a reception gap raised (decision 5), on the shipment's equipment line. */
@@ -245,4 +250,5 @@ export const shipmentDocuments = pgTable('shipment_documents', {
   index('shipment_documents_document_id_idx').on(t.documentId),
   index('shipment_documents_stored_file_id_idx').on(t.storedFileId),
   check('shipment_documents_kind_check', sql`${t.kind} in ('packing_list', 'container_packing_list', 'delivery_note', 'marking', 'cmr', 'shipping_instructions', 'origin_request', 'export_declaration')`),
+  filled('shipment_documents_number_filled', t.number),
 ]);
