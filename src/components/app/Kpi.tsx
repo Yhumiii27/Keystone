@@ -3,27 +3,19 @@ import Link from 'next/link';
 import { ArrowRight } from '@phosphor-icons/react/dist/ssr';
 import type { Icon } from '@phosphor-icons/react';
 import type { CSSProperties, ReactNode } from 'react';
+import { KpiTile as CoqueKpiTile } from '@norma/charte/ds/Kpi';
 import { cx } from '@/components/ds/cx';
 import { Sparkline } from '@/components/charts/primitives/Sparkline';
 import { AlertMark } from './AlertMark';
 import { LO } from './tones';
 import s from './Kpi.module.css';
 
+/** KPI grid: the charte's (Norma 2.0, COQUE.md § 6) — `repeat(auto-fit, minmax({min}px, 1fr))`, gap 10 px. `min`: 140
+ * (Budget), 150 (default), 160 (Overview, My projects…), 170 (Home), 190 (trend cards). */
+export { KpiGrid } from '@norma/charte/ds/Kpi';
 export interface KpiGridProps {
-  /** Column min width: 140 (Budget), 150 (default), 160 (Overview, My projects…), 170 (Home), 190 (trend cards). */
   min?: number;
-  className?: string;
-  style?: CSSProperties;
   children?: ReactNode;
-}
-
-/** `display:grid; grid-template-columns:repeat(auto-fit,minmax({min}px,1fr)); gap:10px`. */
-export function KpiGrid({ min = 150, className, style, children }: KpiGridProps) {
-  return (
-    <div className={cx(s.grid, className)} style={{ '--kpi-min': `${min}px`, ...style } as CSSProperties}>
-      {children}
-    </div>
-  );
 }
 
 export interface KpiTileProps {
@@ -50,6 +42,8 @@ export interface KpiTileProps {
 /** `.card.elev-sm` gap 3px · padding 12px 14px: label / value / sub. */
 export function KpiTile({ label, value, sub, tone = 'default', color, icon: I, size = 'md', alertLabel, className }: KpiTileProps) {
   const c = color ?? (tone === 'alert' ? LO : undefined);
+  // No data-driven colour: the charte's tile (Norma 2.0, same measures). A coloured value (LO / OK) stays Keystone's.
+  if (!c && !className) return <CoqueKpiTile label={label} value={value} sub={sub} icon={I} size={size} />;
   const alert = c === LO;
   return (
     <div className={cx('card', 'elev-sm', s.tile, size === 'lg' && s.lg, className)} style={c ? ({ '--kpi-color': c } as CSSProperties) : undefined}>

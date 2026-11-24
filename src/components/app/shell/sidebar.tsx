@@ -2,12 +2,14 @@
 // Sidebar (docs/spec/01 §4, prototype lines 19–73): brand, page search (⌘K), fixed entries, collapsible
 // sections with Project groups, "Outside my workspace" section, "View as" switcher.
 // Fed by server data from the (app) layout; active entry and current project come from the URL.
-// Tablet layout (R-146, X-4): up to 1024 px the sidebar is a drawer over the page, opened by the top bar's menu button
-// (nav-toggle.tsx), closed by its close button, the backdrop, Escape or any navigation; the page behind is inert.
-import { CaretDown, CaretRight, CaretUpDown, Eye, MagnifyingGlass, Polygon, X } from '@phosphor-icons/react/dist/ssr';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState, useTransition, type KeyboardEvent } from 'react';
+// Rendered with Norma 2.0's common shell (norma/charte/COQUE.md § 2: Sidebar, PageSearch, NavList, NavSections, NavSection,
+// NavEntry; classes of coque.css): the navigation model (screens, rights, badges) stays Keystone's (nav-model.ts).
+// Tablet layout (R-146, X-4): up to 1024 px the sidebar is the charte's drawer, opened by the top bar's menu button
+// (topbar.tsx), closed by its close button, the backdrop, Escape or a followed entry; the page behind is inert.
+import { CaretDown, CaretRight, CaretUpDown, Eye, Polygon } from '@phosphor-icons/react/dist/ssr';
+import { NavEntry as NavLink, NavList, NavSection, NavSections, PageSearch, Sidebar as CoqueSidebar, type PageHit } from '@norma/charte/ds/Sidebar';
+import { usePathname } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { cx } from '@/components/ds/cx';
 import { SCREEN_ICONS } from '@/config/screen-icons';
 import { screenHref, type RoleKey, type ScreenId } from '@/config/screens';
@@ -15,10 +17,9 @@ import { useI18n } from '@/i18n/client';
 import { setViewAs } from '@/server/actions/preferences';
 import { AccountMenu, type SidebarAccount } from './account-menu';
 import { COOKIE_NAV } from './types';
-import { buildSidebar, matchScreen, searchNav, type Badges, type NavEntry, type NavSectionModel } from './nav-model';
+import { buildSidebar, matchScreen, type Badges, type NavEntry, type NavSectionModel } from './nav-model';
 import { useShell } from './shell-provider';
 import styles from './sidebar.module.css';
-import { NAV_TOGGLE_ID, SIDEBAR_ID, TABLET_MEDIA } from './tablet';
 
 export interface SidebarPersona {
   role: RoleKey;
@@ -54,46 +55,8 @@ function persistNavOpen(map: Record<string, boolean>) {
 export function Sidebar({ role, personas, account, navOpen: initialOpen, zoneLabel, projects, globalBadges, projectBadges }: SidebarProps) {
   const { t } = useI18n();
   const pathname = usePathname();
-  const router = useRouter();
-  const { project: code, navDrawer, setNavDrawer } = useShell();
+  const { project: code } = useShell();
   const [navOpen, setOpenState] = useState(initialOpen);
-  const [navQ, setNavQ] = useState('');
-  const searchRef = useRef<HTMLInputElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const returnFocus = useRef(false);
-
-  // Drawer open (tablet layout): the page behind is inert, focus moves to the close button, Escape closes and gives the
-  // focus back to the menu button. Widening the window past the tablet layout closes it (the page must not stay inert).
-  useEffect(() => {
-    if (!navDrawer) return;
-    const main = document.querySelector('main');
-    const media = window.matchMedia(TABLET_MEDIA);
-    // The menu button only exists in the tablet layout.
-    if (!media.matches) return;
-    if (main) main.inert = true;
-    closeRef.current?.focus();
-    const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      returnFocus.current = true;
-      setNavDrawer(false);
-    };
-    const onMedia = () => {
-      if (!media.matches) setNavDrawer(false);
-    };
-    document.addEventListener('keydown', onKey);
-    media.addEventListener('change', onMedia);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      media.removeEventListener('change', onMedia);
-      if (main) main.inert = false;
-      if (returnFocus.current) document.getElementById(NAV_TOGGLE_ID)?.focus();
-      returnFocus.current = false;
-    };
-  }, [navDrawer, setNavDrawer]);
-  const closeDrawer = (focusToggle: boolean) => {
-    returnFocus.current = focusToggle;
-    setNavDrawer(false);
-  };
 
   const active = matchScreen(pathname)?.id ?? null;
   const projectLabel = projects.find((p) => p.code === code)?.label ?? code;
@@ -108,32 +71,20 @@ export function Sidebar({ role, personas, account, navOpen: initialOpen, zoneLab
       }),
     [role, active, globalBadges, projectBadges, code, navOpen, zoneLabel, projectLabel],
   );
-  const hits = useMemo(() => searchNav(model.searchable, navQ, t), [model.searchable, navQ, t]);
-  const searching = !!navQ.trim();
-
-  // ⌘K / Ctrl+K focuses and selects the page search (componentDidMount, line 3765).
-  useEffect(() => {
-    const onKey = (e: globalThis.KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
-        e.preventDefault();
-        searchRef.current?.focus();
-        searchRef.current?.select();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
 
   const hrefOf = (id: ScreenId) => screenHref(id, { code });
-
-  const onSearchKey = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Escape') setNavQ('');
-    else if (e.key === 'Enter' && hits.length) {
-      router.push(hrefOf(hits[0].id));
-      setNavQ('');
-      closeDrawer(false);
-    }
-  };
+  // Every page of the menu, for the ⌘K page search (COQUE.md § 2: every word of the query in the label or the section).
+  const pages: PageHit[] = useMemo(
+    () =>
+      model.searchable.map((n) => ({
+        href: screenHref(n.id, { code }),
+        label: t(n.label),
+        section: n.section ? t(n.section) : undefined,
+        icon: SCREEN_ICONS[n.id] ?? Eye,
+        badge: n.badge ? t(n.badge) : undefined,
+      })),
+    [model.searchable, code, t],
+  );
 
   const toggle = (key: string, open: boolean) => {
     const next = { ...navOpen, [key]: !open };
@@ -141,130 +92,80 @@ export function Sidebar({ role, personas, account, navOpen: initialOpen, zoneLab
     persistNavOpen(next);
   };
 
-  const entry = (n: NavEntry, kind: 'fixed' | 'item') => {
-    const Icon = n.synthetic ? Eye : SCREEN_ICONS[n.id] ?? Eye;
-    return (
-      <Link
-        key={n.id}
-        href={hrefOf(n.id)}
-        className={cx(styles.entry, kind === 'item' && styles.item, n.active && styles.active)}
-        aria-current={n.active ? 'page' : undefined}
-        onClick={() => closeDrawer(false)}
-      >
-        <Icon size={16} className={styles.icon} />
-        <span className={styles.label}>{t(n.label)}</span>
-        {n.badge && <span className={styles.badge}>{t(n.badge)}</span>}
-      </Link>
-    );
-  };
+  const entry = (n: NavEntry, item: boolean) => (
+    <NavLink
+      key={n.id}
+      href={hrefOf(n.id)}
+      label={t(n.label)}
+      icon={n.synthetic ? Eye : SCREEN_ICONS[n.id] ?? Eye}
+      active={n.active}
+      badge={n.badge ? t(n.badge) : undefined}
+      item={item}
+    />
+  );
+
+  const rows = (sec: NavSectionModel) =>
+    sec.rows.map((r) => {
+      if (r.kind === 'item') return entry(r.entry, true);
+      const GChev = r.open ? CaretDown : CaretRight;
+      // A project group (the charte's NavGroup, with Keystone's badge and brighter label when it holds the current page).
+      return (
+        <button
+          key={'g:' + r.key}
+          type="button"
+          className={cx('coque-group', r.bright && styles.groupBright)}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggle('sub:' + r.key, r.open);
+          }}
+          aria-expanded={r.open}
+        >
+          <GChev size={10} className="coque-entry-icon" aria-hidden />
+          <span>{t(r.label)}</span>
+          <span className="coque-group-rule" />
+          {r.badge && <span className="coque-sec-badge">{t(r.badge)}</span>}
+          {r.count && <span className="coque-group-count">{r.count}</span>}
+        </button>
+      );
+    });
 
   const section = (sec: NavSectionModel) => {
-    const outside = sec.key === 'outside';
-    const Chev = outside ? Eye : sec.open ? CaretDown : CaretRight;
-    return (
-      <div key={sec.key} className={styles.section}>
-        <button
-          type="button"
-          className={cx(styles.secHead, sec.bright && styles.bright, outside && styles.outsideHead)}
-          onClick={outside ? undefined : () => toggle(sec.key, sec.open)}
-          aria-expanded={outside ? undefined : sec.open}
-        >
-          <Chev size={11} className={styles.icon} />
-          <span className={styles.label}>{t(sec.label)}</span>
-          {sec.badge && <span className={styles.secBadge}>{t(sec.badge)}</span>}
-          {sec.count && <span className={styles.secCount}>{sec.count}</span>}
-        </button>
-        {sec.sub && (
-          <div className={styles.sub} title={t('Current project')}>
-            {t(sec.sub)}
+    if (sec.key === 'outside') {
+      // "Outside my workspace": a fixed section, an eye instead of the caret (not collapsible).
+      return (
+        <div key={sec.key} className="coque-sec">
+          <div className={cx('coque-sec-head', styles.outsideHead)}>
+            <Eye size={11} className="coque-entry-icon" aria-hidden />
+            <span className="coque-entry-label">{t(sec.label)}</span>
+            {sec.count && <span className="coque-sec-count">{sec.count}</span>}
           </div>
-        )}
-        {sec.rows.map((r) => {
-          if (r.kind === 'item') return entry(r.entry, 'item');
-          const GChev = r.open ? CaretDown : CaretRight;
-          return (
-            <button
-              key={'g:' + r.key}
-              type="button"
-              className={cx(styles.group, r.bright && styles.bright)}
-              onClick={(e) => {
-                e.stopPropagation();
-                toggle('sub:' + r.key, r.open);
-              }}
-              aria-expanded={r.open}
-            >
-              <GChev size={10} className={styles.icon} />
-              <span className={styles.groupLabel}>{t(r.label)}</span>
-              <span className={styles.rule} />
-              {r.badge && <span className={styles.groupBadge}>{t(r.badge)}</span>}
-              {r.count && <span className={styles.groupCount}>{r.count}</span>}
-            </button>
-          );
-        })}
-      </div>
+          {rows(sec)}
+        </div>
+      );
+    }
+    return (
+      <NavSection
+        key={sec.key}
+        label={t(sec.label)}
+        open={sec.open}
+        onToggle={() => toggle(sec.key, sec.open)}
+        bright={sec.bright}
+        badge={sec.badge ? t(sec.badge) : undefined}
+        count={sec.count || undefined}
+        sub={sec.sub ? t(sec.sub) : undefined}
+      >
+        {rows(sec)}
+      </NavSection>
     );
   };
 
   return (
-    <>
-      <div className={cx(styles.backdrop, navDrawer && styles.backdropOn)} onClick={() => closeDrawer(true)} aria-hidden="true" />
-      <aside id={SIDEBAR_ID} className={cx(styles.aside, navDrawer && styles.open)} aria-label={t('Main menu')}>
-        <div className={styles.brand}>
-          <div className={styles.logo}>
-            <Polygon size={15} />
-          </div>
-          <div className={styles.wordmark}>{t('Keystone')}</div>
-          <button ref={closeRef} type="button" className={cx('btn btn-ghost btn-icon', styles.close)} onClick={() => closeDrawer(true)} aria-label={t('Close menu')}>
-            <X size={18} />
-          </button>
-        </div>
-        <div className={styles.search}>
-          <MagnifyingGlass size={13} className={styles.searchIcon} />
-          <input
-            ref={searchRef}
-            className={cx('input', styles.searchInput)}
-            value={navQ}
-            onChange={(e) => setNavQ(e.target.value)}
-            onKeyDown={onSearchKey}
-            placeholder={t('Go to a page…')}
-            aria-label={t('Go to a page…')}
-          />
-          <span className={styles.kbd}>⌘K</span>
-        </div>
-        {searching ? (
-          <div className={styles.list}>
-            {hits.map((n) => {
-              const Icon = SCREEN_ICONS[n.id] ?? Eye;
-              return (
-                <Link
-                  key={n.id}
-                  href={hrefOf(n.id)}
-                  onClick={() => {
-                    setNavQ('');
-                    closeDrawer(false);
-                  }}
-                  className={cx(styles.entry, styles.hit, n.active && styles.active)}
-                >
-                  <Icon size={16} className={styles.icon} />
-                  <span className={styles.hitText}>
-                    <span className={styles.hitLabel}>{t(n.label)}</span>
-                    <span className={styles.hitSection}>{n.section ? t(n.section) : ''}</span>
-                  </span>
-                  {n.badge && <span className={styles.badge}>{t(n.badge)}</span>}
-                </Link>
-              );
-            })}
-            {!hits.length && <span className={styles.empty}>{t('No page matches')}</span>}
-          </div>
-        ) : (
-          <>
-            <div className={styles.list}>{model.fixed.map((n) => entry(n, 'fixed'))}</div>
-            <div className={styles.sections}>{model.sections.map(section)}</div>
-          </>
-        )}
-        {account ? <AccountMenu account={account} /> : <ViewAs role={role} personas={personas} />}
-      </aside>
-    </>
+    <CoqueSidebar name={t('Keystone')} icon={Polygon} footer={account ? <AccountMenu account={account} /> : <ViewAs role={role} personas={personas} />}>
+      <PageSearch pages={pages}>
+        <NavList>{model.fixed.map((n) => entry(n, false))}</NavList>
+        <NavSections>{model.sections.map(section)}</NavSections>
+      </PageSearch>
+    </CoqueSidebar>
   );
 }
 
@@ -325,13 +226,13 @@ function ViewAs({ role, personas }: { role: RoleKey; personas: SidebarPersona[] 
           ))}
         </div>
       )}
-      <button ref={triggerRef} type="button" className={styles.trigger} onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open}>
-        <div className={styles.avatar}>{viewer.initials}</div>
-        <div className={styles.who}>
-          <span className={styles.triggerName}>{viewer.name}</span>
-          <span className={styles.whoRole}>{t(viewer.title)}</span>
-        </div>
-        <CaretUpDown className={styles.caret} />
+      <button ref={triggerRef} type="button" className="coque-user" onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open}>
+        <span className="coque-avatar">{viewer.initials}</span>
+        <span className="coque-who">
+          <span className="coque-who-name">{viewer.name}</span>
+          <span className="coque-who-role">{t(viewer.title)}</span>
+        </span>
+        <CaretUpDown className="coque-user-caret" aria-hidden />
       </button>
     </div>
   );

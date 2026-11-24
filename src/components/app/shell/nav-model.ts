@@ -240,10 +240,3 @@ export function buildSidebar({ role, active, badges, navOpen, subs }: SidebarInp
 
   return { fixed, sections, searchable };
 }
-
-/** Page search (`navHits`, line 5171): case-insensitive substring on the displayed (FR) or EN label, max 8. */
-export function searchNav(entries: SearchEntry[], query: string, t: (s: string) => string): SearchEntry[] {
-  const q = query.trim().toLowerCase();
-  if (!q) return [];
-  return entries.filter((n) => t(n.label).toLowerCase().includes(q) || n.label.toLowerCase().includes(q)).slice(0, 8);
-}

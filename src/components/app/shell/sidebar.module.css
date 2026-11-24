@@ -1,294 +1,24 @@
-/* Sidebar (prototype lines 19–73, docs/spec/01 §4, docs/spec/02 C-01). */
-.aside {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 18px 14px;
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  overflow: auto;
-  border-right: 1px solid var(--color-neutral-900);
-  background: color-mix(in srgb, var(--color-bg) 70%, transparent);
+/* Sidebar — Keystone's own parts only. The aside, brand, page search, entries, sections, groups, the account block and the
+   tablet drawer come from Norma 2.0's norma/charte/coque.css (COQUE.md § 2, § 8). Kept here: the "View as" and account
+   menus that open above the account block, the bright project group and the fixed "Outside my workspace" heading. */
+
+/* A project group holding the current page (brighter label, as .coque-sec-head.is-bright). */
+.groupBright:global(.coque-group) {
+  color: var(--color-neutral-300);
 }
 
-/* Brand */
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 6px;
+/* "Outside my workspace": a fixed heading (an eye, no caret), not a button. */
+.outsideHead:global(.coque-sec-head) {
+  cursor: default;
+  color: var(--color-neutral-300);
 }
 
-.logo {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  border: 1px solid var(--color-accent);
-  display: grid;
-  place-items: center;
-  color: var(--color-accent);
-  box-shadow: 0 0 14px color-mix(in srgb, var(--color-accent) 40%, transparent);
-}
-
-.wordmark {
-  font-size: 16px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-}
-
-/* Page search */
-.search {
-  position: relative;
-}
-
-.searchIcon {
-  position: absolute;
-  left: 9px;
-  top: 9px;
-  color: var(--color-neutral-500);
-  pointer-events: none;
-}
-
-.searchInput:global(.input) {
-  padding-left: 28px;
-  padding-right: 38px;
-  min-height: 32px;
-  font-size: 12.5px;
-  width: 100%;
-}
-
-.kbd {
-  position: absolute;
-  right: 8px;
-  top: 8px;
-  font-size: 10px;
-  padding: 1px 5px;
-  border-radius: 4px;
-  border: 1px solid var(--color-neutral-800);
-  color: var(--color-neutral-500);
-  pointer-events: none;
-}
-
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.sections {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-/* Nav entries (fixed, section items, search hits) */
-.entry {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 8px;
-  border: 0;
-  border-radius: var(--radius-md);
-  font: inherit;
-  font-size: 13px;
-  text-align: left;
-  cursor: pointer;
+.outsideHead:global(.coque-sec-head):hover {
   background: transparent;
-  color: var(--color-neutral-300);
-  text-decoration: none;
 }
 
-.entry:hover {
-  color: var(--color-neutral-300);
-}
-
-.item {
-  padding: 6px 8px 6px 10px;
-}
-
-.hit {
-  padding: 6px 8px;
-}
-
-.active,
-.active:hover {
-  background: var(--color-accent-900);
-  color: var(--color-accent-300);
-}
-
-/* style-hover="background:neutral-900" also wins over the active background (RT-SUPPORT). */
-.entry:hover {
-  background: var(--color-neutral-900);
-}
-
-.icon {
-  flex: none;
-}
-
-.label {
-  flex: 1;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.hitText {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
-  min-width: 0;
-  flex: 1;
-}
-
-.hitLabel {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.hitSection {
-  font-size: 10.5px;
-  color: var(--color-neutral-500);
-}
-
-.badge {
-  font-size: 11px;
-  padding: 1px 7px;
-  border-radius: 9px;
-  background: var(--color-accent-800);
-  color: var(--color-accent-100);
-  flex: none;
-}
-
-.empty {
-  font-size: 12px;
-  color: var(--color-neutral-500);
-  padding: 6px 8px;
-}
-
-/* Sections */
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.secHead {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border: 0;
-  border-radius: var(--radius-md);
-  background: transparent;
-  font: inherit;
-  font-size: 10.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  text-align: left;
-  cursor: pointer;
-  color: var(--color-neutral-500);
-}
-
-.secHead:hover {
-  background: var(--color-neutral-900);
-}
-
-.bright {
-  color: var(--color-neutral-300);
-}
-
-.outsideHead {
-  color: var(--color-accent-300);
-}
-
-.secBadge {
-  font-size: 10.5px;
-  padding: 0 6px;
-  border-radius: 9px;
-  background: var(--color-accent-800);
-  color: var(--color-accent-100);
-  letter-spacing: 0;
-  text-transform: none;
-  flex: none;
-}
-
-.secCount {
-  font-size: 10.5px;
-  color: var(--color-neutral-600);
-  letter-spacing: 0;
-  flex: none;
-}
-
-.sub {
-  font-size: 11.5px;
-  color: var(--color-neutral-300);
-  padding: 0 8px 4px 27px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Group header inside the Project section */
-.group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 8px 4px 10px;
-  border: 0;
-  background: transparent;
-  font: inherit;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  text-align: left;
-  cursor: pointer;
-  color: var(--color-neutral-500);
-  border-radius: var(--radius-md);
-  width: 100%;
-}
-
-.group.bright {
-  color: var(--color-neutral-300);
-}
-
-.group:hover {
-  color: var(--color-neutral-200);
-}
-
-.groupLabel {
-  white-space: nowrap;
-}
-
-.rule {
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg, var(--color-neutral-800), transparent);
-}
-
-.groupBadge {
-  font-size: 10px;
-  padding: 0 6px;
-  border-radius: 9px;
-  background: var(--color-accent-800);
-  color: var(--color-accent-100);
-  letter-spacing: 0;
-  text-transform: none;
-  flex: none;
-}
-
-.groupCount {
-  font-size: 10px;
-  color: var(--color-neutral-600);
-  letter-spacing: 0;
-  flex: none;
-}
-
-/* "View as" switcher */
+/* "View as" switcher and account menu (account-menu.tsx) */
 .viewAs {
-  margin-top: auto;
   position: relative;
 }
 
@@ -306,8 +36,8 @@
 }
 
 .menuHead {
-  font-size: 10px;
-  letter-spacing: 0.08em;
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
   color: var(--color-neutral-500);
   padding: 4px 8px 6px;
@@ -322,7 +52,7 @@
   border-radius: 6px;
   color: var(--color-text);
   font: inherit;
-  font-size: 12.5px;
+  font-size: var(--text-control);
   text-align: left;
   cursor: pointer;
   background: transparent;
@@ -345,7 +75,7 @@
   color: var(--color-neutral-200);
   display: grid;
   place-items: center;
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .who {
@@ -364,50 +94,6 @@
 .whoRole {
   font-size: 11px;
   color: var(--color-neutral-400);
-}
-
-.trigger {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px;
-  border: 0;
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.trigger:hover {
-  background: var(--color-neutral-900);
-}
-
-.avatar {
-  width: 28px;
-  height: 28px;
-  flex: none;
-  border-radius: 50%;
-  background: var(--color-accent-800);
-  color: var(--color-accent-200);
-  display: grid;
-  place-items: center;
-  font-size: 11px;
-}
-
-.triggerName {
-  font-size: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.caret {
-  margin-left: auto;
-  color: var(--color-neutral-500);
-  flex: none;
 }
 
 /* Account menu (Entra mode, account-menu.tsx): role check column, separator, sign-out form. */
@@ -430,86 +116,9 @@
   flex-direction: column;
 }
 
-/* ── Tablet layout (R-146, X-4; media queries = TABLET_MEDIA / TOUCH_MEDIA in ./tablet.ts) ──────────────────────────
-   Up to 1024 px the sidebar is a drawer over the page (below the centered modals, z 70), hidden — and out of the tab
-   order — until the top bar's menu button opens it. */
-.backdrop,
-.close {
-  display: none;
-}
-
-@media (max-width: 1024px) {
-  .aside {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    z-index: 66;
-    width: min(300px, 86vw);
-    height: 100dvh;
-    overscroll-behavior: contain;
-    background: var(--color-bg);
-    box-shadow: var(--shadow-lg);
-    transform: translateX(-100%);
-    visibility: hidden;
-    transition: transform 0.2s ease, visibility 0s linear 0.2s;
-  }
-
-  .open {
-    transform: none;
-    visibility: visible;
-    transition: transform 0.2s ease;
-  }
-
-  .backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 65;
-    background: color-mix(in srgb, var(--color-bg) 60%, transparent);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
-  }
-
-  .backdropOn {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  .close:global(.btn) {
-    display: inline-flex;
-    margin-left: auto;
-  }
-
-  .kbd {
-    display: none;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .aside,
-  .open,
-  .backdrop {
-    transition: none;
-  }
-}
-
-/* Touch targets of 40 px (R-146) */
+/* Touch targets of 40 px (R-146; media query = TOUCH_MEDIA in ./tablet.ts) */
 @media (max-width: 1024px), (pointer: coarse) {
-  .entry,
-  .secHead,
-  .group,
-  .persona,
-  .trigger {
+  .persona {
     min-height: 40px;
-  }
-
-  .searchInput:global(.input) {
-    min-height: 40px;
-  }
-
-  .searchIcon {
-    top: 13px;
   }
 }

@@ -1,5 +1,4 @@
 /* KPI tiles (docs/spec/02 C-04, template 166–169, 240–244, 291–298). */
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--kpi-min, 150px), 1fr)); gap: 10px; }
 
 :global(.card).tile { gap: 3px; padding: 12px 14px; }
 .label { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-400); }

@@ -37,22 +37,7 @@ button.tag-outline {
   background: transparent;
 }
 
-/* R-183 (WCAG 2.4.1): skip link, off screen until it has the keyboard focus. */
-.skip-link {
-  position: absolute;
-  left: 12px;
-  top: -48px;
-  z-index: 1000;
-  padding: 8px 14px;
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  color: var(--color-accent-300);
-  border: 1px solid var(--color-accent);
-  text-decoration: none;
-}
-.skip-link:focus {
-  top: 12px;
-}
+/* R-183 (WCAG 2.4.1): the skip link is the charte's .coque-skip (AppShell, norma/charte/coque.css). */
 
 /* The main region takes the focus from the skip link and the focus keeper without drawing a ring around the page. */
 main:focus:not(:focus-visible) {
