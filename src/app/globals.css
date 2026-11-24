@@ -69,3 +69,10 @@ main[tabindex='-1']:focus {
 .btn-ghost {
   color: var(--color-accent-500);
 }
+
+/* Norma 2.0 shell, Keystone's crowded headers (as Crucible): when the page header wraps, its second line (date, bell and
+   the language / display pair) stays right-aligned, the pair at the right end; the title block keeps the left
+   (margin-right: auto of .coque-header-left). */
+.coque-header {
+  justify-content: flex-end;
+}
