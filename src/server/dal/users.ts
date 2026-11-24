@@ -42,6 +42,8 @@ export interface UserAccount {
   initials: string;
   department: string | null;
   lastSignInAt: string | null;
+  /** The person's job title (typed text), when the directory gives one. */
+  jobTitle?: string | null;
 }
 
 const userDept = alias(departments, 'user_dept');
@@ -52,13 +54,14 @@ const accountSelect = {
   shortName: persons.shortName,
   initials: persons.initials,
   department: userDept.name,
+  jobTitle: persons.jobTitle,
 };
 
-function toAccount(r: { u: typeof users.$inferSelect; fullName: string | null; shortName: string; initials: string; department: string | null }): UserAccount {
+function toAccount(r: { u: typeof users.$inferSelect; fullName: string | null; shortName: string; initials: string; department: string | null; jobTitle?: string | null }): UserAccount {
   return {
     userId: r.u.id, personId: r.u.personId, personaRole: (r.u.personaRole as RoleKey | null) ?? null, roles: sortRoles(r.u.roles), active: r.u.active,
     entraObjectId: r.u.entraObjectId, email: r.u.email, title: r.u.title, fullName: r.fullName, shortName: r.shortName, initials: r.initials,
-    department: r.department, lastSignInAt: r.u.lastSignInAt?.toISOString() ?? null,
+    department: r.department, lastSignInAt: r.u.lastSignInAt?.toISOString() ?? null, jobTitle: r.jobTitle ?? null,
   };
 }
 
