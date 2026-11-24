@@ -12,6 +12,7 @@
     "db:migrate": "tsx --conditions=react-server scripts/db-migrate.ts",
     "db:reset": "rm -rf .data",
     "test": "vitest run",
+    "norma:check": "node norma/outils/norma.mjs verifier",
     "test:e2e": "tsx tests/e2e/run.ts",
     "worker": "tsx --conditions=react-server scripts/worker.ts",
     "backup": "tsx --conditions=react-server scripts/backup.ts",

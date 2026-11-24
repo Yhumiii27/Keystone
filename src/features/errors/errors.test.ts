@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RoleKey } from '@/config/screens';
 
 const state = { role: 'pm' as RoleKey, lang: 'fr' as 'en' | 'fr' };
-vi.mock('next/font/google', () => ({ Inter: () => ({ variable: 'font-inter', className: 'font-inter' }) }));
+// Inter comes from the suite's charter (norma/charte/fonts/inter.ts, next/font/local), which only the Next.js build resolves.
+vi.mock('next/font/local', () => ({ default: () => ({ variable: 'font-inter', className: 'font-inter' }) }));
 vi.mock('@/server/session', async () => {
   const { makeT } = await import('@/i18n/translate');
   const { PERSONA_BY_ROLE } = await import('@/config/personas');
@@ -99,9 +100,9 @@ describe('error pages', () => {
     expect(html).not.toContain('x is undefined');
   });
 
-  it('global error renders its own document, French by default', () => {
+  it('global error renders its own document, French and dark display by default', () => {
     const html = renderToStaticMarkup(h(GlobalError, { error: serverError(), retry: () => {} }));
-    expect(html.startsWith('<html lang="fr" class="font-inter">')).toBe(true);
+    expect(html.startsWith('<html lang="fr" class="font-inter" data-theme="dark">')).toBe(true);
     expect(html).toContain('<title>Keystone PM</title>');
     expect(text(html)).toContain('Une erreur est survenue');
     expect(text(html)).toContain('Identifiant d’incident 2338012040');

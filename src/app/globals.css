@@ -1,4 +1,10 @@
-/* App-level globals (prototype <helmet> base style, design line 14). Tokens and DS classes live in styles/nocturne.css. */
+/* App-level globals (prototype <helmet> base style, design line 14). Tokens and DS classes live in norma/charte/nocturne.css. */
+/* Fallback of Inter (norma/charte/fonts/inter.ts): the size-adjusted Arial next/font/google used to declare. */
+@font-face {
+  font-family: 'Inter Fallback'; src: local('Arial');
+  ascent-override: 90.44%; descent-override: 22.52%; line-gap-override: 0%; size-adjust: 107.12%;
+}
+
 :root {
   --font-heading: var(--font-inter), 'Inter', system-ui, sans-serif;
   --font-body: var(--font-inter), 'Inter', system-ui, sans-serif;
@@ -72,7 +78,7 @@ main[tabindex='-1']:focus {
 /*
  * R-183 (WCAG 1.4.3): the accent text of primary and ghost buttons is one ramp step lighter (accent-500 #968ae0, the same hue):
  * ≥ 4.5:1 on the inset grounds too (neutral-900, accent-900), where the accent #9184d9 measured 4.4:1. The DS copy
- * (styles/nocturne.css) is left untouched.
+ * (norma/charte/nocturne.css) is left untouched.
  */
 .btn-primary,
 .btn-ghost {

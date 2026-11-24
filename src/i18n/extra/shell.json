@@ -1,5 +1,8 @@
 {
   "Close": "Fermer",
   "This module is being built": "Module en cours de construction",
-  "Specification": "Spécification"
+  "Specification": "Spécification",
+  "Dark / light display": "Affichage",
+  "Dark display": "Affichage sombre",
+  "Light display": "Affichage clair"
 }

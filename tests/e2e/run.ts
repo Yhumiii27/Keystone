@@ -6,7 +6,8 @@
 // 3. waits for the first page, runs Playwright (tests/e2e/*.spec.ts, playwright.config.ts) against it, then stops the
 //    server and removes the data directory. The server log is kept in test-results/e2e-server.log; a server error line
 //    fails the run.
-// Never uses the ports of the other EPC2i apps (3000, 3100, 3110, 3200, 3210, 3217, 5173) nor the smoke-test port 3310.
+// Never uses a port of the suite's registry (norma/registre/outils.json: every tool's dev, tests and other ports, Keystone's
+// 3000 and smoke-test 3310 included).
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';
 import net from 'node:net';
@@ -15,7 +16,8 @@ import path from 'node:path';
 
 const ROOT = process.cwd();
 const DIST = process.env.KEYSTONE_DIST_DIR || '.next-ci';
-const RESERVED = new Set([3000, 3100, 3110, 3200, 3210, 3217, 3310, 5173]);
+const REGISTRY = JSON.parse(fs.readFileSync(path.join(ROOT, 'norma', 'registre', 'outils.json'), 'utf8')) as { outils: { ports?: Record<string, number> }[] };
+const RESERVED = new Set([3000, 3100, 3110, 3200, 3210, 3217, 3310, 5173, ...REGISTRY.outils.flatMap((o) => Object.values(o.ports ?? {}))]);
 const NEXT_BIN = path.join(ROOT, 'node_modules', 'next', 'dist', 'bin', 'next');
 const PLAYWRIGHT_CLI = path.join(ROOT, 'node_modules', '@playwright', 'test', 'cli.js');
 

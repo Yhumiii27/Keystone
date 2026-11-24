@@ -79,14 +79,14 @@ describe('shell CSS (tablet)', () => {
 
 describe('touch targets and tables (tablet)', () => {
   it('Nocturne buttons, inputs and segmented options: 40 px above every compact variant (touch.css, loaded by the root layout)', () => {
-    const touch = css('src/styles/touch.css');
+    const touch = css('norma/charte/touch.css');
     const block = mediaBlocks(touch, TOUCH_MEDIA).join(' ');
     expect(rule(block, '.btn')).toContain('min-height: 40px !important');
     expect(block).toMatch(/\.input:not\(textarea\)\s*\{\s*min-height: 40px !important/);
     expect(block).toMatch(/\.btn \{\s*min-width: 40px !important/);
     expect(rule(block, '.btn-icon')).toMatch(/width: 40px;\s*height: 40px/);
     expect(rule(block, '.table tbody td')).toContain('height: 40px');
-    expect(css('src/app/layout.tsx')).toContain("import '@/styles/touch.css';");
+    expect(css('src/app/layout.tsx')).toContain("import '@norma/charte/touch.css';");
   });
 
   it('DS and app controls: segmented options, filter chips, list rows, check rows — 40 px', () => {

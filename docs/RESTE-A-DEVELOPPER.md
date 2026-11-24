@@ -1011,6 +1011,7 @@ Au-delà de la décision C-9 (devise par contrat et commande, consolidation en e
 
 ## 3. Mises à jour
 
+- 2026-11-24 — Norma 1.0.0 adopté (copie norma/, contrôle npm run norma:check en CI, CLAUDE.md importe norma/REGLES.md) ; charte et police Inter lues dans norma/charte (build sans réseau) ; bouton d'affichage sombre / clair à droite du sélecteur FR / EN (cookie epc2i-theme, data-theme posé au rendu).
 - 2026-11-24 — Clavis : le titre affiché suit le rôle accordé dans clavis.pub_acces (il gardait celui de la connexion) — trouvé à la répétition de l'installation.
 - 2026-11-23 — Connexion centrale par Clavis : personne créée depuis le jeton (KEYSTONE_PERSONS_FROM_TOKEN, Yhumiii27/Keystone#78) ; rôle et ouverture de Keystone lus dans clavis.pub_acces à la connexion et à chaque requête (KEYSTONE_ACCESS_FROM_CLAVIS).
 - 2026-11-10 — Lots intégrés : planning (D9-08 à D9-12), corrections Matrix des fériés et seuils (D9-04), portail client retiré (D9-06, D9-25, D9-26), P1 inspections et FAT, P4 change, P2 conformité CE.

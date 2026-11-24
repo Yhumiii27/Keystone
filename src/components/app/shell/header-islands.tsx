@@ -3,7 +3,7 @@
 // notifications, language toggle, Export, zone bar. Strings arrive translated from the server.
 import {
   ArrowsClockwise, At, Bell, BellRinging, CaretDown, CheckSquare, Export, Eye, FileCsv, FilePdf, FileXls, FolderOpen, GitBranch, MagnifyingGlass,
-  PaperPlaneTilt, Receipt, SealCheck, ShieldWarning, Truck, Warning,
+  Moon, PaperPlaneTilt, Receipt, SealCheck, ShieldWarning, Sun, Truck, Warning,
 } from '@phosphor-icons/react/dist/ssr';
 import type { Icon } from '@phosphor-icons/react';
 import Link from 'next/link';
@@ -11,6 +11,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition, type RefObject } from 'react';
 import { useI18n } from '@/i18n/client';
 import type { Lang } from '@/i18n/translate';
+import { themeCookie, type Theme } from '@norma/charte/ds/theme';
 import { setLanguage, setZone } from '@/server/actions/preferences';
 import type { ZoneKey } from '@/server/session';
 import { markAllNotificationsReadAction, markNotificationReadAction, searchAction } from './actions';
@@ -339,6 +340,32 @@ export function LangToggle({ lang }: { lang: Lang }) {
       options={[
         { value: 'fr' as Lang, label: 'FR' },
         { value: 'en' as Lang, label: 'EN' },
+      ]}
+    />
+  );
+}
+
+// ── Dark / light display (Norma 1.0), right of the language toggle ──────────────────────────────────────────────
+/**
+ * Same as norma/charte/ds/ThemeToggle.tsx, except the group's name: Keystone's « Display » is already the « Vue » of its
+ * filters (prototype dictionary), so the group is « Dark / light display » (« Affichage »). Sets data-theme on <html> and
+ * the suite's epc2i-theme cookie in the browser, without a round trip; the root layout re-reads the cookie on later pages.
+ */
+export function ThemeToggle({ theme: initial }: { theme: Theme }) {
+  const { t } = useI18n();
+  const [theme, setTheme] = useState<Theme>(initial);
+  return (
+    <Segmented
+      label={t('Dark / light display')}
+      value={theme}
+      onChange={(v) => {
+        setTheme(v);
+        document.documentElement.dataset.theme = v;
+        document.cookie = themeCookie(v);
+      }}
+      options={[
+        { value: 'dark' as Theme, label: '', icon: Moon, title: t('Dark display') },
+        { value: 'light' as Theme, label: '', icon: Sun, title: t('Light display') },
       ]}
     />
   );
