@@ -61,6 +61,7 @@ export function Segmented<V extends string = string>({ options, value, onChange,
             type="button"
             className={cls}
             title={o.title}
+            aria-label={o.label === '' ? o.title : undefined}
             disabled={o.disabled}
             aria-pressed={on}
             onClick={onChange ? () => onChange(o.value) : undefined}

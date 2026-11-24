@@ -18,8 +18,8 @@ import { getProject, type ProjectRow } from '@/server/dal/projects';
 import { crumbExtraOf, defaultTitleOf, notificationsFor, zoneBarOf } from '@/server/dal/shell';
 import { canEditContract, canEditShipments, roleReadOnly } from '@/domain/rights';
 import { getProjectScope } from '@/server/project-context';
-import { getI18n, getLastProject, getViewer, getZone } from '@/server/session';
-import { ExportButton, GlobalSearch, LangToggle, Notifications, ProjectSwitcher, ZoneSeg } from './header-islands';
+import { getI18n, getLastProject, getTheme, getViewer, getZone } from '@/server/session';
+import { ExportButton, GlobalSearch, LangToggle, Notifications, ProjectSwitcher, ThemeToggle, ZoneSeg } from './header-islands';
 import { PROJECT_EDITABLE, crumbBase, isOutside } from './nav-model';
 import { projectOptionHaystack, projectOptionSub } from './project-options';
 import type { ProjectOptionView } from './types';
@@ -51,7 +51,7 @@ const healthView = (p: Pick<ProjectRow, 'health'>) =>
   p.health ? { label: HEALTH_LABEL[p.health], cls: HEALTH_TAG[p.health] } : { label: '—', cls: 'tag tag-neutral' };
 
 export async function PageHeader({ screen, projectCode, title, crumbExtra, primary, taskId, projectParam }: PageHeaderProps) {
-  const [{ t, lang }, viewer, zone, lastProject, scope, today] = await Promise.all([getI18n(), getViewer(), getZone(), getLastProject(), getProjectScope(), businessToday()]);
+  const [{ t, lang }, viewer, zone, lastProject, scope, today, theme] = await Promise.all([getI18n(), getViewer(), getZone(), getLastProject(), getProjectScope(), businessToday(), getTheme()]);
   const def = SCREEN_BY_ID[screen];
   const isProject = def.scope === 'project';
   const code = projectCode ?? lastProject;
@@ -149,6 +149,7 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
           {`${t('Status date ·')} ${t(displayOfIso(today))}`}
         </div>
         <LangToggle lang={lang} />
+        <ThemeToggle theme={theme} />
         <div className={styles.actions}>
           <ExportButton screen={screen} code={project?.code ?? code} formats={exportFormatsOf(screen)} task={taskId ?? null} />
           {showPrimary && primary}

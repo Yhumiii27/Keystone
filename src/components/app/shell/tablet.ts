@@ -1,7 +1,7 @@
 // Tablet layout of the shell (R-146, decision X-4: collapsible menu, Site / Punch list / Deliveries first, online).
 // Up to 1024 px wide the sidebar leaves the grid and becomes a drawer opened by the menu button of the top bar; touch
 // targets grow to 40 px there and on any coarse pointer. The CSS files repeat these media queries (CSS cannot import
-// them): src/components/app/shell/*.module.css, src/styles/touch.css and the DS modules — tablet.test.ts checks it.
+// them): src/components/app/shell/*.module.css, norma/charte/touch.css and the DS modules — tablet.test.ts checks it.
 
 /** Width at and below which the sidebar is a drawer (768–1024 px tablets, portrait and landscape). */
 export const TABLET_MAX_PX = 1024;

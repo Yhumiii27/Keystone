@@ -1,3 +1,7 @@
+@norma/REGLES.md
+
+The suite's common rules (Norma) come first: `norma/` is a versioned copy of `Yhumiii27/Norma` (`norma/VERSION`), checked by `npm run norma:check`; a common rule changes in Norma, never in this copy. The rules below are Keystone's own.
+
 @AGENTS.md
 
 # Keystone PM — instructions for Claude sessions
@@ -68,7 +72,7 @@ Keystone PM is EPC2i's project and portfolio management tool. It is a Next.js 16
   - The PGlite database is seeded from the prototype constants (`src/server/prototype/*.json`).
 - **Pure logic:** lives in `src/domain/`. Golden tests compare it with the prototype's own logic (`scripts/proto-golden-*.ts`). If a deliberate change alters a displayed value, update the test with a comment citing the decision id (for example "A-13").
 - **UI:**
-  - Nocturne design system: `src/styles/nocturne.css`, `src/components/ds`, `src/components/app`, CSS Modules.
+  - Nocturne design system: `norma/charte/nocturne.css` and `touch.css` (Norma's copy, dark and light themes: `<html data-theme>` from the `epc2i-theme` cookie, `getTheme()`, `ThemeToggle` next to the FR / EN toggle), `src/components/ds`, `src/components/app`, CSS Modules.
   - Phosphor icons come from `@phosphor-icons/react/dist/ssr`.
 - **Server Functions:** each one validates input and permission server-side (role, project ownership, read-only and outside-workspace rules), writes through DAL writers, records audit and activity, then calls `revalidatePath`. A `'use server'` file exports async functions only (`src/server/use-server-exports.test.ts`).
 
@@ -90,4 +94,4 @@ npm run test:e2e      # Playwright on a production build (.next-ci), free port, 
 - **On the user's Mac only:**
   - Port 3000 is Keystone (dev server or the `Keystone.app` desktop app, `npm run app`).
   - Codex uses 3100/3110, Vigie 3200, and Cursus 3210/3217/5173. Never use or kill these ports.
-  - Smoke tests use port 3310.
+  - Smoke tests use port 3310. The other tools' ports are in `norma/registre/outils.json` (Arche 3400/3410, Crucible 3500/3510, Clavis 3600/3610, Matrix 3700, Modulus 3800/3810): never use or kill them; `tests/e2e/run.ts` skips them all.

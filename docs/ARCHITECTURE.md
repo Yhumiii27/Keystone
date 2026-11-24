@@ -58,7 +58,7 @@ src/
   config/{screens.ts, personas.ts}   screen registry (routes, nav, titles, role access) and personas
   i18n/{translate.ts, client.tsx, fr-dict.json, fr-rules.ts, extra/<feature>.json}
   lib/format.ts              money (k€), moneyEur, pct, ratio, dates (dateOf, fmtD…), initials
-  styles/nocturne.css        design-system tokens + classes (verbatim from design/_ds)
+  (styles: norma/charte/nocturne.css and touch.css, the suite's Nocturne charter copied from Norma, dark and light themes)
 ```
 
 ## Rules
