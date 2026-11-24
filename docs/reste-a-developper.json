@@ -318,6 +318,10 @@
   {
    "date": "2026-11-24",
    "text": "Norma 1.0.0 adopté (copie norma/, contrôle npm run norma:check en CI, CLAUDE.md importe norma/REGLES.md) ; charte et police Inter lues dans norma/charte (build sans réseau) ; bouton d'affichage sombre / clair à droite du sélecteur FR / EN (cookie epc2i-theme, data-theme posé au rendu)."
+  },
+  {
+   "date": "2026-11-24",
+   "text": "Norma 1.1.0 repris (copie norma/) : options à icône seule de Segmented à la hauteur des options texte (copie src/components/ds alignée), textes secondaires à 68 % en clair ; le ThemeToggle commun porte désormais le groupe « Dark / light display » de Keystone."
   }
  ],
  "items": [

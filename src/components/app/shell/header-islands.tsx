@@ -347,8 +347,8 @@ export function LangToggle({ lang }: { lang: Lang }) {
 
 // ── Dark / light display (Norma 1.0), right of the language toggle ──────────────────────────────────────────────
 /**
- * Same as norma/charte/ds/ThemeToggle.tsx, except the group's name: Keystone's « Display » is already the « Vue » of its
- * filters (prototype dictionary), so the group is « Dark / light display » (« Affichage »). Sets data-theme on <html> and
+ * Same as norma/charte/ds/ThemeToggle.tsx (Norma 1.1.0 took Keystone's group name: « Display » is already the « Vue » of
+ * its filters, so the group is « Dark / light display », « Affichage »), with Keystone's own DS. Sets data-theme on <html> and
  * the suite's epc2i-theme cookie in the browser, without a round trip; the root layout re-reads the cookie on later pages.
  */
 export function ThemeToggle({ theme: initial }: { theme: Theme }) {
