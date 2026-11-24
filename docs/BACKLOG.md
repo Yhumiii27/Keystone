@@ -87,7 +87,7 @@ notifications.
 **Besoin (2026-10-15, responsable produit).** Un projet peut fournir plusieurs équipements, de types différents et en
 plusieurs exemplaires — par exemple **une EMP et plusieurs MEMU**. L’approche projet doit pouvoir s’adapter à ce cas.
 
-**Aujourd’hui** (R-185 de `docs/RESTE-A-DEVELOPPER.md`, avec les références dans le code) :
+**Aujourd’hui** (R-185 du reste à faire de Norma, `reste-a-faire/keystone.json`, avec les références dans le code) :
 - un projet porte **un seul type de machine** ; l’assistant de création en tire les phases, les catégories de coûts et les
   systèmes ITP, et le budget de référence ses références REX ;
 - le plan ITP est unique par projet ; les systèmes de mise en service et la nomenclature ne sont rattachés à aucun équipement ;
