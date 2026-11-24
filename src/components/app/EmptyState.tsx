@@ -1,6 +1,7 @@
 // Empty states (docs/spec/02 C-25). Server-compatible; text is passed in translated.
 import type { Icon } from '@phosphor-icons/react';
 import type { CSSProperties, ReactNode } from 'react';
+import { EmptyState as CoqueEmptyState } from '@norma/charte/ds/EmptyState';
 import { cx } from '@/components/ds/cx';
 import s from './EmptyState.module.css';
 
@@ -26,6 +27,8 @@ export interface EmptyStateProps {
 }
 
 export function EmptyState({ variant = 'inline', pad, icon: I, onClick, className, children }: EmptyStateProps) {
+  // `inline` and `boxed` without a variant of their own: the charte's (Norma 2.0, COQUE.md § 6, same measures).
+  if ((variant === 'inline' || variant === 'boxed') && pad == null && !onClick && !className) return <CoqueEmptyState variant={variant}>{children}</CoqueEmptyState>;
   const cls = cx(
     variant === 'boxedLg' ? cx(s.boxed, s.boxedLg) : s[variant],
     onClick && s.clickable,

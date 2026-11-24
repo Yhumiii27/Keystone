@@ -1,41 +1,6 @@
-/* Page header (prototype lines 76–136, docs/spec/01 §5 and §7, docs/spec/02 C-02/C-03). */
-.header {
-  display: flex;
-  align-items: flex-end;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.left {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-right: auto;
-}
-
-.crumb {
-  font-size: 12px;
-  color: var(--color-neutral-400);
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.sep {
-  color: var(--color-neutral-600);
-}
-
-.titleRow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.title {
-  margin: 0;
-  font-size: 26px;
-}
+/* Page header — Keystone's own parts only (Norma 2.0: the header, the <h1>, the search box, the actions, the date, the
+   bell button and the language / display pair come from norma/charte/coque.css): the project switcher, the global search
+   panel, the notifications panel, the outside banner's text and Home link, the zone bar. */
 
 .roTag {
   display: inline-flex;
@@ -55,7 +20,7 @@
 }
 
 .menuHead {
-  font-size: 10px;
+  font-size: var(--text-micro);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-neutral-500);
@@ -73,7 +38,7 @@
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
-  font-size: 12.5px;
+  font-size: var(--text-control);
   cursor: pointer;
 }
 
@@ -125,7 +90,7 @@
 .pickInput:global(.input) {
   padding-left: 28px;
   min-height: 32px;
-  font-size: 12.5px;
+  font-size: var(--text-control);
   width: 100%;
 }
 
@@ -139,7 +104,7 @@
   border-radius: 6px;
   color: var(--color-text);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--text-ui);
   text-align: left;
   cursor: pointer;
   background: transparent;
@@ -183,33 +148,12 @@
 }
 
 .menuEmpty {
-  font-size: 12px;
+  font-size: var(--text-small);
   color: var(--color-neutral-500);
   padding: 8px;
 }
 
-/* Global search (lines 99–107) */
-.search {
-  position: relative;
-  min-width: 220px;
-  flex: 1 1 220px;
-  max-width: 360px;
-}
-
-.searchIcon {
-  position: absolute;
-  left: 10px;
-  top: 9px;
-  color: var(--color-neutral-500);
-  pointer-events: none;
-}
-
-.searchInput:global(.input) {
-  padding-left: 30px;
-  min-height: 32px;
-  font-size: 12.5px;
-}
-
+/* Global search panel (lines 99–107), under the charte's .coque-header-search box */
 .searchPanel {
   position: absolute;
   z-index: 49;
@@ -236,7 +180,7 @@
   border-radius: 6px;
   color: var(--color-text);
   font: inherit;
-  font-size: 12.5px;
+  font-size: var(--text-control);
   text-align: left;
   cursor: pointer;
   background: transparent;
@@ -262,29 +206,9 @@
 }
 
 .searchEmpty {
-  font-size: 12.5px;
+  font-size: var(--text-control);
   color: var(--color-neutral-500);
   padding: 8px;
-}
-
-/* Notifications (lines 108–117) */
-.bell:global(.btn) {
-  position: relative;
-}
-
-.bellBadge {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 8px;
-  font-size: 10px;
-  display: grid;
-  place-items: center;
-  background: var(--color-accent);
-  color: var(--color-bg);
 }
 
 .notifPanel {
@@ -310,13 +234,13 @@
 }
 
 .notifTitle {
-  font-size: 13px;
+  font-size: var(--text-ui);
   font-weight: 500;
   margin-right: auto;
 }
 
 .markAll:global(.btn) {
-  font-size: 12px;
+  font-size: var(--text-small);
   padding: 2px 8px;
 }
 
@@ -368,12 +292,12 @@
 }
 
 .notifText {
-  font-size: 13px;
+  font-size: var(--text-ui);
   text-wrap: pretty;
 }
 
 .notifSub {
-  font-size: 11.5px;
+  font-size: var(--text-caption);
   color: var(--color-neutral-400);
   text-wrap: pretty;
 }
@@ -395,40 +319,13 @@
   flex-wrap: wrap;
 }
 
-/* Status date, actions */
-.statusDate {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--color-neutral-400);
-}
-
-.actions {
-  display: flex;
-  gap: 8px;
-}
-
-/* Outside banner (lines 126–128) */
-.outside {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 12.5px;
-  color: var(--color-neutral-300);
-  padding: 9px 12px;
-  border-radius: var(--radius-md);
-  background: var(--color-neutral-900);
-  box-shadow: inset 0 0 0 1px var(--color-neutral-800);
-}
-
 .outsideText {
   text-wrap: pretty;
   margin-right: auto;
 }
 
 .homeBtn:global(.btn) {
-  font-size: 12px;
+  font-size: var(--text-small);
   text-decoration: none;
 }
 
@@ -449,7 +346,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--text-small);
   color: var(--color-neutral-400);
 }
 
@@ -457,24 +354,26 @@
   color: var(--color-neutral-200);
 }
 
+/* The bell's place in the page header (hidden ≤ 1024 px, where the top bar carries it). */
+.headerBell {
+  display: contents;
+}
+
 /* ── Tablet layout (R-146; media queries = TABLET_MEDIA / TOUCH_MEDIA in ./tablet.ts) ── */
 @media (max-width: 1024px) {
-  .title {
-    font-size: 22px;
-  }
-
-  .actions {
-    flex-wrap: wrap;
-  }
-
   /* The search box may wrap to the left edge: its result panel opens to the right. */
   .searchPanel {
     left: 0;
     right: auto;
   }
+
+  /* The bell moves to the top bar with the language / display pair (COQUE.md § 8). */
+  .headerBell {
+    display: none;
+  }
 }
 
-/* Touch targets of 40 px (R-146) */
+/* Touch targets of 40 px (R-146; the header's search box: coque.css) */
 @media (max-width: 1024px), (pointer: coarse) {
   .pickBtn,
   .pickOpt,
@@ -483,12 +382,7 @@
     min-height: 40px;
   }
 
-  .searchInput:global(.input),
   .pickInput:global(.input) {
     min-height: 40px;
-  }
-
-  .searchIcon {
-    top: 13px;
   }
 }

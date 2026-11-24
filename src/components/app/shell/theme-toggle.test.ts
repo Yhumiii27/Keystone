@@ -1,19 +1,19 @@
-// Dark / light display (Norma 1.0): cookie → theme, the toggle's markup in French, its place right of the FR / EN toggle,
-// and the root layout that sets data-theme on <html> from the cookie (no flash).
+// Dark / light display and language (Norma 2.0, norma/charte/COQUE.md § 4): cookie → theme; the pair PrefsStack — FR | EN
+// stacked over dark | light, same size —, its markup in French, its place as the last element of every page header and of
+// the top bar; the root layout that sets data-theme on <html> from the cookie (no flash) and loads the shell's sheets.
 import fs from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 vi.mock('next/navigation', () => ({ usePathname: () => '/', useRouter: () => ({ push() {}, refresh() {} }), redirect() {}, notFound() {} }));
 vi.mock('@/server/actions/preferences', () => ({ setNavOpen: async () => {}, setViewAs: async () => {}, setLanguage: async () => {}, setZone: async () => {} }));
-vi.mock('./actions', () => ({ searchAction: async () => [], markNotificationReadAction: async () => {}, markAllNotificationsReadAction: async () => {} }));
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { I18nProvider } from '@/i18n/client';
 import { DEFAULT_THEME, THEME_COOKIE, themeCookie, themeOf } from '@norma/charte/ds/theme';
-import { LangToggle, ThemeToggle } from './header-islands';
+import { KeystonePrefs } from './prefs';
 
 const read = (file: string) => fs.readFileSync(file, 'utf8');
 
-describe('dark / light display', () => {
+describe('dark / light display and language', () => {
   it('the epc2i-theme cookie gives the theme, dark by default', () => {
     expect(THEME_COOKIE).toBe('epc2i-theme');
     expect(DEFAULT_THEME).toBe('dark');
@@ -23,22 +23,29 @@ describe('dark / light display', () => {
     expect(themeCookie('light')).toBe('epc2i-theme=light; path=/; max-age=31536000; samesite=lax');
   });
 
-  it('the toggle renders moon and sun, named in French, the current theme pressed', () => {
-    const html = renderToStaticMarkup(h(I18nProvider, { lang: 'fr', children: h(ThemeToggle, { theme: 'light' }) }));
-    expect(html).toContain('aria-label="Affichage"');
-    expect(html).toMatch(/aria-label="Affichage sombre" aria-pressed="false"/);
-    expect(html).toMatch(/aria-label="Affichage clair" aria-pressed="true"/);
-    const en = renderToStaticMarkup(h(I18nProvider, { lang: 'en', children: h(ThemeToggle, { theme: 'dark' }) }));
-    expect(en).toMatch(/aria-label="Dark display" aria-pressed="true"/);
-    // Rendered alongside the language toggle without clashing.
-    expect(renderToStaticMarkup(h(I18nProvider, { lang: 'fr', children: [h(LangToggle, { key: 'l', lang: 'fr' }), h(ThemeToggle, { key: 't', theme: 'dark' })] }))).toMatch(/>EN<\/button><\/div><div role="group" aria-label="Affichage"/);
+  it('the pair: FR | EN above moon | sun, named in French, the current choices pressed', () => {
+    const html = renderToStaticMarkup(h(I18nProvider, { lang: 'fr', children: h(KeystonePrefs, { lang: 'fr', theme: 'light' }) }));
+    // Language first (on top), then the display, in one stacked block.
+    expect(html).toMatch(/^<div class="coque-prefs" data-print-hide="true"><div role="group" aria-label="Langue" class="coque-pref">.*<\/div><div role="group" aria-label="Affichage" class="coque-pref">.*<\/div><\/div>$/);
+    expect(html).toMatch(/aria-pressed="true" title="Français" lang="fr">FR</);
+    expect(html).toMatch(/aria-pressed="false" title="English" lang="en">EN</);
+    expect(html).toMatch(/aria-pressed="false" aria-label="Affichage sombre"/);
+    expect(html).toMatch(/aria-pressed="true" aria-label="Affichage clair"/);
+    const en = renderToStaticMarkup(h(I18nProvider, { lang: 'en', children: h(KeystonePrefs, { lang: 'en', theme: 'dark' }) }));
+    expect(en).toMatch(/aria-pressed="true" aria-label="Dark display"/);
+    expect(en).toContain('aria-label="Dark / light display"');
   });
 
-  it('the page header puts it right after the FR / EN toggle; the root layout sets data-theme from the cookie', () => {
-    expect(read('src/components/app/shell/page-header.tsx')).toMatch(/<LangToggle lang=\{lang\} \/>\s*<ThemeToggle theme=\{theme\} \/>/);
+  it('the page header and the top bar end with the pair; nowhere else; the root layout loads the shell and sets data-theme', () => {
+    const header = read('src/components/app/shell/page-header.tsx');
+    expect(header).toContain("import { PageHeader as CoqueHeader } from '@norma/charte/ds/PageHeader';");
+    expect(header).toContain('prefs={<KeystonePrefs lang={lang} theme={theme} />}');
+    expect(read('src/app/(app)/layout.tsx')).toMatch(/<KeystoneTopBar bell=\{bell\} prefs=\{<KeystonePrefs lang=\{lang\} theme=\{theme\} \/>\} \/>/);
+    // The former inline toggles are gone from the header islands and the sidebar.
+    for (const f of ['header-islands.tsx', 'sidebar.tsx']) expect(read(`src/components/app/shell/${f}`)).not.toMatch(/<(LangToggle|ThemeToggle|PrefsStack)\b|function (LangToggle|ThemeToggle)/);
     const layout = read('src/app/layout.tsx');
     expect(layout).toContain('data-theme={theme}');
-    expect(layout).toContain("import '@norma/charte/nocturne.css';");
+    expect(layout).toMatch(/import '@norma\/charte\/nocturne\.css';[\s\S]*import '@norma\/charte\/touch\.css';\s*import '@norma\/charte\/coque\.css';/);
     expect(read('norma/charte/nocturne.css')).toContain(':root[data-theme="light"]');
     expect(read('src/server/session.ts')).toMatch(/getTheme = cache\(async \(\): Promise<Theme> => themeOf\(\(await cookies\(\)\)\.get\(THEME_COOKIE\)\?\.value\)\)/);
   });

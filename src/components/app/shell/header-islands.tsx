@@ -1,18 +1,17 @@
 'use client';
 // Interactive parts of the page header (docs/spec/01 §5, §7.2): project switcher, global search,
-// notifications, language toggle, Export, zone bar. Strings arrive translated from the server.
+// notifications, Export, zone bar. Strings arrive translated from the server. The language / display pair is the
+// charte's PrefsStack (prefs.tsx, Norma 2.0); the search box and the bell button take the classes of norma/charte/coque.css.
 import {
   ArrowsClockwise, At, Bell, BellRinging, CaretDown, CheckSquare, Export, Eye, FileCsv, FilePdf, FileXls, FolderOpen, GitBranch, MagnifyingGlass,
-  Moon, PaperPlaneTilt, Receipt, SealCheck, ShieldWarning, Sun, Truck, Warning,
+  PaperPlaneTilt, Receipt, SealCheck, ShieldWarning, Truck, Warning,
 } from '@phosphor-icons/react/dist/ssr';
 import type { Icon } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition, type RefObject } from 'react';
 import { useI18n } from '@/i18n/client';
-import type { Lang } from '@/i18n/translate';
-import { themeCookie, type Theme } from '@norma/charte/ds/theme';
-import { setLanguage, setZone } from '@/server/actions/preferences';
+import { setZone } from '@/server/actions/preferences';
 import type { ZoneKey } from '@/server/session';
 import { markAllNotificationsReadAction, markNotificationReadAction, searchAction } from './actions';
 import { swapProjectInPath } from './nav-model';
@@ -182,11 +181,12 @@ export function GlobalSearch() {
   const visible = open && query.length >= 2;
   const fresh = result?.query === query;
 
+  // Rendered inside the charte's search box of the header (.coque-header-search, the panel's positioning parent).
   return (
-    <div className={styles.search}>
-      <MagnifyingGlass className={styles.searchIcon} />
+    <>
+      <MagnifyingGlass className="coque-header-search-icon" aria-hidden />
       <input
-        className={cx('input', styles.searchInput)}
+        className="input"
         value={q}
         onChange={(e) => {
           setQ(e.target.value);
@@ -216,7 +216,7 @@ export function GlobalSearch() {
           </div>
         </>
       )}
-    </div>
+    </>
   );
 }
 
@@ -247,14 +247,14 @@ export function Notifications({ items, role, emailOn = false }: { items: Notific
       <button
         ref={triggerRef}
         type="button"
-        className={cx('btn btn-icon btn-secondary', styles.bell)}
+        className="btn btn-icon btn-secondary coque-bell"
         onClick={() => setOpen((o) => !o)}
         title={t('Notifications')}
         aria-label={t('Notifications')}
         aria-expanded={open}
       >
-        <Bell />
-        {unread > 0 && <span className={styles.bellBadge}>{unread}</span>}
+        <Bell aria-hidden />
+        {unread > 0 && <span className="coque-bell-badge">{unread}</span>}
       </button>
       {open && (
         <>
@@ -321,53 +321,6 @@ export function Notifications({ items, role, emailOn = false }: { items: Notific
       )}
       {prefs.dialog}
     </div>
-  );
-}
-
-// ── Language toggle (line 120) ─────────────────────────────────────────────
-export function LangToggle({ lang }: { lang: Lang }) {
-  const router = useRouter();
-  const [, startTransition] = useTransition();
-  return (
-    <Segmented
-      value={lang}
-      onChange={(v) =>
-        startTransition(async () => {
-          await setLanguage(v);
-          router.refresh();
-        })
-      }
-      options={[
-        { value: 'fr' as Lang, label: 'FR' },
-        { value: 'en' as Lang, label: 'EN' },
-      ]}
-    />
-  );
-}
-
-// ── Dark / light display (Norma 1.0), right of the language toggle ──────────────────────────────────────────────
-/**
- * Same as norma/charte/ds/ThemeToggle.tsx (Norma 1.1.0 took Keystone's group name: « Display » is already the « Vue » of
- * its filters, so the group is « Dark / light display », « Affichage »), with Keystone's own DS. Sets data-theme on <html> and
- * the suite's epc2i-theme cookie in the browser, without a round trip; the root layout re-reads the cookie on later pages.
- */
-export function ThemeToggle({ theme: initial }: { theme: Theme }) {
-  const { t } = useI18n();
-  const [theme, setTheme] = useState<Theme>(initial);
-  return (
-    <Segmented
-      label={t('Dark / light display')}
-      value={theme}
-      onChange={(v) => {
-        setTheme(v);
-        document.documentElement.dataset.theme = v;
-        document.cookie = themeCookie(v);
-      }}
-      options={[
-        { value: 'dark' as Theme, label: '', icon: Moon, title: t('Dark display') },
-        { value: 'light' as Theme, label: '', icon: Sun, title: t('Light display') },
-      ]}
-    />
   );
 }
 

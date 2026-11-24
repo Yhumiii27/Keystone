@@ -93,13 +93,13 @@ export function AccountMenu({ account }: { account: SidebarAccount }) {
           </form>
         </div>
       )}
-      <button ref={triggerRef} type="button" className={styles.trigger} onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open}>
-        <div className={styles.avatar}>{account.initials}</div>
-        <div className={styles.who}>
-          <span className={styles.triggerName}>{account.name}</span>
-          <span className={styles.whoRole}>{t(account.roles.length > 1 ? account.roles.find((r) => r.role === account.role)?.label ?? account.title : account.title)}</span>
-        </div>
-        <CaretUpDown className={styles.caret} />
+      <button ref={triggerRef} type="button" className="coque-user" onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open}>
+        <span className="coque-avatar">{account.initials}</span>
+        <span className="coque-who">
+          <span className="coque-who-name">{account.name}</span>
+          <span className="coque-who-role">{t(account.roles.length > 1 ? account.roles.find((r) => r.role === account.role)?.label ?? account.title : account.title)}</span>
+        </span>
+        <CaretUpDown className="coque-user-caret" aria-hidden />
       </button>
     </div>
   );

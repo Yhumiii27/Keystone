@@ -93,7 +93,7 @@ describe('DS primitives render', () => {
 describe('app components render', () => {
   it('KPI tiles and section card', () => {
     const out = html(
-      h(KpiGrid, { min: 160 }, h(KpiTile, { label: 'CPI', value: '0.94', sub: 'sub', tone: 'alert', size: 'lg', icon: Warning })),
+      h(KpiGrid, { min: 160, children: h(KpiTile, { label: 'CPI', value: '0.94', sub: 'sub', tone: 'alert', size: 'lg', icon: Warning }) }),
     );
     expect(out).toContain('--kpi-min:160px');
     expect(out).toContain('class="card elev-sm');

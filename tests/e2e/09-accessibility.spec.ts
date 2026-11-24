@@ -79,7 +79,7 @@ test('keyboard: the skip link is the first stop and moves the focus to the main 
   await viewAs(context, 'pm', 'fr');
   await page.goto('/projects/HLT-026/plan');
   await page.keyboard.press('Tab');
-  const skip = page.locator('a.skip-link');
+  const skip = page.locator('a.coque-skip');
   await expect(skip).toBeFocused();
   await expect(skip).toHaveText('Aller au contenu principal');
   await expect(skip).toBeInViewport();

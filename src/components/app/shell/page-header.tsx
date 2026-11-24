@@ -1,25 +1,31 @@
-// PageHeader — the header every screen renders first (docs/spec/01 §5, §7; docs/spec/02 C-02, C-03).
-// Server Component with client islands. Renders, as siblings inside <main> (gap 18):
-//   <header> breadcrumb (+ project switcher) · title (+ health, Read-only) · search · bell · status date · FR/EN · Export · primary
+// PageHeader — the header every screen renders first (docs/spec/01 §5, §7; docs/spec/02 C-02, C-03), rendered with
+// Norma 2.0's common header (norma/charte/COQUE.md § 3). Server Component with client islands. Renders, as siblings inside
+// <main> (gap 18), in the charte's fixed order:
+//   <header> breadcrumb (+ project switcher) · <h1> title (+ health, Read-only) · global search · actions (Export as a
+//            secondary action, the primary rightmost; the "Actions" menu beyond three) · status date · bell ·
+//            FR | EN stacked over dark | light (PrefsStack, always the last element)
 //   outside banner (screen outside the viewer's workspace)
 //   zone bar (zone-scoped screens)
 // Usage: return <><PageHeader screen="plan" projectCode={code} primary={<…/>} />{…screen body…}</>
-import { CalendarBlank, Eye, GlobeHemisphereEast, House, UserCircle } from '@phosphor-icons/react/dist/ssr';
+import { Eye, GlobeHemisphereEast, House, UserCircle } from '@phosphor-icons/react/dist/ssr';
+import { PageHeader as CoqueHeader } from '@norma/charte/ds/PageHeader';
+import { StatusDate } from '@norma/charte/ds/HeaderTools';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { SCREEN_BY_ID, screenHref, type ScreenId } from '@/config/screens';
 import { HEALTH_LABEL, HEALTH_TAG } from '@/domain/health';
 import { exportFormatsOf } from '@/features/exports/catalog';
 import { businessToday } from '@/server/clock';
-import { getConfig } from '@/server/config';
 import { displayOfIso } from '@/server/db/codes';
 import { dataText, fieldsText, projectLabelText } from '@/i18n/data-text';
 import { getProject, type ProjectRow } from '@/server/dal/projects';
-import { crumbExtraOf, defaultTitleOf, notificationsFor, zoneBarOf } from '@/server/dal/shell';
+import { crumbExtraOf, defaultTitleOf, zoneBarOf } from '@/server/dal/shell';
 import { canEditContract, canEditShipments, roleReadOnly } from '@/domain/rights';
 import { getProjectScope } from '@/server/project-context';
 import { getI18n, getLastProject, getTheme, getViewer, getZone } from '@/server/session';
-import { ExportButton, GlobalSearch, LangToggle, Notifications, ProjectSwitcher, ThemeToggle, ZoneSeg } from './header-islands';
+import { shellBell } from './bell';
+import { ExportButton, GlobalSearch, ProjectSwitcher, ZoneSeg } from './header-islands';
+import { KeystonePrefs } from './prefs';
 import { PROJECT_EDITABLE, crumbBase, isOutside } from './nav-model';
 import { projectOptionHaystack, projectOptionSub } from './project-options';
 import type { ProjectOptionView } from './types';
@@ -77,16 +83,16 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
 
   const extra = crumbExtra !== undefined ? crumbExtra : await crumbExtraOf(screen, { role: viewer, code, zone, taskId });
   // R-148: the contract's reference and payment terms are typed text (shown as typed); the other extras are Keystone's.
+  // COQUE.md § 3: the tool's name is not in the breadcrumb (it is in the sidebar's brand) — Home and My projects keep only
+  // their extra (the viewer's title), else no breadcrumb text.
+  const base = crumbBase(screen);
   const crumbText = extra && crumbExtra === undefined && DATA_CRUMB_SCREENS.has(screen)
-    ? `${t(crumbBase(screen))} · ${fieldsText(extra, t, lang)}`
-    : t(crumbBase(screen) + (extra ? ' · ' + extra : ''));
+    ? `${t(base)} · ${fieldsText(extra, t, lang)}`
+    : base === 'Keystone'
+      ? (extra ? t(extra) : '')
+      : t(base + (extra ? ' · ' + extra : ''));
 
-  const [rawNotifs, defTitle] = await Promise.all([
-    notificationsFor(viewer),
-    title === undefined ? defaultTitleOf(screen, { taskId, role: viewer }) : Promise.resolve(null),
-  ]);
-  // R-148: a notification's sub-line joins typed fields (titles, people) with Keystone's amounts and dates.
-  const notifs = rawNotifs.map((n) => ({ ...n, title: t(n.title), sub: fieldsText(n.sub, t, lang), when: t(n.when) }));
+  const [defTitle, bell] = await Promise.all([title === undefined ? defaultTitleOf(screen, { taskId, role: viewer }) : Promise.resolve(null), shellBell()]);
 
   let options: ProjectOptionView[] = [];
   if (project) {
@@ -110,75 +116,79 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
   const health = project ? healthView(project) : null;
   const zoneBar = def.scope === 'zone' ? await zoneBarOf(screen, zone) : null;
 
+  const crumbs: ReactNode[] = [
+    ...(crumbText ? [crumbText] : []),
+    ...(project
+      ? [
+          <ProjectSwitcher
+            key="project"
+            current={project.code}
+            currentName={projectLabelText(project, lang)}
+            options={options}
+            scopeAvail={scope.scopeAvail}
+            mineCount={scope.mineCount}
+            param={isProject ? undefined : 'project'}
+          />,
+        ]
+      : []),
+  ];
+
   return (
-    <>
-      <header className={styles.header}>
-        <div className={styles.left}>
-          <div className={styles.crumb}>
-            {crumbText}
-            {project && (
-              <>
-                <span className={styles.sep}>/</span>
-                <ProjectSwitcher
-                  current={project.code}
-                  currentName={projectLabelText(project, lang)}
-                  options={options}
-                  scopeAvail={scope.scopeAvail}
-                  mineCount={scope.mineCount}
-                  param={isProject ? undefined : 'project'}
-                />
-              </>
-            )}
+    <CoqueHeader
+      crumbs={crumbs}
+      title={title ?? t(defTitle ?? def.title)}
+      titleAside={
+        <>
+          {health && <span className={health.cls}>{t(health.label)}</span>}
+          {readOnly && (
+            <span className={`tag tag-outline ${styles.roTag}`}>
+              <Eye aria-hidden />
+              {t('Read-only')}
+            </span>
+          )}
+        </>
+      }
+      search={<GlobalSearch />}
+      actions={<ExportButton screen={screen} code={project?.code ?? code} formats={exportFormatsOf(screen)} task={taskId ?? null} />}
+      primary={showPrimary ? primary : undefined}
+      // R-013: the business date ("25 Sep 2026" on the demo data set), translated as the former STATUS_DATE ("25 sept. 2026").
+      date={<StatusDate>{`${t('Status date ·')} ${t(displayOfIso(today))}`}</StatusDate>}
+      bell={
+        <span className={styles.headerBell}>
+          {bell}
+        </span>
+      }
+      prefs={<KeystonePrefs lang={lang} theme={theme} />}
+      // The "outside my workspace" banner is rendered here rather than through the charte's `outside` (which also hides the
+      // actions): an outside screen keeps its Export (reading), its primary is already hidden (`showPrimary`).
+      toolbar={
+        <>
+          {outside && (
+            <div className="coque-outside" role="note">
+              <Eye size={16} className={styles.accentIcon} aria-hidden />
+              <span className={styles.outsideText}>{t('Outside my workspace · Read-only · ' + viewer.title)}</span>
+              <Link href={screenHref('home')} className={`btn btn-ghost ${styles.homeBtn}`}>
+                <House aria-hidden />
+                {t('Home')}
+              </Link>
+            </div>
+          )}
+          {zoneBar && (
+          <div className={styles.zoneBar}>
+            <span className={styles.zoneLabel}>
+              <GlobeHemisphereEast size={15} className={styles.accentIcon} aria-hidden />
+              {t('Zone')}
+            </span>
+            <ZoneSeg zone={zone} options={zoneBar.options.map((o) => ({ ...o, label: t(o.label) }))} />
+            <span className={styles.zoneLabel}>
+              <UserCircle size={15} className={styles.mutedIcon} aria-hidden />
+              {t(zoneBar.ownerLabel)}
+              <span className={styles.zoneName}>{zoneBar.ownerName}</span>
+            </span>
           </div>
-          <div className={styles.titleRow}>
-            <h2 className={styles.title}>{title ?? t(defTitle ?? def.title)}</h2>
-            {health && <span className={health.cls}>{t(health.label)}</span>}
-            {readOnly && (
-              <span className={`tag tag-outline ${styles.roTag}`}>
-                <Eye />
-                {t('Read-only')}
-              </span>
-            )}
-          </div>
-        </div>
-        <GlobalSearch />
-        <Notifications items={notifs} role={viewer.role} emailOn={getConfig().mail.transport !== 'none'} />
-        <div className={styles.statusDate}>
-          <CalendarBlank />
-          {/* R-013: the business date ("25 Sep 2026" on the demo data set), translated as the former STATUS_DATE ("25 sept. 2026"). */}
-          {`${t('Status date ·')} ${t(displayOfIso(today))}`}
-        </div>
-        <LangToggle lang={lang} />
-        <ThemeToggle theme={theme} />
-        <div className={styles.actions}>
-          <ExportButton screen={screen} code={project?.code ?? code} formats={exportFormatsOf(screen)} task={taskId ?? null} />
-          {showPrimary && primary}
-        </div>
-      </header>
-      {outside && (
-        <div className={styles.outside}>
-          <Eye size={16} className={styles.accentIcon} />
-          <span className={styles.outsideText}>{t('Outside my workspace · Read-only · ' + viewer.title)}</span>
-          <Link href={screenHref('home')} className={`btn btn-ghost ${styles.homeBtn}`}>
-            <House />
-            {t('Home')}
-          </Link>
-        </div>
-      )}
-      {zoneBar && (
-        <div className={styles.zoneBar}>
-          <span className={styles.zoneLabel}>
-            <GlobeHemisphereEast size={15} className={styles.accentIcon} />
-            {t('Zone')}
-          </span>
-          <ZoneSeg zone={zone} options={zoneBar.options.map((o) => ({ ...o, label: t(o.label) }))} />
-          <span className={styles.zoneLabel}>
-            <UserCircle size={15} className={styles.mutedIcon} />
-            {t(zoneBar.ownerLabel)}
-            <span className={styles.zoneName}>{zoneBar.ownerName}</span>
-          </span>
-        </div>
-      )}
-    </>
+          )}
+        </>
+      }
+    />
   );
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { makeT } from '@/i18n/translate';
-import { buildSidebar, crumbBase, matchScreen, searchNav, swapProjectInPath } from './nav-model';
+import { matchPages } from '@norma/charte/ds/coque-rules';
+import { buildSidebar, crumbBase, matchScreen, swapProjectInPath } from './nav-model';
 
 describe('matchScreen', () => {
   it('maps URLs to registry screens', () => {
@@ -84,15 +85,14 @@ describe('buildSidebar (docs/spec/01 §4.3–4.6)', () => {
     expect(t.sections[0].rows[0]).toMatchObject({ entry: { id: 'mywork', label: 'My tasks' } });
   });
 
-  it('page search matches FR and EN labels, accessible pages only, max 8', () => {
+  it('page search (Norma 2.0 PageSearch): translated labels and sections, accessible pages only', () => {
     const m = buildSidebar({ ...base, role: 'director', active: null });
     const fr = makeT('fr');
-    expect(searchNav(m.searchable, 'risq', fr).map((h) => h.id)).toEqual(['risks']);
-    expect(searchNav(m.searchable, 'risk', fr).map((h) => h.id)).toEqual(['risks']);
-    expect(searchNav(m.searchable, 'e', fr)).toHaveLength(8);
-    const eng = searchNav(m.searchable, 'P&ID', fr)[0];
-    expect(eng.section).toBe('Project engineering');
+    const pages = (entries: typeof m.searchable) => entries.map((e) => ({ id: e.id, label: fr(e.label), section: e.section ? fr(e.section) : undefined }));
+    expect(matchPages(pages(m.searchable), 'risq').map((h) => h.id)).toEqual(['risks']);
+    const eng = m.searchable.find((e) => matchPages(pages([e]), 'P&ID').length);
+    expect(eng?.section).toBe('Project engineering');
     const member = buildSidebar({ ...base, role: 'member', active: null });
-    expect(searchNav(member.searchable, 'budget', fr)).toEqual([]);
+    expect(matchPages(pages(member.searchable), 'budget')).toEqual([]);
   });
 });

@@ -13,7 +13,7 @@ test('tablet: the sidebar is a drawer behind the Menu button; Escape closes it (
   await page.setViewportSize({ width: 900, height: 1200 });
   await page.goto('/projects/HLT-026/site');
   const menu = page.getByRole('button', { name: 'Menu', exact: true });
-  const sidebar = page.locator('#ks-sidebar');
+  const sidebar = page.locator('#coque-sidebar');
   await expect(menu).toBeVisible();
   await expect(menu).toHaveAttribute('aria-expanded', 'false');
   await expect(sidebar).toBeHidden();
