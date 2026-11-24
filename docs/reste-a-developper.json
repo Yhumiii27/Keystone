@@ -1,6 +1,6 @@
 {
  "generated": "2026-10-10",
- "updated": "2026-11-23",
+ "updated": "2026-11-24",
  "branch": "main-2a2fep",
  "history": [
   {
@@ -310,6 +310,10 @@
   {
    "date": "2026-11-23",
    "text": "Connexion centrale par Clavis : personne créée depuis le jeton (KEYSTONE_PERSONS_FROM_TOKEN, Yhumiii27/Keystone#78) ; rôle et ouverture de Keystone lus dans clavis.pub_acces à la connexion et à chaque requête (KEYSTONE_ACCESS_FROM_CLAVIS)."
+  },
+  {
+   "date": "2026-11-24",
+   "text": "Clavis : le titre affiché suit le rôle accordé dans clavis.pub_acces (il gardait celui de la connexion) — trouvé à la répétition de l'installation."
   }
  ],
  "items": [

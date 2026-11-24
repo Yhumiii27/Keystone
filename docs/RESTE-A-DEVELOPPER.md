@@ -1,6 +1,6 @@
 # Keystone PM — reste à développer
 
-Inventaire initial du 2026-10-10, mis à jour le 2026-11-23 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
+Inventaire initial du 2026-10-10, mis à jour le 2026-11-24 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
 
 **Méthode.** Onze relectures indépendantes ont croisé les 195 décisions produit (`docs/DECISIONS.md`), les écarts et questions ouvertes de `DELIVERY-1.md` à `DELIVERY-6.md`, `docs/BACKLOG.md`, les marqueurs du code (TODO, simulations, constantes du prototype), la spécification fonctionnelle (`docs/spec/`) et la préparation à la production. Chaque point a ensuite été vérifié dans le code, catégorie par catégorie : ce qui existait déjà a été écarté (153 candidats), les doublons fusionnés, puis un contrôle de complétude a ajouté ce qui manquait. Le détail, avec les preuves relevées dans le code pour chaque point, est dans `docs/reste-a-developper.json` ; ce document et la page sont produits par `npm run remaining:page`.
 
@@ -1011,6 +1011,7 @@ Au-delà de la décision C-9 (devise par contrat et commande, consolidation en e
 
 ## 3. Mises à jour
 
+- 2026-11-24 — Clavis : le titre affiché suit le rôle accordé dans clavis.pub_acces (il gardait celui de la connexion) — trouvé à la répétition de l'installation.
 - 2026-11-23 — Connexion centrale par Clavis : personne créée depuis le jeton (KEYSTONE_PERSONS_FROM_TOKEN, Yhumiii27/Keystone#78) ; rôle et ouverture de Keystone lus dans clavis.pub_acces à la connexion et à chaque requête (KEYSTONE_ACCESS_FROM_CLAVIS).
 - 2026-11-10 — Lots intégrés : planning (D9-08 à D9-12), corrections Matrix des fériés et seuils (D9-04), portail client retiré (D9-06, D9-25, D9-26), P1 inspections et FAT, P4 change, P2 conformité CE.
 - 2026-11-10 — D9-30 : demande déposée chez Codex (lire les projets dans keystone.pub_projets), Yhumiii27/Codex#28.

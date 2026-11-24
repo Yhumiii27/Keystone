@@ -181,7 +181,11 @@ describe('Entra ID sign-in', () => {
       expect(await getViewer()).toMatchObject({ name: 'Julien Wagner', role: 'quality', roles: ['quality'] });
       // A change in Clavis applies at the next page.
       await db.execute(sql`update clavis.pub_acces set role = 'pm' where application = 'keystone'`);
-      expect(await getViewer()).toMatchObject({ role: 'pm', roles: ['pm'] });
+      await db.execute(sql`update persons set job_title = null where id = (select person_id from users where entra_object_id = ${oid})`);
+      const v = await getViewer();
+      expect(v).toMatchObject({ role: 'pm', roles: ['pm'] });
+      // The title follows the role Clavis grants now (or stays the person's job title), never the role held at sign-in.
+      expect(v.title).toBe('Project manager');
       // Access closed (withdrawn, person deactivated, application closed): the session ends, a new sign-in is refused.
       await db.execute(sql`update clavis.pub_acces set ouvert = false where application = 'keystone'`);
       await expect(getViewer()).rejects.toThrow('REDIRECT:/sign-in?error=session');

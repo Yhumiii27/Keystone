@@ -6,7 +6,7 @@ import 'server-only';
 import { cookies } from 'next/headers';
 import type { Persona } from '@/config/personas';
 import type { RoleKey } from '@/config/screens';
-import { activeRoleOf, rolesFromClavisAccess } from '@/domain/auth';
+import { activeRoleOf, rolesFromClavisAccess, userTitle } from '@/domain/auth';
 import { getUserAccount, type UserAccount } from '@/server/dal/users';
 import { readClavisAccess } from '@/server/integrations/clavis/access';
 import { accessFromClavis, sessionConfig } from './config';
@@ -43,7 +43,8 @@ export async function entraViewer(): Promise<Persona | null> {
       return null;
     }
     const held = activeRoleOf(roles, s.role);
-    return held ? viewerOfAccount({ ...a, roles }, held) : null;
+    // The title stored at sign-in names the role held then: follow the role Clavis grants now.
+    return held ? viewerOfAccount({ ...a, roles, title: userTitle(a.jobTitle, roles) }, held) : null;
   }
   const role = activeRoleOf(a.roles, s.role);
   return role ? viewerOfAccount(a, role) : null;
