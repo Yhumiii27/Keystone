@@ -6,6 +6,7 @@ import type {
   BomScope, CheckSeverity, CheckStatus, Discipline, DocRecipient, DrawingState, ImportDeltaKind, OutputState, PidRole, PidTagKind, PlcType, StepState,
 } from '../codes';
 import { id, timestamps } from './_common';
+import { allOf, filled, oneOf } from './_checks';
 import { documents } from './documents';
 import { persons } from './organisation';
 import { activities } from './planning';
@@ -23,7 +24,9 @@ export const engDisciplines = pgTable('eng_disciplines', {
   /** Business tools ("TIA Portal · EcoStruxure"). */
   tools: text('tools').notNull(),
   position: integer('position').notNull(),
-});
+}, (t) => [
+  oneOf<Discipline>()('eng_disciplines_code_domain', t.code, ['auto', 'process', 'meca', 'elec']),
+]);
 
 /**
  * Documents a discipline consumes (ENG_INPUTS 3739, HLT-026 × 12): the revision in use and whether the referent
@@ -49,7 +52,11 @@ export const engInputs = pgTable(
     position: integer('position').notNull(),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.consumer, t.documentNumber)],
+  (t) => [
+  unique().on(t.projectId, t.consumer, t.documentNumber),
+  oneOf<Discipline>()('eng_inputs_consumer_domain', t.consumer, ['auto', 'process', 'meca', 'elec']),
+  oneOf<DocRecipient>()('eng_inputs_provider_party_domain', t.providerParty, ['client', 'auto', 'site', 'process', 'meca', 'elec', 'achats']),
+],
 );
 
 /** Consistency rules between disciplines (ENG_RULES 3740): "process-elec" → "Process ↔ Electrical", "revision". */
@@ -57,7 +64,9 @@ export const engConsistencyRules = pgTable('eng_consistency_rules', {
   pair: text('pair').primaryKey(),
   label: text('label').notNull(),
   position: integer('position').notNull(),
-});
+}, (t) => [
+  filled('eng_consistency_rules_label_filled', t.label),
+]);
 
 /** Inconsistencies detected at each import (ENG_CHECKS 3741, HLT-026 × 10, C-01…C-10). */
 export const engChecks = pgTable(
@@ -80,7 +89,14 @@ export const engChecks = pgTable(
     position: integer('position').notNull(),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.number)],
+  (t) => [
+  unique().on(t.projectId, t.number),
+  filled('eng_checks_number_filled', t.number),
+  oneOf<CheckSeverity>()('eng_checks_severity_domain', t.severity, ['warning', 'info', 'blocking']),
+  filled('eng_checks_title_filled', t.title),
+  oneOf<Discipline>()('eng_checks_owner_domain', t.owner, ['auto', 'process', 'meca', 'elec']),
+  oneOf<CheckStatus>()('eng_checks_status_domain', t.status, ['open', 'in_progress', 'resolved', 'sent_back']),
+],
 );
 
 /** Lists Keystone generates for the next service (ENG_OUTPUTS 3742, HLT-026 × 6). Blocked → Ready is derived. */
@@ -102,7 +118,14 @@ export const engOutputs = pgTable(
     generatedByName: text('generated_by_name'),
     position: integer('position').notNull(),
   },
-  (t) => [unique().on(t.projectId, t.number)],
+  (t) => [
+  unique().on(t.projectId, t.number),
+  filled('eng_outputs_number_filled', t.number),
+  oneOf<Discipline>()('eng_outputs_discipline_domain', t.discipline, ['auto', 'process', 'meca', 'elec']),
+  filled('eng_outputs_name_filled', t.name),
+  allOf<DocRecipient>()('eng_outputs_recipients_domain', t.recipients, ['client', 'auto', 'site', 'process', 'meca', 'elec', 'achats']),
+  oneOf<OutputState>()('eng_outputs_state_domain', t.state, ['blocked', 'ready', 'partial', 'stale']),
+],
 );
 
 /** Recent changes & impact (ENG_CHANGES 3743, HLT-026 × 4) and the changes recorded by imports in Keystone. */
@@ -115,14 +138,20 @@ export const engChanges = pgTable('eng_changes', {
   /** Newest first (seed order); entries added in Keystone get a lower value. */
   sortOrder: integer('sort_order').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [index('eng_changes_project_id_idx').on(t.projectId)]);
+}, (t) => [
+  index('eng_changes_project_id_idx').on(t.projectId),
+  allOf<DocRecipient>()('eng_changes_recipients_domain', t.recipients, ['client', 'auto', 'site', 'process', 'meca', 'elec', 'achats']),
+]);
 
 /** Source tools of the import wizard (ENG_TOOLS 3744): "TIA Portal — PLC tag table" · Automation. */
 export const engImportTools = pgTable('eng_import_tools', {
   position: integer('position').primaryKey(),
   label: text('label').notNull(),
   discipline: text('discipline').$type<Discipline>().notNull(),
-});
+}, (t) => [
+  filled('eng_import_tools_label_filled', t.label),
+  oneOf<Discipline>()('eng_import_tools_discipline_domain', t.discipline, ['auto', 'process', 'meca', 'elec']),
+]);
 
 /** Column mapping of the import wizard (ENG_MAP 3745): source column → Keystone field. */
 export const engColumnMappings = pgTable('eng_column_mappings', {
@@ -136,7 +165,10 @@ export const engImportDeltas = pgTable('eng_import_deltas', {
   position: integer('position').primaryKey(),
   kind: text('kind').$type<ImportDeltaKind>().notNull(),
   label: text('label').notNull(),
-});
+}, (t) => [
+  oneOf<ImportDeltaKind>()('eng_import_deltas_kind_domain', t.kind, ['new', 'changed']),
+  filled('eng_import_deltas_label_filled', t.label),
+]);
 
 /** Imports run with the wizard ("Import · freeze this revision as input"). */
 export const engImports = pgTable('eng_imports', {
@@ -151,7 +183,9 @@ export const engImports = pgTable('eng_imports', {
   importedByName: text('imported_by_name').notNull(),
   importedByPersonId: uuid('imported_by_person_id').references(() => persons.id),
   importedAt: timestamp('imported_at', { withTimezone: true }).notNull(),
-});
+}, (t) => [
+  oneOf<Discipline>()('eng_imports_consumer_domain', t.consumer, ['auto', 'process', 'meca', 'elec']),
+]);
 
 // ── P&ID validation ────────────────────────────────────────────────────────────────────────────────────
 
@@ -173,7 +207,9 @@ export const pidSheets = pgTable('pid_sheets', {
   checkerPersonId: uuid('checker_person_id').references(() => persons.id),
   status: text('status').$type<DrawingState>().notNull(),
   ...timestamps,
-});
+}, (t) => [
+  oneOf<DrawingState>()('pid_sheets_status_domain', t.status, ['obsolete', 'released', 'wip', 'under_review']),
+]);
 
 /** Tags of the P&ID (PID_TAGS 3585, 24) and their mapping to a project BOM reference (`pidOv`). Status is derived. */
 export const pidTags = pgTable(
@@ -203,7 +239,13 @@ export const pidTags = pgTable(
     position: integer('position').notNull(),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.tag)],
+  (t) => [
+  unique().on(t.projectId, t.tag),
+  oneOf<PidTagKind>()('pid_tags_kind_domain', t.kind, ['equipment', 'instrument']),
+  oneOf<BomScope>()('pid_tags_scope_domain', t.scope, ['client', 'keystone', 'overlay']),
+  oneOf<PlcType>()('pid_tags_plc_type_domain', t.plcType, ['P', 'S', 'L']),
+  oneOf<PidRole>()('pid_tags_role_domain', t.role, ['sensor', 'actuator', 'ctrl', 'passive']),
+],
 );
 
 /** Process validation steps (PID_STEPS 3611): tags extracted → mapping → overlay agreed → review → released for construction. */
@@ -219,5 +261,9 @@ export const pidValidationSteps = pgTable(
     /** "P. Noguès", "R. Aubert · N. Bensaïd", "Quality · Engineering". */
     who: text('who').notNull(),
   },
-  (t) => [primaryKey({ columns: [t.projectId, t.position] })],
+  (t) => [
+  primaryKey({ columns: [t.projectId, t.position] }),
+  filled('pid_validation_steps_label_filled', t.label),
+  oneOf<StepState>()('pid_validation_steps_state_domain', t.state, ['done', 'todo', 'doing']),
+],
 );

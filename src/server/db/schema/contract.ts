@@ -9,6 +9,7 @@
 import { date, index, integer, pgTable, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { AmendmentStatus, BillingModel, BondType, ContractType, PaymentMilestoneStatus, PaymentRule } from '../codes';
 import { id, keur, num, rowVersion, timestamps } from './_common';
+import { CURRENCY_RE, filled, oneOf, shaped, within } from './_checks';
 import { changeRequests } from './change';
 import { documents } from './documents';
 import { clients } from './organisation';
@@ -57,7 +58,12 @@ export const contracts = pgTable('contracts', {
   /** R-010: optimistic locking (see rowVersion). */
   version: rowVersion(),
   ...timestamps,
-});
+}, (t) => [
+  oneOf<ContractType>()('contracts_type_domain', t.type, ['lump_sum_epc', 'unit_rates', 'cost_plus', 'framework']),
+  shaped('contracts_currency_shape', t.currency, CURRENCY_RE),
+  oneOf<PaymentRule>()('contracts_payment_rule_domain', t.paymentRule, ['net', 'days_eom', 'eom_days']),
+  within('contracts_retention_pct_range', t.retentionPct, 0, 100),
+]);
 
 /** Amendments (avenants). Only signed ones add to the contract value. */
 export const contractAmendments = pgTable('contract_amendments', {
@@ -79,7 +85,11 @@ export const contractAmendments = pgTable('contract_amendments', {
   documentRef: text('document_ref'),
   documentId: uuid('document_id').references(() => documents.id, { onDelete: 'set null' }),
   ...timestamps,
-}, (t) => [index('contract_amendments_contract_id_idx').on(t.contractId)]);
+}, (t) => [
+  index('contract_amendments_contract_id_idx').on(t.contractId),
+  filled('contract_amendments_subject_filled', t.subject),
+  oneOf<AmendmentStatus>()('contract_amendments_status_domain', t.status, ['draft', 'sent_for_signature', 'awaiting_signature', 'signed']),
+]);
 
 /** Bonds and guarantees. In force unless released. */
 export const contractBonds = pgTable('contract_bonds', {
@@ -93,7 +103,10 @@ export const contractBonds = pgTable('contract_bonds', {
   validUntil: date('valid_until', { mode: 'string' }),
   releasedOn: date('released_on', { mode: 'string' }),
   ...timestamps,
-}, (t) => [index('contract_bonds_contract_id_idx').on(t.contractId)]);
+}, (t) => [
+  index('contract_bonds_contract_id_idx').on(t.contractId),
+  oneOf<BondType>()('contract_bonds_type_domain', t.type, ['warranty', 'performance', 'advance_payment', 'retention', 'parent_company']),
+]);
 
 /**
  * Billing plan of a project (BILLING 3541): billing model and, for projects without a contract, the contract value
@@ -104,7 +117,9 @@ export const billingPlans = pgTable('billing_plans', {
   model: text('model').$type<BillingModel>().notNull(),
   contractValueKeur: keur('contract_value_keur'),
   ...timestamps,
-});
+}, (t) => [
+  oneOf<BillingModel>()('billing_plans_model_domain', t.model, ['client_milestones', 'client_monthly_progress', 'client_fixed_price', 'internal_capex']),
+]);
 
 /**
  * Payment milestones: contractual ones (`contractId` set — share of the contract value, contractual date, status)
@@ -137,7 +152,13 @@ export const paymentMilestones = pgTable(
     version: rowVersion(),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.number), index('payment_milestones_contract_id_idx').on(t.contractId)],
+  (t) => [
+  unique().on(t.projectId, t.number),
+  index('payment_milestones_contract_id_idx').on(t.contractId),
+  filled('payment_milestones_label_filled', t.label),
+  within('payment_milestones_share_pct_range', t.sharePct, 0, 100),
+  oneOf<PaymentMilestoneStatus>()('payment_milestones_status_domain', t.status, ['planned', 'invoiced', 'paid']),
+],
 );
 
 /**
@@ -158,7 +179,10 @@ export const customerInvoices = pgTable('customer_invoices', {
   /** "Note on the invoice". */
   note: text('note'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  filled('customer_invoices_number_filled', t.number),
+  shaped('customer_invoices_currency_shape', t.currency, CURRENCY_RE),
+]);
 
 /**
  * Portfolio cash forecast, next 6 months (CASH_M 3542 with the prototype's cash-in / cash-out arrays, logic 4518):

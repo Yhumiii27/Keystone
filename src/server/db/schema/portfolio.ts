@@ -6,6 +6,7 @@ import type { CalendarCode, CostType, MachineTypeCode, StageCode, StageGroup, Tr
 import type { PackFamily } from '@/domain/engineering-pack';
 import type { ProjectCategory } from '@/domain/project-category';
 import { id, keur, months, num, timestamps } from './_common';
+import { CODE3_RE, CURRENCY_RE, filled, numbered, oneOf, ordered, shaped, within } from './_checks';
 import { clients, countries, persons, zones } from './organisation';
 
 // ── Lifecycle reference ────────────────────────────────────────────────────────────────────────────────
@@ -24,7 +25,12 @@ export const lifecycleStages = pgTable('lifecycle_stages', {
   description: text('description').notNull(),
   /** GATES (French) — entry gate shown in the "Move to" menu; null for Initiative. */
   entryGate: text('entry_gate'),
-});
+}, (t) => [
+  oneOf<StageCode>()('lifecycle_stages_code_domain', t.code, ['initiative', 'aps', 'apd', 'etudes', 'approvisionnements', 'fabrication_assemblage', 'fat', 'expedition', 'chantier', 'mise_en_service_sat', 'garantie', 'clos', 'annule']),
+  filled('lifecycle_stages_label_filled', t.label),
+  filled('lifecycle_stages_short_label_filled', t.shortLabel),
+  oneOf<StageGroup>()('lifecycle_stages_stage_group_domain', t.group, ['pipeline', 'execution', 'warranty', 'terminal']),
+]);
 
 /** Allowed transitions (TRANS 3146): next stage in order, or 'annule'; none from Clos / Annulé. */
 export const lifecycleTransitions = pgTable(
@@ -47,7 +53,10 @@ export const stageDeliverableDefs = pgTable(
     position: integer('position').notNull(),
     label: text('label').notNull(),
   },
-  (t) => [unique().on(t.stage, t.position)],
+  (t) => [
+  unique().on(t.stage, t.position),
+  filled('stage_deliverable_defs_label_filled', t.label),
+],
 );
 
 // ── Machine types and project templates ────────────────────────────────────────────────────────────────
@@ -71,7 +80,12 @@ export const machineTypes = pgTable('machine_types', {
   description: text('description'),
   calendar: text('calendar').$type<CalendarCode>(),
   ...timestamps,
-});
+}, (t) => [
+  filled('machine_types_label_filled', t.label),
+  within('machine_types_deposit_pct_range', t.depositPct, 0, 100),
+  within('machine_types_delivery_pct_range', t.deliveryPct, 0, 100),
+  within('machine_types_acceptance_pct_range', t.acceptancePct, 0, 100),
+]);
 
 /** Standard phases of a machine type (NP_TEMPLATES[mt].phases; edited on the Machine types screen). */
 export const machineTypePhases = pgTable(
@@ -87,7 +101,10 @@ export const machineTypePhases = pgTable(
      */
     perEquipment: boolean('per_equipment').notNull().default(false),
   },
-  (t) => [primaryKey({ columns: [t.machineTypeCode, t.position] })],
+  (t) => [
+  primaryKey({ columns: [t.machineTypeCode, t.position] }),
+  filled('machine_type_phases_name_filled', t.name),
+],
 );
 
 /** Reference cost categories of a machine type, k€ (NP_TEMPLATES[mt].cats). */
@@ -100,7 +117,11 @@ export const machineTypeCostCategories = pgTable(
     costType: text('cost_type').$type<CostType>().notNull(),
     budgetKeur: keur('budget_keur').notNull(),
   },
-  (t) => [primaryKey({ columns: [t.machineTypeCode, t.position] })],
+  (t) => [
+  primaryKey({ columns: [t.machineTypeCode, t.position] }),
+  filled('machine_type_cost_categories_name_filled', t.name),
+  oneOf<CostType>()('machine_type_cost_categories_cost_type_domain', t.costType, ['labor', 'material', 'equipment', 'subcontract', 'fees', 'reserve']),
+],
 );
 
 /** ITP inspection systems of a machine type (ITP_TEMPLATES 3716) — the systems of a project's inspection plan. */
@@ -111,7 +132,10 @@ export const machineTypeItpSystems = pgTable(
     position: integer('position').notNull(),
     name: text('name').notNull(),
   },
-  (t) => [primaryKey({ columns: [t.machineTypeCode, t.position] })],
+  (t) => [
+  primaryKey({ columns: [t.machineTypeCode, t.position] }),
+  filled('machine_type_itp_systems_name_filled', t.name),
+],
 );
 
 /**
@@ -187,6 +211,7 @@ export const machineCatalogueEntries = pgTable('machine_catalogue_entries', {
   check('machine_catalogue_entries_status_check', sql`${t.status} in ('draft', 'published', 'retired')`),
   check('machine_catalogue_entries_options_check', sql`jsonb_typeof(${t.options}) = 'array'`),
   check('machine_catalogue_entries_published_check', sql`${t.status} = 'draft' or (${t.publishedAt} is not null and ${t.indicativePriceKeur} is not null and ${t.leadTimeWeeks} is not null)`),
+  filled('machine_catalogue_entries_label_filled', t.label),
 ]);
 
 /** New-project templates (NP_TEMPLATES 3179, incl. 'blank'; NP_TEMPLATES_OLD is ignored). French data. */
@@ -202,7 +227,10 @@ export const projectTemplates = pgTable('project_templates', {
   activitiesSummary: text('activities_summary').notNull(),
   calendar: text('calendar').$type<CalendarCode>().notNull(),
   sortOrder: integer('sort_order').notNull(),
-});
+}, (t) => [
+  filled('project_templates_code_filled', t.code),
+  filled('project_templates_name_filled', t.name),
+]);
 
 export const projectTemplatePhases = pgTable(
   'project_template_phases',
@@ -211,7 +239,10 @@ export const projectTemplatePhases = pgTable(
     position: integer('position').notNull(),
     name: text('name').notNull(),
   },
-  (t) => [primaryKey({ columns: [t.templateCode, t.position] })],
+  (t) => [
+  primaryKey({ columns: [t.templateCode, t.position] }),
+  filled('project_template_phases_name_filled', t.name),
+],
 );
 
 export const projectTemplateCostCategories = pgTable(
@@ -223,7 +254,11 @@ export const projectTemplateCostCategories = pgTable(
     costType: text('cost_type').$type<CostType>().notNull(),
     budgetKeur: keur('budget_keur').notNull(),
   },
-  (t) => [primaryKey({ columns: [t.templateCode, t.position] })],
+  (t) => [
+  primaryKey({ columns: [t.templateCode, t.position] }),
+  filled('project_template_cost_categories_name_filled', t.name),
+  oneOf<CostType>()('project_template_cost_categories_cost_type_domain', t.costType, ['labor', 'material', 'equipment', 'subcontract', 'fees', 'reserve']),
+],
 );
 
 // ── Projects ───────────────────────────────────────────────────────────────────────────────────────────
@@ -305,6 +340,15 @@ export const projects = pgTable('projects', {
   check('projects_category_check', sql`${t.category} in ('client', 'rd')`),
   check('projects_capex_code_check', sql`${t.capexCode} ~ '^CPX-[A-Z]{3}-[0-9]{4}-[0-9]{2,}$'`),
   check('projects_besoin_ref_check', sql`${t.besoinRef} is null or (${t.capexCode} is not null and ${t.besoinRef} ~ '^CPX-[A-Z]{3}-[0-9]{4}-[0-9]{2,}/B[0-9]{2,}$' and starts_with(${t.besoinRef}, ${t.capexCode} || '/'))`),
+  shaped('projects_code_shape', t.code, '^[A-Z]{3}-[0-9]{3,}$'),
+  shaped('projects_number_shape', t.number, numbered('#', 3)),
+  shaped('projects_short_code_shape', t.shortCode, CODE3_RE),
+  filled('projects_name_filled', t.name),
+  shaped('projects_analytic_code_shape', t.analyticCode, '^[A-Z]{3}[0-9]{3,}$'),
+  within('projects_progress_range', t.progress, 0, 1),
+  shaped('projects_currency_shape', t.currency, CURRENCY_RE),
+  within('projects_contingency_pct_range', t.contingencyPct, 0, null),
+  ordered('projects_planned_finish_date_order', t.plannedStartDate, t.plannedFinishDate),
 ]);
 
 /**
@@ -410,5 +454,9 @@ export const stageTransitions = pgTable(
     revertsTransitionId: uuid('reverts_transition_id').references((): AnyPgColumn => stageTransitions.id),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [unique().on(t.projectId, t.seq)],
+  (t) => [
+  unique().on(t.projectId, t.seq),
+  oneOf<TransitionMode>()('stage_transitions_mode_domain', t.mode, ['auto', 'forced', 'revert']),
+  oneOf<ValidationStatus>()('stage_transitions_validation_status_domain', t.validationStatus, ['pending', 'approved', 'rejected']),
+],
 );

@@ -5,6 +5,7 @@
 import { boolean, date, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { HoursMatching, LeaveType, RateMultiplierKey, WhatIfActionKind, WhatIfLeverCode, WhatIfPriority } from '../codes';
 import { id, keur, num, timestamps } from './_common';
+import { COUNTRY_RE, filled, oneOf, ordered, shaped, within } from './_checks';
 import { departments, persons } from './organisation';
 import { activities, wbsNodes } from './planning';
 import { projects } from './portfolio';
@@ -26,7 +27,11 @@ export const allocations = pgTable(
     loadPct: num('load_pct').notNull(),
     projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }),
   },
-  (t) => [unique().on(t.personId, t.weekStart, t.projectId).nullsNotDistinct(), index('allocations_project_id_idx').on(t.projectId)],
+  (t) => [
+  unique().on(t.personId, t.weekStart, t.projectId).nullsNotDistinct(),
+  index('allocations_project_id_idx').on(t.projectId),
+  within('allocations_load_pct_range', t.loadPct, 0, null),
+],
 );
 
 // ── Rates ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -74,7 +79,9 @@ export const rateMultipliers = pgTable('rate_multipliers', {
   label: text('label').notNull(),
   position: integer('position').notNull(),
   ...timestamps,
-});
+}, (t) => [
+  filled('rate_multipliers_label_filled', t.label),
+]);
 
 /** R-083 (A-10): dated factors of a premium multiplier (`multiplierAt`); one version per key and date. */
 export const rateMultiplierRates = pgTable(
@@ -103,7 +110,9 @@ export const skills = pgTable('skills', {
   /** "Add skill" form category (Engineering, Site, Automation, Management, Safety); null for seed skills. */
   category: text('category'),
   position: integer('position').notNull(),
-});
+}, (t) => [
+  filled('skills_name_filled', t.name),
+]);
 
 /** Level 0–5 of a person on a skill (SKILL_LV 3457; 0 = none). */
 export const personSkills = pgTable(
@@ -123,7 +132,9 @@ export const certifications = pgTable('certifications', {
   name: text('name').notNull(),
   expiresOn: date('expires_on', { mode: 'string' }),
   position: integer('position').notNull(),
-});
+}, (t) => [
+  filled('certifications_name_filled', t.name),
+]);
 
 // ── Leave and calendar ─────────────────────────────────────────────────────────────────────────────────
 
@@ -137,7 +148,10 @@ export const leaveTypes = pgTable('leave_types', {
   label: text('label').notNull(),
   daysPerWeek: integer('days_per_week').notNull(),
   position: integer('position').notNull(),
-});
+}, (t) => [
+  oneOf<LeaveType>()('leave_types_code_domain', t.code, ['leave', 'absence']),
+  filled('leave_types_label_filled', t.label),
+]);
 
 /**
  * Approved absences received from Cursus (R-031, NEW-CURSUS-4 / NEW-CURSUS-7: Lucca is unplugged), one row per week an
@@ -158,7 +172,12 @@ export const leaveEntries = pgTable('leave_entries', {
   source: text('source').notNull().default('cursus'),
   /** Replacement key of the absence (Cursus's absence id, else "<matricule>|<start>|<end>"); null for the demo seed. */
   externalId: text('external_id'),
-}, (t) => [index('leave_entries_person_id_idx').on(t.personId), index('leave_entries_start_date_end_date_idx').on(t.startDate, t.endDate)]);
+}, (t) => [
+  index('leave_entries_person_id_idx').on(t.personId),
+  index('leave_entries_start_date_end_date_idx').on(t.startDate, t.endDate),
+  within('leave_entries_days_range', t.days, 0, null),
+  ordered('leave_entries_end_date_order', t.startDate, t.endDate),
+]);
 
 /** Public holidays (SETTINGS0.holidays 3467, France 2026; HOLIDAYS 3461 = those on a weekday of the 8-week window). */
 export const publicHolidays = pgTable(
@@ -171,7 +190,11 @@ export const publicHolidays = pgTable(
     name: text('name').notNull(),
     position: integer('position').notNull(),
   },
-  (t) => [unique().on(t.countryCode, t.date)],
+  (t) => [
+  unique().on(t.countryCode, t.date),
+  shaped('public_holidays_country_code_shape', t.countryCode, COUNTRY_RE),
+  filled('public_holidays_name_filled', t.name),
+],
 );
 
 // ── Lucca hours ────────────────────────────────────────────────────────────────────────────────────────
@@ -191,7 +214,10 @@ export const hoursImports = pgTable(
     matchingMode: text('matching_mode').$type<HoursMatching>().notNull(),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.periodStart)],
+  (t) => [
+  unique().on(t.projectId, t.periodStart),
+  oneOf<HoursMatching>()('hours_imports_matching_mode_domain', t.matchingMode, ['resource_wp', 'resource']),
+],
 );
 
 /** Matched lines: resource × work package, planned vs declared hours. */
@@ -236,7 +262,9 @@ export const whatIfLevers = pgTable('whatif_levers', {
   /** "Westfield SPI −0.02". */
   sideEffect: text('side_effect'),
   position: integer('position').notNull(),
-});
+}, (t) => [
+  filled('whatif_levers_label_filled', t.label),
+]);
 
 /** Auto-level rule: levers enabled for a priority (AUTO 3463). */
 export const whatIfAutoLevers = pgTable(
@@ -246,7 +274,10 @@ export const whatIfAutoLevers = pgTable(
     leverCode: text('lever_code').$type<WhatIfLeverCode>().notNull().references(() => whatIfLevers.code),
     position: integer('position').notNull(),
   },
-  (t) => [primaryKey({ columns: [t.priority, t.leverCode] })],
+  (t) => [
+  primaryKey({ columns: [t.priority, t.leverCode] }),
+  oneOf<WhatIfPriority>()('whatif_auto_levers_priority_domain', t.priority, ['date', 'budget', 'people']),
+],
 );
 
 /**
@@ -286,7 +317,11 @@ export const whatIfScenarios = pgTable(
     appliedByName: text('applied_by_name'),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.name)],
+  (t) => [
+  unique().on(t.projectId, t.name),
+  filled('whatif_scenarios_name_filled', t.name),
+  oneOf<WhatIfPriority>()('whatif_scenarios_priority_domain', t.priority, ['date', 'budget', 'people']),
+],
 );
 
 export const whatIfScenarioLevers = pgTable(
@@ -317,4 +352,8 @@ export const whatIfScenarioActions = pgTable('whatif_scenario_actions', {
   /** EN source label ("Overtime 10 h/d on A1250"). */
   label: text('label').notNull().default(''),
   ...timestamps,
-}, (t) => [index('whatif_scenario_actions_scenario_id_idx').on(t.scenarioId)]);
+}, (t) => [
+  index('whatif_scenario_actions_scenario_id_idx').on(t.scenarioId),
+  oneOf<WhatIfActionKind>()('whatif_scenario_actions_kind_domain', t.kind, ['overtime', 'extra_resource', 'shift']),
+  filled('whatif_scenario_actions_label_filled', t.label),
+]);

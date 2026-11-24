@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm';
 import { boolean, char, check, date, doublePrecision, integer, pgTable, text, timestamp, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { ZoneCode } from '../codes';
 import { id, num, timestamps } from './_common';
+import { CODE3_RE, filled, oneOf, shaped } from './_checks';
 import { rateRoles } from './resources';
 
 /** Client organisations (CLIENT_CODES 3167 + clients cited by projects). */
@@ -30,6 +31,8 @@ export const clients = pgTable(
   (t) => [
     check('clients_subsidiary_code_check', sql`${t.subsidiaryCode} ~ '^[A-Z]{3}$'`),
     check('clients_subsidiary_internal_check', sql`${t.subsidiaryCode} is null or ${t.isInternal}`),
+    filled('clients_name_filled', t.name),
+    shaped('clients_code3_shape', t.code3, CODE3_RE),
   ],
 );
 
@@ -50,7 +53,10 @@ export const departments = pgTable(
      */
     orgCode: text('org_code').unique('departments_org_code_unique'),
   },
-  (t) => [check('departments_org_code_check', sql`${t.orgCode} ~ '^[A-Z]{3}(-[A-Z0-9]{2,12}){0,2}$'`)],
+  (t) => [
+  check('departments_org_code_check', sql`${t.orgCode} ~ '^[A-Z]{3}(-[A-Z0-9]{2,12}){0,2}$'`),
+  filled('departments_name_filled', t.name),
+],
 );
 
 /**
@@ -89,7 +95,9 @@ export const persons = pgTable('persons', {
   resourcePoolPosition: integer('resource_pool_position'),
   sortOrder: integer('sort_order').notNull(),
   ...timestamps,
-});
+}, (t) => [
+  filled('persons_short_name_filled', t.shortName),
+]);
 
 /**
  * User accounts — one row per person (R-039). Real users are created at their first Microsoft Entra ID sign-in (R-038):
@@ -121,7 +129,9 @@ export const users = pgTable('users', {
   lastSignInAt: timestamp('last_sign_in_at', { withTimezone: true }),
   sortOrder: integer('sort_order').notNull(),
   ...timestamps,
-});
+}, (t) => [
+  filled('users_title_filled', t.title),
+]);
 
 /** Department capacity over the 8-week resource window (ROLES 3132). */
 export const departmentCapacities = pgTable('department_capacities', {
@@ -146,7 +156,10 @@ export const zones = pgTable('zones', {
   boundsE: doublePrecision('bounds_e').notNull(),
   boundsS: doublePrecision('bounds_s').notNull(),
   sortOrder: integer('sort_order').notNull(),
-});
+}, (t) => [
+  oneOf<ZoneCode>()('zones_code_domain', t.code, ['euna', 'afr', 'apac']),
+  filled('zones_label_filled', t.label),
+]);
 
 /** Countries → zone (COUNTRY_ZONE 3171). */
 export const countries = pgTable(
@@ -161,11 +174,16 @@ export const countries = pgTable(
      */
     iso2: char('iso2', { length: 2 }).unique('countries_iso2_unique'),
   },
-  (t) => [check('countries_iso2_check', sql`${t.iso2} ~ '^[A-Z]{2}$'`)],
+  (t) => [
+  check('countries_iso2_check', sql`${t.iso2} ~ '^[A-Z]{2}$'`),
+  filled('countries_name_filled', t.name),
+],
 );
 
 /** Cities used to resolve free-text sites (CITY_COUNTRY 3174, zoneOfSite). */
 export const cities = pgTable('cities', {
   name: text('name').primaryKey(),
   countryName: text('country_name').notNull().references(() => countries.name),
-});
+}, (t) => [
+  filled('cities_name_filled', t.name),
+]);

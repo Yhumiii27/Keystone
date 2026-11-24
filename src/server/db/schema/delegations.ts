@@ -4,6 +4,7 @@
 // cancelled (who, when, why). Relative imports only (drizzle-kit loads this file directly).
 import { date, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { id } from './_common';
+import { ordered } from './_checks';
 import { users } from './organisation';
 
 export const approvalDelegations = pgTable(
@@ -25,5 +26,9 @@ export const approvalDelegations = pgTable(
     cancelledByName: text('cancelled_by_name'),
     cancelReason: text('cancel_reason'),
   },
-  (t) => [index('approval_delegations_approver_idx').on(t.approverUserId), index('approval_delegations_substitute_idx').on(t.substituteUserId)],
+  (t) => [
+  index('approval_delegations_approver_idx').on(t.approverUserId),
+  index('approval_delegations_substitute_idx').on(t.substituteUserId),
+  ordered('approval_delegations_ends_on_order', t.startsOn, t.endsOn),
+],
 );

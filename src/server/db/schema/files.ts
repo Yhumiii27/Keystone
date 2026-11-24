@@ -5,6 +5,7 @@ import { index, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-o
 import type { FileScanStatus } from '../../../domain/file-scan';
 import type { ExportFormat, ImportJobStatus, ImportKind, ImportMode, ImportRowAction, ImportRowStatus, StoredFilePurpose } from '../codes';
 import { id } from './_common';
+import { filled, oneOf } from './_checks';
 import { persons } from './organisation';
 import { projects } from './portfolio';
 
@@ -33,7 +34,11 @@ export const storedFiles = pgTable('stored_files', {
   scannedAt: timestamp('scanned_at', { withTimezone: true }),
   /** Signature clamd reported (internal: logs and IT only, never shown to the uploader). */
   scanSignature: text('scan_signature'),
-});
+}, (t) => [
+  oneOf<StoredFilePurpose>()('stored_files_purpose_domain', t.purpose, ['import', 'attachment', 'transcript', 'export', 'photo']),
+  filled('stored_files_name_filled', t.name),
+  oneOf<FileScanStatus>()('stored_files_scan_status_domain', t.scanStatus, ['unscanned', 'clean', 'infected']),
+]);
 
 /**
  * Import job (staging): upload → parse → (column mapping for Excel / CSV) → preview → explicit confirmation → transactional
@@ -61,7 +66,11 @@ export const importJobs = pgTable('import_jobs', {
   previewedAt: timestamp('previewed_at', { withTimezone: true }),
   appliedAt: timestamp('applied_at', { withTimezone: true }),
   appliedByName: text('applied_by_name'),
-});
+}, (t) => [
+  oneOf<ImportKind>()('import_jobs_kind_domain', t.kind, ['bom', 'mspdi', 'xer', 'gan', 'budget_lines', 'parts', 'assignments']),
+  oneOf<ImportMode>()('import_jobs_mode_domain', t.mode, ['new', 'update']),
+  oneOf<ImportJobStatus>()('import_jobs_status_domain', t.status, ['uploaded', 'mapped', 'previewed', 'applied', 'failed', 'cancelled']),
+]);
 
 /** Preview rows of an import job (OK / warning / error with messages), replaced at each preview. */
 export const importJobRows = pgTable('import_job_rows', {
@@ -76,7 +85,11 @@ export const importJobRows = pgTable('import_job_rows', {
   data: jsonb('data').$type<Record<string, unknown>>().notNull().default({}),
   /** EN source messages ("Unknown predecessor A9999", "Duration not a number"). */
   messages: text('messages').array().notNull().default([]),
-}, (t) => [index('import_job_rows_job_id_idx').on(t.jobId)]);
+}, (t) => [
+  index('import_job_rows_job_id_idx').on(t.jobId),
+  oneOf<ImportRowStatus>()('import_job_rows_status_domain', t.status, ['ok', 'warning', 'error']),
+  oneOf<ImportRowAction>()('import_job_rows_action_domain', t.action, ['update', 'create', 'skip']),
+]);
 
 /** Export log: every file produced by the export route (screen, format, filters, rows) — for the audit trail. */
 export const exportLog = pgTable('export_log', {
@@ -93,4 +106,6 @@ export const exportLog = pgTable('export_log', {
   byName: text('by_name').notNull(),
   byRole: text('by_role'),
   at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  oneOf<ExportFormat>()('export_log_format_domain', t.format, ['csv', 'xlsx', 'pdf']),
+]);

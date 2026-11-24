@@ -8,6 +8,7 @@ import type {
   CursusClearance, CursusEventStatus, CursusRequestKind, CursusSyncStatus, CursusTaskPushStatus, CursusVaccination, CursusVerdict, CursusVisa,
 } from '../codes';
 import { id } from './_common';
+import { oneOf } from './_checks';
 import { persons } from './organisation';
 
 /** Individual go / no go of the people mobilised on a project's site, as Cursus reports it. */
@@ -40,7 +41,13 @@ export const cursusClearances = pgTable(
     position: integer('position').notNull(),
     lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }).notNull(),
   },
-  (t) => [unique().on(t.projectCode, t.personName)],
+  (t) => [
+  unique().on(t.projectCode, t.personName),
+  oneOf<CursusVisa>()('cursus_clearances_visa_domain', t.visa, ['pending', 'approved', 'not_required']),
+  oneOf<CursusVaccination>()('cursus_clearances_vaccination_domain', t.vaccination, ['pending', 'confirmed']),
+  oneOf<CursusClearance>()('cursus_clearances_clearance_domain', t.clearance, ['pending', 'ok', 'missing', 'expiring']),
+  oneOf<CursusVerdict>()('cursus_clearances_verdict_domain', t.verdict, ['go', 'go_with_reserve', 'no_go']),
+],
 );
 
 /** Outbox towards Cursus: "Remind in Cursus" on a person's pending approvals, travel requests (POST /demandes). */
@@ -69,7 +76,10 @@ export const cursusRequests = pgTable('cursus_requests', {
   cursusRef: text('cursus_ref'),
   /** Set while a delivery is in flight (R-010: two deliveries never send the same request); cleared by the result. */
   claimedAt: timestamp('claimed_at', { withTimezone: true }),
-});
+}, (t) => [
+  oneOf<CursusRequestKind>()('cursus_requests_kind_domain', t.kind, ['reminder', 'travel_request']),
+  oneOf<CursusSyncStatus>()('cursus_requests_sync_status_domain', t.syncStatus, ['pending', 'failed', 'sent']),
+]);
 
 /** Cursus synchronisations (mock: the seed's "26 Sep 07:00"; HTTP: each go-no-go refresh). */
 export const cursusSyncRuns = pgTable('cursus_sync_runs', {
@@ -81,7 +91,9 @@ export const cursusSyncRuns = pgTable('cursus_sync_runs', {
   mode: text('mode').$type<'mock' | 'http'>().notNull(),
   ok: boolean('ok').notNull().default(true),
   error: text('error'),
-});
+}, (t) => [
+  oneOf<'mock' | 'http'>()('cursus_sync_runs_mode_domain', t.mode, ['mock', 'http']),
+]);
 
 /**
  * Inbox of the events Cursus pushes to POST /api/integrations/cursus/events (R-029, NEW-CURSUS-7 "a"; contract in
@@ -112,7 +124,12 @@ export const cursusEvents = pgTable(
     note: text('note'),
     processedAt: timestamp('processed_at', { withTimezone: true }),
   },
-  (t) => [index('cursus_events_replace_idx').on(t.type, t.replaceKey), index('cursus_events_status_idx').on(t.status), index('cursus_events_received_idx').on(t.receivedAt)],
+  (t) => [
+  index('cursus_events_replace_idx').on(t.type, t.replaceKey),
+  index('cursus_events_status_idx').on(t.status),
+  index('cursus_events_received_idx').on(t.receivedAt),
+  oneOf<CursusEventStatus>()('cursus_events_status_domain', t.status, ['error', 'received', 'unresolved', 'ignored']),
+],
 );
 
 /**
@@ -152,5 +169,11 @@ export const cursusTaskPushes = pgTable(
     /** Set while a delivery is in flight (R-010: two deliveries never send the same push); cleared by the result. */
     claimedAt: timestamp('claimed_at', { withTimezone: true }),
   },
-  (t) => [index('cursus_task_pushes_requested_idx').on(t.requestedAt), index('cursus_task_pushes_status_idx').on(t.status)],
+  (t) => [
+  index('cursus_task_pushes_requested_idx').on(t.requestedAt),
+  index('cursus_task_pushes_status_idx').on(t.status),
+  oneOf<'job' | 'sync'>()('cursus_task_pushes_trigger_domain', t.trigger, ['job', 'sync']),
+  oneOf<'mock' | 'http'>()('cursus_task_pushes_mode_domain', t.mode, ['mock', 'http']),
+  oneOf<CursusTaskPushStatus>()('cursus_task_pushes_status_domain', t.status, ['pending', 'superseded', 'failed', 'sent']),
+],
 );

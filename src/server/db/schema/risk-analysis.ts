@@ -4,6 +4,7 @@
 import { check, date, index, integer, jsonb, numeric, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { id, keur, timestamps } from './_common';
+import { oneOf } from './_checks';
 import { risks } from './control';
 import { persons } from './organisation';
 import { activities } from './planning';
@@ -78,5 +79,8 @@ export const riskAnalysisRuns = pgTable(
     result: jsonb('result').$type<Record<string, unknown>>().notNull(),
     durationMs: integer('duration_ms').notNull(),
   },
-  (t) => [index('risk_analysis_runs_project_ran_idx').on(t.projectId, t.ranAt)],
+  (t) => [
+  index('risk_analysis_runs_project_ran_idx').on(t.projectId, t.ranAt),
+  oneOf<'planned' | 'baseline' | 'none'>()('risk_analysis_runs_target_finish_source_domain', t.targetFinishSource, ['planned', 'none', 'baseline']),
+],
 );

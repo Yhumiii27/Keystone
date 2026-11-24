@@ -7,6 +7,7 @@
 import { sql } from 'drizzle-orm';
 import { boolean, index, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { id, timestamps } from './_common';
+import { filled } from './_checks';
 import { users } from './organisation';
 
 export const dashboards = pgTable(
@@ -25,6 +26,7 @@ export const dashboards = pgTable(
   (t) => [
     index('dashboards_owner_idx').on(t.ownerUserId),
     uniqueIndex('dashboards_one_default_per_owner').on(t.ownerUserId).where(sql`${t.isDefault}`),
+    filled('dashboards_name_filled', t.name),
   ],
 );
 

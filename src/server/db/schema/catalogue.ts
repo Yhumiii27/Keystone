@@ -6,6 +6,7 @@
 import { boolean, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { ExportControl, PartMakeBuy, PartStatus, PartType, PartUnit, WearSpare } from '../codes';
 import { eur, id, num, timestamps } from './_common';
+import { filled, oneOf, within } from './_checks';
 import { persons } from './organisation';
 import { suppliers } from './suppliers';
 
@@ -53,7 +54,16 @@ export const parts = pgTable('parts', {
   position: integer('position').notNull(),
   createdByPersonId: uuid('created_by_person_id').references(() => persons.id),
   ...timestamps,
-});
+}, (t) => [
+  filled('parts_ref_filled', t.ref),
+  filled('parts_name_filled', t.name),
+  oneOf<PartMakeBuy>()('parts_make_buy_domain', t.makeBuy, ['manufactured', 'purchased']),
+  oneOf<PartType>()('parts_part_type_domain', t.type, ['structural', 'heavy_equipment', 'electrical', 'hvac', 'fire_safety', 'architectural', 'medical', 'mechanical', 'electronics', 'it_hardware', 'assembly', 'consumable', 'software']),
+  oneOf<ExportControl>()('parts_export_control_domain', t.exportControl, ['dual_use', 'encryption', 'dangerous_goods', 'medical_device', 'anti_dumping']),
+  oneOf<PartStatus>()('parts_status_domain', t.status, ['validated', 'not_validated', 'outdated', 'obsolete']),
+  oneOf<WearSpare>()('parts_wear_spare_domain', t.wearSpare, ['PU', 'PR']),
+  oneOf<PartUnit>()('parts_unit_domain', t.unit, ['pc', 'm', 'kg', 'set']),
+]);
 
 /** Registered equivalents (`PARTS.equiv`), one row per direction as the catalogue lists them. */
 export const partEquivalents = pgTable(
@@ -86,7 +96,10 @@ export const assemblyLinks = pgTable(
     quantity: num('quantity').notNull(),
     position: integer('position').notNull(),
   },
-  (t) => [unique().on(t.parentPartId, t.childPartId)],
+  (t) => [
+  unique().on(t.parentPartId, t.childPartId),
+  within('assembly_links_quantity_range', t.quantity, 0, null),
+],
 );
 
 /** Recommended wear & spare parts of a system (SPARE_LISTS 3399): quantity per system; recommended = × systems in the project. */
@@ -103,5 +116,9 @@ export const spareListLines = pgTable(
     note: text('note'),
     position: integer('position').notNull(),
   },
-  (t) => [unique().on(t.systemPartId, t.partId)],
+  (t) => [
+  unique().on(t.systemPartId, t.partId),
+  oneOf<WearSpare>()('spare_list_lines_kind_domain', t.kind, ['PU', 'PR']),
+  within('spare_list_lines_qty_per_system_range', t.qtyPerSystem, 0, null),
+],
 );

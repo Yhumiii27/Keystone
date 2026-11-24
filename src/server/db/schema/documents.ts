@@ -15,6 +15,7 @@ import type {
   DocService, DocumentStatus,
 } from '../codes';
 import { id, timestamps } from './_common';
+import { allOf, filled, oneOf } from './_checks';
 import { storedFiles } from './files';
 import { persons } from './organisation';
 import { projects } from './portfolio';
@@ -40,6 +41,9 @@ export const documentTypes = pgTable('document_types', {
   packFamily: text('pack_family').$type<PackFamily>(),
 }, (t) => [
   check('document_types_pack_family_check', sql`${t.packFamily} is null or ${t.packFamily} in ('pid', 'bom', 'layout', 'electrique', 'analyse_fonctionnelle')`),
+  filled('document_types_code_filled', t.code),
+  filled('document_types_label_filled', t.label),
+  oneOf<DocFamily>()('document_types_family_domain', t.family, ['client', 'eng', 'quality', 'purchasing', 'site', 'contracts', 'photos']),
 ]);
 
 /** Approval circuit of a type ("Author → Engineering lead → Project manager"): step 0 is the originator. */
@@ -50,7 +54,10 @@ export const documentTypeCircuitSteps = pgTable(
     position: integer('position').notNull(),
     role: text('role').$type<ApproverRole>().notNull(),
   },
-  (t) => [primaryKey({ columns: [t.typeCode, t.position] })],
+  (t) => [
+  primaryKey({ columns: [t.typeCode, t.position] }),
+  oneOf<ApproverRole>()('document_type_circuit_steps_role_domain', t.role, ['client', 'author', 'engineering_lead', 'project_manager', 'quality_manager', 'direction', 'quality_verification', 'hse_officer', 'buyer', 'site_manager', 'auditor']),
+],
 );
 
 /** Named approver of a circuit role (DOC_WHO 3617 — global in the prototype; projectId reserved for per-project overrides). */
@@ -63,7 +70,10 @@ export const documentApproverAssignments = pgTable(
     personId: uuid('person_id').notNull().references(() => persons.id),
     position: integer('position').notNull(),
   },
-  (t) => [unique().on(t.role, t.projectId).nullsNotDistinct()],
+  (t) => [
+  unique().on(t.role, t.projectId).nullsNotDistinct(),
+  oneOf<ApproverRole>()('document_approver_assignments_role_domain', t.role, ['client', 'author', 'engineering_lead', 'project_manager', 'quality_manager', 'direction', 'quality_verification', 'hse_officer', 'buyer', 'site_manager', 'auditor']),
+],
 );
 
 /** Index record of a Codex document (DOCS 3618, 42 records; deposits and meeting minutes created in Keystone). */
@@ -100,7 +110,16 @@ export const documents = pgTable('documents', {
   /** Vault order: DOCS order; Keystone-created records are prepended with a lower value. */
   sortOrder: integer('sort_order').notNull(),
   ...timestamps,
-}, (t) => [index('documents_project_id_idx').on(t.projectId), index('documents_status_idx').on(t.status)]);
+}, (t) => [
+  index('documents_project_id_idx').on(t.projectId),
+  index('documents_status_idx').on(t.status),
+  filled('documents_number_filled', t.number),
+  filled('documents_title_filled', t.title),
+  oneOf<DocService>()('documents_service_domain', t.service, ['auto', 'pm', 'quality', 'site', 'process', 'meca', 'elec', 'procurement']),
+  oneOf<DocumentStatus>()('documents_status_domain', t.status, ['draft', 'obsolete', 'frozen', 'release_proposed', 'released']),
+  oneOf<Confidentiality>()('documents_confidentiality_domain', t.confidentiality, ['client', 'internal', 'supplier']),
+  allOf<DocRecipient>()('documents_recipients_domain', t.recipients, ['client', 'auto', 'site', 'process', 'meca', 'elec', 'achats']),
+]);
 
 /** Revisions A … current (synthetic history in the seed: one revision every 21 days). */
 export const documentRevisions = pgTable(
@@ -138,7 +157,10 @@ export const documentApprovals = pgTable(
     /** Who actually recorded the signature in Keystone ("Approve in Codex"), when different from the seed. */
     signedByPersonId: uuid('signed_by_person_id').references(() => persons.id),
   },
-  (t) => [primaryKey({ columns: [t.documentId, t.revision, t.stepPosition] })],
+  (t) => [
+  primaryKey({ columns: [t.documentId, t.revision, t.stepPosition] }),
+  oneOf<ApproverRole>()('document_approvals_role_domain', t.role, ['client', 'author', 'engineering_lead', 'project_manager', 'quality_manager', 'direction', 'quality_verification', 'hse_officer', 'buyer', 'site_manager', 'auditor']),
+],
 );
 
 /** Relations of a document (`links`: [['Deliverable', 'D-016']]) — free references until the targets are modelled. */
@@ -149,7 +171,10 @@ export const documentLinks = pgTable('document_links', {
   /** "D-016", "EL-VFD-200", "PO-2026-118", "P-01", "CR-004". */
   targetRef: text('target_ref').notNull(),
   position: integer('position').notNull(),
-}, (t) => [index('document_links_document_id_idx').on(t.documentId)]);
+}, (t) => [
+  index('document_links_document_id_idx').on(t.documentId),
+  oneOf<DocLinkKind>()('document_links_kind_domain', t.kind, ['change_request', 'deliverable', 'article', 'purchase_order', 'punch_item', 'shipment']),
+]);
 
 /** Client acknowledgement of a released client-deliverable revision (`engOv.ack[id|rev]`). Absent row = pending. */
 export const documentAcknowledgements = pgTable(
@@ -186,7 +211,10 @@ export const documentDeposits = pgTable('document_deposits', {
   requestedByPersonId: uuid('requested_by_person_id').references(() => persons.id),
   requestedOn: date('requested_on', { mode: 'string' }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  filled('document_deposits_number_filled', t.number),
+  oneOf<DepositStatus>()('document_deposits_status_domain', t.status, ['handed_off', 'recorded']),
+]);
 
 /** Codex index synchronisations ("Last sync 08:02 · 412 records"). */
 export const documentIndexSyncs = pgTable('document_index_syncs', {
@@ -206,7 +234,9 @@ export const documentIndexSyncs = pgTable('document_index_syncs', {
    * held mark had every read apply unchanged records again over Keystone's own state. `syncedAt` stays the banner's "Last sync".
    */
   nextSince: timestamp('next_since', { withTimezone: true }),
-});
+}, (t) => [
+  oneOf<'keystone' | 'codex'>()('document_index_syncs_source_domain', t.source, ['keystone', 'codex']),
+]);
 
 /**
  * Records of Codex's index waiting for Keystone data (Delivery 8, R-033; integration review): a read skipped them because
@@ -265,4 +295,11 @@ export const codexDocumentOutbox = pgTable('codex_document_outbox', {
    * store until Codex holds it.
    */
   storedFileId: uuid('stored_file_id').references(() => storedFiles.id, { onDelete: 'set null' }),
-}, (t) => [index('codex_document_outbox_document_id_idx').on(t.documentId), index('codex_document_outbox_stored_file_id_idx').on(t.storedFileId)]);
+}, (t) => [
+  index('codex_document_outbox_document_id_idx').on(t.documentId),
+  index('codex_document_outbox_stored_file_id_idx').on(t.storedFileId),
+  oneOf<CodexOutboxKind>()('codex_document_outbox_kind_domain', t.kind, ['approval', 'circuit_start', 'deposit']),
+  oneOf<ApproverRole>()('codex_document_outbox_role_domain', t.role, ['client', 'author', 'engineering_lead', 'project_manager', 'quality_manager', 'direction', 'quality_verification', 'hse_officer', 'buyer', 'site_manager', 'auditor']),
+  oneOf<CodexDecision>()('codex_document_outbox_decision_domain', t.decision, ['approved', 'rejected']),
+  oneOf<CodexSyncStatus>()('codex_document_outbox_sync_status_domain', t.syncStatus, ['pending', 'failed', 'sent']),
+]);

@@ -2,6 +2,7 @@
 // and the in-process scheduler) from running the same job at once, and the outcome of its last run. Relative imports only
 // (drizzle-kit loads this file directly).
 import { boolean, integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { filled } from './_checks';
 
 export const jobLocks = pgTable('job_locks', {
   /** Job name ("vigie-outbox", "plan-trash-purge"…, src/domain/jobs.ts). */
@@ -29,4 +30,6 @@ export const connectorRefreshClaims = pgTable('connector_refresh_claims', {
   key: text('key').primaryKey(),
   /** Database clock of the last claim; the slot is free again REFRESH_EVERY after it. */
   claimedAt: timestamp('claimed_at', { withTimezone: true }).notNull(),
-});
+}, (t) => [
+  filled('connector_refresh_claims_key_filled', t.key),
+]);

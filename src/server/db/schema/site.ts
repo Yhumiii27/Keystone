@@ -5,6 +5,7 @@
 import { boolean, date, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { CollisionKind, ConfirmStatus, EquipmentSource, HseIncident, Weather } from '../codes';
 import { id, keur, num, timestamps } from './_common';
+import { CURRENCY_RE, filled, numbered, oneOf, ordered, shaped, within } from './_checks';
 import { risks } from './control';
 import { persons } from './organisation';
 import { activities } from './planning';
@@ -37,7 +38,10 @@ export const siteSheets = pgTable('site_sheets', {
   manDaysPlanned: integer('man_days_planned').notNull(),
   cursusChantierId: text('cursus_chantier_id'),
   ...timestamps,
-});
+}, (t) => [
+  shaped('site_sheets_currency_shape', t.currency, CURRENCY_RE),
+  ordered('site_sheets_end_on_order', t.startOn, t.endOn),
+]);
 
 /** Equipment on site (SITE_EQUIP 3575: shipped with the machine, rented locally, provided by the client). */
 export const siteEquipment = pgTable(
@@ -54,7 +58,12 @@ export const siteEquipment = pgTable(
     position: integer('position').notNull(),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.position)],
+  (t) => [
+  unique().on(t.projectId, t.position),
+  filled('site_equipment_name_filled', t.name),
+  oneOf<EquipmentSource>()('site_equipment_source_domain', t.source, ['client', 'shipped', 'local_rental']),
+  oneOf<Exclude<ConfirmStatus, 'signed'>>()('site_equipment_status_domain', t.status, ['pending', 'confirmed']),
+],
 );
 
 /** Client prerequisites (SITE_PREREQ 3576): dated and signed by the client, each one conditions a site activity. */
@@ -84,7 +93,11 @@ export const sitePrerequisites = pgTable(
     riskId: uuid('risk_id').references(() => risks.id, { onDelete: 'set null' }),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.position)],
+  (t) => [
+  unique().on(t.projectId, t.position),
+  filled('site_prerequisites_title_filled', t.title),
+  oneOf<ConfirmStatus>()('site_prerequisites_status_domain', t.status, ['pending', 'signed', 'confirmed']),
+],
 );
 
 /** Site team rotation plan (SITE_ROTATION 3577): who, role on site, mission dates, lodging, travel, rotation. */
@@ -105,7 +118,10 @@ export const siteRotations = pgTable(
     rotationNo: integer('rotation_no').notNull(),
     position: integer('position').notNull(),
   },
-  (t) => [unique().on(t.projectId, t.position)],
+  (t) => [
+  unique().on(t.projectId, t.position),
+  ordered('site_rotations_to_on_order', t.fromOn, t.toOn),
+],
 );
 
 /**
@@ -127,7 +143,10 @@ export const siteCollisions = pgTable(
     resolvedAt: timestamp('resolved_at', { withTimezone: true }),
     position: integer('position').notNull(),
   },
-  (t) => [unique().on(t.projectId, t.position)],
+  (t) => [
+  unique().on(t.projectId, t.position),
+  oneOf<CollisionKind>()('site_collisions_kind_domain', t.kind, ['leave', 'doc', 'load', 'cert']),
+],
 );
 
 /**
@@ -151,7 +170,10 @@ export const siteConflictArbitrations = pgTable(
     arbitratedByPersonId: uuid('arbitrated_by_person_id').references(() => persons.id),
     arbitratedAt: timestamp('arbitrated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [unique().on(t.projectId, t.conflictKey)],
+  (t) => [
+  unique().on(t.projectId, t.conflictKey),
+  oneOf<CollisionKind>()('site_conflict_arbitrations_kind_domain', t.kind, ['leave', 'doc', 'load', 'cert']),
+],
 );
 
 /** Mission cost lines charged to the Site work package (SITE_COSTS 3579), k€. */
@@ -165,7 +187,10 @@ export const missionCostLines = pgTable(
     actualKeur: keur('actual_keur').notNull(),
     position: integer('position').notNull(),
   },
-  (t) => [unique().on(t.projectId, t.position)],
+  (t) => [
+  unique().on(t.projectId, t.position),
+  filled('mission_cost_lines_name_filled', t.name),
+],
 );
 
 /**
@@ -195,5 +220,11 @@ export const dailyReports = pgTable(
     fromForm: boolean('from_form').notNull().default(false),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.number)],
+  (t) => [
+  unique().on(t.projectId, t.number),
+  shaped('daily_reports_number_shape', t.number, numbered('DR-', 3)),
+  within('daily_reports_percent_complete_range', t.percentComplete, 0, 100),
+  oneOf<Weather>()('daily_reports_weather_domain', t.weather, ['clear', 'rain', 'wind', 'storm']),
+  oneOf<HseIncident>()('daily_reports_hse_incident_domain', t.hseIncident, ['none', 'near_miss', 'first_aid', 'incident']),
+],
 );

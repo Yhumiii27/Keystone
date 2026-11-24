@@ -4,6 +4,7 @@
 import { date, index, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { StockMovementType, StockSource, X3SyncKind } from '../codes';
 import { num, id, timestamps } from './_common';
+import { oneOf, within } from './_checks';
 import { parts } from './catalogue';
 import { persons } from './organisation';
 import { activities } from './planning';
@@ -34,7 +35,11 @@ export const stockPositions = pgTable(
     position: integer('position').notNull(),
     ...timestamps,
   },
-  (t) => [unique().on(t.partId, t.locationId)],
+  (t) => [
+  unique().on(t.partId, t.locationId),
+  within('stock_positions_min_qty_range', t.minQty, 0, null),
+  oneOf<StockSource>()('stock_positions_source_domain', t.source, ['local', 'x3']),
+],
 );
 
 /** Stock movements (MOVES0 3484 + movements recorded in Keystone). */
@@ -72,7 +77,10 @@ export const stockMovements = pgTable('stock_movements', {
   overrideQty: num('override_qty'),
   overrideFromProjectId: uuid('override_from_project_id').references(() => projects.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [index('stock_movements_project_id_idx').on(t.projectId)]);
+}, (t) => [
+  index('stock_movements_project_id_idx').on(t.projectId),
+  oneOf<StockMovementType>()('stock_movements_movement_type_domain', t.type, ['reserve', 'transfer', 'adjust', 'release', 'issue', 'return', 'scrap', 'receipt']),
+]);
 
 /** Sage X3 exchanges ("X3 import 07:15 · 15 lines from Sage X3"; Import from X3, Push to X3). */
 export const x3SyncRuns = pgTable('x3_sync_runs', {
@@ -82,4 +90,6 @@ export const x3SyncRuns = pgTable('x3_sync_runs', {
   /** Stock lines received from (import) or sent to (push) X3. */
   lineCount: integer('line_count').notNull(),
   requestedByPersonId: uuid('requested_by_person_id').references(() => persons.id),
-});
+}, (t) => [
+  oneOf<X3SyncKind>()('x3_sync_runs_kind_domain', t.kind, ['stock_import', 'stock_push']),
+]);

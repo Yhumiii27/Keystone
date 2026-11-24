@@ -9,6 +9,7 @@ import { boolean, check, date, index, integer, pgTable, primaryKey, text, timest
 import type { RecurrenceKind } from '@/domain/task-recurrence';
 import type { AttachmentKind, Priority, RequestEventAction, RequestStatus, TaskOrigin, TaskStatus, TimeEntrySource } from '../codes';
 import { id, num, timestamps } from './_common';
+import { filled, numbered, oneOf, shaped, within } from './_checks';
 import { storedFiles } from './files';
 import { departments, persons } from './organisation';
 import { activities } from './planning';
@@ -71,6 +72,12 @@ export const tasks = pgTable('tasks', {
     'tasks_recurrence_rule_check',
     sql`(${t.recurrenceKind} is null) = (${t.recurrenceAnchor} is null) and (${t.recurrenceKind} is null) = (${t.recurrenceInterval} is null) and (${t.recurrenceInterval} is null or ${t.recurrenceInterval} between 1 and 12)`,
   ),
+  shaped('tasks_number_shape', t.number, numbered('T-', 4)),
+  filled('tasks_title_filled', t.title),
+  oneOf<TaskStatus>()('tasks_status_domain', t.status, ['done', 'todo', 'doing', 'review']),
+  oneOf<Priority>()('tasks_priority_domain', t.priority, ['low', 'med', 'high']),
+  within('tasks_percent_complete_range', t.percentComplete, 0, 100),
+  oneOf<TaskOrigin>()('tasks_origin_domain', t.origin, ['activity_todo', 'request', 'meeting', 'manual']),
 ]);
 
 /** Checklist items (CHECKS 3257). */
@@ -110,7 +117,11 @@ export const taskAttachments = pgTable('task_attachments', {
   fileId: uuid('file_id').references(() => storedFiles.id, { onDelete: 'set null' }),
   mime: text('mime'),
   sizeBytes: integer('size_bytes'),
-}, (t) => [index('task_attachments_task_id_idx').on(t.taskId)]);
+}, (t) => [
+  index('task_attachments_task_id_idx').on(t.taskId),
+  filled('task_attachments_name_filled', t.name),
+  oneOf<AttachmentKind>()('task_attachments_kind_domain', t.kind, ['pdf', 'xls', 'image', 'doc', 'other']),
+]);
 
 /** Time entries (ENTRIES 3260; "Log" on the Task screen). */
 export const timeEntries = pgTable('time_entries', {
@@ -123,7 +134,12 @@ export const timeEntries = pgTable('time_entries', {
   source: text('source').$type<TimeEntrySource>().notNull().default('keystone'),
   position: integer('position').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [index('time_entries_task_id_idx').on(t.taskId), index('time_entries_person_id_work_date_idx').on(t.personId, t.workDate)]);
+}, (t) => [
+  index('time_entries_task_id_idx').on(t.taskId),
+  index('time_entries_person_id_work_date_idx').on(t.personId, t.workDate),
+  within('time_entries_hours_range', t.hours, 0, null),
+  oneOf<TimeEntrySource>()('time_entries_source_domain', t.source, ['keystone', 'lucca']),
+]);
 
 /** Resource requests (REQUESTS 3270): a PM asks a department for a person or a contract role on an activity. */
 export const resourceRequests = pgTable('resource_requests', {
@@ -160,7 +176,13 @@ export const resourceRequests = pgTable('resource_requests', {
   /** REQUESTS order (new requests are prepended with a lower value). */
   sortOrder: integer('sort_order').notNull(),
   ...timestamps,
-}, (t) => [index('resource_requests_project_id_idx').on(t.projectId)]);
+}, (t) => [
+  index('resource_requests_project_id_idx').on(t.projectId),
+  shaped('resource_requests_number_shape', t.number, numbered('RQ-', 3)),
+  filled('resource_requests_title_filled', t.title),
+  oneOf<Priority>()('resource_requests_priority_domain', t.priority, ['low', 'med', 'high']),
+  oneOf<RequestStatus>()('resource_requests_status_domain', t.status, ['draft', 'pending', 'approved', 'rejected', 'withdrawn', 'reschedule']),
+]);
 
 /** Decision trail of a request (seeded from `sent` and the `response` text). */
 export const resourceRequestEvents = pgTable('resource_request_events', {
@@ -173,7 +195,10 @@ export const resourceRequestEvents = pgTable('resource_request_events', {
   note: text('note'),
   position: integer('position').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [index('resource_request_events_request_id_idx').on(t.requestId)]);
+}, (t) => [
+  index('resource_request_events_request_id_idx').on(t.requestId),
+  oneOf<RequestEventAction>()('resource_request_events_action_domain', t.action, ['approved', 'rejected', 'withdrawn', 'sent', 'reschedule', 'drafted', 'accepted', 'resent', 'named']),
+]);
 
 /**
  * Activities offered by the "New resource request" dialog of a project (NR_ACTS 3283 for HLT-026: A1250, A1260,

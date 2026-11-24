@@ -10,6 +10,7 @@ import { sql } from 'drizzle-orm';
 import { boolean, check, date, index, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import type { EstimateClass } from '../codes';
 import { id, keur, num, timestamps } from './_common';
+import { COUNTRY_RE, oneOf, shaped } from './_checks';
 import { persons } from './organisation';
 import { projects } from './portfolio';
 
@@ -37,7 +38,10 @@ export const capexMirror = pgTable('capex_mirror', {
   sourceUpdatedAt: timestamp('source_updated_at', { withTimezone: true }),
   /** When this copy was last written by a read of the source. */
   syncedAt: timestamp('synced_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  shaped('capex_mirror_code_shape', t.code, '^CPX-[A-Z]{3}-[0-9]{4}-[0-9]{2,}$'),
+  shaped('capex_mirror_country_iso2_shape', t.countryIso2, COUNTRY_RE),
+]);
 
 /** A subsidiary's machine need as Arche publishes it (pub_besoins_machines; drafts never). */
 export const capexNeeds = pgTable('capex_needs', {
@@ -70,6 +74,8 @@ export const capexNeeds = pgTable('capex_needs', {
   index('capex_needs_capex_code_idx').on(t.capexCode),
   check('capex_needs_status_check', sql`${t.status} in ('submitted', 'withdrawn', 'ordered')`),
   check('capex_needs_quantity_check', sql`${t.quantity} >= 1`),
+  shaped('capex_needs_need_ref_shape', t.needRef, '^CPX-[A-Z]{3}-[0-9]{4}-[0-9]{2,}/B[0-9]{2,}$'),
+  shaped('capex_needs_capex_code_shape', t.capexCode, '^CPX-[A-Z]{3}-[0-9]{4}-[0-9]{2,}$'),
 ]);
 
 /** One read of Arche's views: where from, what it brought, and whether it worked (the mirror is kept on a failure). */
@@ -86,7 +92,10 @@ export const capexSyncRuns = pgTable('capex_sync_runs', {
   skipped: integer('skipped').notNull().default(0),
   error: text('error'),
   syncedAt: timestamp('synced_at', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [index('capex_sync_runs_synced_at_idx').on(t.syncedAt)]);
+}, (t) => [
+  index('capex_sync_runs_synced_at_idx').on(t.syncedAt),
+  oneOf<'server' | 'simulation'>()('capex_sync_runs_source_domain', t.source, ['server', 'simulation']),
+]);
 
 /**
  * Keystone's answer to a machine need (K-02, K-03): one row per answer, the most recent (answered_at, then number) is
@@ -133,4 +142,6 @@ export const needAnswers = pgTable('need_answers', {
   // K-03: a firm offer is E10; a priced answer has its class and its range; a qualification has neither.
   check('need_answers_firm_offer_check', sql`${t.nature} <> 'offre_ferme' or ${t.estimateClass} = 'E10'`),
   check('need_answers_priced_check', sql`(${t.nature} = 'qualification' and ${t.centralKeur} is null and ${t.estimateClass} is null) or (${t.nature} <> 'qualification' and ${t.centralKeur} is not null and ${t.estimateClass} is not null and ${t.lowKeur} is not null and ${t.highKeur} is not null)`),
+  shaped('need_answers_need_ref_shape', t.needRef, '^CPX-[A-Z]{3}-[0-9]{4}-[0-9]{2,}/B[0-9]{2,}$'),
+  shaped('need_answers_capex_code_shape', t.capexCode, '^CPX-[A-Z]{3}-[0-9]{4}-[0-9]{2,}$'),
 ]);

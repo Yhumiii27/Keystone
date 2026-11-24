@@ -5,6 +5,7 @@
 import { boolean, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid, index } from 'drizzle-orm/pg-core';
 import type { BomScope, DrawingState, RevisionDiffKind, VaultSyncScope, VaultSyncSource } from '../codes';
 import { id, num, timestamps } from './_common';
+import { filled, oneOf, within } from './_checks';
 import { parts } from './catalogue';
 import { persons } from './organisation';
 import { activities } from './planning';
@@ -33,7 +34,11 @@ export const projectBomLines = pgTable(
     addedByPersonId: uuid('added_by_person_id').references(() => persons.id),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.partId)],
+  (t) => [
+  unique().on(t.projectId, t.partId),
+  within('project_bom_lines_quantity_range', t.quantity, 0, null),
+  oneOf<BomScope>()('project_bom_lines_scope_domain', t.scope, ['client', 'keystone', 'overlay']),
+],
 );
 
 /** Multi-level structure configured for a project (`TREES = {HLT: TREE}` 3426): root assembly × quantity. */
@@ -77,7 +82,11 @@ export const revisionDiffLines = pgTable('revision_diff_lines', {
   qtyTo: num('qty_to'),
   kind: text('kind').$type<RevisionDiffKind>().notNull(),
   position: integer('position').notNull(),
-}, (t) => [index('revision_diff_lines_diff_id_idx').on(t.diffId)]);
+}, (t) => [
+  index('revision_diff_lines_diff_id_idx').on(t.diffId),
+  filled('revision_diff_lines_name_filled', t.name),
+  oneOf<RevisionDiffKind>()('revision_diff_lines_kind_domain', t.kind, ['quantity', 'substitution', 'added']),
+]);
 
 /**
  * Drawings of the SolidWorks PDM vault linked to catalogue parts (DRAWINGS 3439, 13 rows) — a read-only mirror:
@@ -107,7 +116,11 @@ export const drawings = pgTable('drawings', {
   pdmUrl: text('pdm_url'),
   position: integer('position').notNull(),
   ...timestamps,
-});
+}, (t) => [
+  filled('drawings_number_filled', t.number),
+  filled('drawings_title_filled', t.title),
+  oneOf<DrawingState>()('drawings_state_domain', t.state, ['obsolete', 'released', 'wip', 'under_review']),
+]);
 
 /**
  * Revision history of a drawing as the vault reports it. The prototype synthesises A…current (A–D only, `dwgVals`
@@ -139,4 +152,7 @@ export const pdmVaultSyncs = pgTable('pdm_vault_syncs', {
   /** Project of a "Current project" sync. */
   projectId: uuid('project_id').references(() => projects.id, { onDelete: 'set null' }),
   requestedByPersonId: uuid('requested_by_person_id').references(() => persons.id),
-});
+}, (t) => [
+  oneOf<VaultSyncSource>()('pdm_vault_syncs_source_domain', t.source, ['solidworks_3dx', 'see_electrical', 'both']),
+  oneOf<VaultSyncScope>()('pdm_vault_syncs_scope_domain', t.scope, ['current_project', 'all_projects']),
+]);

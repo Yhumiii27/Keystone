@@ -4,6 +4,7 @@
 import { date, index, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { ClaimCoverage, ClaimStatus, InterventionStatus, InterventionType, MachineTypeCode, NcrSeverity, WarrantyStatus } from '../codes';
 import { id, keur, num, rowVersion, timestamps } from './_common';
+import { filled, numbered, oneOf, shaped, within } from './_checks';
 import { clients, persons } from './organisation';
 import { machineTypes, projectEquipments, projects } from './portfolio';
 
@@ -37,7 +38,12 @@ export const machines = pgTable('machines', {
   generation: text('generation'),
   position: integer('position').notNull(),
   ...timestamps,
-}, (t) => [index('machines_project_id_idx').on(t.projectId)]);
+}, (t) => [
+  index('machines_project_id_idx').on(t.projectId),
+  shaped('machines_number_shape', t.number, numbered('MCH-', 3)),
+  filled('machines_name_filled', t.name),
+  oneOf<WarrantyStatus>()('machines_warranty_status_domain', t.warrantyStatus, ['in_warranty', 'extended', 'out_of_warranty']),
+]);
 
 /** As-maintained configuration: the revision of each tracked part fitted on a machine (AS_MAINT 3722: 6 machines). */
 export const machinePartRevisions = pgTable(
@@ -81,7 +87,13 @@ export const warrantyClaims = pgTable('warranty_claims', {
   /** R-010: optimistic locking (see rowVersion). */
   version: rowVersion(),
   ...timestamps,
-}, (t) => [index('warranty_claims_machine_id_idx').on(t.machineId)]);
+}, (t) => [
+  index('warranty_claims_machine_id_idx').on(t.machineId),
+  shaped('warranty_claims_number_shape', t.number, numbered('WC-', 3)),
+  oneOf<NcrSeverity>()('warranty_claims_severity_domain', t.severity, ['minor', 'major', 'critical']),
+  oneOf<ClaimStatus>()('warranty_claims_status_domain', t.status, ['open', 'diagnosed', 'intervention_planned', 'closed']),
+  oneOf<ClaimCoverage>()('warranty_claims_coverage_domain', t.coverage, ['warranty', 'extended_warranty', 'chargeable']),
+]);
 
 /** Field interventions (INTERVENTIONS 3731: 6). The seed's type text "Corrective · WC-014" is split into type + claim. */
 export const interventions = pgTable('interventions', {
@@ -109,4 +121,11 @@ export const interventions = pgTable('interventions', {
   partRef: text('part_ref'),
   partRevision: text('part_revision'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [index('interventions_claim_id_idx').on(t.claimId), index('interventions_machine_id_idx').on(t.machineId)]);
+}, (t) => [
+  index('interventions_claim_id_idx').on(t.claimId),
+  index('interventions_machine_id_idx').on(t.machineId),
+  shaped('interventions_number_shape', t.number, numbered('IV-', 3)),
+  oneOf<InterventionType>()('interventions_intervention_type_domain', t.type, ['corrective', 'diagnosis', 'preventive']),
+  within('interventions_duration_days_range', t.durationDays, 0, null),
+  oneOf<InterventionStatus>()('interventions_status_domain', t.status, ['done', 'planned']),
+]);

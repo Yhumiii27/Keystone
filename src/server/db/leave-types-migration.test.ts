@@ -24,7 +24,9 @@ describe('NNNN_leave_types_simple (custom data migration)', () => {
   }, 60_000);
 
   it('maps a database seeded with CP / RTT / Sick / Training: Leave and Absence, days unchanged, old types removed', async () => {
-    // The state before the migration: the prototype's four types (LEAVE_DAYS) and its absences on them (by their days).
+    // The state before the migration: the prototype's four types (LEAVE_DAYS) and its absences on them (by their days). The
+    // domain CHECK of the leave types came later (0084_formats_in_database, R-N02): the state before has none.
+    await db.execute(sql.raw('ALTER TABLE leave_types DROP CONSTRAINT leave_types_code_domain'));
     await db.execute(sql.raw(`INSERT INTO leave_types (code, label, days_per_week, position) VALUES ('cp', 'CP', 5, 1), ('rtt', 'RTT', 1, 2), ('sick', 'Sick', 2, 3), ('training', 'Training', 3, 4)`));
     await db.execute(sql.raw(`UPDATE leave_entries SET leave_type = CASE WHEN days = 2 THEN 'sick' WHEN days = 3 THEN 'training' WHEN days = 1 THEN 'rtt' ELSE 'cp' END`));
     await db.execute(sql.raw(`DELETE FROM leave_types WHERE code IN ('leave', 'absence')`));

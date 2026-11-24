@@ -5,6 +5,7 @@
 import { date, index, integer, numeric, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { PoInspectionKind, PoInspectionResult } from '@/domain/expediting';
 import { id, timestamps } from './_common';
+import { CURRENCY_RE, filled, oneOf, shaped, within } from './_checks';
 import { itpInspections } from './operations';
 import { persons } from './organisation';
 import { projects } from './portfolio';
@@ -22,7 +23,10 @@ export const poExpediting = pgTable('po_expediting', {
   updatedByName: text('updated_by_name'),
   updatedByPersonId: uuid('updated_by_person_id').references(() => persons.id),
   ...timestamps,
-}, (t) => [index('po_expediting_project_id_idx').on(t.projectId)]);
+}, (t) => [
+  index('po_expediting_project_id_idx').on(t.projectId),
+  within('po_expediting_fabrication_pct_range', t.fabricationPct, 0, 100),
+]);
 
 /** Inspection milestones of an order at the supplier's works ("I-1", "I-2"… per order). */
 export const poInspections = pgTable(
@@ -52,7 +56,15 @@ export const poInspections = pgTable(
     position: integer('position').notNull(),
     ...timestamps,
   },
-  (t) => [unique().on(t.poId, t.number), index('po_inspections_project_id_idx').on(t.projectId), index('po_inspections_itp_inspection_id_idx').on(t.itpInspectionId)],
+  (t) => [
+  unique().on(t.poId, t.number),
+  index('po_inspections_project_id_idx').on(t.projectId),
+  index('po_inspections_itp_inspection_id_idx').on(t.itpInspectionId),
+  filled('po_inspections_number_filled', t.number),
+  oneOf<PoInspectionKind>()('po_inspections_kind_domain', t.kind, ['fat', 'material', 'other', 'drawing_review', 'in_process', 'pre_shipment']),
+  filled('po_inspections_name_filled', t.name),
+  oneOf<PoInspectionResult>()('po_inspections_result_domain', t.result, ['planned', 'failed', 'passed', 'passed_reserve']),
+],
 );
 
 /** Release notes (bons de libération) of an order: issued by quality, withdrawn with a reason (never deleted). */
@@ -77,7 +89,11 @@ export const poReleaseNotes = pgTable(
     withdrawReason: text('withdraw_reason'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('po_release_notes_po_id_idx').on(t.poId), index('po_release_notes_project_id_idx').on(t.projectId)],
+  (t) => [
+  index('po_release_notes_po_id_idx').on(t.poId),
+  index('po_release_notes_project_id_idx').on(t.projectId),
+  filled('po_release_notes_number_filled', t.number),
+],
 );
 
 /** R-162: reference exchange rates — euros per unit of a currency, valid from a date (one per currency and date). */
@@ -92,5 +108,8 @@ export const fxReferenceRates = pgTable(
     createdByPersonId: uuid('created_by_person_id').references(() => persons.id),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [unique().on(t.currency, t.validFrom)],
+  (t) => [
+  unique().on(t.currency, t.validFrom),
+  shaped('fx_reference_rates_currency_shape', t.currency, CURRENCY_RE),
+],
 );
