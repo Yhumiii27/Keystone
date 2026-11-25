@@ -65,7 +65,7 @@ describe('proxy (src/proxy.ts)', () => {
   it('behind a TLS proxy the policy upgrades insecure requests; static assets are not matched', async () => {
     const r = await proxy(new NextRequest('http://keystone.internal/', { headers: { 'x-forwarded-proto': 'https' } }));
     expect(r.headers.get('content-security-policy')).toContain('upgrade-insecure-requests');
-    expect(proxyConfig.matcher).toEqual(['/((?!_next/static|_next/image|favicon.ico).*)']);
+    expect(proxyConfig.matcher).toEqual(['/((?!_next/static|_next/image|icon.svg).*)']);
   });
 });
 

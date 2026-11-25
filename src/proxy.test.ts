@@ -44,7 +44,7 @@ describe('proxy', () => {
 
   it('keeps the sign-in page and routes, the health probe and static files public', async () => {
     useEntra();
-    for (const p of ['/sign-in?error=session', '/api/auth/sign-in', '/api/auth/callback?code=x', '/api/health', '/favicon.ico', '/next.svg'])
+    for (const p of ['/sign-in?error=session', '/api/auth/sign-in', '/api/auth/callback?code=x', '/api/health', '/icon.svg', '/next.svg'])
       expect(passes(await proxy(req(p))), p).toBe(true);
   });
 

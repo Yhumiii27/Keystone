@@ -295,6 +295,6 @@ export function isPublicPath(pathname: string): boolean {
   // R-029: server-to-server endpoints authenticated by their own key (exact path only).
   if ((INBOUND_API_PATHS as readonly string[]).includes(pathname)) return true;
   if (pathname.startsWith('/_next/')) return true;
-  // Static files: a single path segment with a file extension (public/ is flat: favicon.ico, *.svg).
+  // Static files: a single path segment with a file extension (public/ is flat: *.svg; the favicon app/icon.svg is /icon.svg).
   return /^\/[^/]+$/.test(pathname) && STATIC_FILE_RE.test(pathname);
 }

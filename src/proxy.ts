@@ -47,5 +47,5 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
 export const config = {
   // Next's build output and image optimiser never need a session; everything else goes through the checks above.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!_next/static|_next/image|icon.svg).*)'],
 };

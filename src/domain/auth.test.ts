@@ -135,7 +135,7 @@ describe('titles and paths', () => {
   });
 
   it('lets the sign-in page and routes, the health probe and static files through without a session', () => {
-    for (const p of ['/sign-in', '/api/auth/sign-in', '/api/auth/callback', '/api/auth/sign-out', '/api/health', '/api/health/db', '/_next/static/chunk.js', '/favicon.ico', '/next.svg'])
+    for (const p of ['/sign-in', '/api/auth/sign-in', '/api/auth/callback', '/api/auth/sign-out', '/api/health', '/api/health/db', '/_next/static/chunk.js', '/icon.svg', '/next.svg'])
       expect(isPublicPath(p), p).toBe(true);
     for (const p of ['/', '/projects/HLT-026/plan', '/api/export/budget', '/api/healthz', '/sign-in/x', '/admin/integrations/audit.csv', '/projects/x.js', '/api/authx'])
       expect(isPublicPath(p), p).toBe(false);
