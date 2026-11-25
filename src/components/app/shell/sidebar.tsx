@@ -6,7 +6,8 @@
 // NavEntry; classes of coque.css): the navigation model (screens, rights, badges) stays Keystone's (nav-model.ts).
 // Tablet layout (R-146, X-4): up to 1024 px the sidebar is the charte's drawer, opened by the top bar's menu button
 // (topbar.tsx), closed by its close button, the backdrop, Escape or a followed entry; the page behind is inert.
-import { CaretDown, CaretRight, CaretUpDown, Eye, Polygon } from '@phosphor-icons/react/dist/ssr';
+import { CaretDown, CaretRight, CaretUpDown, Eye } from '@phosphor-icons/react/dist/ssr';
+import { ToolLogo } from '@norma/charte/ds/ToolLogo';
 import { NavEntry as NavLink, NavList, NavSection, NavSections, PageSearch, Sidebar as CoqueSidebar, type PageHit } from '@norma/charte/ds/Sidebar';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
@@ -160,7 +161,7 @@ export function Sidebar({ role, personas, account, navOpen: initialOpen, zoneLab
   };
 
   return (
-    <CoqueSidebar name={t('Keystone')} icon={Polygon} footer={account ? <AccountMenu account={account} /> : <ViewAs role={role} personas={personas} />}>
+    <CoqueSidebar name={t('Keystone')} logo={<ToolLogo code="keystone" />} footer={account ? <AccountMenu account={account} /> : <ViewAs role={role} personas={personas} />}>
       <PageSearch pages={pages}>
         <NavList>{model.fixed.map((n) => entry(n, false))}</NavList>
         <NavSections>{model.sections.map(section)}</NavSections>
