@@ -1,6 +1,6 @@
 /* R-204 — activity codes (Plan filter bar, dictionary card, drawer section). Drawer rows follow the Plan drawer (plan.module.css). */
-.bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.barIcon { color: var(--color-neutral-400); }
+/* R-N04: toolbar selects — their own width, never wider than the row (390 px). */
+:global(.input).barSelect { max-width: 100%; min-width: 0; text-overflow: ellipsis; }
 .hint { font-size: 12px; color: var(--color-neutral-400); }
 .list { display: flex; flex-direction: column; gap: 12px; }
 .type { display: flex; flex-direction: column; gap: 6px; }

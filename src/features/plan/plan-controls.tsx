@@ -74,7 +74,7 @@ export function PickerChip({ kind, code, value, current, options, header, canCha
     <>
       <I className={s.chipIcon} aria-hidden />
       <span className={s.chipLabel}>{label}</span>
-      {value}
+      <span className={s.chipValue}>{value}</span>
       {canChange && <CaretDown className={s.chipIcon} aria-hidden />}
     </>
   );
@@ -127,7 +127,7 @@ export function DataDateChip({
       <button type="button" className={cx('input', s.chip)} onClick={() => setOpen(true)} title={proposedText ? `${t('Proposed')} · ${proposedText}` : undefined}>
         <Clock className={s.chipIcon} aria-hidden />
         <span className={s.chipLabel}>{t('Data date')}</span>
-        {value}
+        <span className={s.chipValue}>{value}</span>
         {proposedText && <span className={s.chipLabel}>· {t('Proposed')} {proposedText}</span>}
         <CaretDown className={s.chipIcon} aria-hidden />
       </button>

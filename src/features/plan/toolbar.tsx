@@ -2,6 +2,10 @@
 // the Calendar / Baseline / Data date chips and the right-aligned "Reschedule" / "Set baseline" buttons.
 // Chapter 4: the chips show the project's own calendar, displayed baseline and data date; the director and the project
 // manager change them and run Reschedule / Set baseline (./plan-controls.tsx); others see static chips and no buttons.
+// R-N04: rendered as the page header's toolbar (the charte's FilterBar, one wrapping row, COQUE.md § 5): views, chips, then the
+// screen's filters (`filters`: the activity-code filter and grouping), the buttons pushed right.
+import type { ReactNode } from 'react';
+import { FilterBar } from '@norma/charte/ds/FilterBar';
 import { ChartBar, Clock, Eye, TreeStructure } from '@phosphor-icons/react/dist/ssr';
 import { FilterGroup, FilterLabel } from '@/components/app/Filter';
 import { cx } from '@/components/ds/cx';
@@ -35,12 +39,14 @@ export interface PlanToolbarProps {
   baselineChangeRequestHref?: string;
   /** Director / project manager: chips change, Reschedule and Set baseline shown. */
   canSchedule: boolean;
+  /** Filters shown after the chips (R-204 activity codes). */
+  filters?: ReactNode;
   t: T;
 }
 
-export function PlanToolbar({ view, hrefs, code, context, calendar, baseline, dataDate, dataDateDefault, dataDateProposed, nextBaseline, defaultEstimateClass, baselineChangeRequestHref, canSchedule, t }: PlanToolbarProps) {
+export function PlanToolbar({ view, hrefs, code, context, calendar, baseline, dataDate, dataDateDefault, dataDateProposed, nextBaseline, defaultEstimateClass, baselineChangeRequestHref, canSchedule, filters, t }: PlanToolbarProps) {
   return (
-    <div className={s.toolbar}>
+    <FilterBar className={s.toolbar}>
       <FilterGroup>
         <FilterLabel icon={Eye}>{t('Display')}</FilterLabel>
         <Segmented
@@ -61,15 +67,16 @@ export function PlanToolbar({ view, hrefs, code, context, calendar, baseline, da
         <div className={cx('input', s.chip, s.chipStatic)}>
           <Clock className={s.chipIcon} aria-hidden />
           <span className={s.chipLabel}>{t('Data date')}</span>
-          {dataDate}
+          <span className={s.chipValue}>{dataDate}</span>
         </div>
       )}
+      {filters}
       {canSchedule && (
         <div className={s.toolbarRight}>
           <RescheduleButton code={code} />
           <SetBaselineButton code={code} context={context} defaultName={nextBaseline} defaultClass={defaultEstimateClass} changeRequestHref={baselineChangeRequestHref} />
         </div>
       )}
-    </div>
+    </FilterBar>
   );
 }

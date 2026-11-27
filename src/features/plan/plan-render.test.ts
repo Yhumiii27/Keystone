@@ -22,7 +22,11 @@ vi.mock('@/server/project-context', async () => {
 });
 vi.mock('@/components/app/shell/page-header', async () => {
   const { createElement } = await import('react');
-  return { PageHeader: ({ primary }: { primary?: unknown }) => createElement('header', { 'data-testid': 'ph' }, primary as never) };
+  // R-N04: the toolbar (views, chips, code filters) is passed to the header and rendered there.
+  return {
+    PageHeader: ({ primary, toolbar }: { primary?: unknown; toolbar?: unknown }) =>
+      createElement('header', { 'data-testid': 'ph' }, primary as never, createElement('div', { 'data-testid': 'ph-toolbar' }, toolbar as never)),
+  };
 });
 
 import { createElement as h } from 'react';
@@ -58,6 +62,10 @@ describe('Plan page render', () => {
       'Harbor Line', '82%', '2/25', '-27 j', '-39 j', '17 août A', '09 oct.', '0/5',
     ])
       expect(tx).toContain(s);
+    // R-N04: the view switch, the chips and the activity-code filters are in the header's toolbar (charte FilterBar), not the body.
+    const header = html.slice(html.indexOf('data-testid="ph"'), html.indexOf('</header>'));
+    expect(header).toContain('coque-toolbar');
+    for (const s of ['Date de référence', 'Codes d’activité', 'Toutes les activités', 'Replanifier']) expect(text(header)).toContain(s);
     // 1.1–1.3 collapsed by default: their activities are not rendered; 1.4 is.
     expect(html).not.toContain('>A1010<');
     expect(html).toContain('>A1250<');

@@ -4,11 +4,15 @@
 .body { display: flex; flex-direction: column; gap: 14px; }
 
 /* ── Toolbar (1026–1035) ── */
-.toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* R-N04: the toolbar is the header's (charte FilterBar, wrapping); gap 8 as the prototype. A chip never exceeds the row: its parts
+   (label, value, proposed date) wrap between them at 390 px, each kept whole. */
+:global(.coque-toolbar).toolbar { gap: 8px; }
 :global(.input).chip {
-  width: auto; min-height: 32px; display: inline-flex; align-items: center; gap: 8px;
-  font-size: 12.5px; cursor: pointer; padding: 4px 10px; text-align: left; white-space: nowrap;
+  width: auto; max-width: 100%; min-height: 32px; display: inline-flex; align-items: center; flex-wrap: wrap; gap: 2px 8px;
+  font-size: 12.5px; cursor: pointer; padding: 4px 10px; text-align: left;
 }
+.chip > * { white-space: nowrap; }
+.chipValue { white-space: nowrap; }
 :global(.input).chipStatic { cursor: auto; }
 .chipIcon { color: var(--color-neutral-500); flex: none; }
 .chipLabel { color: var(--color-neutral-400); }
