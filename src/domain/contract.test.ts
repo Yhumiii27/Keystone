@@ -216,6 +216,10 @@ describe('form parsing', () => {
     expect(parseSheetField('amount', '-1', 2026)).toEqual({ ok: false, error: 'Enter an amount in k€' });
     expect(parseSheetField('type', 'cost_plus', 2026)).toEqual({ ok: true, value: { type: 'cost_plus' } });
     expect(parseSheetField('type', 'Cost plus', 2026)).toEqual({ ok: false, error: 'Unknown contract type' });
+    // The former code is still accepted as input (deprecated) and stored as the new one (owner, 27 Nov 2026).
+    expect(parseSheetField('type', 'lump_sum_turnkey', 2026)).toEqual({ ok: true, value: { type: 'lump_sum_turnkey' } });
+    expect(parseSheetField('type', 'lump_sum_epc', 2026)).toEqual({ ok: true, value: { type: 'lump_sum_turnkey' } });
+    expect(parseSheetField('type', 'toString', 2026)).toEqual({ ok: false, error: 'Unknown contract type' });
     expect(parseSheetField('signed', '14 janv. 2026', 2026)).toEqual({ ok: true, value: { signedOn: '2026-01-14' } });
     expect(parseSheetField('signed', '', 2026)).toEqual({ ok: true, value: { signedOn: null } });
     expect(parseSheetField('signed', 'x', 2026)).toEqual({ ok: false, error: 'Enter a date such as 14 Dec 2026' });
