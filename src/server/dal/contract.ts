@@ -48,7 +48,7 @@ export interface ContractSheet {
   documentIndexed: boolean;
   client: string;
   type: ContractType;
-  /** "Lump sum (EPC)". */
+  /** "Lump sum (turnkey)". */
   typeLabel: string;
   signedOn: string | null;
   /** "14 Jan 2026" (as the sheet shows it). */

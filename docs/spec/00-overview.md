@@ -34,7 +34,7 @@ Other inputs: `design/_ds/nocturne-…/styles.css` + `readme.md` (design system)
 
 ### 1.1 What Keystone PM is
 
-Keystone PM is the project and portfolio management tool of **Keystone**, a French industrial company. Keystone designs, builds, installs and maintains machines and equipment such as port cranes, data-centre power and cooling, clinic fit-outs, solar arrays and metro signage, under EPC-style contracts.
+Keystone PM is the project and portfolio management tool of **Keystone**, a French industrial company. Keystone designs, builds, installs and maintains machines and equipment such as port cranes, data-centre power and cooling, clinic fit-outs, solar arrays and metro signage, under turnkey contracts.
 
 - **Footprint.** Central warehouse and mechanical workshop in Lyon (`SETTINGS0.locations`), site stores such as Le Havre and Marseille, and projects in three zones: Europe & North America, Africa, Asia Pacific.
 - **Quality system.** ISO 9001; clause references appear on NCRs, document types and the audit trail.

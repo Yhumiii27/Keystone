@@ -544,7 +544,7 @@ export const codexSyncStatus = codec<CodexSyncStatus, string>([
 /** Contract types (CTR_FIELDS 4873). */
 export type ContractType = 'lump_sum_epc' | 'unit_rates' | 'cost_plus' | 'framework';
 export const contractType = codec<ContractType, string>([
-  ['lump_sum_epc', 'Lump sum (EPC)'], ['unit_rates', 'Unit rates'], ['cost_plus', 'Cost plus'], ['framework', 'Framework agreement'],
+  ['lump_sum_epc', 'Lump sum (turnkey)'], ['unit_rates', 'Unit rates'], ['cost_plus', 'Cost plus'], ['framework', 'Framework agreement'],
 ]);
 /** Amendment status (AF.amendment). Only `signed` adds to the contract value. */
 export type AmendmentStatus = 'draft' | 'sent_for_signature' | 'awaiting_signature' | 'signed';

@@ -479,7 +479,7 @@ Seed: €10.09M (4 client · 1 internal), €5.26M, €1.94M, +€365k, −€49
 
 ## 8. Client portal — My project, client view (`client`, `isClient`)
 
-**Who:** client persona (Nadia Bensaïd, Port authority) and director. **Nav:** for role client, fixed sidebar entry "My project" (`ph-buildings`); crumb "Keystone · read-only except decisions and issues". **Purpose:** the external client's window on their EPC project: progress vs plan, contractual milestones, decisions they must take (change requests affecting price/date, deliverable acceptance with signed PV), invoices, issues they raise, and released documents to acknowledge.
+**Who:** client persona (Nadia Bensaïd, Port authority) and director. **Nav:** for role client, fixed sidebar entry "My project" (`ph-buildings`); crumb "Keystone · read-only except decisions and issues". **Purpose:** the external client's window on their turnkey project: progress vs plan, contractual milestones, decisions they must take (change requests affecting price/date, deliverable acceptance with signed PV), invoices, issues they raise, and released documents to acknowledge.
 
 ### 8.1 Layout (template 2180–2236)
 - Column, gap 14px. KPI grid `cpKpis` (5). "Display" + segmented `cpSeg`: "Progress & milestones" / "Decisions" / "Invoices" / "Issues" / "Documents" (FR "Avancement et jalons / Décisions / Factures / Incidents / Documents") → `state.cpTab` (default `progress`). Project picker in the header (§0.2) selects the project (`state.project`); for the client role, "My projects" scope = projects whose client is "Port authority" (HLT-026 only) but the "Whole portfolio" scope is also offered.
