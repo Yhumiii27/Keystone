@@ -3,6 +3,7 @@
 // `?sel=A1250` keeps a row highlighted after the drawer closes (prototype `sel`, default A1250).
 // R-204: `?code=<type>~<value>` filters the activities by activity code, `?group=<type>` groups them by code (read-only view);
 // the Structure view shows the project's activity code dictionary; a « Supplier schedules » card lists the supplier schedules.
+// R-N04: the view switch, the chips and the code filters are the header's toolbar.
 // Primary action: "Update progress" (Progress view) / "Add activity" (Structure view). Edits go through the
 // Server Functions of src/features/plan/actions.ts; projects without planning data show an empty state.
 import { cookies } from 'next/headers';
@@ -232,27 +233,31 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
     <PlanPrimaryButton form={view === 'structure' ? 'plan' : 'progress'} label={t(view === 'structure' ? 'Add activity' : 'Update progress')} />
   ) : undefined;
 
+  // R-N04: views, chips and the activity-code filters in the header's toolbar (the charte's FilterBar, COQUE.md § 5).
+  const toolbar = (
+    <PlanToolbar
+      view={view}
+      hrefs={viewHrefs}
+      code={projectCode}
+      context={context}
+      calendar={calendarChip}
+      baseline={baselineChip}
+      dataDate={dataDateText}
+      dataDateDefault={settings?.proposedDataDate ?? settings?.storedDataDate ?? dataDate}
+      dataDateProposed={settings?.proposedDataDate ? t(longDateText(settings.proposedDataDate)) : undefined}
+      nextBaseline={nextBaselineCode(baselineCodes)}
+      defaultEstimateClass={stageEstimateClass(ctx.project.stage)}
+      baselineChangeRequestHref={canSnapshotFreely(baselineCodes) ? undefined : `${screenHref('changes', { code: projectCode })}?new=1&baseline=1`}
+      canSchedule={canSchedule}
+      filters={<CodeFilterBar types={codeTypes} filter={codeFilter ? `${codeFilter.type}~${codeFilter.value}` : ''} group={codeGroup?.key ?? ''} />}
+      t={t}
+    />
+  );
+
   return (
     <>
-      <PageHeader screen="plan" projectCode={projectCode} primary={primary} />
+      <PageHeader screen="plan" projectCode={projectCode} primary={primary} toolbar={toolbar} />
       <div className={s.body}>
-        <PlanToolbar
-          view={view}
-          hrefs={viewHrefs}
-          code={projectCode}
-          context={context}
-          calendar={calendarChip}
-          baseline={baselineChip}
-          dataDate={dataDateText}
-          dataDateDefault={settings?.proposedDataDate ?? settings?.storedDataDate ?? dataDate}
-          dataDateProposed={settings?.proposedDataDate ? t(longDateText(settings.proposedDataDate)) : undefined}
-          nextBaseline={nextBaselineCode(baselineCodes)}
-          defaultEstimateClass={stageEstimateClass(ctx.project.stage)}
-          baselineChangeRequestHref={canSnapshotFreely(baselineCodes) ? undefined : `${screenHref('changes', { code: projectCode })}?new=1&baseline=1`}
-          canSchedule={canSchedule}
-          t={t}
-        />
-        <CodeFilterBar types={codeTypes} filter={codeFilter ? `${codeFilter.type}~${codeFilter.value}` : ''} group={codeGroup?.key ?? ''} />
         <KpiGrid min={150}>
           {kpis.map((k) => (
             <KpiTile key={k.label} label={k.label} value={k.value} sub={k.sub} color={k.color} />

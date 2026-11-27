@@ -1,6 +1,7 @@
 'use client';
 // R-204 — activity codes on the Plan screen:
-// - CodeFilterBar: filter (`?code=<type>~<value>`) and grouping (`?group=<type>`) of the rows, kept in the URL;
+// - CodeFilterBar: filter (`?code=<type>~<value>`) and grouping (`?group=<type>`) of the rows, kept in the URL — a group of the
+//   page header's toolbar (R-N04);
 // - ActivityCodesCard: the project's dictionary — derived types (equipment line, purchasing package) read-only, stored types
 //   (site, custom) with their values, added and removed by the project's leads and the director;
 // - ActivityCodesSection: the codes of one activity in its drawer (one value per type; the equipment type sets the activity's
@@ -8,6 +9,7 @@
 import { Plus, Tag as TagIcon, Trash, X } from '@phosphor-icons/react/dist/ssr';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { FilterGroup, FilterLabel } from '@/components/app/Filter';
 import { FormDialog, type FormDialogResult } from '@/components/app/FormDialog';
 import { Button, IconButton } from '@/components/ds/Button';
 import { cx } from '@/components/ds/cx';
@@ -40,11 +42,14 @@ export function CodeFilterBar({ types, filter, group }: { types: CodeType[]; fil
     router.push(qs ? `${pathname}?${qs}` : pathname);
   };
   if (!types.length) return null;
+  // R-N04: a group of the page header's toolbar (the charte's FilterBar, COQUE.md § 5) — label, then two compact selects that
+  // never exceed the row (long code labels are cut by the select, the row wraps).
   return (
-    <div className={s.bar}>
-      <TagIcon aria-hidden className={s.barIcon} />
+    <FilterGroup>
+      <FilterLabel icon={TagIcon}>{t('Activity codes')}</FilterLabel>
       <Select
-        size="inline"
+        size="pill"
+        className={s.barSelect}
         aria-label={t('Filter by code')}
         value={filter}
         onChange={(e) => go('code', e.target.value)}
@@ -57,14 +62,15 @@ export function CodeFilterBar({ types, filter, group }: { types: CodeType[]; fil
         ]}
       />
       <Select
-        size="inline"
+        size="pill"
+        className={s.barSelect}
         aria-label={t('Group by')}
         value={group}
         onChange={(e) => go('group', e.target.value)}
         options={[{ value: '', label: t('Group by work package') }, ...types.map((x) => ({ value: x.key, label: `${t('Group by')} · ${typeName(x)}` }))]}
       />
       {group && <span className={s.hint}>{t('Grouped view: read only — group by work package to edit')}</span>}
-    </div>
+    </FilterGroup>
   );
 }
 

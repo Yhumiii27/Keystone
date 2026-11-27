@@ -6,6 +6,7 @@
 //            FR | EN stacked over dark | light (PrefsStack, always the last element)
 //   outside banner (screen outside the viewer's workspace)
 //   zone bar (zone-scoped screens)
+//   the screen's toolbar (`toolbar`: views, filters — the charte's FilterBar, COQUE.md § 5)
 // Usage: return <><PageHeader screen="plan" projectCode={code} primary={<…/>} />{…screen body…}</>
 import { Eye, GlobeHemisphereEast, House, UserCircle } from '@phosphor-icons/react/dist/ssr';
 import { PageHeader as CoqueHeader } from '@norma/charte/ds/PageHeader';
@@ -48,6 +49,11 @@ export interface PageHeaderProps {
    * setting the query parameter instead of the path.
    */
   projectParam?: string;
+  /**
+   * The screen's own toolbar (COQUE.md § 5: views, filters, period, note), rendered under the header after the outside banner
+   * and the zone bar — pass the charte's `FilterBar` (one wrapping row).
+   */
+  toolbar?: ReactNode;
 }
 
 /** Screens whose default crumb extra is typed text (contract reference, payment terms). */
@@ -56,7 +62,7 @@ const DATA_CRUMB_SCREENS: ReadonlySet<ScreenId> = new Set<ScreenId>(['contract',
 const healthView = (p: Pick<ProjectRow, 'health'>) =>
   p.health ? { label: HEALTH_LABEL[p.health], cls: HEALTH_TAG[p.health] } : { label: '—', cls: 'tag tag-neutral' };
 
-export async function PageHeader({ screen, projectCode, title, crumbExtra, primary, taskId, projectParam }: PageHeaderProps) {
+export async function PageHeader({ screen, projectCode, title, crumbExtra, primary, taskId, projectParam, toolbar }: PageHeaderProps) {
   const [{ t, lang }, viewer, zone, lastProject, scope, today, theme] = await Promise.all([getI18n(), getViewer(), getZone(), getLastProject(), getProjectScope(), businessToday(), getTheme()]);
   const def = SCREEN_BY_ID[screen];
   const isProject = def.scope === 'project';
@@ -187,6 +193,7 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
             </span>
           </div>
           )}
+          {toolbar}
         </>
       }
     />
