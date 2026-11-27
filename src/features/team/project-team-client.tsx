@@ -1,7 +1,7 @@
 'use client';
 // Project team editing islands (R-041, P-2): the role select and "Remove" of a member row, and the "Add to team" dialog. Rendered
 // only for the viewers who manage the team (the director and the project's PMs — the Server Functions check it again).
-import { Plus, X } from '@phosphor-icons/react/dist/ssr';
+import { LockSimple, Plus, X } from '@phosphor-icons/react/dist/ssr';
 import { useState, useTransition } from 'react';
 import { FormDialog } from '@/components/app/FormDialog';
 import type { FormDef } from '@/components/app/form-def';
@@ -9,6 +9,7 @@ import { Button, IconButton } from '@/components/ds/Button';
 import { Select } from '@/components/ds/Field';
 import { useToast } from '@/components/ds/Toast';
 import { useI18n } from '@/i18n/client';
+import { setProjectConfidentialityAction } from './confidentiality-actions';
 import { addTeamMemberAction, removeTeamMemberAction, setTeamMemberRoleAction, type TeamActionResult } from './team-actions';
 import s from './project-team.module.css';
 
@@ -56,6 +57,20 @@ export function AddTeamMemberButton({ code, context, form }: { code: string; con
         {t('Add to team')}
       </Button>
       <FormDialog {...form} open={open} onClose={() => setOpen(false)} context={context} onSubmit={(values) => addTeamMemberAction(code, values)} />
+    </>
+  );
+}
+
+/** ING-29: "Confidentiality" → side panel (normal / confidential); rendered for the project's leads and the director only. */
+export function ConfidentialityButton({ code, context, form }: { code: string; context: string; form: FormDef }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button size="sm" icon={LockSimple} onClick={() => setOpen(true)}>
+        {t('Confidentiality')}
+      </Button>
+      <FormDialog {...form} open={open} onClose={() => setOpen(false)} context={context} onSubmit={(values) => setProjectConfidentialityAction(code, values)} />
     </>
   );
 }

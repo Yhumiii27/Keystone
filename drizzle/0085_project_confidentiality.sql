@@ -1,0 +1,2 @@
+ALTER TABLE "projects" ADD COLUMN "confidentiality" text DEFAULT 'normal' NOT NULL;--> statement-breakpoint
+ALTER TABLE "projects" ADD CONSTRAINT "projects_confidentiality_domain" CHECK ("projects"."confidentiality" in ('normal', 'confidential'));

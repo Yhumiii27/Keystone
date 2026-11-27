@@ -18,6 +18,7 @@ import { businessToday } from '@/server/clock';
 import { LoadWindowNav } from '@/features/resources/window-nav';
 import { screenHref } from '@/config/screens';
 import { canManageTeam } from '@/domain/rights';
+import { canSetConfidentiality } from '@/domain/confidentiality';
 import { ProjectTeamCard } from '@/features/team/project-team';
 import { getNamedTeam, teamCandidates } from '@/server/dal/project-team';
 import { getProjectContext } from '@/server/project-context';
@@ -93,7 +94,8 @@ export default async function ProjectResourcesPage({
         windowIsCurrent={win.isCurrent}
         windowNav={<LoadWindowNav window={win} path={screenHref('presources', { code: p.code })} t={t} lang={lang} />}
       />
-      <ProjectTeamCard code={p.code} context={projectLabelText(p, lang)} members={named} candidates={candidates} t={t} />
+      <ProjectTeamCard code={p.code} context={projectLabelText(p, lang)} members={named} candidates={candidates}
+        confidentiality={p.confidential ? 'confidential' : 'normal'} canSetConfidentiality={canEdit && canSetConfidentiality(ctx.viewer.role, ctx.access)} t={t} />
     </>
   );
 }

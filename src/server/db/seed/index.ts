@@ -37,6 +37,7 @@ import { seedSettings, seedSettingsDefaults } from './settings';
 import { seedSite } from './site';
 import { seedStock } from './stock';
 import { demoReferentsToBackfill, seedDemoReferents } from './project-team';
+import { demoConfidentialToBackfill, seedDemoConfidentialProject } from './confidential';
 import { backfillDemoUsers, demoUsersToBackfill, financeUserToBackfill, logisticsUserToBackfill, seedFinanceUser, seedLogisticsUser } from './users';
 import {
   demoShipmentLotBToBackfill, demoShipmentsToBackfill, demoShippingDocumentsToBackfill, fileDemoShippingDocuments, seedDemoShipmentLotB, seedDemoShipments, seedIncoterms,
@@ -104,6 +105,8 @@ async function seedDemoData(tx: Tx): Promise<void> {
   // Delivery 9 (R-158): the Incoterms (reference data) and the demo shipment of HLT-026 on a DAP contract.
   await seedIncoterms(tx);
   await seedDemoShipments(tx);
+  // ING-29 (owner, 27 Nov 2026): the confidential R&D project FTU-052 and its small team.
+  await seedDemoConfidentialProject(tx);
 }
 
 /**
@@ -223,6 +226,10 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
     // L9-X3: EXP-01's packing list, CMR and delivery note filed in Codex (once: while EXP-01 has left and has no document filed).
     if (await demoShippingDocumentsToBackfill(db)) {
       await fileDemoShippingDocuments(db).catch((e) => logError('Delivery 9 demo shipping documents backfill', e, { component: 'seed' }));
+    }
+    // ING-29 (owner, 27 Nov 2026): the confidential R&D project FTU-052 (once: while no project is confidential).
+    if (await demoConfidentialToBackfill(db)) {
+      await db.transaction(async (tx) => { await seedDemoConfidentialProject(tx); }).catch((e) => logError('Delivery 9 demo confidential project backfill', e, { component: 'seed' }));
     }
     // ── Delivery 8 · demo backfills · connectors ──
     // Databases seeded before delivery 7 adopt their (demo) record.

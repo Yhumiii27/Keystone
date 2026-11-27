@@ -285,6 +285,12 @@ const MESSAGES = {
     (p) => `Project category: ${p.from} → ${p.to}`,
     (p, f) => `Catégorie du projet : ${f.label(p.from)} → ${f.label(p.to)}`,
   ),
+  // ING-29 (owner, 27 Nov 2026): the project's confidentiality changed on Project resources (labels of src/domain/confidentiality.ts).
+  'project.confidentiality': def(
+    { from: 'label', to: 'label' },
+    (p) => `Project confidentiality: ${p.from} → ${p.to}`,
+    (p, f) => `Confidentialité du projet : ${f.label(p.from)} → ${f.label(p.to)}`,
+  ),
   // R-201 (K-201): a task's recurrence set or stopped on the task sheet (labels of src/domain/task-recurrence.ts), and the next
   // occurrence created when the current one is closed.
   'task.recurrenceSet': def(

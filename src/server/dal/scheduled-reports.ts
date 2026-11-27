@@ -29,6 +29,7 @@ import { getPortfolioOverview } from './portfolio';
 import { listProjects } from './projects';
 import { absoluteLink, claimSends, recipientsOf, recordSendOutcome, type MailOutcome, type Recipient, type SendKey } from './reminders';
 import { userReminderPrefsMap } from './reminder-preferences';
+import { readAsViewer } from './project-visibility';
 
 const ENDED = new Set(['clos', 'annule']);
 
@@ -110,7 +111,7 @@ export async function runScheduledReports(on?: string, now: Date = new Date()): 
     const viewer = viewerOfRecipient(r);
     const k = `${code}|${viewer.role}`;
     if (!pdfCache.has(k))
-      pdfCache.set(k, (async (): Promise<Built> => {
+      pdfCache.set(k, readAsViewer(viewer, async (): Promise<Built> => {
         const ctx = await buildExportContext({
           screen: 'trends', viewer, lang: 'fr', now, params: new URLSearchParams({ code, audience: 'steering', period: 'week', sections: 'full', variant: 'status' }),
         });
@@ -118,12 +119,13 @@ export async function runScheduledReports(on?: string, now: Date = new Date()): 
         if (!doc) return null;
         const body = await renderPdf(doc, 'fr', now);
         return { lines: summaryLines(doc.blocks), attachment: { fileName: exportFileName('status-report', ctx, 'pdf'), mime: 'application/pdf', body } };
-      })());
+      }));
     return pdfCache.get(k)!;
   };
-  let portfolio: Promise<Built> | null = null;
-  const portfolioReport = (r: Recipient) =>
-    (portfolio ??= (async (): Promise<Built> => {
+  // ING-29: one portfolio document per recipient, read as that recipient (a confidential project only for its team).
+  const portfolios = new Map<string, Promise<Built>>();
+  const portfolioReport = (r: Recipient) => {
+    if (!portfolios.has(r.personId)) portfolios.set(r.personId, readAsViewer(viewerOfRecipient(r), async (): Promise<Built> => {
       const viewer = viewerOfRecipient(r);
       const ctx = await buildExportContext({ screen: 'overview', viewer, lang: 'fr', now, params: new URLSearchParams() });
       const [file, data] = await Promise.all([runExport(ctx, 'xlsx'), getPortfolioOverview(null, 'fr')]);
@@ -133,7 +135,9 @@ export async function runScheduledReports(on?: string, now: Date = new Date()): 
         ...data.alerts.slice(0, 10).map((a) => `  · ${a.code ? `${a.code} · ` : ''}${a.title}`),
       ];
       return { lines, attachment: { fileName: file.fileName, mime: file.mime, body: file.body } };
-    })());
+    }));
+    return portfolios.get(r.personId)!;
+  };
 
   for (const w of mine) {
     const p = w.projectCode ? projects.find((x) => x.code === w.projectCode)! : null;

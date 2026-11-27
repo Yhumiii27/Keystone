@@ -20,7 +20,10 @@ export function chooseCurrentProject(remembered: string | null | undefined, code
 /** The current project for a remembered code (null when there is no project). */
 export async function resolveCurrentProject(remembered: string | null | undefined): Promise<string | null> {
   const db = await getDb();
-  const pool = await db.select({ code: projects.code }).from(projects).orderBy(asc(projects.sortOrder), asc(projects.code));
+  // ING-29: a confidential project the viewer is not on the team of is never the current project.
+  const { hiddenProjects } = await import('./project-visibility');
+  const hidden = (await hiddenProjects()).codes;
+  const pool = (await db.select({ code: projects.code }).from(projects).orderBy(asc(projects.sortOrder), asc(projects.code))).filter((r) => !hidden.has(r.code));
   if (remembered && pool.some((r) => r.code === remembered)) return remembered;
   return chooseCurrentProject(null, pool.map((r) => r.code));
 }
