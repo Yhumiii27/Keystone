@@ -126,7 +126,7 @@ FR labels are the prototype's (`FR_DICT`). *(no FR)* means the dictionary has no
 | `RiskResponse` | `avoid` Avoid / Éviter · `mitigate` Mitigate / Atténuer · `transfer` Transfer / Transférer · `accept` Accept / Accepter | `RESPONSES` 3496 |
 | `RiskStatus` / `RiskTrend` | `open` / `closed`; `up` / `flat` / `down` | `RISKS_HLT` 3487 |
 | `RiskLevel` (derived) | `critical` (score ≥ 15) · `high` (≥ 8) · `medium` (≥ 4) · `low` | 07 §4.1 |
-| `ContractType` | `lump_sum_epc` Lump sum (EPC) / Forfait (EPC) · `unit_rates` Unit rates / Bordereau de prix unitaires · `cost_plus` Cost plus / Régie · `framework` Framework agreement / Accord-cadre | `CTR_FIELDS` 4873 |
+| `ContractType` | `lump_sum_epc` Lump sum (turnkey) / Forfait (clé en main) · `unit_rates` Unit rates / Bordereau de prix unitaires · `cost_plus` Cost plus / Régie · `framework` Framework agreement / Accord-cadre | `CTR_FIELDS` 4873 |
 | `AmendmentStatus` | `draft` Draft / Brouillon · `sent_for_signature` Sent for signature / Envoyé pour signature · `awaiting_signature` Awaiting signature / En attente de signature · `signed` Signed / Signé | `AF.amendment` |
 | `BondType` | `performance` Performance bond / Caution de bonne exécution · `advance_payment` Advance payment bond / Caution de restitution d’acompte · `retention` Retention bond / Caution de retenue de garantie · `warranty` Warranty bond / Caution de garantie · `parent_company` Parent company guarantee / Garantie maison mère | `AF.bond` |
 | `BondState` | `valid` (until date) · `released` (on date) | `CONTRACTS.bonds` |

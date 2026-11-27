@@ -91,7 +91,8 @@ const LABELS = [
   'Awaiting signature', 'Signed', 'Type', 'Issuer', 'Valid until', 'Register guarantee', 'Performance bond', 'Advance payment bond', 'Retention bond',
   'Warranty bond', 'Parent company guarantee', 'Share of contract (%)', 'Add milestone', 'Invoice number', 'Invoice date', 'Note on the invoice',
   'Amendment registered', 'Guarantee registered', 'Payment milestone added', 'Invoice issued', 'sent to the client', 'Paid', 'Overdue', 'Awaiting payment',
-  'Planned', 'Invoiced', 'Lump sum (EPC)', 'Unit rates', 'Cost plus', 'Framework agreement', 'Reference', 'Client', 'Contract type', 'Signed on',
+  // « Lump sum (turnkey) » / « Forfait (clé en main) »: owner's decision of 27 Nov 2026 (no « EPC » in the files; prototype text updated too).
+  'Planned', 'Invoiced', 'Lump sum (turnkey)', 'Unit rates', 'Cost plus', 'Framework agreement', 'Reference', 'Client', 'Contract type', 'Signed on',
   'Base amount (k€)', 'Payment terms', 'Retention (%)', 'Retention release', 'Liquidated damages', 'Warranty', 'Governing law', 'Scope summary',
   'Contract value', 'Amendments pending', 'Guarantees in force', 'Invoiced', 'Outstanding receivables', 'Overdue receivables', 'Next to invoice',
   'Port authority', 'Net 45 days', 'Released at final acceptance + 12 months', '0.5 % per week · cap 10 %', '24 months from SAT',

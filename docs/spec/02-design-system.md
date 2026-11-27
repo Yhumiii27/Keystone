@@ -920,7 +920,7 @@ Rebuild: a `DocumentPreview` component (rounded 8px, contain/cover, drop/upload 
 
 ### 2. Purpose
 
-Geographic view of the EPC portfolio: where projects (sites) are, which are in execution vs pipeline vs closed, which are at risk — with click-through to the project plan. Respects the portfolio **zone** filter (Europe & North America / Africa / Asia Pacific, `ZONES` 3170).
+Geographic view of the turnkey portfolio: where projects (sites) are, which are in execution vs pipeline vs closed, which are at risk — with click-through to the project plan. Respects the portfolio **zone** filter (Europe & North America / Africa / Asia Pacific, `ZONES` 3170).
 
 ### 3. Layout
 
