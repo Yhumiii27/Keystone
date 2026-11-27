@@ -542,10 +542,21 @@ export const codexSyncStatus = codec<CodexSyncStatus, string>([
 
 // ── Contract & billing (docs/spec/11 §2.3, §3.5; 04 §3–4; 03 §7) ────────────────────────────────────
 /** Contract types (CTR_FIELDS 4873). */
-export type ContractType = 'lump_sum_epc' | 'unit_rates' | 'cost_plus' | 'framework';
+export type ContractType = 'lump_sum_turnkey' | 'unit_rates' | 'cost_plus' | 'framework';
 export const contractType = codec<ContractType, string>([
-  ['lump_sum_epc', 'Lump sum (EPC)'], ['unit_rates', 'Unit rates'], ['cost_plus', 'Cost plus'], ['framework', 'Framework agreement'],
+  ['lump_sum_turnkey', 'Lump sum (turnkey)'], ['unit_rates', 'Unit rates'], ['cost_plus', 'Cost plus'], ['framework', 'Framework agreement'],
 ]);
+/**
+ * Former contract-type codes still accepted as input and mapped to the current code (deprecated, never emitted):
+ * `lump_sum_epc` became `lump_sum_turnkey` (owner, 27 Nov 2026; migration 0085_contract_type_turnkey), e.g. a form
+ * left open across the deployment.
+ */
+export const DEPRECATED_CONTRACT_TYPES: Readonly<Record<string, ContractType>> = { lump_sum_epc: 'lump_sum_turnkey' };
+/** The contract type a typed code stands for (current code, or a deprecated one mapped), else null. */
+export function contractTypeOfInput(v: unknown): ContractType | null {
+  if (contractType.isCode(v)) return v;
+  return typeof v === 'string' && Object.hasOwn(DEPRECATED_CONTRACT_TYPES, v) ? DEPRECATED_CONTRACT_TYPES[v] : null;
+}
 /** Amendment status (AF.amendment). Only `signed` adds to the contract value. */
 export type AmendmentStatus = 'draft' | 'sent_for_signature' | 'awaiting_signature' | 'signed';
 export const amendmentStatus = codec<AmendmentStatus, string>([

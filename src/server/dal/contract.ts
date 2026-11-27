@@ -21,7 +21,7 @@ import { isPaymentRule, paymentDueOn, paymentTermsText, termsOfText, type Paymen
 import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import {
-  amendmentStatus, beforePgNow, bondType, contractType, customerInvoiceStatus, displayOfIso, nextBusinessNumber,
+  amendmentStatus, beforePgNow, bondType, contractType, contractTypeOfInput, customerInvoiceStatus, displayOfIso, nextBusinessNumber,
   paymentMilestoneStatus, shortDateYearOfIso,
   type AmendmentStatus, type BondType, type ContractType, type CustomerInvoiceStatus, type PaymentMilestoneStatus,
 } from '@/server/db/codes';
@@ -48,7 +48,7 @@ export interface ContractSheet {
   documentIndexed: boolean;
   client: string;
   type: ContractType;
-  /** "Lump sum (EPC)". */
+  /** "Lump sum (turnkey)". */
   typeLabel: string;
   signedOn: string | null;
   /** "14 Jan 2026" (as the sheet shows it). */
@@ -482,7 +482,11 @@ export async function updateContractSheet(projectCode: string, patch: ContractSh
       if (typeof v === 'string' && k !== 'signedOn') v = v.trim();
       if ((k === 'baseAmountKeur' || k === 'retentionPct') && (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || (k === 'retentionPct' && v > 100)))
         throw new Error(`Invalid ${k}`);
-      if (k === 'type' && !contractType.isCode(v)) throw new Error('Invalid contract type');
+      if (k === 'type') {
+        const type = contractTypeOfInput(v);
+        if (!type) throw new Error('Invalid contract type');
+        v = type;
+      }
       if (k === 'reference' && !v) throw new Error('The reference is required');
       if (k === 'signedOn') v = isoOrNull(v as string | null, 'signature date');
       if (k === 'paymentRule' && !isPaymentRule(v)) throw new Error('Invalid payment rule');

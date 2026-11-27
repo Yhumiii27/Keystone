@@ -5,7 +5,7 @@
 ## 1. Règles
 
 - `projects.confidentiality` : `normal` (défaut, tous les projets existants) | `confidential` (contrainte
-  `projects_confidentiality_domain`, migration `0085_project_confidentiality`).
+  `projects_confidentiality_domain`, migration `0086_project_confidentiality`).
 - Fixé par les responsables du projet (chef de projet titulaire, co-chef, adjoint) et le directeur (`canSetConfidentiality`),
   sur Ressources du projet › « Équipe projet », bouton « Confidentialité » (panneau latéral) ; Server Function
   `setProjectConfidentialityAction` (`src/features/team/confidentiality-actions.ts`), écriture `setProjectConfidentiality`
@@ -37,7 +37,8 @@
 
 ## 3. Publications demandées à Matrix (M-18 : aucune migration ne crée de vue `pub_`)
 
-Requêtes de référence : `src/server/publications/definitions.ts` (exécutées sur une base migrée et semée par
+À appliquer par Matrix après le déploiement de la migration `0086_project_confidentiality` de Keystone (colonne
+`projects.confidentiality` lue par `pub_projets`). Requêtes de référence : `src/server/publications/definitions.ts` (exécutées sur une base migrée et semée par
 `definitions.test.ts` ; forme serveur avec `keystone.`), recopiées dans `data/publications-depot.json` de Matrix.
 
 ### `keystone.pub_projets` + `confidentialite`

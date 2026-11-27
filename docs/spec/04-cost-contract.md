@@ -94,7 +94,7 @@ Used by Trends, Contract, Billing, Contingency. Backdrop `.dialog-backdrop` (z 5
 - Inbound links: portfolio alert "Harbor Line — labor overrun" → "Open budget" (`setState({screen:'budget',project:'HLT-026'})`, line 3811); Change-request detail panel → `openBudget: goTo('budget')` (line 4610).
 
 ### 1.2 Purpose
-Cost control of one EPC project with the earned-value method: planned value (PV) built from the commercial offer's payment terms (deposits / delivery / acceptance) plus other cost streams, compared with earned value (EV) and actual cost (AC); budget structure (categories, change requests, WBS work packages); and cash recovery (client receipts vs committed cost), i.e. whether Keystone is financing the project.
+Cost control of one turnkey project with the earned-value method: planned value (PV) built from the commercial offer's payment terms (deposits / delivery / acceptance) plus other cost streams, compared with earned value (EV) and actual cost (AC); budget structure (categories, change requests, WBS work packages); and cash recovery (client receipts vs committed cost), i.e. whether Keystone is financing the project.
 
 ### 1.3 Layout
 Root: `flex column, gap 14px` (line 287).
@@ -483,7 +483,7 @@ Budget (CPI/SPI/EAC), Schedule (float, milestone slip), Risks (EMV exposure; tar
 `screen==='contract'` (line 5200); nav `nav('contract','Contract','ph ph-file-text')`, first item of group **Contract** ("Contrat") in the Project section. Roles: director, pm, procurement. Not a `startScreen` option. Crumb extra = contract reference.
 
 ### 3.2 Purpose
-Single source of the client contract's commercial terms (EPC lump sum, payment terms, retention, liquidated damages, warranty, governing law, scope), its amendments (avenants), bonds/guarantees and the contractual payment-milestone schedule that Billing invoices against.
+Single source of the client contract's commercial terms (turnkey lump sum, payment terms, retention, liquidated damages, warranty, governing law, scope), its amendments (avenants), bonds/guarantees and the contractual payment-milestone schedule that Billing invoices against.
 
 ### 3.3 Layout
 Root flex column gap 14px. If `hasContract` (`CONTRACTS[project]` exists — HLT-026 only):
@@ -513,7 +513,7 @@ Form grid `repeat(auto-fit,minmax(min(100%,230px),1fr))`, gap 10px 14px; `.field
 |---|---|---|---|
 | ref | "Reference" ("Référence") | text | CTR-HLT-001 |
 | client | "Client" | text | Port authority |
-| type | "Contract type" ("Type de contrat") | select: Lump sum (EPC) / Unit rates / Cost plus / Framework agreement (FR: Forfait (EPC) / Bordereau de prix unitaires / Régie / Accord-cadre) | Lump sum (EPC) |
+| type | "Contract type" ("Type de contrat") | select: Lump sum (turnkey) / Unit rates / Cost plus / Framework agreement (FR: Forfait (clé en main) / Bordereau de prix unitaires / Régie / Accord-cadre) | Lump sum (turnkey) |
 | signed | "Signed on" ("Signé le") | text | 14 Jan 2026 |
 | amount | "Base amount (k€)" ("Montant de base (k€)") | number | 5400 |
 | terms | "Payment terms" | text | Net 45 days |
@@ -783,7 +783,7 @@ Units: amounts in k€ (number); months as index 0 = Jan 2026; dates are display
 | retentionNote | string | Released at final acceptance + 12 months |
 | ld | string "rate · cap" | 0.5 % per week · cap 10 % |
 | warranty | string | 24 months from SAT |
-| type | enum | Lump sum (EPC) / Unit rates / Cost plus / Framework agreement |
+| type | enum | Lump sum (turnkey) / Unit rates / Cost plus / Framework agreement |
 | law | string | French law · Commercial court of Le Havre |
 | scope | text | … |
 | amendments | Amendment[] | |

@@ -1,5 +1,5 @@
 {
-  "id": "3a9fe404-b691-4ff0-99d3-1fd7d6829c51",
+  "id": "0e0acf2b-8931-4123-bdda-324ffa4ecfbd",
   "prevId": "706b5a06-a34d-489f-86f6-dd6cc9e72fbe",
   "version": "7",
   "dialect": "postgresql",
@@ -2379,13 +2379,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'client'"
-        },
-        "confidentiality": {
-          "name": "confidentiality",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'normal'"
         }
       },
       "indexes": {},
@@ -2482,10 +2475,6 @@
       },
       "policies": {},
       "checkConstraints": {
-        "projects_confidentiality_domain": {
-          "name": "projects_confidentiality_domain",
-          "value": "\"projects\".\"confidentiality\" in ('normal', 'confidential')"
-        },
         "projects_kind_check": {
           "name": "projects_kind_check",
           "value": "\"projects\".\"kind\" in ('client', 'internal')"
@@ -12579,7 +12568,7 @@
       "checkConstraints": {
         "contracts_type_domain": {
           "name": "contracts_type_domain",
-          "value": "\"contracts\".\"type\" in ('lump_sum_epc', 'unit_rates', 'cost_plus', 'framework')"
+          "value": "\"contracts\".\"type\" in ('lump_sum_turnkey', 'unit_rates', 'cost_plus', 'framework')"
         },
         "contracts_currency_shape": {
           "name": "contracts_currency_shape",

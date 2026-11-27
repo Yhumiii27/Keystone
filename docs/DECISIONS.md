@@ -477,7 +477,7 @@ documents dans Codex par exemple). » — ING-29 : un projet confidentiel n'est 
 par le chef de projet, et n'apparaît dans aucune liste pour les autres.
 
 Appliqué (note `docs/delivery-9/notes-confidentiality.md`) :
-- **Niveau** `normal` | `confidential` (`projects.confidentiality`, migration 0085), fixé par les responsables du projet (chef de
+- **Niveau** `normal` | `confidential` (`projects.confidentiality`, migration 0086), fixé par les responsables du projet (chef de
   projet, co-chef, adjoint) ou un directeur, depuis Ressources du projet › Équipe projet (panneau latéral), tracé au journal.
 - **Équipe d'un projet** = équipe nommée (R-041) ∪ personnes affectées à une tâche ou nommées sur une activité du planning ∪
   parties prenantes qui sont des personnes internes (`projectTeam`, `src/domain/confidentiality.ts`).

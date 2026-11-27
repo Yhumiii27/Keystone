@@ -600,8 +600,15 @@
     {
       "idx": 85,
       "version": "7",
-      "when": 1795780188127,
-      "tag": "0085_project_confidentiality",
+      "when": 1795783534128,
+      "tag": "0085_contract_type_turnkey",
+      "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1795788033488,
+      "tag": "0086_project_confidentiality",
       "breakpoints": true
     }
   ]

@@ -76,7 +76,7 @@ describe('Contract screen', () => {
     // Sheet fields with their prototype values; the scope is a full-row textarea.
     for (const v of ['value="CTR-HLT-001"', 'value="Port authority"', 'value="14 Jan 2026"', 'value="5400"', 'value="45"', 'value="0.5 % per week · cap 10 %"'])
       expect(out).toContain(v);
-    expect(out).toMatch(/<option value="lump_sum_epc" selected="">Lump sum \(EPC\)<\/option>/);
+    expect(out).toMatch(/<option value="lump_sum_turnkey" selected="">Lump sum \(turnkey\)<\/option>/);
     // C-6: the payment rule (net 45 = "Net 45 days"); C-9: the currency (EUR, the project's only choice).
     expect(out).toMatch(/<option value="net" selected="">N days from invoice date<\/option>/);
     expect(text(out)).toContain('Payment rule N days from invoice date N days end of month End of month + N days Net 45 days Payment days');
@@ -101,7 +101,7 @@ describe('Contract screen', () => {
     const out = contract('fr');
     for (const v of ['value="Autorité portuaire"', 'value="14 janv. 2026"', 'value="45"']) expect(out).toContain(v);
     expect(out).toMatch(/<option value="net" selected="">N jours date de facture<\/option>/);
-    expect(out).toMatch(/<option value="lump_sum_epc" selected="">Forfait \(EPC\)<\/option>/);
+    expect(out).toMatch(/<option value="lump_sum_turnkey" selected="">Forfait \(clé en main\)<\/option>/);
   });
 
   it('read-only: disabled fields, no Add buttons; "Open contract" and document links stay', () => {
