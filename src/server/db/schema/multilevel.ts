@@ -140,7 +140,7 @@ export type SupplierTieDirection = 'to_project' | 'from_project';
 /**
  * Ties consolidating a supplier schedule into the project CPM, set by the project's leads: 'to_project' = the supplier activity
  * (usually the delivery) precedes the project activity (reception, installation); 'from_project' = a project activity (drawings
- * approval by EPC2i) precedes the supplier activity.
+ * approval by the company) precedes the supplier activity.
  */
 export const supplierScheduleTies = pgTable(
   'supplier_schedule_ties',

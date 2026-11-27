@@ -7,7 +7,7 @@
 // Consolidation (`consolidateNetwork`): the supplier activities become ordinary CPM nodes (id "PO-1082/F10", tagged with their
 // purchase order in `sources`) next to the project's activities, with their own links and the ties the project's leads set:
 // 'to_project' = supplier activity → project activity (FS + lag: the delivery drives the reception / installation),
-// 'from_project' = project activity → supplier activity (FS + lag: EPC2i's drawings approval drives the manufacturing).
+// 'from_project' = project activity → supplier activity (FS + lag: The company's drawings approval drives the manufacturing).
 // The engine (src/domain/cpm.ts) is unchanged: a supplier node is an activity like any other, on the project calendar, with a
 // "Start no earlier than" its committed start while it has not started (the supplier does not start before the date it
 // committed to), so a supplier that slips pushes the project's activities it is tied to. Only schedules with at least one tie

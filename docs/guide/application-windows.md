@@ -7,10 +7,10 @@ Keystone s’utilise de deux façons, au choix de chacun (décision du responsab
 | Où | n’importe quel poste, tablette ou réseau qui atteint le serveur | les PC Windows 10 ou 11 où elle est installée |
 | Installation | aucune | un fichier fourni par le service informatique |
 | Données, droits, écrans | identiques : c’est le même serveur Keystone | identiques |
-| Connexion | « Se connecter avec Microsoft » (compte EPC2i) | la même, dans la fenêtre de l’application |
+| Connexion | « Se connecter avec Microsoft » (compte de l’entreprise) | la même, dans la fenêtre de l’application |
 | Atouts | rien à installer, plusieurs onglets | une fenêtre à part dans la barre des tâches, lancée comme un logiciel, sans onglets mélangés aux autres sites |
 
-L’application n’est **qu’une fenêtre** sur le serveur Keystone d’EPC2i : elle ne contient ni données ni copie hors ligne.
+L’application n’est **qu’une fenêtre** sur le serveur Keystone de l’entreprise : elle ne contient ni données ni copie hors ligne.
 Sans réseau, elle affiche « Keystone est injoignable » avec un bouton **Réessayer**. Vous pouvez passer de l’une à l’autre à
 tout moment : ce que vous faites dans l’une se retrouve dans l’autre.
 
@@ -38,8 +38,8 @@ service informatique. En attendant, utilisez Keystone dans votre navigateur.
 
 ## Se connecter
 
-Comme dans le navigateur : **« Se connecter avec Microsoft »**, puis votre compte EPC2i. La page de connexion Microsoft s’ouvre
-dans la fenêtre de l’application. Sur un PC ouvert avec votre compte EPC2i, la connexion peut se faire sans saisir de mot de
+Comme dans le navigateur : **« Se connecter avec Microsoft »**, puis votre compte de l’entreprise. La page de connexion Microsoft s’ouvre
+dans la fenêtre de l’application. Sur un PC ouvert avec votre compte de l’entreprise, la connexion peut se faire sans saisir de mot de
 passe. La session est conservée quand vous fermez l’application, pour la durée habituelle d’une session Keystone.
 
 ## Au quotidien

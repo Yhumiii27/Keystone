@@ -1,10 +1,10 @@
 // End-to-end database check: opens a PGlite in a temporary directory, applies ./drizzle, seeds from the
 // prototype data set, prints row counts and verifies golden values through the DAL.
 //   npx tsx --conditions=react-server scripts/db-check.ts
-// With --postgres, the same checks run on the PostgreSQL server of DATABASE_URL (the shared EPC2I server as keystone_app,
+// With --postgres, the same checks run on the PostgreSQL server of DATABASE_URL (the shared Atrium server as keystone_app,
 // schema `keystone`): `npm run db:migrate` logic first (migrations, demo seed), then the checks — which WRITE (projects,
 // requests, orders…): only on a fresh, disposable database (CI, a test cluster), never on a server whose data is kept.
-//   DATABASE_URL=postgres://keystone_app:…@host:5432/epc2i npx tsx --conditions=react-server scripts/db-check.ts --postgres
+//   DATABASE_URL=postgres://keystone_app:…@host:5432/<database> npx tsx --conditions=react-server scripts/db-check.ts --postgres
 // R-013: the golden values are the demo data set's at its date (the real clock is the default since 17 Oct 2026).
 process.env.KEYSTONE_CLOCK = '2026-09-25';
 // D12 / D13: the checks read Vigie's demo mirrors; the server under check (--postgres) has no vigie schema — the Vigie connector
@@ -257,7 +257,7 @@ async function main() {
   }
   check('audit_entries refuses UPDATE, DELETE and TRUNCATE', refused === 3 && (await listAudit()).length === 8 + 6, refused); // L9-X3: + the demo filing's 6 rows
 
-  // Share views of the EPC2I data sharing convention (migration 0035_share, Matrix partage/30-keystone.sql).
+  // Share views of the Atrium data sharing convention (migration 0035_share, Matrix partage/30-keystone.sql).
   console.log('\nShare views (pub_)');
   const views = await db.execute(sql`select table_name as v from information_schema.views where table_schema = current_schema() and table_name like 'pub\_%' order by 1`);
   const viewNames = (views.rows as { v: string }[]).map((r) => r.v);

@@ -13,7 +13,7 @@
 // - R-158: the 11 Incoterms 2020 with their split of responsibilities (Settings › Incoterms);
 // - R-178: the five premium multipliers of the rate grid, as PLACEHOLDER factors for the direction to confirm (A-10 — shown
 //   and editable on Rate cards; src/domain/rate-defaults.ts), first versions from 1 Jan 2026.
-// Clients, suppliers, storage locations, rate roles and people are entered by EPC2i (or arrive through sign-in and connectors).
+// Clients, suppliers, storage locations, rate roles and people are entered by the company (or arrive through sign-in and connectors).
 import type { Tx } from '../types';
 import { builtinCalendarRows } from './chapter4';
 import { newCtx } from './context';

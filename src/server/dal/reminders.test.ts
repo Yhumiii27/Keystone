@@ -54,8 +54,8 @@ beforeEach(() => {
   as('director');
   vi.stubEnv('KEYSTONE_MAIL_TRANSPORT', 'file');
   vi.stubEnv('KEYSTONE_MAIL_DIR', dir);
-  vi.stubEnv('KEYSTONE_MAIL_FROM', 'Keystone <keystone@epc2i.fr>');
-  vi.stubEnv('KEYSTONE_PUBLIC_URL', 'https://keystone.epc2i.fr');
+  vi.stubEnv('KEYSTONE_MAIL_FROM', 'Keystone <keystone@atrium.example>');
+  vi.stubEnv('KEYSTONE_PUBLIC_URL', 'https://keystone.atrium.example');
 });
 afterAll(() => {
   vi.unstubAllEnvs();
@@ -95,16 +95,16 @@ describe('the daily job', () => {
     expect(files()).toHaveLength(3);
     const julien = files().find((f) => f.includes('julien-wagner'))!;
     const raw = read(julien);
-    expect(raw).toContain('To: "Julien Wagner" <julien.wagner@epc2i.fr>');
+    expect(raw).toContain('To: "Julien Wagner" <julien.wagner@atrium.example>');
     const body = textOf(raw);
     expect(body).toContain('Bonjour Julien Wagner,');
     expect(body).toContain('Vos échéances dans Keystone · 25 sept.');
     expect(body).toContain('- HLT-026 · T-2298 ·');
     expect(body).toContain('  Tâche · échéance 24 sept. · 1 j de retard');
-    expect(body).toContain('  https://keystone.epc2i.fr/my/tasks/T-2298');
+    expect(body).toContain('  https://keystone.atrium.example/my/tasks/T-2298');
     expect(body).toContain('  Action de réunion · échéance 1 oct. · dans 6 j');
-    expect(body).toContain('  https://keystone.epc2i.fr/projects/HLT-026/meetings?meeting=MTG-118');
-    expect(body).toContain('Ouvrir Keystone: https://keystone.epc2i.fr/my/tasks');
+    expect(body).toContain('  https://keystone.atrium.example/projects/HLT-026/meetings?meeting=MTG-118');
+    expect(body).toContain('Ouvrir Keystone: https://keystone.atrium.example/my/tasks');
     const { personId } = (await userOf('member'))!;
     expect((await sendsOf(personId)).map((r) => [r.itemKey.split(':')[0], r.slot, r.emailStatus, !!r.notificationCode]).sort()).toEqual([
       ['meeting_action', 'J-7', 'sent', true], ['task', 'J-1', 'sent', true], ['task', 'J-7', 'sent', true], ['task', 'overdue', 'sent', true],
@@ -218,7 +218,7 @@ describe('weekly reports', () => {
     expect(body).toContain('Bonjour Romain Aubert,');
     expect(body).toContain('Rapport d’avancement hebdomadaire · HLT-026 ·');
     expect(body).toContain('Pièce jointe: status-report-HLT-026-2026-09-28.pdf');
-    expect(body).toContain('Ouvrir dans Keystone: https://keystone.epc2i.fr/projects/HLT-026/trends');
+    expect(body).toContain('Ouvrir dans Keystone: https://keystone.atrium.example/projects/HLT-026/trends');
     // The PDF itself, base64 in the message.
     const pdf = Buffer.from(romain.split('Content-Disposition: attachment; filename="status-report-HLT-026-2026-09-28.pdf"\r\n\r\n')[1].split('\r\n--')[0].replace(/\r\n/g, ''), 'base64');
     expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');

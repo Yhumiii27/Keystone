@@ -56,7 +56,7 @@ Incoterm est une donnée de référence que l’administrateur peut réécrire o
 de l’utilisateur (`incotermText`, repli sur l’autre langue si une est vide). Les libellés des étapes, des parties et des modes
 sont, eux, le vocabulaire de Keystone (`t()`, `d9-shipments.json`).
 
-Répartition des 10 étapes (V = vendeur = EPC2i, A = acheteur) :
+Répartition des 10 étapes (V = vendeur = l’entreprise, A = acheteur) :
 
 | Incoterm | Modes | Emballage export | Chargement départ | Dédouan. export | Pré-acheminement | Transport principal | Assurance | Déchargement destination | Dédouan. import | Post-acheminement / livraison site | Droits et taxes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -136,7 +136,7 @@ l’Incoterm du contrat » (code, nom, lieu, description, répartition des étap
   Supprimer (brouillon) ;
 - faits : mode, transitaire, origine, destination, départ / arrivée prévus et réels, liste de colisage ; alerte si l’Incoterm est
   maritime et le mode ne l’est pas ;
-- **étapes du transport** d’après l’Incoterm : celles d’EPC2i (date prévue, date de réalisation, note, état : à planifier,
+- **étapes du transport** d’après l’Incoterm : celles de l’entreprise (date prévue, date de réalisation, note, état : à planifier,
   planifiée, en retard, faite) sont suivies et modifiables ; celles de l’acheteur sont affichées, non suivies ;
 - **chargements et contenu** : chaque chargement (type, n°, scellé, poids brut), ses lignes (article ou article libre, code SH,
   quantité, colis, dimensions, poids, origine, valeur) ;
@@ -155,7 +155,7 @@ pour les autres lecteurs, à l’écran comme à l’export.
 
 - Les 11 Incoterms 2020 (aussi en production).
 - **HLT-026** : contrat en **DAP « Le Havre — terminal site »** (le site de HLT-026 est au Havre).
-- **EXP-01** « Modules MEMU M1–M3 » : ligne **EQ-02 (3 × MEMU)**, route, transitaire « Transports Delmas », Atelier EPC2i —
+- **EXP-01** « Modules MEMU M1–M3 » : ligne **EQ-02 (3 × MEMU)**, route, transitaire « Transports Delmas », Atelier de l’entreprise —
   Lyon → Le Havre, départ prévu 12 oct., arrivée 14 oct. 2026 ; **deux conteneurs 40′ HC** (MSKU 482190-3 : 8 lidars
   anticollision, 2 anémomètres ; TCLU 905514-8 : 12 caméras OCR, 3 kits de fusibles de rechange) ; les 7 étapes du vendeur sous
   DAP renseignées (emballage fait le 24 sept.) ; liste de colisage **validée** le 24 sept. par Camille Verdier ; **un petit écart
@@ -171,7 +171,7 @@ pour les autres lecteurs, à l’écran comme à l’export.
 ## 8. Profil « Logistique » et droits (décision 7)
 
 - **Rôle** `logistics` (« Logistique »), 10ᵉ profil de « Voir en tant que » : **Camille Verdier**, coordinatrice logistique,
-  service Contrôle et planification, `camille.verdier@epc2i.fr`. La personne n’existe pas dans le prototype : la seed la crée
+  service Contrôle et planification, `camille.verdier@atrium.example`. La personne n’existe pas dans le prototype : la seed la crée
   avec son utilisateur (hors pool de ressources), et une base de démonstration existante la reçoit une fois. En production, la
   DSI attribue le rôle d’application Entra `Keystone.Logistics` (valeur `logistics`) ou un groupe associé (`ENTRA_GROUP_ROLES`) ;
   priorité des rôles : après Finance, avant Membre.
@@ -180,7 +180,7 @@ pour les autres lecteurs, à l’écran comme à l’export.
   Paramètres (lecture des Incoterms). Pas de Contrat, Budget ni Facturation : l’Incoterm du contrat est affiché sur l’écran
   Expéditions ; rien de financier hors des valeurs en douane.
 - **Expéditions** modifiables par le directeur, **la Logistique sur tous les projets** (comme la Finance sur le contrat : la
-  logistique d’EPC2i sert tous les projets, pas une équipe nommée) et les responsables du projet (chef de projet attitré, co-CP,
+  logistique de l’entreprise sert tous les projets, pas une équipe nommée) et les responsables du projet (chef de projet attitré, co-CP,
   adjoint) dont l’espace a l’écran (chef de projet, achats) ; l’équipe et les autres rôles internes lisent ; le client est
   refusé (renvoyé à son accueil). Les achats ont l’écran dans leur espace (suivi du matériel acheté).
 - **Lecture seule** de la Logistique sur la Nomenclature, le Chantier, le Planning et les Livraisons, même sur un projet dont elle
@@ -262,7 +262,7 @@ Keystone génère **tous les documents nécessaires sauf les factures** (ni fact
 
 - **Gabarits isolés** : un fichier par document dans `src/server/export/shipping-documents/` (fonctions pures des données de
   l’expédition et de la langue) ; `common.ts` porte les blocs partagés (parties, transport, tableau de contenu, regroupement SH).
-  Remplacer un document par le format standard d’EPC2i = remplacer son fichier. Pied de page « mise en page générique ».
+  Remplacer un document par le format standard de l’entreprise = remplacer son fichier. Pied de page « mise en page générique ».
 - **Valeurs** : `canSeeShipmentValues` (NEW-D2-1 + Logistique). Pour les autres lecteurs, colonnes €, totaux et montants retirés
   (`withoutValues`) — même règle à l’écran, à l’export et dans le fichier versé (versé par un éditeur, qui voit les valeurs).
 - **Disponibilité** : un document demande au moins un chargement avec du contenu ; la CMR, le mode route ou multimodal.
@@ -365,12 +365,12 @@ reçoit ces données une fois (EXP-01 encore « préparée », rien de pointé).
 8. Jalon `arrivee_site` décidé par les expéditions dès qu’une est envoyée (les brouillons ne comptent pas) ; ETD / ETA en date
    prévue seulement à défaut d’autre source.
 9. Date de besoin sur site : fiche chantier, sinon jalon codé ancré ; alerte seulement avant l’arrivée.
-10. Expéditeur imprimé « EPC2i » + origine saisie (identité légale et adresses avec les formats standard).
+10. Expéditeur imprimé « The company » (provisoire) + origine saisie (identité légale et adresses avec les formats standard).
 11. Pas de pagination (R-017) sur l’écran Expéditions : quelques expéditions par projet, la réception et les documents par expédition.
 
 ## 20. Ce qui reste
 
-- **Formats standard d’EPC2i** pour chaque document (décision 10) : remplacer les gabarits génériques un par un.
+- **Formats standard de l’entreprise** pour chaque document (décision 10) : remplacer les gabarits génériques un par un.
 - **Codex** : API de dépôt (D-1) et création du type `SHP` côté Codex ; d’ici là les dépôts restent « en attente de synchro ».
 - **Matrix** : copie de `pub_expeditions` (et de la nouvelle définition de `pub_jalons_projets`) dans `partage/30-keystone.sql`,
   droit de lecture `arche_app` (`partage/90-droits.sql`) — demande à présenter au responsable produit avant toute écriture.

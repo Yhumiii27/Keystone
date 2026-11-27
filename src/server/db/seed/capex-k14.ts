@@ -1,6 +1,6 @@
 // K-14 (Arche's request of 30 Oct 2026, approved by the owner on 2 Nov 2026; docs/delivery-9/notes-k14-demo.md): the demo aligned
 // with Arche's. Arche's demo CAPEX CPX-APM-2025-01 "Ageing oven and finishing line" (Kénitra, start-up phase since 1 Jul 2026)
-// ordered its ageing oven — the free need CPX-APM-2025-01/B01, "Ageing oven 2 × 6 m" — at its G2 of 15 Sep 2025; EPC2i delivered
+// ordered its ageing oven — the free need CPX-APM-2025-01/B01, "Ageing oven 2 × 6 m" — at its G2 of 15 Sep 2025; the company delivered
 // it with the demo project APM-008, now in warranty, whose installed base gives the machine of Arche's ramp-up line "Ageing oven"
 // (MCH-045: under the floor of "Add machine", whose numbers continue at MCH-050 — Arche's seed names the line's machine with its
 // own simulation, `simulatedMachineNumber(simulatedProjectCode(…/B01), 0)` = MCH-443, to replace by MCH-045 on its side). The

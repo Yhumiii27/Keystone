@@ -17,11 +17,11 @@
 // Owner answers 18 Oct 2026, fourth round:
 // (1) « Les équipes externes ne rentrent pas dans le plan de charge » — EXTERNAL labour is left out of the load plan: no person
 //     load, no trade demand, no unmet demand (it stays in the schedule). An assignment is external when it carries hours
-//     (`isLabour`) and is not EPC2i staff: unnamed and without a department (a crew, a subcontractor, an imported labour resource
-//     matched to nobody), or named after a person whose rate-grid role is external (R-083 `isExternal`). EPC2i labour is a named
-//     person (staff role) or an unnamed assignment carrying an EPC2i department (`isInternalLabour`).
+//     (`isLabour`) and is not company staff: unnamed and without a department (a crew, a subcontractor, an imported labour resource
+//     matched to nobody), or named after a person whose rate-grid role is external (R-083 `isExternal`). company labour is a named
+//     person (staff role) or an unnamed assignment carrying a company department (`isInternalLabour`).
 // (2) « Aucune activité ne devrait être sans affectation, donc laisse 2 h » — the owner's 2 h per working day on their trade is
-//     kept, and applies whenever the activity has no EPC2i labour assignment: owner only, but also external crews, equipment or
+//     kept, and applies whenever the activity has no company labour assignment: owner only, but also external crews, equipment or
 //     material only (the owner coordinates the subcontractor / the hire). « … mais à 15 jours d'une activité sans affectation
 //     préviens le chef de projet » — `unassignedActivitiesAt`: the activities that need work, have no labour assignment at all
 //     (an external crew IS an assignment — the work is staffed, by a subcontractor), have an owner (the ones without are the
@@ -71,7 +71,7 @@ export interface PlanAssignment {
   person: string | null;
   /** Department of the assignment (unnamed: its trade); null when none. */
   department: string | null;
-  /** Named person whose rate-grid role is external (R-083 `rate_roles.is_external`): not EPC2i staff. Absent = staff. */
+  /** Named person whose rate-grid role is external (R-083 `rate_roles.is_external`): not company staff. Absent = staff. */
   personExternal?: boolean;
   units: number | null;
   hoursPerDay: number | null;
@@ -92,17 +92,17 @@ export const isLabour = (a: LabourFacts): boolean =>
 
 /**
  * External labour (owner answer 18 Oct 2026: « Les équipes externes ne rentrent pas dans le plan de charge »): labour that is not
- * EPC2i staff — unnamed without a department (crew, subcontractor), or a named person with an external rate role.
+ * company staff — unnamed without a department (crew, subcontractor), or a named person with an external rate role.
  */
 export const isExternalLabour = (a: LabourFacts & Pick<PlanAssignment, 'person' | 'department' | 'personExternal'>): boolean =>
   isLabour(a) && (a.person ? !!a.personExternal : !a.department);
 
-/** EPC2i labour: counted in the load plan (a person's load, or its department's demand). */
+/** company labour: counted in the load plan (a person's load, or its department's demand). */
 export const isInternalLabour = (a: LabourFacts & Pick<PlanAssignment, 'person' | 'department' | 'personExternal'>): boolean =>
   isLabour(a) && !isExternalLabour(a);
 
 /**
- * Trade of an unnamed assignment: its department, else the resource it names, else "Other". `planningLoad` only reads it for EPC2i
+ * Trade of an unnamed assignment: its department, else the resource it names, else "Other". `planningLoad` only reads it for the company
  * labour (a department), the other branches are kept for callers that classify any assignment.
  */
 export function tradeOfAssignment(a: Pick<PlanAssignment, 'department' | 'resource'>): Pick<TradeLoad, 'trade' | 'kind'> {
@@ -156,7 +156,7 @@ export function planningLoad(
   activities: readonly PlanActivity[], assignments: readonly PlanAssignment[], weeks: readonly IsoDate[], ownerHoursPerDay: number,
 ): PlanningLoad {
   const act = new Map(activities.map((a) => [`${a.project}|${a.code}`, a]));
-  // Owner answer 18 Oct 2026 (2): the owner's coordination share applies unless EPC2i labour is assigned.
+  // Owner answer 18 Oct 2026 (2): the owner's coordination share applies unless company labour is assigned.
   const staffed = new Set(assignments.filter(isInternalLabour).map((a) => `${a.project}|${a.activity}`));
   const zero = () => weeks.map(() => 0);
   const people: Record<string, number[]> = {};

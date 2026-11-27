@@ -16,7 +16,7 @@ numbers with every `{{ T.kN }}` replaced by «English text»). Visual target: pi
   (`src/server/db/client.ts`); a PostgreSQL server is migrated and seeded by `npm run db:migrate` at deploy time and the
   app refuses pending migrations. `KEYSTONE_SEED=demo` (default) seeds the prototype data set, `production` reference
   data only (`src/server/db/seed/reference.ts`). On a server, tables, `pub_` views and journal live in the schema
-  `keystone` (shared EPC2I server: role `keystone_app`, `search_path=keystone`, the migrator rewrites `"public".`;
+  `keystone` (shared Atrium server: role `keystone_app`, `search_path=keystone`, the migrator rewrites `"public".`;
   `src/server/db/server-schema.ts`); PGlite keeps `public`. Every `db.transaction()` is SERIALIZABLE (PGlite) or takes
   Keystone's write lock first (server), and is re-run after a serialization failure or a deadlock
   (`src/server/db/transactions.ts`): a transaction callback may run more than once, so it touches the database through

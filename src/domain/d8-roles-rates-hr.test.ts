@@ -30,7 +30,7 @@ describe('R-044 · the Finance role and persona', () => {
   it('nine personas (with Logistics, R-158, and without the client, D9-06); Léa Marchand, Cost controller, Controls & planning; label and priority', () => {
     // D9-06 (owner, 10 Nov 2026): the Client persona is gone — 10 → 9.
     expect(PERSONAS).toHaveLength(9);
-    expect(PERSONA_BY_ROLE.finance).toMatchObject({ name: 'Léa Marchand', title: 'Cost controller', short: 'L. Marchand', email: 'lea.marchand@epc2i.fr', department: 'Controls & planning' });
+    expect(PERSONA_BY_ROLE.finance).toMatchObject({ name: 'Léa Marchand', title: 'Cost controller', short: 'L. Marchand', email: 'lea.marchand@atrium.example', department: 'Controls & planning' });
     expect(ROLE_LABEL.finance).toBe('Finance');
   });
 

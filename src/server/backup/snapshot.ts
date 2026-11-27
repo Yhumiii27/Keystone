@@ -48,7 +48,7 @@ const qid = (s: string) => `"${s.replace(/"/g, '""')}"`;
 
 /**
  * Where Keystone's tables and migration journal are: PGlite — tables in `public`, journal in `drizzle`; PostgreSQL server —
- * both in the schema `keystone` (shared EPC2I server, src/server/db/server-schema.ts).
+ * both in the schema `keystone` (shared Atrium server, src/server/db/server-schema.ts).
  */
 interface Layout {
   schemas: readonly string[];
@@ -107,7 +107,7 @@ async function dumpPostgres(url: string, out: string): Promise<DbState> {
     await client.query('begin isolation level repeatable read read only');
     const { rows } = await client.query<{ s: string }>('select pg_export_snapshot() as s');
     const { url: bare, password } = splitPassword(url);
-    // Keystone's schema only (`--schema=keystone`): on the shared EPC2I server the other tools' schemas are not Keystone's to back up.
+    // Keystone's schema only (`--schema=keystone`): on the shared Atrium server the other tools' schemas are not Keystone's to back up.
     const dump = runCommand('pg_dump', ['--format=custom', `--schema=${SERVER_SCHEMA}`, `--snapshot=${rows[0].s}`, `--file=${out}`, `--dbname=${bare}`], password ? { PGPASSWORD: password } : {});
     // Read in the same snapshot while pg_dump runs (it imports the snapshot at its start; the transaction stays open until it
     // ends). Promise.all also handles pg_dump's failure when the reads fail first.

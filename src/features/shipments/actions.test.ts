@@ -278,7 +278,7 @@ describe('the screen (EN / FR)', () => {
     for (const s of ['DAP', 'Delivered At Place', 'Le Havre — terminal site', 'EXP-01 · Modules MEMU M1–M3', 'Container 40′ HC', 'Packing control cleared', 'Customs summary by HS code', 'Site reception', 'Shipping documents', 'Mark in transit'])
       expect(en, s).toContain(s);
     const fr = render('fr', false);
-    for (const s of ['Rendu au lieu de destination', 'Le Havre — site du terminal', 'Conteneur 40′ HC', 'Contrôle du colisage soldé', 'Synthèse douanière par code SH', 'Transport principal', 'EPC2i (vendeur)'])
+    for (const s of ['Rendu au lieu de destination', 'Le Havre — site du terminal', 'Conteneur 40′ HC', 'Contrôle du colisage soldé', 'Synthèse douanière par code SH', 'Transport principal', 'Entreprise (vendeur)'])
       expect(fr, s).toContain(s);
     expect(fr).not.toContain('Rouvrir la liste de colisage');
   });

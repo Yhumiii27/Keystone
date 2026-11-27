@@ -69,8 +69,8 @@ beforeAll(async () => {
 beforeEach(() => {
   vi.stubEnv('KEYSTONE_MAIL_TRANSPORT', 'file');
   vi.stubEnv('KEYSTONE_MAIL_DIR', dir);
-  vi.stubEnv('KEYSTONE_MAIL_FROM', 'Keystone <keystone@epc2i.fr>');
-  vi.stubEnv('KEYSTONE_PUBLIC_URL', 'https://keystone.epc2i.fr');
+  vi.stubEnv('KEYSTONE_MAIL_FROM', 'Keystone <keystone@atrium.example>');
+  vi.stubEnv('KEYSTONE_PUBLIC_URL', 'https://keystone.atrium.example');
 });
 afterAll(() => {
   vi.unstubAllEnvs();
@@ -87,7 +87,7 @@ describe('R-036 · immediate e-mails', () => {
     expect(mails[0].name).toMatch(/romain-aubert/);
     expect(mails[0].raw).toContain('Subject: =?UTF-8?');
     expect(mails[0].text).toContain('Demande de modification en attente de votre décision · CR-099');
-    expect(mails[0].text).toContain('Ouvrir dans Keystone: https://keystone.epc2i.fr/projects/HLT-026/changes?cr=CR-099');
+    expect(mails[0].text).toContain('Ouvrir dans Keystone: https://keystone.atrium.example/projects/HLT-026/changes?cr=CR-099');
     // Sent once: the retry job finds nothing.
     expect((await sendImmediateMails()).claimed).toBe(0);
   });

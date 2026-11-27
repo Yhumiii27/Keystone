@@ -1,4 +1,4 @@
-// R-191 (Arche K-08; DIG-PRODI G2 criterion "engineering pack > 80 %"): EPC2i's share of the engineering pack of a project and
+// R-191 (Arche K-08; DIG-PRODI G2 criterion "engineering pack > 80 %"): The company's share of the engineering pack of a project and
 // its weighted % completeness, shown on the Engineering synthesis and published to the CAPEX application by the view
 // pub_pack_ingenierie (migration 0060; docs/delivery-9/notes-r191-engineering-pack.md). Pure rules — no import of the server:
 // the DAL (src/server/dal/engineering-pack.ts), the Server Functions, the Machine types and Engineering screens share them.

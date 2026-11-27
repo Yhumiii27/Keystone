@@ -13,11 +13,11 @@ describe('Cursus links', () => {
   });
 
   it('follows NEXT_PUBLIC_CURSUS_URL (trailing slash dropped), like the site and list links', () => {
-    vi.stubEnv('NEXT_PUBLIC_CURSUS_URL', 'https://cursus.epc2i.fr/');
-    expect(cursusEmployeeUrl('EMP-0006')).toBe('https://cursus.epc2i.fr/collaborateurs?matricule=EMP-0006');
-    expect(cursusChantierUrl('K-2614')).toBe('https://cursus.epc2i.fr/chantiers?chantier=K-2614');
-    expect(cursusChantierUrl(null)).toBe('https://cursus.epc2i.fr/chantiers');
-    expect([cursusClearancesUrl(), cursusTravelUrl()]).toEqual(['https://cursus.epc2i.fr/habilitations', 'https://cursus.epc2i.fr/voyages']);
+    vi.stubEnv('NEXT_PUBLIC_CURSUS_URL', 'https://cursus.atrium.example/');
+    expect(cursusEmployeeUrl('EMP-0006')).toBe('https://cursus.atrium.example/collaborateurs?matricule=EMP-0006');
+    expect(cursusChantierUrl('K-2614')).toBe('https://cursus.atrium.example/chantiers?chantier=K-2614');
+    expect(cursusChantierUrl(null)).toBe('https://cursus.atrium.example/chantiers');
+    expect([cursusClearancesUrl(), cursusTravelUrl()]).toEqual(['https://cursus.atrium.example/habilitations', 'https://cursus.atrium.example/voyages']);
   });
 
   it('opens outside Keystone', () => {

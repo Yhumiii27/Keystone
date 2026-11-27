@@ -1,6 +1,6 @@
 // R-084 (owner answers 17 Oct 2026, third round): load of people and demand by trade from the schedules' assignments; the
 // activities that declare no resource at all. Owner answers 18 Oct 2026 (fourth round): external crews out of the load plan, the
-// owner's 2 h/d whenever no EPC2i labour is assigned, the J-15 list of activities without an assignment.
+// owner's 2 h/d whenever no company labour is assigned, the J-15 list of activities without an assignment.
 import { describe, expect, it } from 'vitest';
 import { builtinCalendars } from './calendar';
 import {
@@ -97,7 +97,7 @@ describe('planningLoad', () => {
     expect(l.trades).toEqual([]);
   });
 
-  it('unnamed EPC2i assignments count against their department, not against a person; external crews are left out (18 Oct)', () => {
+  it('unnamed company assignments count against their department, not against a person; external crews are left out (18 Oct)', () => {
     const l = planningLoad([act({ code: 'A' }), act({ project: 'NDC-031', code: 'C', start: '2026-10-05', finish: '2026-10-09' })], [
       // « Les équipes externes ne rentrent pas dans le plan de charge »: no department → external, no demand anywhere.
       asg({ activity: 'A', resource: 'Steel erection crew', units: 6, hoursPerDay: 10 }),
@@ -115,9 +115,9 @@ describe('planningLoad', () => {
     const acts = [
       act({ code: 'O1', owner: 'dr', ownerTrade: 'Controls & planning' }),
       act({ code: 'O2', owner: 'ra', ownerTrade: null, start: '2026-10-05', finish: '2026-10-06' }),
-      // Equipment only (or an external crew only): no EPC2i labour, so the owner's 2 h/d count (owner answer 18 Oct 2026).
+      // Equipment only (or an external crew only): no company labour, so the owner's 2 h/d count (owner answer 18 Oct 2026).
       act({ code: 'O3', owner: 'dr', ownerTrade: 'Controls & planning' }),
-      // An owner of an activity with EPC2i labour assigned adds nothing (the assignment is the declared resource).
+      // An owner of an activity with company labour assigned adds nothing (the assignment is the declared resource).
       act({ code: 'O6', owner: 'dr', ownerTrade: 'Controls & planning' }),
       // A complete activity or a milestone adds nothing.
       act({ code: 'O4', owner: 'dr', ownerTrade: 'Controls & planning', percentComplete: 100 }),
@@ -187,7 +187,7 @@ describe('external labour (owner answer 18 Oct 2026: « Les équipes externes ne
       asg({ activity: 'A', resource: 'Steel erection crew', units: 6, hoursPerDay: 10 }),
     ], WEEKS, 2);
     expect(l.people).toEqual({});
-    // Only the owner's coordination share: no EPC2i labour on the activity.
+    // Only the owner's coordination share: no company labour on the activity.
     expect(l.trades.map((t) => [t.trade, t.hours, t.unnamedH])).toEqual([['Site operations', [10, 10, 0, 0], [0, 0, 0, 0]]]);
   });
 });

@@ -74,10 +74,10 @@ public class ClassifyTests
   [Fact]
   public void Extra_sign_in_hosts_from_keystone_json()
   {
-    Assert.Equal(LinkKind.External, Of("https://adfs.epc2i.example/adfs/ls"));
-    Assert.Equal(LinkKind.SignIn, Of("https://adfs.epc2i.example/adfs/ls", "adfs.epc2i.example"));
-    Assert.Equal(LinkKind.SignIn, Of("https://sts.epc2i.example/", "*.epc2i.example"));
-    Assert.Equal(LinkKind.External, Of("https://epc2i.example.other/", "*.epc2i.example"));
+    Assert.Equal(LinkKind.External, Of("https://adfs.atrium.example/adfs/ls"));
+    Assert.Equal(LinkKind.SignIn, Of("https://adfs.atrium.example/adfs/ls", "adfs.atrium.example"));
+    Assert.Equal(LinkKind.SignIn, Of("https://sts.atrium.example/", "*.atrium.example"));
+    Assert.Equal(LinkKind.External, Of("https://atrium.example.other/", "*.atrium.example"));
   }
 
   [Fact]

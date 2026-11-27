@@ -51,7 +51,7 @@ Rien n’est ajouté au `package.json` de Keystone ; `ci.yml` et `CLAUDE.md` ne 
   `autologon.microsoftazuread-sso.com`, et les pages d’enregistrement MFA `mysignins.microsoft.com`,
   `account.activedirectory.windowsazure.com`), en HTTPS seulement ; `signInHosts` de `keystone.json` en ajoute (serveur AD FS,
   `*.domaine` admis). Authentification unique Windows activée (`AllowSingleSignOnUsingOSPrimaryAccount`) : un PC ouvert avec un
-  compte EPC2i peut sauter le mot de passe.
+  compte de l’entreprise peut sauter le mot de passe.
 - **Liens** : même origine que le serveur (schéma, hôte, port) = dans la fenêtre ; autres sites, `mailto:`, `tel:` = programme
   par défaut de Windows ; `file:`, `edge:` et protocoles inconnus = refusés. Une page Keystone ouverte « dans un nouvel onglet »
   (`target=_blank` : photo, fichier affiché) s’ouvre dans une **seconde fenêtre Keystone** avec la même session, plutôt que dans
@@ -97,7 +97,7 @@ Rien n’est ajouté au `package.json` de Keystone ; `ci.yml` et `CLAUDE.md` ne 
 ## 5. Écarts, limites
 
 - **Exe non signé** : SmartScreen avertira au premier lancement tant qu’il n’est pas signé avec un certificat de signature de
-  code d’EPC2i (procédure dans `EXPLOITATION.md` § 2.3 ; aucun certificat dans le dépôt).
+  code de l’entreprise (procédure dans `EXPLOITATION.md` § 2.3 ; aucun certificat dans le dépôt).
 - **Pas d’installateur** (MSI / MSIX) ni de mise à jour automatique : un seul exe à copier ; la DSI peut le déployer (Intune,
   GPO) avec `keystone.json`. À cadrer si le besoin apparaît.
 - **x64 seulement** (pas d’ARM64) : ajouter `-r win-arm64` si des PC ARM sont concernés.
@@ -134,7 +134,7 @@ Rien n’est ajouté au `package.json` de Keystone ; `ci.yml` et `CLAUDE.md` ne 
 
 R-210 : **construit, à vérifier sur un PC Windows** (§ 6) avant d’être marqué « fait ». Ensuite :
 
-- **Signature de code** : EPC2i a-t-il un certificat de signature (ou faut-il en acheter un, ou passer par Azure Trusted
+- **Signature de code** : l’entreprise a-t-elle un certificat de signature (ou faut-il en acheter un, ou passer par Azure Trusted
   Signing) ?
 - **Diffusion** : exe copié à la main, ou déploiement par la DSI (Intune / GPO) avec `keystone.json` ? Faut-il un installateur
   MSI / MSIX ?

@@ -84,7 +84,7 @@ export interface AssignmentFact {
   activityName: string;
   personId: string;
   matricule: string | null;
-  /** R-083: the person's rate role is external (not EPC2i staff). */
+  /** R-083: the person's rate role is external (not company staff). */
   external: boolean;
   start: IsoDate | null;
   finish: IsoDate | null;
@@ -187,7 +187,7 @@ export function cursusTaskSnapshot(input: { tasks: readonly TaskFact[]; assignme
   };
 
   for (const a of input.assignments) {
-    // Labour of EPC2i staff only (R-084, owner 18 Oct 2026: external crews are not EPC2i's work); a milestone is no work.
+    // Labour of company staff only (R-084, owner 18 Oct 2026: external crews are not the company's work); a milestone is no work.
     if (a.external || a.durationDays <= 0) continue;
     const heures = assignmentDailyHours(a);
     if (Object.keys(heures).length) staffed.add(`${a.personId}|${a.activityId}`);

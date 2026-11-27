@@ -60,7 +60,7 @@ multipart/mixed, `Auto-Submitted: auto-generated`) et `transport.ts` :
 - `smtp`, `graph` : **refusés par la validation de la configuration** avec le message « awaits IT … use "none" or "file" »
   (en production le serveur ne démarre pas ; ailleurs la valeur par défaut `none` s’applique).
 
-Autres variables : `KEYSTONE_MAIL_FROM` (expéditeur, défaut `Keystone <keystone@epc2i.invalid>`), `KEYSTONE_PUBLIC_URL`
+Autres variables : `KEYSTONE_MAIL_FROM` (expéditeur, défaut `Keystone <keystone@atrium.invalid>`), `KEYSTONE_PUBLIC_URL`
 (adresse de Keystone dans les liens ; défaut l’origine de `ENTRA_REDIRECT_URI`, sinon `http://localhost:3000`). Toutes dans
 `parse.ts` (+ `parse-mail.test.ts`), `.env.example` et `docs/EXPLOITATION.md` § 3 et § 8.
 

@@ -10,7 +10,7 @@ export const TENANT = '11111111-2222-4333-8444-555555555555';
 export const ISSUER = `https://login.microsoftonline.com/${TENANT}/v2.0`;
 export const CLIENT_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 export const CLIENT_SECRET = 'test-client-secret';
-export const ORIGIN = 'https://keystone.epc2i.test';
+export const ORIGIN = 'https://keystone.atrium.test';
 export const REDIRECT_URI = `${ORIGIN}/api/auth/callback`;
 export const SESSION_SECRET = 'test-session-secret-0123456789-abcdefghij';
 

@@ -1,5 +1,5 @@
 import 'server-only';
-// Progress and SPI published to the other EPC2I tools (R-189, Arche K-04: pub_avancement_projets). Both are computed in
+// Progress and SPI published to the other Atrium tools (R-189, Arche K-04: pub_avancement_projets). Both are computed in
 // TypeScript — the earned value of the project's activities at its data date (src/server/dal/evm.ts), the same figures the
 // projects register, the Home and the Budget show — so a SQL view cannot compute them: the scheduled job `share-progress`
 // keeps them in `share_project_progress`, which the view reads. A project without activity budgets keeps its own figures

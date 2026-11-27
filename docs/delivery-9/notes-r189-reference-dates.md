@@ -3,7 +3,7 @@
 Statut : construit sur la branche `r189-reference-dates` (depuis `2ad3551`) le 25 oct. 2026, à la demande du responsable produit
 (lancement de R-189 le 25 oct. 2026). Sources : demande d’Arche **K-04** (`REQUESTS.md` : `pub_jalons_projets.reference_le` =
 « date de la baseline (BL1) »), contrat d’Arche (`docs/CONTRATS.md` d’Arche : `reference_le` date BL1, lue pour le glissement
-des jalons et les critères K3 « SAT EPC2i planifiés » et G3), `docs/delivery-9/notes-share-views.md` § 3 et § 5.1 (point ouvert :
+des jalons et les critères K3 « SAT de l’entreprise planifiés » et G3), `docs/delivery-9/notes-share-views.md` § 3 et § 5.1 (point ouvert :
 « code de jalon CAPEX sur les jalons du planning »). Hors lot : `pub_pack_ingenierie` (R-191, attend la liste type du pack
 ingénierie, CDC C-9).
 

@@ -12,13 +12,13 @@ describe('same origin', () => {
     expect(isSameOriginRequest(req({ host: '127.0.0.1:3315', 'sec-fetch-site': 'none' }, 'GET'))).toBe(true);
     expect(isSameOriginRequest(req({ host: '127.0.0.1:3315' }))).toBe(true);
     // Behind the TLS proxy: the public host is in X-Forwarded-Host.
-    expect(isSameOriginRequest(req({ host: 'keystone:3000', 'x-forwarded-host': 'keystone.epc2i.fr', origin: 'https://keystone.epc2i.fr' }))).toBe(true);
-    expect(isSameOriginRequest(req({ host: 'KEYSTONE.epc2i.fr', origin: 'https://keystone.epc2i.fr' }))).toBe(true);
+    expect(isSameOriginRequest(req({ host: 'keystone:3000', 'x-forwarded-host': 'keystone.atrium.example', origin: 'https://keystone.atrium.example' }))).toBe(true);
+    expect(isSameOriginRequest(req({ host: 'KEYSTONE.atrium.example', origin: 'https://keystone.atrium.example' }))).toBe(true);
   });
 
   it('refuses another site, another host, an opaque origin or a malformed one', () => {
     expect(isSameOriginRequest(req({ host: '127.0.0.1:3315', 'sec-fetch-site': 'cross-site' }, 'GET'))).toBe(false);
-    expect(isSameOriginRequest(req({ host: 'keystone.epc2i.fr', 'sec-fetch-site': 'same-site' }, 'GET'))).toBe(false);
+    expect(isSameOriginRequest(req({ host: 'keystone.atrium.example', 'sec-fetch-site': 'same-site' }, 'GET'))).toBe(false);
     expect(isSameOriginRequest(req({ host: '127.0.0.1:3315', origin: 'https://evil.example' }))).toBe(false);
     expect(isSameOriginRequest(req({ host: '127.0.0.1:3315', origin: 'http://127.0.0.1:3100' }))).toBe(false);
     expect(isSameOriginRequest(req({ host: '127.0.0.1:3315', origin: 'null' }))).toBe(false);

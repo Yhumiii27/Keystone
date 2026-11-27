@@ -27,18 +27,18 @@ export interface Persona {
 
 // [role, name, title, e-mail, department] — departments as seeded for these persons (DEPTS heads, DEPT_OF).
 const P: [RoleKey, string, string, string, string | null][] = [
-  ['director', 'Marie Lefebvre', 'Portfolio director', 'marie.lefebvre@epc2i.fr', null],
-  ['pm', 'Romain Aubert', 'Project manager', 'romain.aubert@epc2i.fr', null],
-  ['depthead', 'Marion Kerviel', 'Head of engineering', 'marion.kerviel@epc2i.fr', 'Engineering'],
-  ['member', 'Julien Wagner', 'Structural engineer', 'julien.wagner@epc2i.fr', 'Engineering'],
-  ['englead', 'Antoine Girard', 'Engineering lead', 'antoine.girard@epc2i.fr', null],
-  ['quality', 'Gabriel Comte', 'Quality manager', 'gabriel.comte@epc2i.fr', 'Quality'],
-  ['procurement', 'Fabien Bertrand', 'Procurement & stock', 'fabien.bertrand@epc2i.fr', 'Controls & planning'],
+  ['director', 'Marie Lefebvre', 'Portfolio director', 'marie.lefebvre@atrium.example', null],
+  ['pm', 'Romain Aubert', 'Project manager', 'romain.aubert@atrium.example', null],
+  ['depthead', 'Marion Kerviel', 'Head of engineering', 'marion.kerviel@atrium.example', 'Engineering'],
+  ['member', 'Julien Wagner', 'Structural engineer', 'julien.wagner@atrium.example', 'Engineering'],
+  ['englead', 'Antoine Girard', 'Engineering lead', 'antoine.girard@atrium.example', null],
+  ['quality', 'Gabriel Comte', 'Quality manager', 'gabriel.comte@atrium.example', 'Quality'],
+  ['procurement', 'Fabien Bertrand', 'Procurement & stock', 'fabien.bertrand@atrium.example', 'Controls & planning'],
   // R-044 (P-4, P-12 c): the Finance persona — the cost controller of the resource pool (no prototype persona).
-  ['finance', 'Léa Marchand', 'Cost controller', 'lea.marchand@epc2i.fr', 'Controls & planning'],
+  ['finance', 'Léa Marchand', 'Cost controller', 'lea.marchand@atrium.example', 'Controls & planning'],
   // R-158 (owner's decision 7, 25 Oct 2026): the Logistics persona — prepares and follows the shipments (no prototype persona;
   // the person is created with its user, src/server/db/seed/users.ts).
-  ['logistics', 'Camille Verdier', 'Logistics coordinator', 'camille.verdier@epc2i.fr', 'Controls & planning'],
+  ['logistics', 'Camille Verdier', 'Logistics coordinator', 'camille.verdier@atrium.example', 'Controls & planning'],
   // D9-06 (owner, 10 Nov 2026): the Client persona is removed — clients never see Keystone.
 ];
 

@@ -42,7 +42,7 @@ describe('share views of delivery 9 (0038_share_followup)', () => {
       depart_reel_le::text, arrivee_reelle_le::text, receptionnee_le::text, nb_chargements, nb_reserves_ouvertes from pub_expeditions`);
     expect(v).toEqual([{
       projet_code: 'HLT-026', expedition_ref: 'EXP-01', equipements: 'EQ-02 · 3 × MEMU', statut: 'arrived', mode: 'road', incoterm: 'DAP', incoterm_lieu: 'Le Havre — terminal site',
-      origine: 'Atelier EPC2i — Lyon', destination: 'Le Havre — terminal site', etd: '2026-09-21', eta: '2026-09-22', depart_reel_le: '2026-09-21', arrivee_reelle_le: '2026-09-22',
+      origine: 'Atelier de l’entreprise — Lyon', destination: 'Le Havre — terminal site', etd: '2026-09-21', eta: '2026-09-22', depart_reel_le: '2026-09-21', arrivee_reelle_le: '2026-09-22',
       receptionnee_le: null, nb_chargements: 2, nb_reserves_ouvertes: 1,
     }]);
     // The shipments feed the CAPEX milestones expedition (first pick-up) and arrivee_site (last arrival once all sent arrived).

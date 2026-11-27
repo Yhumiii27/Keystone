@@ -1,12 +1,12 @@
-# Référentiels à fournir par EPC2i (R-178)
+# Référentiels à fournir par l’entreprise (R-178)
 
-> **Fiche de collecte, pas un modèle d’import.** Ce document liste les listes de référence qu’EPC2i doit fournir pour démarrer
+> **Fiche de collecte, pas un modèle d’import.** Ce document liste les listes de référence que l’entreprise doit fournir pour démarrer
 > Keystone en production, avec la valeur que Keystone utilise aujourd’hui en production, les contraintes à respecter et qui
 > valide. Les imports restent désactivés (décision D-7b) : les valeurs fournies seront saisies dans les écrans de Keystone (ou
 > chargées par l’équipe projet une fois D-7b levée). Rien ici n’est un fichier à remplir pour un chargement automatique.
 >
 > Rappel A-15 (« Données réelles seulement ») : en production Keystone ne montre que ce qu’il a enregistré ou reçu de Codex, du
-> PDM, de Vigie, de Cursus ou de Sage. Les valeurs de démonstration du prototype ne sont jamais présentées comme celles d’EPC2i.
+> PDM, de Vigie, de Cursus ou de Sage. Les valeurs de démonstration du prototype ne sont jamais présentées comme celles de l’entreprise.
 
 Base de production actuelle : `KEYSTONE_SEED=production` (`src/server/db/seed/reference.ts`). Les listes « Paramètres » sont
 modifiables par la direction de portefeuille seule (A-14) ; chaque modification est tracée dans le journal d’audit.
@@ -17,7 +17,7 @@ modifiables par la direction de portefeuille seule (A-14) ; chaque modification 
 |---|---|---|---|
 | Familles de compétences | Les 10 du prototype : Structural, Electrical / HV, MEP, Automation & controls, Crane & lifting, Civil & site, Planning & cost control, Procurement, Quality / QA-QC, Software / IT | Libellé unique dans la liste (sans tenir compte des majuscules). Une seule échelle 1–5 pour toutes les compétences (R-5a). Une famille retirée masque sa colonne de la matrice sans effacer les niveaux. | Direction + chefs de service |
 | Catégories de coûts | Labor, Materials, Equipment, Subcontractors, Permits & fees, Contingency | Libellé unique. Chaque catégorie porte un type de coût (main-d’œuvre, matériel, équipement, sous-traitance, frais, réserve) : le type « main-d’œuvre » alimente le coût main-d’œuvre de Ressources (R-086). | Direction + contrôle de gestion (Finance) |
-| Statuts de projet (étapes du cycle de vie) | Les 13 étapes : Initiative, APS, APD, Études, Approvisionnements, Fabrication & Assemblage, FAT, Expédition, Chantier, Mise en service & SAT, Garantie, Clos, Annulé | **Statuts de workflow fixes** : pas de statut personnalisé (une étape a ses livrables et sa revue de passage) ; Initiative, Clos et Annulé ne peuvent pas être désactivés. EPC2i peut seulement désactiver les étapes qu’il n’utilise pas. | Direction |
+| Statuts de projet (étapes du cycle de vie) | Les 13 étapes : Initiative, APS, APD, Études, Approvisionnements, Fabrication & Assemblage, FAT, Expédition, Chantier, Mise en service & SAT, Garantie, Clos, Annulé | **Statuts de workflow fixes** : pas de statut personnalisé (une étape a ses livrables et sa revue de passage) ; Initiative, Clos et Annulé ne peuvent pas être désactivés. L’entreprise peut seulement désactiver les étapes qu’elle n’utilise pas. | Direction |
 | Catégories de risques | Technical, Supplier / delivery, HSE (safety), Contractual / client, Financial / currency, Regulatory / permits, Resources / skills | Libellé unique. | Direction + responsable qualité |
 | Types de livrables | Drawings, Calculation notes, Specifications, Test & inspection reports, Certificates (CE, lifting…), Manuals / as-built, Meeting minutes, Client acceptance (PV de réception) | Libellé unique. | Direction + responsable qualité |
 | Jours fériés | Les 11 jours fériés français 2026 | Écriture **« 14 Jul · Fête nationale »** (jour, mois abrégé en anglais, « · », nom) ; le code enregistré est la date **2026**. Keystone ne gère aujourd’hui qu’une année : fournir les jours fériés **datés, année par année** (2026, 2027…) et par pays si des chantiers sont hors de France — sans attendre un calendrier pluriannuel. | Direction + RH |

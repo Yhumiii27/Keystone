@@ -16,7 +16,7 @@ du jalon G2), `docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md`.
 | Règles | `src/domain/engineering-pack.ts` (+ `engineering-pack.test.ts`) | familles, libellés, liste provisoire, correspondance, validation, union multi-équipements, formule |
 | Lecture | `src/server/dal/engineering-pack.ts` | listes types, pack d’un projet (carte) |
 | Écriture | `setMachineTypePack` (`src/server/dal/mtypes.ts`), `setMachineTypePackAction` (`src/features/admin/actions.ts`) | liste type d’un type de machine, audit (message `machineType.pack`, avant / après) |
-| Écrans | « Types de machines standard » : carte « Pack ingénierie (liste type) » (`mtype-editor.tsx`) ; « Synthèse ingénierie » : carte « Pack ingénierie · part EPC2i » (`src/features/eng/pack-card.tsx`) | |
+| Écrans | « Types de machines standard » : carte « Pack ingénierie (liste type) » (`mtype-editor.tsx`) ; « Synthèse ingénierie » : carte « Pack ingénierie · part de l’entreprise » (`src/features/eng/pack-card.tsx`) | |
 | Seeds | `seed/engineering.ts` (`seedMachineTypeAggregate`), `seed/documents.ts` (`seedDocumentTypes`) | données de référence des **deux** seeds (démonstration et production) |
 | Contrôles | `src/features/admin/engineering-pack.test.ts`, `src/server/db/migration-engineering-pack.test.ts`, `share-views.test.ts`, `postgres.integration.test.ts`, `scripts/db-check.ts` (aussi `--postgres`), `share-contracts.ts` (`SHARE_VIEW_COLUMNS`, `PACK_VIEW_TYPES`, 21 vues) | |
 | Traductions | `src/i18n/extra/d9-engineering-pack.json` | |
@@ -89,7 +89,7 @@ au dixième ; **0** quand rien n’est attendu.
   applicable »).
 - Cible G2 : **strictement au-dessus de 80 %** (`PACK_TARGET_PCT`), affichée sur la carte (« Cible atteinte » / « Sous la cible »).
 
-## 5. Carte « Pack ingénierie · part EPC2i » (Synthèse ingénierie)
+## 5. Carte « Pack ingénierie · part de l’entreprise » (Synthèse ingénierie)
 
 Écran « Synthèse ingénierie » (`/projects/<code>/engineering`), juste sous la rangée d’indicateurs ; sur un projet sans registre
 ingénierie (NDC-031), au-dessus de l’état vide (ses documents comptent quand même). Elle montre le % pondéré, la cible G2 > 80 %

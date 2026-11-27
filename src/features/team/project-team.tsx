@@ -17,7 +17,7 @@ export interface ProjectTeamCardProps {
   /** Translated "#026 · Harbor Line Terminal Expansion" (dialog sub-line). */
   context: string;
   members: TeamCardMember[];
-  /** People who can join (EPC2i staff not on the team), by name; null when the viewer does not manage the team. */
+  /** People who can join (company staff not on the team), by name; null when the viewer does not manage the team. */
   candidates: { personId: string; name: string; jobTitle: string | null }[] | null;
   t: T;
 }

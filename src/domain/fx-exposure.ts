@@ -8,7 +8,7 @@
 //     and "invoiced, unpaid";
 //   - payable = the open purchase orders (ordered, partially or fully received) still to pay (order value − paid supplier
 //     invoices of the order in that currency);
-//   - net = receivable − payable (positive = long in the currency: EPC2i loses when it falls);
+//   - net = receivable − payable (positive = long in the currency: The company loses when it falls);
 //   - valued in euros at the project's budget rate and at the reference rate; the difference is the gain (+) or loss (−) the
 //     rate move has made on the open net position; the drift is (reference − budget) / budget.
 // - Hedging alerts (thresholds in Settings, like S-25): the net exposure at the reference rate is at least the exposure

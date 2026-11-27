@@ -18,7 +18,7 @@ Les **prix fournisseurs** lui sont visibles (NEW-D2-1) ; les taux horaires, non.
 
 ## Parcours principaux
 
-Keystone ne décrit pas encore la procédure d’achat d’EPC2i (seuils, niveaux d’approbation, circuit Sage X3 : en attente du
+Keystone ne décrit pas encore la procédure d’achat de l’entreprise (seuils, niveaux d’approbation, circuit Sage X3 : en attente du
 responsable produit). Voici ce que fait l’application.
 
 ### 1. Consultations (RFQ)

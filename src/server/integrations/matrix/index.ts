@@ -1,4 +1,4 @@
-// Matrix (the EPC2i data catalogue): Keystone declares its database schema right after the migrations (contract
+// Matrix (the Atrium data catalogue): Keystone declares its database schema right after the migrations (contract
 // matrix.schema/1, see ./declare-schema.ts). Send-only integration: no mirror, no outbox, no screen.
 import { log as appLog } from '@/server/log';
 import { declareSchema, introspectPostgres, matrixDeclarationEnabled, type MatrixEnv, type MatrixLogger, type RowQuery } from './declare-schema';

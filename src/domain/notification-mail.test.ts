@@ -51,7 +51,7 @@ describe('families and modes', () => {
 describe('e-mail texts (French)', () => {
   const n = {
     title: 'Change request awaiting your decision · CR-008', sub: 'Second steel crew — schedule recovery · 25 Sep', projectCode: 'HLT-026', when: '25 Sep 09:12',
-    link: 'https://keystone.epc2i.fr/projects/HLT-026/changes?cr=CR-008',
+    link: 'https://keystone.atrium.example/projects/HLT-026/changes?cr=CR-008',
   };
 
   // The sub-line is shown as the bell shows it: a demo text has its French entry (dataText), a date is translated.
@@ -60,7 +60,7 @@ describe('e-mail texts (French)', () => {
     expect(m.subject).toBe('Keystone — Demande de modification en attente de votre décision · CR-008 · HLT-026');
     expect(m.body.split('\n')).toEqual([
       'Bonjour Romain Aubert,', '', 'Demande de modification en attente de votre décision · CR-008', 'Seconde équipe charpente — rattrapage du planning · 25 sept.', 'Projet HLT-026', '',
-      'Ouvrir dans Keystone: https://keystone.epc2i.fr/projects/HLT-026/changes?cr=CR-008', '', '—',
+      'Ouvrir dans Keystone: https://keystone.atrium.example/projects/HLT-026/changes?cr=CR-008', '', '—',
       'Message automatique de Keystone · modifiez vos e-mails de notification depuis la cloche des notifications › Notifications et rappels',
     ]);
   });
@@ -69,7 +69,7 @@ describe('e-mail texts (French)', () => {
     const m = digestMail('Romain Aubert', [n, { ...n, title: 'Inspection failed · I-02', sub: 'Weld inspection', projectCode: null }], DEMO_TODAY_ISO, 'https://k/my', tr);
     expect(m.subject).toBe('Keystone — Résumé quotidien · 2 notifications');
     expect(m.body).toContain('- HLT-026 · Demande de modification en attente de votre décision · CR-008');
-    expect(m.body).toContain('- Inspection non conforme · I-02\n  Weld inspection\n  25 sept. 09:12 · https://keystone.epc2i.fr/projects/HLT-026/changes?cr=CR-008');
+    expect(m.body).toContain('- Inspection non conforme · I-02\n  Weld inspection\n  25 sept. 09:12 · https://keystone.atrium.example/projects/HLT-026/changes?cr=CR-008');
     expect(m.body).toContain('Ouvrir Keystone: https://k/my');
   });
 });

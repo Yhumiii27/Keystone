@@ -120,29 +120,29 @@ describe('Entra ID sign-in', () => {
   });
 
   it('signs a known person in: session cookie, roles from the token, account linked, audit, back to the page', async () => {
-    const r = await signIn({ oid: 'oid-romain', preferred_username: 'Romain.Aubert@epc2i.fr', roles: ['Keystone.PM', 'Keystone.Director'] });
+    const r = await signIn({ oid: 'oid-romain', preferred_username: 'Romain.Aubert@atrium.example', roles: ['Keystone.PM', 'Keystone.Director'] });
     expect(r.res.status).toBe(302);
     expect(r.res.headers.get('location')).toBe(`${ORIGIN}/projects/HLT-026/plan?tab=gantt`);
     expect(r.cookies[SESSION].attrs).toMatch(/httponly/);
     expect(r.cookies[SESSION].attrs).toMatch(/max-age=43200/);
     expect(r.cookies[TX].value).toBe(''); // the sign-in transaction is consumed
     const u = await userOf('Romain Aubert');
-    expect(u).toMatchObject({ personaRole: 'pm', roles: ['director', 'pm'], entraObjectId: 'oid-romain', email: 'romain.aubert@epc2i.fr', active: true });
+    expect(u).toMatchObject({ personaRole: 'pm', roles: ['director', 'pm'], entraObjectId: 'oid-romain', email: 'romain.aubert@atrium.example', active: true });
     expect(u!.lastSignInAt).toBeInstanceOf(Date);
     expect((await listAudit({ limit: 1 }))[0]).toMatchObject({ who: 'Romain Aubert', object: 'Sign-in', change: 'Signed in · Portfolio director / Project manager', area: 'Sign-in' });
 
     useSession(r);
     jar.set('ks-role', 'client'); // ignored with Entra ID
     const v = await getViewer();
-    expect(v).toMatchObject({ role: 'director', roles: ['director', 'pm'], name: 'Romain Aubert', short: 'R. Aubert', email: 'romain.aubert@epc2i.fr', userId: u!.id, personId: u!.personId });
+    expect(v).toMatchObject({ role: 'director', roles: ['director', 'pm'], name: 'Romain Aubert', short: 'R. Aubert', email: 'romain.aubert@atrium.example', userId: u!.id, personId: u!.personId });
   });
 
   it('creates the account of a directory person at the first sign-in, roles from mapped groups', async () => {
     useEntra({ ENTRA_GROUP_ROLES: JSON.stringify({ 'f0f0f0f0-0000-4000-8000-000000000001': 'quality' }) });
     const db = await getDb();
-    await db.update(persons).set({ email: 'helene.sauvage@epc2i.fr' }).where(eq(persons.fullName, 'Hélène Sauvage'));
+    await db.update(persons).set({ email: 'helene.sauvage@atrium.example' }).where(eq(persons.fullName, 'Hélène Sauvage'));
     expect(await userOf('Hélène Sauvage')).toBeNull();
-    const r = await signIn({ oid: 'oid-helene', email: 'helene.sauvage@epc2i.fr', groups: ['F0F0F0F0-0000-4000-8000-000000000001', 'unmapped'] }, '/');
+    const r = await signIn({ oid: 'oid-helene', email: 'helene.sauvage@atrium.example', groups: ['F0F0F0F0-0000-4000-8000-000000000001', 'unmapped'] }, '/');
     expect(r.res.headers.get('location')).toBe(`${ORIGIN}/`);
     const u = await userOf('Hélène Sauvage');
     expect(u).toMatchObject({ personaRole: null, roles: ['quality'], entraObjectId: 'oid-helene', isExternal: false });
@@ -151,17 +151,17 @@ describe('Entra ID sign-in', () => {
   });
 
   it('refuses an unknown e-mail, without a session, and audits the attempt', async () => {
-    const r = await signIn({ oid: 'oid-x', email: 'nobody@epc2i.fr', roles: ['director'] });
+    const r = await signIn({ oid: 'oid-x', email: 'nobody@atrium.example', roles: ['director'] });
     expect(r.res.headers.get('location')).toBe(`${ORIGIN}/sign-in?error=unknown_user`);
     expect(r.cookies[SESSION].value).toBe('');
     expect(r.cookies[SESSION].attrs).toMatch(/max-age=0/);
     expect(r.cookies[SESSION].attrs).toMatch(/secure/); // a __Host- cookie is only deleted by a Secure header
-    expect((await listAudit({ limit: 1 }))[0]).toMatchObject({ who: 'nobody@epc2i.fr', change: 'Sign-in refused · Unknown e-mail', area: 'Sign-in' });
+    expect((await listAudit({ limit: 1 }))[0]).toMatchObject({ who: 'nobody@atrium.example', change: 'Sign-in refused · Unknown e-mail', area: 'Sign-in' });
   });
 
   it('refuses tokens without a Keystone role (D9-06: "client" is no Keystone role any more)', async () => {
-    expect((await signIn({ oid: 'oid-julien', email: 'julien.wagner@epc2i.fr', roles: ['Other.App'] })).res.headers.get('location')).toBe(`${ORIGIN}/sign-in?error=no_role`);
-    expect((await signIn({ oid: 'oid-julien', email: 'julien.wagner@epc2i.fr', roles: ['client'] })).res.headers.get('location')).toBe(`${ORIGIN}/sign-in?error=no_role`);
+    expect((await signIn({ oid: 'oid-julien', email: 'julien.wagner@atrium.example', roles: ['Other.App'] })).res.headers.get('location')).toBe(`${ORIGIN}/sign-in?error=no_role`);
+    expect((await signIn({ oid: 'oid-julien', email: 'julien.wagner@atrium.example', roles: ['client'] })).res.headers.get('location')).toBe(`${ORIGIN}/sign-in?error=no_role`);
     expect((await userOf('Julien Wagner'))!.entraObjectId).toBeNull(); // nothing linked by a refused sign-in
   });
 
@@ -175,7 +175,7 @@ describe('Entra ID sign-in', () => {
     try {
       await db.execute(sql`insert into clavis.pub_acces values (${oid}, 'keystone', 'quality', true), (${oid}, 'codex', 'admin', true)`);
       // The token's roles are not used: the role is the one IT set in Clavis.
-      const r = await signIn({ oid, email: 'julien.wagner@epc2i.fr', roles: ['Keystone.Director'] });
+      const r = await signIn({ oid, email: 'julien.wagner@atrium.example', roles: ['Keystone.Director'] });
       expect(r.res.headers.get('location')).toBe(`${ORIGIN}/projects/HLT-026/plan?tab=gantt`);
       useSession(r);
       expect(await getViewer()).toMatchObject({ name: 'Julien Wagner', role: 'quality', roles: ['quality'] });
@@ -189,17 +189,17 @@ describe('Entra ID sign-in', () => {
       // Access closed (withdrawn, person deactivated, application closed): the session ends, a new sign-in is refused.
       await db.execute(sql`update clavis.pub_acces set ouvert = false where application = 'keystone'`);
       await expect(getViewer()).rejects.toThrow('REDIRECT:/sign-in?error=session');
-      expect((await signIn({ oid, email: 'julien.wagner@epc2i.fr', roles: ['Keystone.Director'] })).res.headers.get('location')).toBe(`${ORIGIN}/sign-in?error=no_role`);
+      expect((await signIn({ oid, email: 'julien.wagner@atrium.example', roles: ['Keystone.Director'] })).res.headers.get('location')).toBe(`${ORIGIN}/sign-in?error=no_role`);
     } finally {
       await db.execute(sql.raw('drop schema clavis cascade'));
     }
     // The view cannot be read: refused (fail closed), never the token's roles.
-    expect((await signIn({ oid, email: 'julien.wagner@epc2i.fr', roles: ['Keystone.Director'] })).res.headers.get('location')).toBe(`${ORIGIN}/sign-in?error=failed`);
+    expect((await signIn({ oid, email: 'julien.wagner@atrium.example', roles: ['Keystone.Director'] })).res.headers.get('location')).toBe(`${ORIGIN}/sign-in?error=failed`);
   });
 
   it('keeps a person on the Microsoft account it was first linked to', async () => {
-    await signIn({ oid: 'oid-antoine', email: 'antoine.girard@epc2i.fr', roles: ['englead'] });
-    const other = await signIn({ oid: 'oid-impostor', email: 'antoine.girard@epc2i.fr', roles: ['director'] });
+    await signIn({ oid: 'oid-antoine', email: 'antoine.girard@atrium.example', roles: ['englead'] });
+    const other = await signIn({ oid: 'oid-impostor', email: 'antoine.girard@atrium.example', roles: ['director'] });
     expect(other.res.headers.get('location')).toBe(`${ORIGIN}/sign-in?error=account_mismatch`);
     // Same account, e-mail changed in Entra: still Antoine (the object id is the link).
     const again = await signIn({ oid: 'oid-antoine', email: 'a.girard@new-domain.fr', roles: ['englead', 'quality'] });
@@ -208,19 +208,19 @@ describe('Entra ID sign-in', () => {
   });
 
   it('refuses a deactivated user and ends their running session', async () => {
-    const r = await signIn({ oid: 'oid-gabriel', email: 'gabriel.comte@epc2i.fr', roles: ['quality'] });
+    const r = await signIn({ oid: 'oid-gabriel', email: 'gabriel.comte@atrium.example', roles: ['quality'] });
     useSession(r);
     expect((await getViewer()).name).toBe('Gabriel Comte');
     const db = await getDb();
     const u = await userOf('Gabriel Comte');
     await db.update(users).set({ active: false }).where(eq(users.id, u!.id));
     await expect(getViewer()).rejects.toThrow('REDIRECT:/sign-in?error=session');
-    expect((await signIn({ oid: 'oid-gabriel', email: 'gabriel.comte@epc2i.fr', roles: ['quality'] })).res.headers.get('location')).toBe(`${ORIGIN}/sign-in?error=inactive`);
+    expect((await signIn({ oid: 'oid-gabriel', email: 'gabriel.comte@atrium.example', roles: ['quality'] })).res.headers.get('location')).toBe(`${ORIGIN}/sign-in?error=inactive`);
     await db.update(users).set({ active: true }).where(eq(users.id, u!.id));
   });
 
   it('ends a session whose roles were all removed', async () => {
-    const r = await signIn({ oid: 'oid-fabien', email: 'fabien.bertrand@epc2i.fr', roles: ['procurement'] });
+    const r = await signIn({ oid: 'oid-fabien', email: 'fabien.bertrand@atrium.example', roles: ['procurement'] });
     useSession(r);
     const db = await getDb();
     await db.update(users).set({ roles: [] }).where(eq(users.entraObjectId, 'oid-fabien'));
@@ -230,14 +230,14 @@ describe('Entra ID sign-in', () => {
   it('refuses a wrong state, an expired sign-in, a provider error and a forged token', async () => {
     const start = await handleSignIn(new NextRequest(`${ORIGIN}/api/auth/sign-in`));
     const tx = setCookies(start)[TX].value;
-    const { code, state } = idp.authorize(start.headers.get('location')!, { oid: 'o', email: 'marie.lefebvre@epc2i.fr', roles: ['director'] });
+    const { code, state } = idp.authorize(start.headers.get('location')!, { oid: 'o', email: 'marie.lefebvre@atrium.example', roles: ['director'] });
     const cb = (q: string, cookie?: string) => handleCallback(new NextRequest(`${ORIGIN}/api/auth/callback?${q}`, { headers: cookie ? { cookie } : {} }));
     expect((await cb(`code=${code}&state=forged`, `${TX}=${tx}`)).headers.get('location')).toBe(`${ORIGIN}/sign-in?error=state`);
     expect((await cb(`code=${code}&state=${state}`)).headers.get('location')).toBe(`${ORIGIN}/sign-in?error=expired`);
     expect((await cb(`code=${code}&state=${state}`, `${TX}=tampered`)).headers.get('location')).toBe(`${ORIGIN}/sign-in?error=expired`);
     expect((await cb(`error=access_denied&state=${state}`, `${TX}=${tx}`)).headers.get('location')).toBe(`${ORIGIN}/sign-in?error=provider`);
     const foreign = await idp.foreignKey();
-    idp.nextTokenResponse = async () => Response.json({ id_token: await idp.idToken({ oid: 'o', email: 'marie.lefebvre@epc2i.fr', roles: ['director'] }, { key: foreign }) });
+    idp.nextTokenResponse = async () => Response.json({ id_token: await idp.idToken({ oid: 'o', email: 'marie.lefebvre@atrium.example', roles: ['director'] }, { key: foreign }) });
     const forged = await cb(`code=${code}&state=${state}`, `${TX}=${tx}`);
     expect(forged.headers.get('location')).toBe(`${ORIGIN}/sign-in?error=token`);
     expect(setCookies(forged)[SESSION]).toBeUndefined();
@@ -250,7 +250,7 @@ describe('Entra ID sign-in', () => {
   });
 
   it('refuses "View as" and switches only to a role the user holds, keeping the session expiry', async () => {
-    const r = await signIn({ oid: 'oid-marion', email: 'marion.kerviel@epc2i.fr', roles: ['depthead', 'quality'] });
+    const r = await signIn({ oid: 'oid-marion', email: 'marion.kerviel@atrium.example', roles: ['depthead', 'quality'] });
     useSession(r);
     expect(await setViewAs('director')).toEqual({ ok: false, error: '« Voir en tant que » n’est disponible qu’en mode démonstration' });
     expect(jar.has('ks-role')).toBe(false);
@@ -269,7 +269,7 @@ describe('Entra ID sign-in', () => {
   });
 
   it('signs out: session cleared, audited, then the Microsoft sign-out; cross-site requests refused', async () => {
-    const r = await signIn({ oid: 'oid-marie', email: 'marie.lefebvre@epc2i.fr', roles: ['director'] });
+    const r = await signIn({ oid: 'oid-marie', email: 'marie.lefebvre@atrium.example', roles: ['director'] });
     const post = (headers: Record<string, string>) => handleSignOut(new NextRequest(`${ORIGIN}/api/auth/sign-out`, { method: 'POST', headers }));
     const cookie = `${SESSION}=${r.cookies[SESSION].value}`;
     expect((await post({ cookie, 'sec-fetch-site': 'cross-site' })).status).toBe(403);

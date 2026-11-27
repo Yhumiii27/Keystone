@@ -15,18 +15,18 @@
 ### 1.1 Lecture
 
 Le CDC décrit la méthodologie **du maître d’ouvrage** : le groupe et ses filiales qui investissent (CAPEX) pour monter une
-usine ou une ligne. Keystone, lui, est construit pour **le fournisseur** : EPC2i qui conçoit, fabrique, livre et met en
+usine ou une ligne. Keystone, lui, est construit pour **le fournisseur** : l’entreprise qui conçoit, fabrique, livre et met en
 service des machines (13 étapes, de l’Initiative à la Garantie). Ce sont deux niveaux différents d’un même investissement :
 
 | Niveau | Qui pilote | Objet | Méthode | Dans Keystone aujourd’hui |
 |---|---|---|---|---|
 | **N1 — CAPEX usine** | la filiale (sponsor, chef de projet filiale, CDG), le groupe (PDG, DAF, SSE, Dir.IG) | l’investissement complet : terrain, génie civil, utilités, machines, recrutement, montée en puissance | DIG-PRODI : 4 phases, G1/G2/G3, 3 dossiers vivants | **absent** |
-| **N2 — Besoin machine** | la filiale exprime, EPC2i qualifie | une ou plusieurs machines du CAPEX, idéalement choisies dans un catalogue | — (à créer) | **absent** (pas de catalogue machines, seulement des types de machine) |
-| **N3 — Projet EPC2i** | le chef de projet EPC2i | la fourniture des équipements | 13 étapes, livrables de sortie, BL0/BL1, EVM, ITP, mise en service | **existe** (cœur de Keystone) |
+| **N2 — Besoin machine** | la filiale exprime, l’entreprise qualifie | une ou plusieurs machines du CAPEX, idéalement choisies dans un catalogue | — (à créer) | **absent** (pas de catalogue machines, seulement des types de machine) |
+| **N3 — Projet Keystone** | le chef de projet Keystone | la fourniture des équipements | 13 étapes, livrables de sortie, BL0/BL1, EVM, ITP, mise en service | **existe** (cœur de Keystone) |
 
 La note du responsable produit confirme ce découpage : le projet commence par un **CAPEX ouvert par la filiale**, qui ouvre
-un **besoin machine chez EPC2i**, idéalement depuis un **catalogue**. Keystone doit donc **monter d’un niveau** (le CAPEX) et
-**s’ouvrir aux filiales**, sans perdre ce qu’il fait déjà au niveau du projet EPC2i.
+un **besoin machine chez l’entreprise**, idéalement depuis un **catalogue**. Keystone doit donc **monter d’un niveau** (le CAPEX) et
+**s’ouvrir aux filiales**, sans perdre ce qu’il fait déjà au niveau du projet Keystone.
 
 ### 1.2 Points forts du CDC
 
@@ -50,24 +50,24 @@ un **besoin machine chez EPC2i**, idéalement depuis un **catalogue**. Keystone 
 | C-8 | Précision budget « +10 % / −5 % » en phase 2 mais pas de règle de passage ±50 → ±30. | Définir les classes d’estimation par jalon (ex. G1 : classe 4 ±50 % ; mi-AP : ±30 % ; G2 : +10/−5 %) et ce qui fait changer de classe (pack ingénierie ≥ x %, devis fournisseurs, etc.). |
 | C-9 | « Pack Ingénierie > 80 % de complétude » : la base du pourcentage n’est pas définie. | Liste type des pièces du pack par type d’investissement, pondérées (P&ID, BOM, layout, électrique, analyses fonctionnelles) ; % = pièces au statut « validé » / pièces attendues. |
 | C-10 | Objectifs (−40 % délais, −50 % documents, 100 % traçabilité) sans point de référence. | Mesurer l’existant (délai moyen actuel d’un G, nombre de documents) pendant le pilote, et définir le calcul des KPI dans l’outil. |
-| C-11 | Rien sur le lien CAPEX ↔ fournisseurs internes (EPC2i) ni sur le catalogue machines. | Ajouter un chapitre « Besoins machines et catalogue » (voir §3, lots D-3 et D-4). |
+| C-11 | Rien sur le lien CAPEX ↔ fournisseurs internes (entreprise) ni sur le catalogue machines. | Ajouter un chapitre « Besoins machines et catalogue » (voir §3, lots D-3 et D-4). |
 | C-12 | Rien sur les interfaces (ERP/Sage, GED, HSE, RH). | Renvoyer aux applications du groupe : Codex (documents), Vigie (QHSE, NCR, ECO), Cursus (habilitations, heures), Sage (comptabilité, clôture comptable du G3). |
 | C-13 | Hébergement « impérativement en France » sans précision sur l’IA et l’annuaire. | Préciser : données et sauvegardes en France ; IA via un fournisseur offrant une région UE/France ou désactivable ; annuaire Entra ID (Microsoft) accepté ou non. |
 
 ## 2. Correspondance des cycles de vie
 
-Le CAPEX (N1) suit DIG-PRODI ; chaque projet EPC2i (N3) garde ses 13 étapes, **synchronisées** avec les jalons du CAPEX :
+Le CAPEX (N1) suit DIG-PRODI ; chaque projet Keystone (N3) garde ses 13 étapes, **synchronisées** avec les jalons du CAPEX :
 
-| DIG-PRODI (CAPEX filiale) | Ce qu’EPC2i fournit au CAPEX | Étapes Keystone (projet EPC2i) | Précision du chiffrage EPC2i |
+| DIG-PRODI (CAPEX filiale) | Ce que l’entreprise fournit au CAPEX | Étapes Keystone (projet Keystone) | Précision du chiffrage de l’entreprise |
 |---|---|---|---|
 | **Phase 1 Cadrage** → G1 « Go Études » | besoin machine qualifié, machine(s) du catalogue, budget indicatif | Initiative | ±50 % (prix catalogue) |
 | **Phase 2 Avant-Projet** → G2 « Single Gate PDG » | devis budgétaire puis offre ferme, part machine du pack ingénierie (P&ID machine, BOM, layout, puissances électriques, analyse fonctionnelle), HazOp/AMDEC machine, zonage ATEX machine | APS (« Devis budgétaire remis »), APD (« Avant-projet détaillé approuvé client », BL1, BAC) | ±30 % à l’APS, +10/−5 % à l’APD |
-| G2 validé | **commande** à EPC2i (engagement CAPEX) | entrée en Études (« APD approuvé · BL1 posé ») | baseline BL1 |
+| G2 validé | **commande** à l’entreprise (engagement CAPEX) | entrée en Études (« APD approuvé · BL1 posé ») | baseline BL1 |
 | **Phase 3 Exécution** | avancement, EVM, avenants/MoC, long lead items, chantier | Études → Approvisionnements → Fabrication & Assemblage → FAT → Expédition → Chantier | BL1 + avenants |
 | **Phase 4 Démarrage / Ramp-up** | pré-commissioning, participation au PSSR, SAT, formation, assistance à la montée en puissance | Mise en service & SAT, puis Garantie | — |
 | G3 « Go Transfert » | PV d’acceptation, réserves soldées, dossier de transfert, REX | Clos (après Garantie, ou étape « Transfert » si la garantie dure) | — |
 
-Conséquence : **G2 du CAPEX = commande EPC2i** ; **G3 du CAPEX** a besoin des PV et réserves de tous ses projets EPC2i, plus
+Conséquence : **G2 du CAPEX = commande à l’entreprise** ; **G3 du CAPEX** a besoin des PV et réserves de tous ses projets Keystone, plus
 des données de montée en puissance que seule la filiale possède.
 
 ## 3. Comparaison exigence par exigence
@@ -82,18 +82,18 @@ Statut Keystone : ✅ existe · 🟡 partiel · ❌ absent.
 | Visa Sponsor & COPIL GPI (G1), signature PDG (G2), contre-signature Client Interne + Dir.IG (G3) | 🟡 « Mes validations » (12 types), chaîne séquentielle des demandes de modification ; « signé » = statut + date, sans signature électronique. | Circuit de jalon multi-signataires + signature électronique | D-5 |
 | Avis d’experts asynchrones (Qualité, HSE, DAF, Exploitation) | ❌ | Consultations en ligne avec délai et avis motivé | D-5 |
 | Entonnoir de précision ±50 → ±30 → +10/−5 % | ❌ BL0/BL1/BL2, provision BAC × 3 %, budget de référence par type de machine. | Classe d’estimation par version de budget, écart d’incertitude au tableau de bord | D-6 |
-| Modèle financier DAF (BP, AFE) | 🟡 Marge à terminaison (R-132), trésorerie 6 mois (R-133), rôle Finance (R-044) — au niveau du projet EPC2i. | BP CAPEX (VAN, TRI, payback) au niveau N1, AFE | D-6 |
+| Modèle financier DAF (BP, AFE) | 🟡 Marge à terminaison (R-132), trésorerie 6 mois (R-133), rôle Finance (R-044) — au niveau du projet Keystone. | BP CAPEX (VAN, TRI, payback) au niveau N1, AFE | D-6 |
 | Pack Ingénierie > 80 % (P&ID, BOM, layout, électrique, analyses fonctionnelles) | 🟡 Ingénierie par discipline, P&ID (tags liés à la BOM), BOM, livrables publiés x/y, index Codex (`src/domain/engineering.ts`, `pid.ts`, `bom.ts`). | Liste type du pack, % de complétude pondéré, layout comme livrable | D-7 |
 | Dossier réglementaire (ICPE, PC, PLU, ATEX) | ❌ (ATEX seulement en texte de démo). | Registre des autorisations avec échéances (N1) | D-7 |
 | Jalons SSE HS 2–6 : HazID, HazOp/AMDEC, PSSR, RSPDI, ASPD ; suivi de levée des actions | 🟡 HSE chantier via Vigie (plan de prévention, permis, accueil) ; « Go chantier » à 5 conditions ; « HAZOP light » comme étape P&ID. | Jalons HS bloquants + registre d’actions de sécurité. **Propriétaire : Vigie** (QHSE), Keystone affiche et bloque | D-8 |
-| Exécution : S-curve/EVM, avenants/MoC, KPI | ✅ EVM (R-073) et courbe en S, avenants (R-079), demandes de modification séquentielles avec seuil CCB (R-069), alertes portefeuille (R-130), rapports par audience (R-131). | Consolidation au niveau CAPEX (somme des projets EPC2i + lots hors EPC2i) | D-1, D-9 |
+| Exécution : S-curve/EVM, avenants/MoC, KPI | ✅ EVM (R-073) et courbe en S, avenants (R-079), demandes de modification séquentielles avec seuil CCB (R-069), alertes portefeuille (R-130), rapports par audience (R-131). | Consolidation au niveau CAPEX (somme des projets Keystone + lots hors Keystone) | D-1, D-9 |
 | Copil projet à seuils délégués ; Dir.IG seul pour la conformité | 🟡 Séries de réunions (comité de pilotage), décisions et actions ; un seul seuil (CCB 50 k€). | Matrice de délégation par typologie et par montant | D-5 |
 | Pre-commissioning, commissioning, SAT, formation | ✅ Systèmes × étapes (Mechanical completion, Pre-commissioning, Commissioning, SAT, Handover), plan SAT, dossier de remise (`src/domain/itpcom.ts`). | Lien avec le PSSR (jalon HS bloquant avant introduction de produit) | D-8 |
 | Ramp-up 30 jours, TRS/OEE, rebuts | ❌ | Saisie journalière (ou import) capacité / TRS / rebuts, critère « 30 jours continus à capacité nominale » | D-10 |
 | Dossier Transfert & REX, PV d’actif unique, clôture comptable | 🟡 PV d’acceptation client, réserves A/B/C, liste de clôture, REX, enquête de satisfaction, parc installé (`src/domain/rexclient.ts`, `quality.ts`). | Dossier de transfert CAPEX qui agrège les projets ; capitalisation du REX vers les fonctions centrales | D-10 |
 | Deux typologies Light / Stratégique (20 % du CA filiale), staffing et cadence de revue | ❌ | Typologie calculée + forçable, gabarit de staffing, cadence de revue et alertes de revue en retard | D-9 |
 | Dashboards temps réel (maturité études, écart d’incertitude, ramp-up) | 🟡 Tableaux de bord projet/portefeuille, tendances hebdomadaires, santé. | Tableau de bord CAPEX (N1) | D-9 |
-| Isolation Groupe / filiales / EPC2i, vues croisées DAF / SSE | 🟡 9 profils, droits par équipe projet (R-041), client limité à son organisation (P-10a/b). Une seule organisation. | Multi-organisation, profils filiale et groupe, portées de données | D-4 |
+| Isolation Groupe / filiales / l’entreprise, vues croisées DAF / SSE | 🟡 9 profils, droits par équipe projet (R-041), client limité à son organisation (P-10a/b). Une seule organisation. | Multi-organisation, profils filiale et groupe, portées de données | D-4 |
 | Hébergement en France | ❌ non statué (I-1a ouvert ; bêta sur un serveur cloud Coolify). | Choisir un hébergeur en France ; politique IA | D-11 |
 | IA : détection de dérive (planning, budget, actions de sécurité) | 🟡 Alertes à règles (R-130), « N j de dérive », analyse de comptes rendus par Claude si clé API. | Détection de tendance (projection S-curve, EAC) + alerte actions HazID/HazOp en retard ; assistant | D-12 |
 | Catalogue machines proposé aux filiales | ❌ Types de machine (EMP, MEMU, SPUR…) avec phases, catégories de coûts, ITP, budget de référence (`mtypes`) ; R-053 (standard complet) attend les données. | Catalogue + configurateur, **nouvel outil** à valider | D-3 |
@@ -106,25 +106,25 @@ Tailles : S ≈ 1 semaine, M ≈ 2–3 semaines, L ≈ 1 mois, XL > 1 mois (dév
 ### D-1 · Niveau CAPEX (programme filiale) — L
 - Nouvel objet **CAPEX** : filiale, site/usine, sponsor, chef de projet filiale, typologie, phase DIG-PRODI, budget par
   classe d’estimation, lots (génie civil, utilités, bâtiments, machines, recrutement…), risques, décisions.
-- Un CAPEX contient des **lots hors EPC2i** (suivis simplement : budget, engagé, réalisé, jalons) et des **besoins machines**
-  qui deviennent des projets EPC2i.
-- Consolidation : budget/engagé/EAC du CAPEX = lots + projets EPC2i (EVM agrégé) ; jalons EPC2i remontés (commande, FAT,
+- Un CAPEX contient des **lots hors Keystone** (suivis simplement : budget, engagé, réalisé, jalons) et des **besoins machines**
+  qui deviennent des projets Keystone.
+- Consolidation : budget/engagé/EAC du CAPEX = lots + projets Keystone (EVM agrégé) ; jalons de l’entreprise remontés (commande, FAT,
   livraison, SAT, PV).
 - Écrans : registre des CAPEX, fiche CAPEX (onglets : cadrage, avant-projet, exécution, démarrage, dossiers vivants).
 
 ### D-2 · Cycle de vie paramétrable et jalons G1/G2/G3 — M
 - Les étapes deviennent un **modèle par niveau** : modèle « DIG-PRODI » (4 phases, 3 jalons) pour les CAPEX, modèle
-  « EPC2i » (13 étapes actuelles, inchangées) pour les projets EPC2i. Même moteur : livrables de sortie, passage forcé
+  « Keystone » (13 étapes actuelles, inchangées) pour les projets Keystone. Même moteur : livrables de sortie, passage forcé
   motivé, date d’effet, historique (`stage_transitions`).
 - **Jalon à comité** : critères (dont jalons HS bloquants), dossier vivant attaché, circuit de décision (D-5), décision
   Go / Go sous réserve / No-Go / Ajourné, délai cible (G1 : 2 jours).
-- **Synchronisation** : G2 validé → le besoin machine peut passer en commande (projet EPC2i en Études) ; G3 exige le PV et
-  les réserves soldées de chaque projet EPC2i du CAPEX.
+- **Synchronisation** : G2 validé → le besoin machine peut passer en commande (projet Keystone en Études) ; G3 exige le PV et
+  les réserves soldées de chaque projet Keystone du CAPEX.
 
 ### D-3 · Besoins machines, catalogue et multi-équipements — XL (dont un nouvel outil)
 - **Besoin machine** (dans Keystone) : la filiale, depuis son CAPEX, demande une ou plusieurs machines (type, quantité,
-  options, capacité, date de besoin). EPC2i qualifie (faisabilité, budget ±50 %), puis répond par devis puis offre (D-6).
-  Une fois commandé, le besoin crée **un projet EPC2i** (ou s’ajoute à un projet existant).
+  options, capacité, date de besoin). L’entreprise qualifie (faisabilité, budget ±50 %), puis répond par devis puis offre (D-6).
+  Une fois commandé, le besoin crée **un projet Keystone** (ou s’ajoute à un projet existant).
 - **Multi-équipements (R-185)** : le besoin donne la forme du projet — une liste d’équipements (type × quantité). C’est le
   cadrage demandé le 15 oct. : il faut le trancher dans ce lot (lots de planning, ITP, mise en service, BOM et coûts **par
   équipement** ; contrat, facturation, équipe et documents **communs**).
@@ -140,10 +140,10 @@ Tailles : S ≈ 1 semaine, M ≈ 2–3 semaines, L ≈ 1 mois, XL > 1 mois (dév
 - Dépend des données R-053 (standard complet par type de machine).
 
 ### D-4 · Multi-organisation et nouveaux profils — L
-- **Organisations** : Groupe, filiales, EPC2i ; chaque CAPEX appartient à une filiale, chaque projet EPC2i à EPC2i (avec la
+- **Organisations** : Groupe, filiales, l’entreprise ; chaque CAPEX appartient à une filiale, chaque projet Keystone à l’entreprise (avec la
   filiale comme client interne). Portée des données par organisation ; vues croisées pour les fonctions centrales (DAF
-  groupe, SSE groupe, PMO EPC2i, Dir.IG) ; le PDG voit tout.
-- **Profils à ajouter** (les 9 actuels restent pour EPC2i) : Sponsor, Chef de projet filiale, CDG filiale, Dir.IG, PDG,
+  groupe, SSE groupe, PMO de l’entreprise, Dir.IG) ; le PDG voit tout.
+- **Profils à ajouter** (les 9 actuels restent pour l’entreprise) : Sponsor, Chef de projet filiale, CDG filiale, Dir.IG, PDG,
   DAF groupe, SSE groupe, Expert (Qualité, HSE, Exploitation), Membre COPIL GPI. Le profil « client » actuel couvre les
   clients externes ; la filiale devient un **client interne** avec ses propres écrans (pas le portail client restreint).
 - Entra ID : groupes par organisation et par rôle (extension d’`ENTRA_GROUP_ROLES`) ; invités B2B si les filiales sont sur
@@ -165,12 +165,12 @@ Tailles : S ≈ 1 semaine, M ≈ 2–3 semaines, L ≈ 1 mois, XL > 1 mois (dév
 ### D-6 · Business case, entonnoir de précision et modèle financier — L
 - **Dossier vivant 1 — Business Case Cadrage** : formulaire standard (besoin, marché, barrières, contraintes foncières et
   réglementaires, BP préliminaire), versions, visa.
-- **Classe d’estimation** sur chaque version de budget (CAPEX et projet EPC2i) : ±50 % / ±30 % / +10/−5 %, avec la
+- **Classe d’estimation** sur chaque version de budget (CAPEX et projet Keystone) : ±50 % / ±30 % / +10/−5 %, avec la
   fourchette affichée et un indicateur « écart d’incertitude » au tableau de bord ; un jalon refuse un budget de classe
   insuffisante.
 - **Modèle financier CAPEX** (DAF) : CAPEX, OPEX, chiffre d’affaires attendu, VAN, TRI, retour sur investissement, AFE.
   Saisie ou import Excel du modèle DAF (à préciser : outil de la DAF existant ?).
-- Côté EPC2i : devis budgétaire (APS) et offre ferme (APD) chiffrés depuis le catalogue et le REX — c’est la proposition
+- Côté entreprise : devis budgétaire (APS) et offre ferme (APD) chiffrés depuis le catalogue et le REX — c’est la proposition
   **P6 « Offres & chiffrage »**, qu’il faut valider dans ce cadre.
 
 ### D-7 · Pack ingénierie et dossier réglementaire — M
@@ -191,7 +191,7 @@ Tailles : S ≈ 1 semaine, M ≈ 2–3 semaines, L ≈ 1 mois, XL > 1 mois (dév
 
 ### D-9 · Typologie, gouvernance et tableau de bord CAPEX — M
 - **Typologie** calculée (CAPEX / CA de référence de la filiale > 20 % → Stratégique), forçable avec motif.
-- **Gabarit de staffing** par typologie (Light : chef de projet filiale + Co-DIG ; Stratégique : + CDG + PMO EPC2i) et
+- **Gabarit de staffing** par typologie (Light : chef de projet filiale + Co-DIG ; Stratégique : + CDG + PMO de l’entreprise) et
   contrôle « équipe incomplète ».
 - **Cadence de revue** (trimestrielle / mensuelle) : séries de réunions Copil créées d’office, alerte « revue en retard »,
   rapport d’avancement « Copil » (R-131) au niveau CAPEX.
@@ -203,7 +203,7 @@ Tailles : S ≈ 1 semaine, M ≈ 2–3 semaines, L ≈ 1 mois, XL > 1 mois (dév
   capacité nominale, du TRS/OEE et du taux de rebuts ; courbe vers la capacité nominale ; critère « 30 jours continus » et
   limite « 6 mois après le début de la MES ».
 - **Dossier vivant 3 — Transfert & REX** : PV de transfert d’actif unique (contre-signature Client Interne + Dir.IG),
-  quitus PSSR (Vigie), réserves soldées (punch lists des projets EPC2i), clôture comptable (Sage, R-182), REX capitalisé et
+  quitus PSSR (Vigie), réserves soldées (punch lists des projets Keystone), clôture comptable (Sage, R-182), REX capitalisé et
   diffusé aux fonctions centrales (le REX projet existe déjà ; à étendre au niveau CAPEX avec une diffusion).
 - Lien parc installé : la machine mise en service porte sa capacité nominale et son TRS de réception.
 
@@ -233,11 +233,11 @@ Tailles : S ≈ 1 semaine, M ≈ 2–3 semaines, L ≈ 1 mois, XL > 1 mois (dév
 
 ## 6. Décisions à prendre par le responsable produit
 
-1. **Périmètre** : Keystone devient-il l’outil du CAPEX des filiales (niveau N1) en plus de celui d’EPC2i ? (Hypothèse de
+1. **Périmètre** : Keystone devient-il l’outil du CAPEX des filiales (niveau N1) en plus de celui de l’entreprise ? (Hypothèse de
    cette analyse : oui, d’après la note du 21 oct.)
 2. **Catalogue machines** : option A (module Keystone) ou option B (nouvelle application) — et qui le maintient (bureau
-   d’études EPC2i ?).
-3. **Multi-équipements (R-185)** : un besoin de plusieurs machines = un projet EPC2i à plusieurs équipements, ou un projet
+   d’études de l’entreprise ?).
+3. **Multi-équipements (R-185)** : un besoin de plusieurs machines = un projet Keystone à plusieurs équipements, ou un projet
    par machine ?
 4. **Sécurité de procédé (HazID, HazOp, PSSR)** : portée par Vigie (recommandé, conforme aux frontières) ou par Keystone ?
 5. **Signature électronique** : niveau par document et prestataire (C-7).
@@ -249,6 +249,6 @@ Tailles : S ≈ 1 semaine, M ≈ 2–3 semaines, L ≈ 1 mois, XL > 1 mois (dév
 
 ## 7. Ce qui ne change pas
 
-Le projet EPC2i garde ses 13 étapes, ses baselines, son EVM, ses achats, son ingénierie, son ITP, sa mise en service, sa
+Le projet Keystone garde ses 13 étapes, ses baselines, son EVM, ses achats, son ingénierie, son ITP, sa mise en service, sa
 garantie et ses connecteurs (Codex, Vigie, Cursus). DIG-PRODI s’ajoute **au-dessus** (CAPEX filiale) et **à côté** (besoin
 machine, catalogue) ; les jalons du CAPEX se nourrissent des données que Keystone produit déjà.

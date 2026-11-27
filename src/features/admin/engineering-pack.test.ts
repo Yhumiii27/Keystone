@@ -208,7 +208,7 @@ describe('multi-equipment and the card', () => {
     ]);
     expect(en.families[1].docs).toEqual(['BOM-MEC-026 rev D · Mechanical BOM · Frozen', 'BOM-ELE-026 rev B · Electrical BOM · Draft']);
     const fr = renderToStaticMarkup(h(EngineeringPackCard, { view: packCardView(pack, makeT('fr'), 'fr'), t: makeT('fr') }));
-    for (const s of ['Pack ingénierie · part EPC2i', 'Cible G2 &gt; 80 %', 'Sous la cible', 'Nomenclature', 'Layout · plan de masse machine', 'Analyse fonctionnelle', 'Gelé']) {
+    for (const s of ['Pack ingénierie · part de l’entreprise', 'Cible G2 &gt; 80 %', 'Sous la cible', 'Nomenclature', 'Layout · plan de masse machine', 'Analyse fonctionnelle', 'Gelé']) {
       expect(fr).toContain(s);
     }
   });

@@ -21,7 +21,7 @@ const DIRECTOR = { name: 'Marie Lefebvre', role: 'director' };
 
 /** A record of Codex's index (proposed payload, TODO(codex) D-1). */
 const rec = (o: Partial<CodexIndexRecord> = {}): CodexIndexRecord => ({
-  id: 'CDX-1', url: 'https://codex.epc2i.fr/documents/CDX-1', number: 'RPT-HLT-099', type: 'RPT', project: 'HLT-026', title: 'Crane rail weld inspection',
+  id: 'CDX-1', url: 'https://codex.atrium.example/documents/CDX-1', number: 'RPT-HLT-099', type: 'RPT', project: 'HLT-026', title: 'Crane rail weld inspection',
   service: 'quality', status: 'release_proposed', confidentiality: 'client', author: 'G. Comte', tags: ['A1320', 'D-014'], recipients: ['client'],
   revision: { letter: 'A', issuedOn: '2026-10-01', workingVersions: 2 },
   approvals: [{ step: 0, signedOn: '2026-10-01', signedBy: 'G. Comte' }, { step: 1, approver: 'G. Comte', signedOn: null }, { step: 2, approver: 'R. Aubert', signedOn: null }],
@@ -52,7 +52,7 @@ describe('applyCodexIndex (index read, D-2 scope)', () => {
     expect(r).toEqual({ applied: 1, created: 1, skipped: [] });
     const d = (await getDocumentRecord('RPT-HLT-099'))!;
     expect([d.project, d.type, d.status, d.revision, d.author, d.codexUrl, d.isNew, d.tags, d.confidentiality]).toEqual([
-      'HLT-026', 'RPT', 'release_proposed', 'A', 'G. Comte', 'https://codex.epc2i.fr/documents/CDX-1', false, ['A1320', 'D-014'], 'client',
+      'HLT-026', 'RPT', 'release_proposed', 'A', 'G. Comte', 'https://codex.atrium.example/documents/CDX-1', false, ['A1320', 'D-014'], 'client',
     ]);
     expect(d.revisions.map((x) => [x.revision, x.issuedOn, x.workingVersions])).toEqual([['A', '2026-10-01', 2]]);
     expect(d.approvals.map((a) => [a.position, a.roleLabel, a.who, a.signed])).toEqual([

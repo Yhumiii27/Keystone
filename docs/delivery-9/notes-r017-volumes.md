@@ -1,7 +1,7 @@
 # Livraison 9 — lot « volumes » (R-017) : tenir la charge avec de vrais volumes de données
 
 Aucune dépendance externe : préparation de la mise en production. Mesuré avant et après sur un jeu de données à la taille
-d’EPC2i, en PGlite et sur le serveur PostgreSQL 16 (schéma `keystone`, rôle `keystone_app`).
+de l’entreprise, en PGlite et sur le serveur PostgreSQL 16 (schéma `keystone`, rôle `keystone_app`).
 
 ## 1. Le jeu de données de charge (`npm run load:seed`)
 
@@ -197,7 +197,7 @@ Valeurs affichées : aucune ne change. Changements visibles seulement à volume 
 KEYSTONE_DATA_DIR=/tmp/ks-load npm run load:seed      # PGlite jetable (créée et amorcée si vide)
 KEYSTONE_DATA_DIR=/tmp/ks-load npm run load:measure   # tableau ; --json, --only=docs,shell, --runs=5
 KEYSTONE_DATA_DIR=/tmp/ks-load npm run load:check     # budget à chaud (300 ms PGlite, 150 ms PostgreSQL)
-DATABASE_URL=postgres://keystone_app:…@host/epc2i npm run load:seed   # serveur migré (db:migrate, KEYSTONE_SEED=demo)
+DATABASE_URL=postgres://keystone_app:…@host/<base> npm run load:seed   # serveur migré (db:migrate, KEYSTONE_SEED=demo)
 ```
 
 ## 8. Ce qui reste
@@ -212,4 +212,4 @@ DATABASE_URL=postgres://keystone_app:…@host/epc2i npm run load:seed   # serveu
 - Coffre « tous les projets » : 1,6 s / 0,7 s après une écriture (20 000 fiches lues) ; pagination en SQL possible si besoin.
 - Index non créés sur les colonnes de fenêtre des activités (`start_date`, `finish_date`) : la fenêtre de 8 semaines couvre
   un tiers des activités du jeu, un index n’y serait pas choisi.
-- Le jeu clone les dates de ses modèles (charge concentrée) : à refaire avec des données réelles anonymisées si EPC2i en fournit.
+- Le jeu clone les dates de ses modèles (charge concentrée) : à refaire avec des données réelles anonymisées si l’entreprise en fournit.

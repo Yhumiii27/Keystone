@@ -7,7 +7,7 @@
 import Cocoa
 import WebKit
 
-// Port 3000 is the address the other EPC2i apps use for Keystone (Codex: NEXT_PUBLIC_KEYSTONE_URL).
+// Port 3000 is the address the other Atrium apps use for Keystone (Codex: NEXT_PUBLIC_KEYSTONE_URL).
 private let port = 3000
 private let baseURL = URL(string: "http://127.0.0.1:\(port)/")!
 

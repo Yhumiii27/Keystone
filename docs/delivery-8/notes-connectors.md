@@ -87,7 +87,7 @@ empty. The migration test finds the custom file by name (`NNNN_leave_types_simpl
 ### R-027 — Cursus staff directory, Keystone half, dormant (NEW-CURSUS-2 "a") — partly buildable
 
 - Pure matching `src/domain/directory.ts` (`planDirectoryImport`): matricule first, else the lower-case work e-mail among
-  EPC2i persons (no client organisation); an e-mail held by several persons, by an external contact or by a person with
+  company persons (no client organisation); an e-mail held by several persons, by an external contact or by a person with
   another matricule matches nobody and is reported; no match → a new person "Prénom Nom", short name "P. Nom" made unique
   ("J. Wagner (2)"), initials; an existing short name, full name or e-mail is never overwritten (missing ones filled in);
   team → department only on an exact name, else kept in `directory_team`; nothing deleted.

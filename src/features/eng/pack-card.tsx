@@ -1,4 +1,4 @@
-// R-191 (Arche K-08): the card "Engineering pack · EPC2i share" of the Engineering synthesis — the weighted % completeness of
+// R-191 (Arche K-08): the card "Engineering pack · company share" of the Engineering synthesis — the weighted % completeness of
 // the project's pack against the standard list of its machine type(s), the per-family breakdown (expected, validated, weight)
 // with the documents counted, and the DIG-PRODI G2 target (above 80 %). The same numbers are published to the CAPEX
 // application by pub_pack_ingenierie. Server Component; rules in src/domain/engineering-pack.ts.
@@ -64,7 +64,7 @@ export function EngineeringPackCard({ view, t }: { view: PackCardView; t: T }) {
     <div className={cx('card', 'elev-sm', s.card)}>
       <div className={s.head}>
         <div className={s.titleCol}>
-          <div className="card-title">{t('Engineering pack · EPC2i share')}</div>
+          <div className="card-title">{t('Engineering pack · company share')}</div>
           <span className={s.sub}>{view.sub}</span>
         </div>
         <span className={cx(view.status.cls, s.push, s.nowrap)}>{view.status.text}</span>
@@ -76,7 +76,7 @@ export function EngineeringPackCard({ view, t }: { view: PackCardView; t: T }) {
       <span className={s.bar} role="img" aria-label={`${t('Completeness')} ${view.pct}`}>
         <span className={s.barFill} style={{ width: view.bar }} />
       </span>
-      <div role="table" aria-label={t('Engineering pack · EPC2i share')}>
+      <div role="table" aria-label={t('Engineering pack · company share')}>
         <div role="row" className={cx(s.packRow, s.packHead)}>
           <span role="columnheader">{t('Family')}</span>
           <span role="columnheader" className={s.right}>{t('Validated / expected')}</span>

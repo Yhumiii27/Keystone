@@ -132,7 +132,7 @@ a.docId:hover { color: var(--color-accent-300); }
 .error { font-size: 12px; color: var(--color-accent-300); }
 .right { text-align: right; }
 
-/* ── R-191: Engineering pack · EPC2i share ────────────────────────────────── */
+/* ── R-191: Engineering pack · company share ────────────────────────────────── */
 .packTotal { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .packPct { font-size: 26px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .packTarget { font-size: 12px; color: var(--color-neutral-400); }

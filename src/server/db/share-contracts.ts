@@ -44,7 +44,7 @@ export const SHARE_VIEW_COLUMNS: Record<string, string[]> = {
   ],
   // D16 v1 (0035_share) + Matrix D21 (0054_matrix_rex_clients_share): the subsidiary's code at the end.
   pub_clients: ['id', 'name', 'code3', 'filiale_code'],
-  // Arche K-08 (R-191, 0060_engineering_pack_share): EPC2i's share of the engineering pack, one row per project and family.
+  // Arche K-08 (R-191, 0060_engineering_pack_share): The company's share of the engineering pack, one row per project and family.
   pub_pack_ingenierie: ['projet_code', 'famille', 'attendues', 'validees', 'poids', 'pct_pondere', 'maj_le'],
   // R-158 lot B (0064_shipments_share): the shipments, for the subsidiary in Arche (decision 6) — no value, price or forwarder.
   pub_expeditions: [

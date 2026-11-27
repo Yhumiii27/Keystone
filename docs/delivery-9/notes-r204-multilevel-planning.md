@@ -42,7 +42,7 @@ Un dictionnaire par projet pour filtrer et regrouper les activités.
 - **Consolidation** (`src/domain/supplier-schedule.ts`, `consolidateNetwork`) : les activités fournisseur deviennent des **nœuds
   ordinaires** du CPM (id « PO-1082/F50 », étiquetés par leur commande), placés après les activités du projet, avec leurs liens et
   leurs **rattachements** au projet : « activité fournisseur → activité du projet » (la livraison pilote la réception / le
-  montage) ou « activité du projet → activité fournisseur » (l’approbation des plans par EPC2i pilote la fabrication), toujours
+  montage) ou « activité du projet → activité fournisseur » (l’approbation des plans par l’entreprise pilote la fabrication), toujours
   fin-début + décalage. **Le moteur `src/domain/cpm.ts` n’est pas modifié.** Une activité fournisseur non commencée porte un
   « Début au plus tôt le » sa date de début engagée (le fournisseur ne commence pas avant ce qu’il a promis). Seuls les plannings
   **rattachés** entrent dans le réseau du projet.

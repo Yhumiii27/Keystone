@@ -2,7 +2,7 @@
 // application, under the Projects register (Portfolio › Projects). Read by the director and the project managers (the roles with the
 // register in their workspace; never the client, Finance does not have the register); the portfolio director answers (qualification,
 // indicative price, quote, firm offer with its estimate class and range) and, once Arche marks a need ordered (G2 of its CAPEX),
-// creates the EPC2i project or adds the need's equipment line to an existing project. Every CAPEX and need links to Arche
+// creates the Keystone project or adds the need's equipment line to an existing project. Every CAPEX and need links to Arche
 // (`<ARCHE_URL>/capex/<code>`, `…/machines`). Server Component; the buttons are client islands (./needs-buttons.tsx). Text typed in
 // Arche (CAPEX title, free label, comment) and in Keystone (reason) is shown as typed (dataText).
 import { eq, isNotNull } from 'drizzle-orm';

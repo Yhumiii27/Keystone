@@ -58,7 +58,7 @@ export const shipments = pgTable('shipments', {
   label: text('label'),
   status: text('status').$type<ShipmentStatus>().notNull().default('draft'),
   mode: text('mode').$type<ShipmentMode>(),
-  /** Forwarder (decision 8): an external party without access, typed by EPC2i. */
+  /** Forwarder (decision 8): an external party without access, typed by the company. */
   forwarder: text('forwarder'),
   /** Origin and destination ports, airports or places (typed). */
   origin: text('origin'),
@@ -98,7 +98,7 @@ export const shipmentEquipments = pgTable('shipment_equipments', {
   equipmentId: uuid('equipment_id').notNull().references(() => projectEquipments.id, { onDelete: 'cascade' }),
 }, (t) => [primaryKey({ columns: [t.shipmentId, t.equipmentId] }), index('shipment_equipments_equipment_id_idx').on(t.equipmentId)]);
 
-/** Tracking of a transport step EPC2i organises (the seller's steps of the contract's Incoterm). */
+/** Tracking of a transport step the company organises (the seller's steps of the contract's Incoterm). */
 export const shipmentSteps = pgTable('shipment_steps', {
   shipmentId: uuid('shipment_id').notNull().references(() => shipments.id, { onDelete: 'cascade' }),
   /** `INCOTERM_STEPS` key. */
@@ -109,7 +109,7 @@ export const shipmentSteps = pgTable('shipment_steps', {
   ...timestamps,
 }, (t) => [primaryKey({ columns: [t.shipmentId, t.step] })]);
 
-/** A load EPC2i declares (decision 10): a truck or a container, its number and seal, its gross weight. */
+/** A load the company declares (decision 10): a truck or a container, its number and seal, its gross weight. */
 export const shipmentLoads = pgTable('shipment_loads', {
   id: id(),
   shipmentId: uuid('shipment_id').notNull().references(() => shipments.id, { onDelete: 'cascade' }),

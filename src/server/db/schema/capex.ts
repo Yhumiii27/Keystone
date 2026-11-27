@@ -122,7 +122,7 @@ export const needAnswers = pgTable('need_answers', {
   validUntil: date('valid_until', { mode: 'string' }),
   /** Codex document number of the quote or the offer (Codex hosts the file). */
   documentRef: text('document_ref'),
-  /** The EPC2i project created (or completed) at the order, K-10: pub_reponses_besoins.projet_code. */
+  /** The Keystone project created (or completed) at the order, K-10: pub_reponses_besoins.projet_code. */
   projectId: uuid('project_id').references(() => projects.id, { onDelete: 'set null' }),
   /** 'en_cours' | 'remise' | 'acceptee' | 'caduque'. */
   status: text('status').$type<'en_cours' | 'remise' | 'acceptee' | 'caduque'>().notNull().default('en_cours'),

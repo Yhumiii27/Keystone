@@ -1,7 +1,7 @@
-// Cursus staff directory → Keystone persons (R-027, NEW-CURSUS-2 "a") — pure matching. Cursus is the HR source of EPC2i's
+// Cursus staff directory → Keystone persons (R-027, NEW-CURSUS-2 "a") — pure matching. Cursus is the HR source of the company's
 // staff: each entry is { matricule, nom, prenom, email, equipe }. Rules (defaults, owner to confirm in
 // docs/delivery-8/notes-connectors.md):
-// - an entry matches the person carrying its matricule; else the one EPC2i person (no client organisation) with its work
+// - an entry matches the person carrying its matricule; else the one company person (no client organisation) with its work
 //   e-mail (case-insensitive) — external contacts are never matched nor touched;
 // - an e-mail held by several persons matches nobody and is reported (sign-in refuses such an e-mail too); an e-mail held by an
 //   external contact is reported (no second person with an existing e-mail is ever created);

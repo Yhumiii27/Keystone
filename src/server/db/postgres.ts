@@ -3,7 +3,7 @@ import 'server-only';
 // instead of the embedded PGlite. Schema, queries and DAL are the same (src/server/db/types.ts). The application never
 // migrates nor seeds a server database: `npm run db:migrate` does both at deploy time under an advisory lock
 // (scripts/db-migrate.ts); getDb() refuses to start on a database with pending migrations.
-// Shared EPC2I server (M-01): Keystone's tables and journal live in the schema `keystone` — every connection sets
+// Shared Atrium server (M-01): Keystone's tables and journal live in the schema `keystone` — every connection sets
 // search_path=keystone and the migrator rewrites `"public".` (./server-schema.ts, ./migrations.ts applyServerMigrations).
 // `pg` is loaded only on this path, so development, tests and the Mac app (PGlite) never need it.
 import type { Pool, PoolClient } from 'pg';

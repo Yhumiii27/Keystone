@@ -10,7 +10,7 @@ export interface MailAttachment {
 }
 
 export interface MailMessage {
-  /** "Keystone <keystone@epc2i.fr>". */
+  /** "Keystone <keystone@atrium.example>". */
   from: string;
   /** Recipient address (one per message: reminders and reports are personal). */
   to: string;
@@ -54,7 +54,7 @@ export function addressHeader(address: string, name?: string | null): string {
   return /^[\x20-\x7e]*$/.test(clean) ? `"${clean}" <${address}>` : `${encodeHeader(clean)} <${address}>`;
 }
 
-/** "Keystone <keystone@epc2i.fr>" / "keystone@epc2i.fr" → the From header. */
+/** "Keystone <keystone@atrium.example>" / "keystone@atrium.example" → the From header. */
 export function fromHeader(from: string): string {
   const m = /^(.*)<([^<>]+)>\s*$/.exec(from.trim());
   return m ? addressHeader(m[2].trim(), m[1]) : `<${from.trim()}>`;

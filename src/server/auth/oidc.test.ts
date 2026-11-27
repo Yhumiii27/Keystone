@@ -28,7 +28,7 @@ describe('discovery and requests', () => {
       client_id: CLIENT_ID, response_type: 'code', redirect_uri: REDIRECT_URI, response_mode: 'query', scope: 'openid profile email', state: 'st', nonce: 'no',
       code_challenge: 'ch', code_challenge_method: 'S256',
     });
-    expect(endSessionUrl(meta, cfg)).toBe(`${idp.endSession}?client_id=${CLIENT_ID}&post_logout_redirect_uri=${encodeURIComponent('https://keystone.epc2i.test/sign-in?signedOut=1')}`);
+    expect(endSessionUrl(meta, cfg)).toBe(`${idp.endSession}?client_id=${CLIENT_ID}&post_logout_redirect_uri=${encodeURIComponent('https://keystone.atrium.test/sign-in?signedOut=1')}`);
   });
 
   it('refuses a discovery document of another issuer', async () => {

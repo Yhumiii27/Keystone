@@ -1,4 +1,4 @@
-// Declaration of Keystone's database schema to Matrix (the EPC2i data catalogue, contract matrix.schema/1).
+// Declaration of Keystone's database schema to Matrix (the Atrium data catalogue, contract matrix.schema/1).
 // TypeScript port of Matrix's reference module integration/declarer-schema.mjs (docs/declaration-des-tables.md in Matrix):
 // right after the migrations, the real schema (information_schema + pg_constraint, without drizzle's migration table) is
 // read and POSTed to {MATRIX_URL}/api/declarations. Matrix adds every new table to its library and flags possible duplicates

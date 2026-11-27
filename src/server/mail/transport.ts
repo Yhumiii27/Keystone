@@ -18,7 +18,7 @@ export interface MailTransport {
   send: (m: Omit<MailMessage, 'from'>) => Promise<MailSendResult>;
 }
 
-/** "20260928T050000Z-1a2b3c4d-a-garnier-epc2i-fr.eml": sortable by time, unique, ASCII. */
+/** "20260928T050000Z-1a2b3c4d-a-garnier-atrium-example.eml": sortable by time, unique, ASCII. */
 export function emlFileName(at: Date, to: string, rand: string): string {
   const stamp = at.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   const who = to.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);

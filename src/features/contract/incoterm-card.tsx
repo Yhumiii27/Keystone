@@ -1,5 +1,5 @@
 // R-158 lot A (owner's decision 2): the contract's Incoterm and named place on the Contract screen — the Incoterm, its split of
-// responsibilities between EPC2i (seller) and the buyer, and "Set Incoterm" for the contract editors (P-4). The Shipments screen
+// responsibilities between Company (seller) and the buyer, and "Set Incoterm" for the contract editors (P-4). The Shipments screen
 // organises the transport from it. Server Component; the button is a client island.
 import { ShippingContainer } from '@phosphor-icons/react/dist/ssr';
 import { SectionCard } from '@/components/app/SectionCard';
@@ -46,7 +46,7 @@ export function IncotermCard({ value, list, code, canEdit, context, t, lang }: {
           <div className={s.incotermSplit}>
             {INCOTERM_STEPS.map((k) => (
               <span key={k} className={inc.split[k] === 'seller' ? s.incotermSeller : s.incotermBuyer}>
-                {t(INCOTERM_STEP_LABEL[k])} · {inc.split[k] === 'seller' ? t('EPC2i (seller)') : t('Buyer')}
+                {t(INCOTERM_STEP_LABEL[k])} · {inc.split[k] === 'seller' ? t('Company (seller)') : t('Buyer')}
               </span>
             ))}
           </div>

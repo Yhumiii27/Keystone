@@ -7,7 +7,7 @@
    {
     "criterion": "Pinned deps (@anthropic-ai/sdk, zod, exceljs, pdfkit, fast-xml-parser) + next.config serverExternalPackages",
     "status": "done",
-    "evidence": "/Users/gga/Systeme EPC2i/Keystone/package.json pins exact versions: @anthropic-ai/sdk 0.128.0, zod 4.6.5, exceljs 4.4.0, pdfkit 0.20.2, fast-xml-parser 5.11.1 (package-lock and node_modules match). /Users/gga/Systeme EPC2i/Keystone/next.config.ts has serverExternalPackages ['@electric-sql/pglite','pdfkit','exceljs']. Where each is used: src/server/ai/transcripts/claude.ts (sdk + zod), src/server/interchange/mspdi.ts (fast-xml-parser), src/server/export/pdf.ts (pdfkit), src/server/export/xlsx.ts (exceljs).",
+    "evidence": "/Users/gga/Atrium/Keystone/package.json pins exact versions: @anthropic-ai/sdk 0.128.0, zod 4.6.5, exceljs 4.4.0, pdfkit 0.20.2, fast-xml-parser 5.11.1 (package-lock and node_modules match). /Users/gga/Atrium/Keystone/next.config.ts has serverExternalPackages ['@electric-sql/pglite','pdfkit','exceljs']. Where each is used: src/server/ai/transcripts/claude.ts (sdk + zod), src/server/interchange/mspdi.ts (fast-xml-parser), src/server/export/pdf.ts (pdfkit), src/server/export/xlsx.ts (exceljs).",
     "gap": ""
    },
    {
@@ -157,97 +157,97 @@
    {
     "criterion": "Levers derived from real allocations (overloaded people/departments, critical activities with assignments)",
     "status": "done",
-    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/domain/whatif.ts deriveLevers() + helperFor() (overtime / extra unit on the driving assignment of CRITICAL activities, relief for overloaded person or department, shift for not-started non-critical activities within float); data loaded in /Users/gga/Systeme EPC2i/Keystone/src/server/dal/resources.ts loadWhatIfState() from activity_assignments, pool allocations (getProjectTeam), department_capacities (listDepartments), rate_roles/rate_multipliers. Tests: src/domain/whatif.test.ts 'levers derived from the data', src/server/dal/delivery2.test.ts:152, src/features/resources/resources-page.test.ts 'What-if page'.",
+    "evidence": "/Users/gga/Atrium/Keystone/src/domain/whatif.ts deriveLevers() + helperFor() (overtime / extra unit on the driving assignment of CRITICAL activities, relief for overloaded person or department, shift for not-started non-critical activities within float); data loaded in /Users/gga/Atrium/Keystone/src/server/dal/resources.ts loadWhatIfState() from activity_assignments, pool allocations (getProjectTeam), department_capacities (listDepartments), rate_roles/rate_multipliers. Tests: src/domain/whatif.test.ts 'levers derived from the data', src/server/dal/delivery2.test.ts:152, src/features/resources/resources-page.test.ts 'What-if page'.",
     "gap": ""
    },
    {
     "criterion": "Effects computed with the CPM engine on an in-memory copy (overtime, extra resource, shift) → new finish, cost delta, load delta",
     "status": "done",
-    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/domain/whatif.ts scheduleScenario() (schedule() on cloned activities: scaled remaining duration, SNET for shifts), evaluateScenario() (finish, daysGained, costKeur, loadDeltaH, overloadDeltaH, bars, sideEffects); getWhatIf() precomputes results one toggle away for the optimistic board. Golden values in src/domain/whatif.test.ts 'effects' block.",
+    "evidence": "/Users/gga/Atrium/Keystone/src/domain/whatif.ts scheduleScenario() (schedule() on cloned activities: scaled remaining duration, SNET for shifts), evaluateScenario() (finish, daysGained, costKeur, loadDeltaH, overloadDeltaH, bars, sideEffects); getWhatIf() precomputes results one toggle away for the optimistic board. Golden values in src/domain/whatif.test.ts 'effects' block.",
     "gap": ""
    },
    {
     "criterion": "Load delta visible to the user per scenario",
     "status": "partial",
-    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/features/resources/whatif-model.ts resultRows() shows Forecast finish, Critical-path float, Cost impact, Peak load %, People above 100%, Side effects. loadDeltaH appears only in leverEffectText() when a lever moves neither the finish nor the peak. The export /Users/gga/Systeme EPC2i/Keystone/src/server/export/providers/resources.ts whatIfWorkbook() has no load-delta column either.",
+    "evidence": "/Users/gga/Atrium/Keystone/src/features/resources/whatif-model.ts resultRows() shows Forecast finish, Critical-path float, Cost impact, Peak load %, People above 100%, Side effects. loadDeltaH appears only in leverEffectText() when a lever moves neither the finish nor the peak. The export /Users/gga/Atrium/Keystone/src/server/export/providers/resources.ts whatIfWorkbook() has no load-delta column either.",
     "gap": "Ask the user whether a 'Load change (h)' row is wanted, since resultRows keeps the six prototype rows. If yes: add a row from r.loadDeltaH (and optionally r.overloadDeltaH 'Overloaded people h') in resultRows(); add the EN/FR strings in src/i18n/extra/ch4-whatif.json; add the column in whatIfWorkbook(); update the expectations in resources-page.test.ts and model.test.ts."
    },
    {
     "criterion": "Scenarios persisted per project: create, rename, delete, select (UI wired to server)",
     "status": "done",
-    "evidence": "UI → Server Function → DAL: /Users/gga/Systeme EPC2i/Keystone/src/features/resources/new-scenario-button.tsx → actions.ts createWhatIfScenario → resources.ts createScenario; whatif-board.tsx rename FormDialog → renameWhatIfScenario → renameScenario; ConfirmDelete → deleteWhatIfScenario → deleteScenario; Select button → selectWhatIfScenario → selectScenario + applyScenario; priority/toggle/auto → setWhatIfPriority/toggleWhatIfLever/autoLevelWhatIf. Stored in whatif_scenarios + whatif_scenario_actions, audited. Tests: src/features/resources/actions.test.ts (all actions, permissions, validation, audit).",
+    "evidence": "UI → Server Function → DAL: /Users/gga/Atrium/Keystone/src/features/resources/new-scenario-button.tsx → actions.ts createWhatIfScenario → resources.ts createScenario; whatif-board.tsx rename FormDialog → renameWhatIfScenario → renameScenario; ConfirmDelete → deleteWhatIfScenario → deleteScenario; Select button → selectWhatIfScenario → selectScenario + applyScenario; priority/toggle/auto → setWhatIfPriority/toggleWhatIfLever/autoLevelWhatIf. Stored in whatif_scenarios + whatif_scenario_actions, audited. Tests: src/features/resources/actions.test.ts (all actions, permissions, validation, audit).",
     "gap": ""
    },
    {
     "criterion": "New scenario 'Basis' and 'Horizon' fields actually used",
     "status": "partial",
-    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/features/resources/whatif-form.ts NEW_SCENARIO_FORM offers basis current_plan / baseline / last_approved and horizon 3/6/12 months; resources.ts createScenario() stores basis and horizonMonths. They are never read by the engine: every scenario is evaluated on the current plan at the data date over the pool's 8 weeks. They are also not shown on the card, only in getWhatIf().scenarios.",
+    "evidence": "/Users/gga/Atrium/Keystone/src/features/resources/whatif-form.ts NEW_SCENARIO_FORM offers basis current_plan / baseline / last_approved and horizon 3/6/12 months; resources.ts createScenario() stores basis and horizonMonths. They are never read by the engine: every scenario is evaluated on the current plan at the data date over the pool's 8 weeks. They are also not shown on the card, only in getWhatIf().scenarios.",
     "gap": "Decide with the user, then either: (a) implement them — basis=baseline: build the network from the displayed baseline (listProjectBaselines / baseline snapshot) instead of loadScheduleNetwork; basis=last_approved: start the new scenario with the selected scenario's lever set; horizon: limit or extend ctx.weeks. Or (b) remove both fields from the form, or label them as notes and show them on the card. Today they look functional but do nothing."
    },
    {
     "criterion": "Project selection on /resources/what-if (scenarios are per project)",
     "status": "partial",
-    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/app/(app)/resources/what-if/page.tsx uses ?project= or WHATIF_DEFAULT_PROJECT='HLT-026'. There is no picker, and the sidebar link (screen 'whatif', scope global) always opens HLT-026. Only src/features/risks/model.ts:183 links with ?project=.",
+    "evidence": "/Users/gga/Atrium/Keystone/src/app/(app)/resources/what-if/page.tsx uses ?project= or WHATIF_DEFAULT_PROJECT='HLT-026'. There is no picker, and the sidebar link (screen 'whatif', scope global) always opens HLT-026. Only src/features/risks/model.ts:183 links with ?project=.",
     "gap": "Default to the viewer's current project (getLastProject() / getProjectScope()) when ?project= is absent, and/or add a project picker in the PageHeader. Make sure the export context passes ?project= (whatIfWorkbook falls back to HLT-026). Add a test in resources-page.test.ts."
    },
    {
     "criterion": "'Apply' on Suggested rebalancing creates a DRAFT resource request via the requests DAL, no plan change",
     "status": "done",
-    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/features/resources/apply-button.tsx → actions.ts applySuggestion → resources.ts applyLever → draftRequests → requests.ts createResourceRequest({draft:true}). Rendered in resources-view.tsx on Resources and on Project resources (src/app/(app)/projects/[code]/resources/page.tsx) from getRebalancingSuggestions(); a 'Requested · RQ-…' tag replaces the button once a request exists.",
+    "evidence": "/Users/gga/Atrium/Keystone/src/features/resources/apply-button.tsx → actions.ts applySuggestion → resources.ts applyLever → draftRequests → requests.ts createResourceRequest({draft:true}). Rendered in resources-view.tsx on Resources and on Project resources (src/app/(app)/projects/[code]/resources/page.tsx) from getRebalancingSuggestions(); a 'Requested · RQ-…' tag replaces the button once a request exists.",
     "gap": ""
    },
    {
     "criterion": "'Select scenario → create requests' creates DRAFT requests via the requests DAL, no plan change",
     "status": "done",
-    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/server/dal/resources.ts applyScenario(): scenarioRequests() → createResourceRequest(draft:true, scenarioId), skips levers already requested, then markScenarioApplied (src/server/dal/whatif-store.ts) + recordActivity. Only resource_requests, whatif_scenarios, audit and activity are written; activities are never touched. Shifts appear only in the toast (applyMessage). Tested in actions.test.ts: RQ-045..047 drafts, not in the department queue, idempotent.",
+    "evidence": "/Users/gga/Atrium/Keystone/src/server/dal/resources.ts applyScenario(): scenarioRequests() → createResourceRequest(draft:true, scenarioId), skips levers already requested, then markScenarioApplied (src/server/dal/whatif-store.ts) + recordActivity. Only resource_requests, whatif_scenarios, audit and activity are written; activities are never touched. Shifts appear only in the toast (applyMessage). Tested in actions.test.ts: RQ-045..047 drafts, not in the department queue, idempotent.",
     "gap": ""
    },
    {
     "criterion": "Robustness of Select/apply against double-submit and partial failure",
     "status": "partial",
-    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/features/resources/whatif-board.tsx throws away the pending flag (const [, startTransition]), so the 'Select scenario → create requests' button is not disabled while the request runs. In resources.ts applyScenario(), the openRequests() duplicate check and each createResourceRequest() run outside one transaction, and markScenarioApplied runs in a separate later transaction.",
+    "evidence": "/Users/gga/Atrium/Keystone/src/features/resources/whatif-board.tsx throws away the pending flag (const [, startTransition]), so the 'Select scenario → create requests' button is not disabled while the request runs. In resources.ts applyScenario(), the openRequests() duplicate check and each createResourceRequest() run outside one transaction, and markScenarioApplied runs in a separate later transaction.",
     "gap": "Disable the Select button (and Auto-level) while pending, as ApplySuggestionButton already does. On the server, run the duplicate check, the draft inserts and markScenarioApplied in one transaction. That needs createResourceRequest to accept a tx, or an advisory lock or unique key on (scenario_id, title, activity_id). Then a double-click or concurrent apply cannot create duplicate drafts, and a failure cannot leave drafts without the applied stamp."
    },
    {
     "criterion": "'Baseline finish' tile shows the baseline",
     "status": "done",
-    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/features/resources/whatif-model.ts whatIfKpis() shows d.baseline.finish, with sub 'BL1 · forecast … · float …'. The baseline comes from getWhatIf() through listProjectBaselines() (displayed baseline, else current). Tests: model.test.ts:213, resources-page.test.ts ('18 Dec 2026', 'BL1 · forecast 14 Jan 2027 · float −27 d', FR 'Fin de référence').",
+    "evidence": "/Users/gga/Atrium/Keystone/src/features/resources/whatif-model.ts whatIfKpis() shows d.baseline.finish, with sub 'BL1 · forecast … · float …'. The baseline comes from getWhatIf() through listProjectBaselines() (displayed baseline, else current). Tests: model.test.ts:213, resources-page.test.ts ('18 Dec 2026', 'BL1 · forecast 14 Jan 2027 · float −27 d', FR 'Fin de référence').",
     "gap": ""
    },
    {
     "criterion": "Resources KPI 'Unmet demand' computed (280 h, not the prototype's 240 h)",
     "status": "done",
-    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/features/resources/model.ts resourcesView() → domain/resources.ts unmetDemand() + mainShortfall() (shortfallText 'Mostly engineering'); LO colour only when > 0. Tests: resources-page.test.ts:58 ('280 h'), Project resources 0 h / 3 h (RCF-019), model.test.ts:60–74.",
+    "evidence": "/Users/gga/Atrium/Keystone/src/features/resources/model.ts resourcesView() → domain/resources.ts unmetDemand() + mainShortfall() (shortfallText 'Mostly engineering'); LO colour only when > 0. Tests: resources-page.test.ts:58 ('280 h'), Project resources 0 h / 3 h (RCF-019), model.test.ts:60–74.",
     "gap": ""
    },
    {
     "criterion": "Resources KPI 'Peak weeks' computed",
     "status": "done",
-    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/features/resources/model.ts peakWeeksText() via domain/resources.ts weeksAbove(110 %) + weekRangesText() → 'Peak weeks 42–44' (prototype constant was 41–43). On what-if, overWeeksText() → 'Week 43'. Tests: model.test.ts:62,141; resources-page.test.ts:117.",
+    "evidence": "/Users/gga/Atrium/Keystone/src/features/resources/model.ts peakWeeksText() via domain/resources.ts weeksAbove(110 %) + weekRangesText() → 'Peak weeks 42–44' (prototype constant was 41–43). On what-if, overWeeksText() → 'Week 43'. Tests: model.test.ts:62,141; resources-page.test.ts:117.",
     "gap": ""
    },
    {
     "criterion": "KPI 'Open requests needing level ≥ 4' computed",
     "status": "done",
-    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/domain/resources.ts requestsNeedingExperts() is called in src/app/(app)/resources/skills/page.tsx and passed to src/features/hr/skills-view.tsx expertRequests → count 3 'Structural · Procurement · Quality / QA-QC'. Tests: resources-page.test.ts:251, domain/resources.test.ts:163.",
+    "evidence": "/Users/gga/Atrium/Keystone/src/domain/resources.ts requestsNeedingExperts() is called in src/app/(app)/resources/skills/page.tsx and passed to src/features/hr/skills-view.tsx expertRequests → count 3 'Structural · Procurement · Quality / QA-QC'. Tests: resources-page.test.ts:251, domain/resources.test.ts:163.",
     "gap": ""
    },
    {
     "criterion": "Same KPIs on Home (department head) no longer constants (A-12 answered 'a')",
     "status": "missing",
-    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/domain/home.ts:528–530 deptHeadHome() still has kpi('Over-allocated', …, 'Peak weeks 41–43', …) and kpi('Unmet demand', '240 h', 'Mostly engineering', true), with a 'TODO(db)' comment. /Users/gga/Systeme EPC2i/Keystone/src/server/dal/home.ts:200–202 passes no departments or week starts. The golden src/features/home/home.golden.json (depthead en/fr) still expects '240 h' and 'Peak weeks 41–43'.",
+    "evidence": "/Users/gga/Atrium/Keystone/src/domain/home.ts:528–530 deptHeadHome() still has kpi('Over-allocated', …, 'Peak weeks 41–43', …) and kpi('Unmet demand', '240 h', 'Mostly engineering', true), with a 'TODO(db)' comment. /Users/gga/Atrium/Keystone/src/server/dal/home.ts:200–202 passes no departments or week starts. The golden src/features/home/home.golden.json (depthead en/fr) still expects '240 h' and 'Peak weeks 41–43'.",
     "gap": "Add departments (listDepartments() capacity/demand) and the pool weekStarts to DeptHeadInput in server/dal/home.ts. In deptHeadHome(), compute the values with unmetDemand()/mainShortfall() and weeksAbove()/weekRangesText(), moving peakWeeksText/shortfallText from features/resources/model.ts into domain so Home can reuse them. Update home.golden.json (expected '280 h' · 'Mostly engineering' / 'Surtout ingénierie', 'Peak weeks 42–44' / 'Pointe semaines 42–44'). This may belong to the separate A-12 KPI feature; check for overlap before doing it twice."
    },
    {
     "criterion": "No invented fallback figure left for the level ≥4 tile",
     "status": "partial",
-    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/domain/hr.ts:162 OPEN_REQUESTS_LEVEL4 = {value:'2', sub:'Structural · Quality'} is still used by src/features/hr/skills-view.tsx:40–41 when expertRequests is absent. The page always passes it, but src/features/hr/hr.render.test.ts:102 still asserts the constant.",
+    "evidence": "/Users/gga/Atrium/Keystone/src/domain/hr.ts:162 OPEN_REQUESTS_LEVEL4 = {value:'2', sub:'Structural · Quality'} is still used by src/features/hr/skills-view.tsx:40–41 when expertRequests is absent. The page always passes it, but src/features/hr/hr.render.test.ts:102 still asserts the constant.",
     "gap": "Make expertRequests required (or render '—' without it), delete OPEN_REQUESTS_LEVEL4, and update hr.render.test.ts to pass a computed value."
    },
    {
     "criterion": "No dead or parallel persistence code for scenario actions",
     "status": "partial",
-    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/server/dal/whatif-store.ts replaceScenarioActions/listScenarioActions/saveScenarioResult are used only by src/server/dal/chapter4-foundation.test.ts. Production writes the same table through resources.ts saveScenarioLevers() with params {leverCode, …}, while the store writes params like {hoursPerDay}. scenarioRows() would treat store-written rows as 'saved' but enable no lever, because they have no leverCode.",
+    "evidence": "/Users/gga/Atrium/Keystone/src/server/dal/whatif-store.ts replaceScenarioActions/listScenarioActions/saveScenarioResult are used only by src/server/dal/chapter4-foundation.test.ts. Production writes the same table through resources.ts saveScenarioLevers() with params {leverCode, …}, while the store writes params like {hoursPerDay}. scenarioRows() would treat store-written rows as 'saved' but enable no lever, because they have no leverCode.",
     "gap": "Remove the three unused store functions and their test, or make them write params.leverCode and route saveScenarioLevers through them. Keep a single params shape for whatif_scenario_actions."
    },
    {
@@ -259,7 +259,7 @@
    {
     "criterion": "Documentation of the chapter-4 what-if work",
     "status": "missing",
-    "evidence": "src/domain/whatif.test.ts header cites 'docs: DELIVERY-6', but /Users/gga/Systeme EPC2i/Keystone/docs/DELIVERY-6.md does not exist. Decisions S-7, R-3 and A-12 are answered 'a' in docs/decisions/answers.json, which matches the implementation.",
+    "evidence": "src/domain/whatif.test.ts header cites 'docs: DELIVERY-6', but /Users/gga/Atrium/Keystone/docs/DELIVERY-6.md does not exist. Decisions S-7, R-3 and A-12 are answered 'a' in docs/decisions/answers.json, which matches the implementation.",
     "gap": "Write the what-if section of docs/DELIVERY-6.md: lever rules (WHATIF_RULES), the duration/load/cost models, legacy seed mapping (LEGACY_LEVERS), the draft-request flow, and the open points listed above (basis/horizon, project selection, load-delta display)."
    },
    {

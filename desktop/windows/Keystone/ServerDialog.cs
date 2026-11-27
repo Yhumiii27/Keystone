@@ -28,7 +28,7 @@ internal sealed class ServerDialog : Form
       AutoSize = true,
       MaximumSize = new Size(460, 0),
       Text = (firstLaunch ? "Bienvenue dans Keystone.\n\n" : "") +
-        "Indiquez l’adresse du serveur Keystone d’EPC2i, telle que vous l’ouvrez dans votre navigateur " +
+        "Indiquez l’adresse du serveur Keystone de l’entreprise, telle que vous l’ouvrez dans votre navigateur " +
         "(par exemple https://keystone.exemple.fr). Votre service informatique peut vous la communiquer.",
     };
     _url.Text = current?.ToString() ?? "https://";

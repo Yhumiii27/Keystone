@@ -44,19 +44,19 @@ Le niveau **CAPEX usine** (N1) : la filiale monte une usine ou une ligne ; le gr
   retard, rapport Copil.
 - **Tableaux de bord** : maturité des études (% pack), écart d’incertitude, courbe en S consolidée, jalons G et HS,
   avenants / MoC, **ramp-up** (capacité, TRS / OEE, rebuts, 30 jours continus).
-- **Besoins machines** : depuis un CAPEX, la filiale demande une ou plusieurs machines **du catalogue EPC2i** (lu dans
-  Keystone) ; EPC2i répond dans Keystone ; au G2 le besoin passe à « commandé ».
-- **Profils** : Sponsor, Chef de projet filiale, CDG filiale, Co-DIG, Dir.IG, PDG, DAF groupe, SSE groupe, PMO EPC2i,
+- **Besoins machines** : depuis un CAPEX, la filiale demande une ou plusieurs machines **du catalogue de l’entreprise** (lu dans
+  Keystone) ; l’entreprise répond dans Keystone ; au G2 le besoin passe à « commandé ».
+- **Profils** : Sponsor, Chef de projet filiale, CDG filiale, Co-DIG, Dir.IG, PDG, DAF groupe, SSE groupe, PMO de l’entreprise,
   Expert (Qualité / HSE / Exploitation), membre COPIL GPI, lecteur Directeur de Zone. Isolation par filiale ; vues croisées
   pour les fonctions centrales ; le PDG voit tout.
 
 **Hors périmètre** (appartient à un autre outil, à afficher et ouvrir par lien profond seulement) : la conception et la
-fabrication des machines, le catalogue machines, les devis et offres EPC2i (Keystone) ; HazID / HazOp / AMDEC / PSSR et
+fabrication des machines, le catalogue machines, les devis et offres de l’entreprise (Keystone) ; HazID / HazOp / AMDEC / PSSR et
 actions de sécurité (Vigie, à confirmer) ; documents (Codex) ; personnes et habilitations (Cursus).
 
 ## 3. Architecture imposée
 
-- **Données communes** : serveur PostgreSQL commun EPC2I (décision M-01 du dépôt Matrix), base `epc2i`, **schéma `capex`**
+- **Données communes** : serveur PostgreSQL commun Atrium (décision M-01 du dépôt Matrix), base commune (`epc2i`, puis `atrium`), **schéma `capex`**
   (nom à confirmer) et rôle `capex_app`, sans droit sur les autres schémas. Tu n’écris **que** dans ton schéma ; tu lis les
   autres outils **uniquement** par leurs vues `pub_` (en lecture, droits accordés par `partage/90-droits.sql` de Matrix).
   Tu publies tes propres vues `pub_` (`pub_capex`, `pub_besoins_machines`, `pub_rampup`) : ce sont des contrats — une colonne
@@ -74,7 +74,7 @@ actions de sécurité (Vigie, à confirmer) ; documents (Codex) ; personnes et h
   planifiées et worker (`src/server/jobs/`), i18n et contrôle de complétude du français (`src/i18n/`), design Nocturne
   (`src/styles/nocturne.css`, `src/components/ds`, `src/components/app`), coquille et registre d’écrans, durcissement HTTP,
   conteneur, Coolify, sauvegardes, CI. Note dans `docs/SOCLE.md` le commit Keystone d’origine de chaque élément repris : le
-  socle sera ensuite extrait en paquet partagé `@epc2i/socle` (lot R-194 de Keystone) et ces copies seront remplacées.
+  socle sera ensuite extrait en paquet partagé `@atrium/socle` (lot R-194 de Keystone) et ces copies seront remplacées.
 - **Pile** : la même que Keystone (Next.js 16 — lis `node_modules/next/dist/docs/` avant d’écrire du code, cette version a des
   changements cassants —, Drizzle, PostgreSQL / PGlite pour le développement et les tests, Vitest, Playwright).
 - **Hébergement** : données en France (exigence du CDC) ; l’IA (aide à la décision) est désactivable et ne s’active qu’avec un

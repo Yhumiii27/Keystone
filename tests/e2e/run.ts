@@ -37,7 +37,7 @@ function turbopackRoot(): string | undefined {
 async function freePort(): Promise<number> {
   if (process.env.E2E_PORT) {
     const p = Number(process.env.E2E_PORT);
-    if (RESERVED.has(p)) throw new Error(`E2E_PORT ${p} is reserved for another EPC2i app`);
+    if (RESERVED.has(p)) throw new Error(`E2E_PORT ${p} is reserved for another Atrium app`);
     return p;
   }
   for (;;) {

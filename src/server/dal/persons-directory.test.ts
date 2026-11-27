@@ -1,5 +1,5 @@
 // R-027 (NEW-CURSUS-2 "a") — Cursus's staff directory → Keystone persons, on an in-memory PGlite seeded with the demo data:
-// the writer (match by matricule then work e-mail, create the missing EPC2i persons, never delete, never a user account,
+// the writer (match by matricule then work e-mail, create the missing company persons, never delete, never a user account,
 // never an external contact; audit rows by "Cursus" and one activity event), the switch CURSUS_DIRECTORY (off by default),
 // the disabled and simulated connector, the daily job "cursus-directory" and the Cursus row's "Sync now" with a stubbed
 // Cursus, the replay of the absences left unresolved for want of a matricule, and the Go / No Go mirror taking the
@@ -70,7 +70,7 @@ describe('importStaffDirectory (the writer)', () => {
       // Julien Wagner by his work e-mail (other case), in a department of exactly that name.
       { matricule: 'EMP-0018', nom: 'Wagner', prenom: 'Julien', email: julien.email!.toUpperCase(), equipe: dept.name },
       // Nobody: a new person, short name "J. Wagner" taken → "J. Wagner (2)"; a team no department carries is kept as text.
-      { matricule: 'EMP-0901', nom: 'Wagner', prenom: 'Jeanne', email: 'jeanne.wagner@epc2i.example', equipe: 'Atelier Nord' },
+      { matricule: 'EMP-0901', nom: 'Wagner', prenom: 'Jeanne', email: 'jeanne.wagner@atrium.example', equipe: 'Atelier Nord' },
       // The external contact's e-mail: never matched, never given to a new person.
       { matricule: 'EMP-0902', nom: 'Contact', prenom: 'Client', email: 'contact@client.example', equipe: null },
     ], { invalid: 1, at: new Date('2026-10-12T06:00:00Z') });
@@ -81,7 +81,7 @@ describe('importStaffDirectory (the writer)', () => {
     expect(j.directorySyncedAt?.toISOString()).toBe('2026-10-12T06:00:00.000Z');
     const jeanne = (await personBy(eq(persons.matricule, 'EMP-0901')))!;
     expect([jeanne.fullName, jeanne.shortName, jeanne.initials, jeanne.email, jeanne.clientId, jeanne.departmentId, jeanne.directoryTeam])
-      .toEqual(['Jeanne Wagner', 'J. Wagner (2)', 'JW', 'jeanne.wagner@epc2i.example', null, null, 'Atelier Nord']);
+      .toEqual(['Jeanne Wagner', 'J. Wagner (2)', 'JW', 'jeanne.wagner@atrium.example', null, null, 'Atelier Nord']);
     // The external contact is untouched; no user account was created (Entra ID gives them at sign-in).
     expect((await personBy(eq(persons.id, contact.id)))!).toMatchObject({ matricule: null, email: 'contact@client.example', shortName: contact.shortName });
     expect(await personBy(eq(persons.matricule, 'EMP-0902'))).toBeUndefined();
@@ -100,7 +100,7 @@ describe('importStaffDirectory (the writer)', () => {
     // The same directory again: nothing changes, no new audit row, nobody created.
     const again = await importStaffDirectory([
       { matricule: 'EMP-0018', nom: 'Wagner', prenom: 'Julien', email: julien.email!, equipe: dept.name },
-      { matricule: 'EMP-0901', nom: 'Wagner', prenom: 'Jeanne', email: 'jeanne.wagner@epc2i.example', equipe: 'Atelier Nord' },
+      { matricule: 'EMP-0901', nom: 'Wagner', prenom: 'Jeanne', email: 'jeanne.wagner@atrium.example', equipe: 'Atelier Nord' },
     ]);
     expect(again).toMatchObject({ matched: 2, updated: 0, created: 0 });
     expect((await db.select().from(auditEntries).where(and(eq(auditEntries.actorName, CURSUS_ACTOR), inArray(auditEntries.entityId, [julien.id, jeanne.id])))).length).toBe(2);
@@ -183,7 +183,7 @@ describe('runDirectoryImport (switch, connector, mode) and the job', () => {
       requestedOn: '2026-10-01', syncStatus: 'pending',
     });
     const calls = stubCursus(
-      [{ matricule: 'EMP-0777', nom: 'Lambert', prenom: 'Hugo', email: 'hugo.lambert@epc2i.example', equipe: null }],
+      [{ matricule: 'EMP-0777', nom: 'Lambert', prenom: 'Hugo', email: 'hugo.lambert@atrium.example', equipe: null }],
       (chantier) => ({ chantier, evalue_le: '2026-10-12T07:00:00Z', statut: 'GO_RESERVE', ressources: [{ matricule: 'EMP-0777', statut: 'GO_RESERVE', motifs: [] }] }),
     );
     const first = await syncConnector('Cursus', DIRECTOR);

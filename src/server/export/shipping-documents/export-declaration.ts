@@ -1,7 +1,7 @@
 // R-158 lot B — export declaration data (données de la déclaration d'export) for the customs broker: exporter, consignee,
 // Incoterm, mode, destination, totals (packages, net and gross weight, statistical value) and one line per HS code with its
 // description, quantity, weights, origin and value; the export-restriction alerts. The declaration itself is lodged by the
-// broker. Generic layout until EPC2i's standard format: replace this file to change it.
+// broker. Generic layout until the company's standard format: replace this file to change it.
 import { eurText, genericFootnote, header, hsGroups, hsSheet, hsTotals, kgText, partyFields, restrictionBlocks, transportFields, typed } from './common';
 import type { ShippingTemplate } from './types';
 

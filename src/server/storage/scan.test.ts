@@ -51,7 +51,7 @@ const quiet = () => {
 describe('clamd client (zINSTREAM)', { timeout: 30_000 }, () => {
   const target = () => ({ host: fake.host, port: fake.port });
 
-  it('never uses port 3310 (Keystone smoke tests on the Mac) nor another EPC2i port', () => {
+  it('never uses port 3310 (Keystone smoke tests on the Mac) nor another Atrium port', () => {
     expect([3000, 3100, 3110, 3200, 3210, 3217, 3310, 5173]).not.toContain(fake.port);
   });
 

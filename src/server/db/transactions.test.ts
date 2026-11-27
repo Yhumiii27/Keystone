@@ -120,7 +120,7 @@ describe('withSerializableTransactions (PGlite)', () => {
   });
 });
 
-// Shared EPC2I server (plan § 4.5 in Matrix): the server handle takes Keystone's write lock in every transaction. Checked here
+// Shared Atrium server (plan § 4.5 in Matrix): the server handle takes Keystone's write lock in every transaction. Checked here
 // on a bare PGlite (advisory locks are PostgreSQL's); the real concurrency is in postgres.integration.test.ts.
 describe('withWriteLockedTransactions', () => {
   it('takes the write lock first and runs READ COMMITTED unless the caller asks otherwise', async () => {

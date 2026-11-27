@@ -1,5 +1,5 @@
 // R-158 lot B — the shipping documents Keystone generates (owner's decision 3: every document needed but the invoices), one
-// template per kind in this folder, each replaceable on its own by EPC2i's standard format (decision 10). `buildShippingDocument`
+// template per kind in this folder, each replaceable on its own by the company's standard format (decision 10). `buildShippingDocument`
 // applies the values rule (`canSeeShipmentValues`): without it, the € columns, totals and amounts are left out.
 import type { ShippingDocKind } from '@/domain/shipping-documents';
 import type { PdfDocument } from '../types';

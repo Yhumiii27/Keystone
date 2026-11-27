@@ -26,7 +26,7 @@ Keystone. Contract page: `docs/integrations/cursus-contract.md` § 7.
 
 - **Named schedule assignments** (`activity_assignments` with a person): one Cursus task each, id `KA-<assignment id>`, label
   `<activity code> · <activity name>`, hours on every working day of the activity's calendar (units × h/d, else planned hours
-  spread) — R-084 (A): the schedule's allocations are the one source of a person's planned hours. EPC2i labour only (external
+  spread) — R-084 (A): the schedule's allocations are the one source of a person's planned hours. company labour only (external
   rate role left out), no milestones, no equipment / material.
 - **Keystone tasks** (`tasks`): id `KT-<number>`, label `<number> · <title>`, hours = the rule of the share view
   `pub_taches_jours` (estimate ÷ weekdays Mon–Fri, 2 decimals) — the view and the push agree (checked against the view in
@@ -74,7 +74,7 @@ Keystone. Contract page: `docs/integrations/cursus-contract.md` § 7.
   `src/features/admin/i18n.ts`, `src/i18n/fr-rules.ts`, `src/i18n/extra/d9-cursus-tasks.json`.
 - Docs: `docs/integrations/cursus-contract.md` § 1, § 4, § 6, § 7; `docs/EXPLOITATION.md` § 8 (job), § 10 (matricule).
 
-## 5. Open points (owner / EPC2i)
+## 5. Open points (owner / the company)
 
 1. **Precedence** of an assignment over the to-dos of the same person on the same activity (§ 2): to confirm; the alternative
    (send both) would propose the work twice.
@@ -92,7 +92,7 @@ Keystone. Contract page: `docs/integrations/cursus-contract.md` § 7.
    so a `taches` section above 2 MB cannot be sent at all. Keystone refuses it before sending (failed push); paging or a higher
    limit on `/instantane` would be needed for a large portfolio.
 3. **Hours come back per project, not per task**: `heures.validees` carries `projets: { code: h }`; Keystone cannot compare the
-   hours spent with the hours planned per task (NEW-CURSUS-5 "c" half closed — R-030 still waits for EPC2i's confirmation).
+   hours spent with the hours planned per task (NEW-CURSUS-5 "c" half closed — R-030 still waits for the company's confirmation).
 4. **No read of the tasks Cursus holds** (`GET /taches`): Keystone cannot reconcile what Cursus has after a failed night other
    than by the next snapshot.
 

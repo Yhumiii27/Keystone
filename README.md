@@ -1,6 +1,6 @@
 # Keystone PM
 
-Outil de gestion de projets et de portefeuille du système EPC2i (avec Codex, Cursus et Vigie). C'est la
+Outil de gestion de projets et de portefeuille de la suite Atrium (avec Codex, Cursus et Vigie). C'est la
 reconstruction en Next.js 16 du prototype Claude Design `design/Keystone PM v8.dc.html`.
 
 - Conventions : `docs/ARCHITECTURE.md`
@@ -52,7 +52,7 @@ une ligne de journal qui nomme la variable.
 
 - **Base PostgreSQL :** définir `DATABASE_URL`. Les migrations et le premier remplissage se font au déploiement avec
   `npm run db:migrate`, avant de démarrer la nouvelle version. Le serveur refuse une base en retard de migration.
-  Sur le serveur commun EPC2I (décision M-01), Keystone se connecte en `keystone_app` à la base `epc2i` : ses tables, ses vues
+  Sur le serveur commun Atrium (décision M-01), Keystone se connecte en `keystone_app` à la base commune (`epc2i`, puis `atrium` après le renommage du serveur) : ses tables, ses vues
   `pub_` et le journal des migrations sont dans le schéma `keystone`, créé par le socle de Matrix (les migrations publiées ne
   changent pas : le migrateur remplace `"public".` par `"keystone".` à l'application). Mise en service :
   [`docs/EXPLOITATION.md`](docs/EXPLOITATION.md) § 4.1. Sans `DATABASE_URL`, la base PGlite locale est utilisée comme

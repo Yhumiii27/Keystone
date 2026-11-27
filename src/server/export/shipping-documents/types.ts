@@ -25,5 +25,5 @@ export interface TemplateCtx {
   today: string;
 }
 
-/** One template per document kind (decision 3) — generic layouts, each replaceable by EPC2i's standard format on its own. */
+/** One template per document kind (decision 3) — generic layouts, each replaceable by the company's standard format on its own. */
 export type ShippingTemplate = (d: ShippingDocData, c: TemplateCtx) => PdfDocument;

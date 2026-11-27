@@ -2,7 +2,7 @@
 
 > 23 oct. 2026. Décisions du responsable produit du même jour : **AC-4 oui** — le catalogue machines est un module de
 > Keystone, construit à partir des types de machine ; **AC-5 oui** — un besoin de plusieurs machines devient **un projet
-> EPC2i à plusieurs équipements**. CLAUDE.md demande de cadrer l’approche multi-équipements avec le responsable produit
+> l’entreprise à plusieurs équipements**. CLAUDE.md demande de cadrer l’approche multi-équipements avec le responsable produit
 > **avant** de construire : ce document propose le modèle et les choix par défaut (§ 3), à valider (§ 4). Demandes liées :
 > `REQUESTS.md` (Arche K-01, K-02, K-03, K-10), `docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md`.
 >

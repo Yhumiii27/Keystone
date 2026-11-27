@@ -29,7 +29,7 @@ Where the brief and the code disagreed, the code was followed:
   member, `ROLE_LABEL.finance = 'Finance'` (`src/domain/auth.ts`). The Entra app role `finance` / `Keystone.Finance` and an
   `ENTRA_GROUP_ROLES` mapping to `"finance"` are accepted by `isRoleKey` / `roleOfAppRole`; `.env.example` lists the role values
   and tells IT to create the app role.
-- **Persona.** Léa Marchand, "Cost controller", Controls & planning, `lea.marchand@epc2i.fr` (`src/config/personas.ts`, 9
+- **Persona.** Léa Marchand, "Cost controller", Controls & planning, `lea.marchand@atrium.example` (`src/config/personas.ts`, 9
   personas). Her demo user is created apart from the prototype's PERSONAS loop by `seedFinanceUser` (`src/server/db/seed/users.ts`,
   called by `seedOrganisation`), and once on a demo database seeded before delivery 8 under the roles-rates-hr marker of
   `seedIfEmpty` (`financeUserToBackfill`). Idempotent; never creates a second user for a person who already has one (a real
@@ -110,7 +110,7 @@ Where the brief and the code disagreed, the code was followed:
   versions; never overwrites an edited factor. Used by the demo seed, the production seed (`reference.ts`) and the production
   backfill under the roles-rates-hr marker (before the non-demo early return of `seedIfEmpty`, so PostgreSQL gets it through
   `db:migrate`). Not a SQL migration.
-- `docs/referentiels-a-fournir.md` (French): every list EPC2i must supply with its current production default, constraints and
+- `docs/referentiels-a-fournir.md` (French): every list the company must supply with its current production default, constraints and
   who validates — explicitly not an import template (D-7b).
 
 ### R-086 — portfolio labour cost by zone (R-2 a)
@@ -248,7 +248,7 @@ no migration (seed + backfill / reader fallback).
 - A **production source for person → rate role**: Cursus's directory (R-027) carries matricule, name, e-mail and team, not a
   role; nothing in Keystone writes `persons.job_title` or `rate_role_id`. Until the owner decides, everyone is "not valued" in
   production.
-- **Actual cost from Cursus hours** (R-074) and the real EPC2i grid / coefficients (R-178 waits for the direction's data and D-7b).
+- **Actual cost from Cursus hours** (R-074) and the company's real grid / coefficients (R-178 waits for the direction's data and D-7b).
 - No "remove a version", no department editor, no "add multiplier" (absent from the prototype — no new tools).
 
 ## 7. Open questions for the owner
@@ -262,7 +262,7 @@ no migration (seed + backfill / reader fallback).
 7. Effective dates: the default is the business date (25 Sep 2026 until R-013); a backdated change revalues past hours — should
    backdating be refused, or limited to Finance?
 8. PMs no longer edit rates (P-12 c): confirm the interim (director and Finance only).
-9. The five coefficients are placeholders (×1.25, ×1.5, ×2, ×1.3, ×0.35): EPC2i's real values and their effective dates?
+9. The five coefficients are placeholders (×1.25, ×1.5, ×2, ×1.3, ×0.35): The company's real values and their effective dates?
 10. What-if: crews and people without a grid role are valued at an isolated 60 €/h placeholder — add a crew role to the grid?
 11. R-086 population: the projects in execution of the zone (A-3), or every project of the zone (R-2 "tous les projets")? Resources
     is not a zone screen: should it get the zone bar? Department heads and procurement now see a zone-wide labour total.

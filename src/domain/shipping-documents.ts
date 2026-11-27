@@ -2,7 +2,7 @@
 // every document needed, EXCEPT the invoices — no commercial invoice, no customs / proforma invoice). Pure rules, no I/O: the
 // kinds, their EN labels (FR in src/i18n/extra/d9-shipments-b.json), when one can be generated, which ones carry customs values
 // and the Codex document type they are filed under. The layouts are in src/server/export/shipping-documents/ (one template per
-// kind, generic until EPC2i provides its standard formats — decision 10).
+// kind, generic until the company provides its standard formats — decision 10).
 import type { ShipmentMode } from './shipments';
 
 export const SHIPPING_DOC_KINDS = [

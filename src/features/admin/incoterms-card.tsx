@@ -1,6 +1,6 @@
 'use client';
 // R-158 lot A (owner's decision 9): Settings › Incoterms — the 11 Incoterms 2020 seeded in both seeds and those an administrator
-// adds, each with its name and description in both languages, its modes and its split of the 10 steps between the seller (EPC2i)
+// adds, each with its name and description in both languages, its modes and its split of the 10 steps between the seller (the company)
 // and the buyer. The Settings editors (the portfolio director, A-14) add, edit, remove (deleted when unused and added in
 // Keystone, else deactivated) and reactivate; the other roles read. Texts arrive in the viewer's language from the page.
 import { ArrowCounterClockwise, PencilSimple, Plus, ShippingContainer, X } from '@phosphor-icons/react/dist/ssr';
@@ -52,8 +52,8 @@ export function IncotermsCard({ rows, canEdit, createForm, editForm }: { rows: I
         <ShippingContainer className={s.accent} aria-hidden />
         <div className={s.healthTitle}>
           <div className="card-title">{t('Incoterms')}</div>
-          <span className={s.muted12}>{t('Incoterms 2020 and the split of each step between the seller (EPC2i) and the buyer · the contract’s Incoterm organises its shipments')}</span>
-          <span className={s.muted12}>{t('Highlighted steps are the seller’s (EPC2i)')}</span>
+          <span className={s.muted12}>{t('Incoterms 2020 and the split of each step between the seller (the company) and the buyer · the contract’s Incoterm organises its shipments')}</span>
+          <span className={s.muted12}>{t('Highlighted steps are the seller’s (the company)')}</span>
         </div>
         {canEdit && (
           <Button variant="secondary" size="sm" icon={Plus} nowrap push onClick={() => setDialog({ mode: 'create' })}>

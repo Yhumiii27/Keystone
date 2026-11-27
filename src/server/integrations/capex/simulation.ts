@@ -40,7 +40,7 @@ export const SIMULATED_PUB_CAPEX: readonly Row[] = [
     sponsor_nom: 'Moussa Ndiaye', sponsor_email: 'm.ndiaye@sahel-agro.example', chef_projet_nom: 'Fatou Sarr', chef_projet_email: 'f.sarr@sahel-agro.example',
     g1_le: null, g2_le: null, g3_le: null, debut_mes_le: null, maj_le: '2026-08-17T10:00:00Z', devise: 'XOF',
   },
-  // K-14: phase 2 (preliminary design) after the G1 of 24 Sep 2026; no machine need (panels and inverters are not EPC2i's).
+  // K-14: phase 2 (preliminary design) after the G1 of 24 Sep 2026; no machine need (panels and inverters are not the company's).
   {
     code: 'CPX-SAI-2026-03', filiale_code: 'SAI', filiale: 'Sahel Agro Industries', zone: 'AFO', site: 'Thiès site', pays_iso2: 'SN',
     intitule: 'Solar power plant for the Thiès site', type_investissement: 'other', statut: 'active', phase_code: 'avant_projet', typologie: 'light',

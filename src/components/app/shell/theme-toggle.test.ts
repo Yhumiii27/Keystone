@@ -8,19 +8,22 @@ vi.mock('@/server/actions/preferences', () => ({ setNavOpen: async () => {}, set
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { I18nProvider } from '@/i18n/client';
-import { DEFAULT_THEME, THEME_COOKIE, themeCookie, themeOf } from '@norma/charte/ds/theme';
+import { DEFAULT_THEME, LEGACY_THEME_COOKIE, THEME_COOKIE, themeCookie, themeFromCookieHeader, themeOf } from '@norma/charte/ds/theme';
 import { KeystonePrefs } from './prefs';
 
 const read = (file: string) => fs.readFileSync(file, 'utf8');
 
 describe('dark / light display and language', () => {
-  it('the epc2i-theme cookie gives the theme, dark by default', () => {
-    expect(THEME_COOKIE).toBe('epc2i-theme');
+  it('the atrium-theme cookie gives the theme, the former name read as a fallback, dark by default', () => {
+    expect(THEME_COOKIE).toBe('atrium-theme');
+    expect(themeFromCookieHeader(`${LEGACY_THEME_COOKIE}=light`)).toBe('light');
+    expect(themeFromCookieHeader(`${LEGACY_THEME_COOKIE}=light; atrium-theme=dark`)).toBe('dark');
+    expect(themeFromCookieHeader('')).toBe('dark');
     expect(DEFAULT_THEME).toBe('dark');
     expect(themeOf('light')).toBe('light');
     expect(themeOf('dark')).toBe('dark');
     for (const v of [undefined, null, '', 'LIGHT', 'blue']) expect(themeOf(v)).toBe('dark');
-    expect(themeCookie('light')).toBe('epc2i-theme=light; path=/; max-age=31536000; samesite=lax');
+    expect(themeCookie('light')).toBe('atrium-theme=light; path=/; max-age=31536000; samesite=lax');
   });
 
   it('the pair: FR | EN above moon | sun, named in French, the current choices pressed', () => {
@@ -47,6 +50,6 @@ describe('dark / light display and language', () => {
     expect(layout).toContain('data-theme={theme}');
     expect(layout).toMatch(/import '@norma\/charte\/nocturne\.css';[\s\S]*import '@norma\/charte\/touch\.css';\s*import '@norma\/charte\/coque\.css';/);
     expect(read('norma/charte/nocturne.css')).toContain(':root[data-theme="light"]');
-    expect(read('src/server/session.ts')).toMatch(/getTheme = cache\(async \(\): Promise<Theme> => themeOf\(\(await cookies\(\)\)\.get\(THEME_COOKIE\)\?\.value\)\)/);
+    expect(read('src/server/session.ts')).toMatch(/getTheme = cache\(async \(\): Promise<Theme> => \{\s*const jar = await cookies\(\);\s*return themeFromCookies\(\(name\) => jar\.get\(name\)\?\.value\);/);
   });
 });
