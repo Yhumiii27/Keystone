@@ -22,7 +22,7 @@ export const isProjectConfidentiality = (v: unknown): v is ProjectConfidentialit
   typeof v === 'string' && (PROJECT_CONFIDENTIALITIES as readonly string[]).includes(v);
 
 /** EN source labels (t()). */
-export const PROJECT_CONFIDENTIALITY_LABEL: Record<ProjectConfidentiality, string> = { normal: 'Normal', confidential: 'Confidential' };
+export const PROJECT_CONFIDENTIALITY_LABEL: Record<ProjectConfidentiality, string> = { normal: 'Not confidential', confidential: 'Confidential' };
 
 /** Published value of `pub_projets.confidentialite` (French, like the other published states). */
 export const PUBLISHED_CONFIDENTIALITY: Record<ProjectConfidentiality, 'normal' | 'confidentiel'> = { normal: 'normal', confidential: 'confidentiel' };

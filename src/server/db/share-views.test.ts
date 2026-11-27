@@ -212,8 +212,9 @@ describe('share views of delivery 9 (0038_share_followup)', () => {
   it('pub_projets: the category at the end — client by default, rd for an R&D project; the database refuses another value (R-196)', async () => {
     const v = await rows<{ code: string; categorie: string | null }>(sql`select code, categorie from pub_projets`);
     expect(v.length).toBeGreaterThan(0);
-    // No demo project is an R&D project (ERP-202 carries the machine type « R&D » but is an ERP migration).
-    expect(v.every((r) => r.categorie === 'client')).toBe(true);
+    // No demo project was an R&D project (ERP-202 carries the machine type « R&D » but is an ERP migration); ING-29 (owner,
+    // 27 Nov 2026): FTU-052 became the demo's confidential R&D project.
+    expect(v.filter((r) => r.categorie !== 'client').map((r) => [r.code, r.categorie])).toEqual([['FTU-052', 'rd']]);
     await expect(db.update(projects).set({ category: 'lab' as 'rd' }).where(eq(projects.code, 'NDC-031'))).rejects.toThrow();
     await db.update(projects).set({ category: 'rd' }).where(eq(projects.code, 'NDC-031'));
     const [r] = await rows<{ categorie: string }>(sql`select categorie from pub_projets where code = 'NDC-031'`);

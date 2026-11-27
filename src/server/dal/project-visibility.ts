@@ -101,8 +101,10 @@ export async function requestViewer(): Promise<VisibilityViewer | null> {
     if (e instanceof Error && e.message.includes('was called outside a request scope')) return null;
     throw e;
   }
-  const { getViewer } = await import('@/server/session');
-  return getViewer();
+  const session = await import('@/server/session');
+  // A test that replaces the session module without a viewer reads as the system.
+  if (!('getViewer' in session)) return null;
+  return session.getViewer();
 }
 
 /** A viewer set explicitly for work done on someone's behalf outside a request (scheduled reports e-mailed to a person). */
