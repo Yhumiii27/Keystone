@@ -53,7 +53,7 @@ import { listParts } from './parts';
 import { listZones } from './people';
 import { pidBadgeByProject } from './pid';
 import { getActivities } from './planning';
-import { listProjects, projectLabel, type ProjectRow } from './projects';
+import { listAllProjects, listProjects, projectLabel, type ProjectRow } from './projects';
 import { countInvoicesToResolve, listAllPurchaseOrders, posAwaitingApprovalByProject } from './purchasing';
 import { criticalOpenNcrsByProject } from './quality';
 import { listApprovalDepartments, listResourceRequests } from './requests';
@@ -200,7 +200,7 @@ async function sharedProjectInputs(): Promise<SharedProjectInputs> {
   const [risks, changes, meetings, interfaces, billing, deliveries, orders, eng, pid, quality, itp, site, projects] = await Promise.all([
     riskBadges(), changesInReview(), meetingsToWriteByProject(), lateInterfacesByProject(), lateBillingMilestonesByProject(),
     receiptsQcPendingByProject(), posAwaitingApprovalByProject(), engNavBadgesByProject(), pidBadgeByProject(), safe(criticalOpenNcrsByProject, {}),
-    openPunchAByProject(), safe(siteBadgeByProject, {}), listProjects(),
+    openPunchAByProject(), safe(siteBadgeByProject, {}), listAllProjects(),
   ]);
   const withData = projects.filter((p) => p.hasData).map((p) => p.code);
   return { risks, changes, meetings, interfaces, billing, deliveries, orders, eng, pid, quality, itp, site, withData };
@@ -486,7 +486,9 @@ export async function searchShell(query: string, currentCode: string): Promise<S
     safe(() => getVigieQualityConnector().listNcrs({ projectCodes: codes }), []),
   ]);
   // Purchase orders (drafts made in Keystone included).
-  add(ordered(pos.filter((o) => has(o.number + ' ' + o.supplier)), (o) => o.projectCode).map((o) => ({
+  // ING-29: only the projects the viewer sees (a confidential project's orders stay with its team).
+  const visible = new Set(codes);
+  add(ordered(pos.filter((o) => visible.has(o.projectCode) && has(o.number + ' ' + o.supplier)), (o) => o.projectCode).map((o) => ({
     kind: 'Purchase order', title: `${o.number} · ${o.supplier}`, ...projectSub(o.projectCode, o.statusLabel), href: deepLink('orders', { po: o.number }, o.projectCode),
   })), 3);
   // ECOs: the Vigie mirror (status as Vigie reports it).

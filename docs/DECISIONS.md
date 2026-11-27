@@ -466,3 +466,29 @@ Questionnaire https://claude.ai/artifact/8u6AejE5Fx9eHiMuedKKLt (`docs/decisions
 - D9-36 : un logiciel catalogue / module commercial dédié, géré par l’entreprise, publiera le catalogue dans Arche et dans Keystone (budgets et plannings standards) : hors de Keystone.
 - D9-37 : P7 abandonnée (outillage mécanique sans étalonnage ; seuls les équipements de laboratoire en ont).
 
+
+## Confidentialité des projets et équipe projet (décisions du 27/11/2026)
+
+Décisions du propriétaire (citées) : « Quand une personne de l'ingénierie est appelée dans l'équipe projet (que ce soit affectée à
+une tâche ou ajoutée à la liste des parties prenantes) alors le projet apparaît dans Ingenium. Keystone publie qui fait partie de
+l'équipe des projets et les autres outils peuvent s'en servir. » — « Tous les projets industriels ou R&D doivent être dans
+Keystone ; c'est donc Keystone qui donnera le niveau de confidentialité à Ingenium et aux autres softs (valable aussi pour les
+documents dans Codex par exemple). » — ING-29 : un projet confidentiel n'est accessible qu'aux personnes de son équipe, ajoutées
+par le chef de projet, et n'apparaît dans aucune liste pour les autres.
+
+Appliqué (note `docs/delivery-9/notes-confidentiality.md`) :
+- **Niveau** `normal` | `confidential` (`projects.confidentiality`, migration 0086), fixé par les responsables du projet (chef de
+  projet, co-chef, adjoint) ou un directeur, depuis Ressources du projet › Équipe projet (panneau latéral), tracé au journal.
+- **Équipe d'un projet** = équipe nommée (R-041) ∪ personnes affectées à une tâche ou nommées sur une activité du planning ∪
+  parties prenantes qui sont des personnes internes (`projectTeam`, `src/domain/confidentiality.ts`).
+- **Projet confidentiel** : absent pour les autres de toute liste, recherche, compteur de la barre latérale, export et total du
+  portefeuille (les totaux sont calculés sans lui pour qui n'est pas de l'équipe) ; ses pages répondent 404.
+- **Publication** (demandée à Matrix, M-18) : `confidentialite` en fin de `pub_projets` ; nouvelle vue `pub_equipes_projets`.
+
+Choix par défaut, ouverts pour le propriétaire :
+- **CF-1 · Le directeur de portefeuille voit-il les projets confidentiels dont il n'est pas membre ?** : Non, seulement une fois
+  ajouté à l'équipe (`DIRECTOR_SEES_CONFIDENTIAL = false`) ★
+- **CF-2 · Totaux du portefeuille** : un projet confidentiel est exclu des totaux pour qui n'est pas de son équipe (les totaux
+  diffèrent donc selon la personne) ★
+- **CF-3 · Compteurs globaux partagés** (documents à valider, factures bloquées, stock, SAV) : restent calculés sur toute
+  l'entreprise, sans détail de projet (limite connue, à reprendre si le propriétaire le demande) ★

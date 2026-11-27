@@ -11,6 +11,7 @@ import type { ZoneKey } from '@/server/session';
 import { getCostControl, type CostControl } from './cost';
 import { listProjectEvms, type ProjectEvm } from './evm';
 import { healthThresholds } from './health-thresholds';
+import { hiddenProjects } from './project-visibility';
 import { assertClientCodeFree } from './internal-client';
 import { equipmentLinesByProject, insertEquipmentLines } from './project-equipment';
 import { getActivities, getMilestones, getScheduleBars, getScheduleControl, getWbs, toProtoActs, type ProtoAct, type ScheduleControl } from './planning';
@@ -35,6 +36,8 @@ export interface ProjectRow {
   clientInternal?: true;
   /** R-196 (K-196): an R&D project (projects.category 'rd'); present (true) only then. */
   rd?: true;
+  /** ING-29 (27 Nov 2026): a confidential project (projects.confidentiality), seen by its team only; present (true) only then. */
+  confidential?: true;
   start: string;           // 'Jan 2026'
   finish: string;          // 'Dec 2026'
   budget: number;          // k€
@@ -95,12 +98,16 @@ function toRow(r: Joined, th: HealthThresholds, evm: ProjectEvm | undefined, lin
     stage: p.stage, shortCode: p.shortCode, isNew: p.isNew, lat: r.lat, lng: r.lng,
     ...(r.clientInternal ? { clientInternal: true as const } : {}),
     ...(p.category === 'rd' ? { rd: true as const } : {}),
+    ...(p.confidentiality === 'confidential' ? { confidential: true as const } : {}),
   };
   return { ...row, health: healthOf(row, th) };
 }
 
-/** All projects in register order (new projects first). Memoised per request. */
-export const listProjects = cache(async (): Promise<ProjectRow[]> => {
+/**
+ * Every project in register order, confidential ones included — a SYSTEM read (publications, jobs, writers that already checked
+ * the viewer). Screens read `listProjects()`. Memoised per request.
+ */
+export const listAllProjects = cache(async (): Promise<ProjectRow[]> => {
   const [db, th, evms] = await Promise.all([getDb(), healthThresholds(), listProjectEvms()]);
   const equipment = await equipmentLinesByProject(db);
   const rows = await db
@@ -115,6 +122,16 @@ export const listProjects = cache(async (): Promise<ProjectRow[]> => {
   return rows.map((r) => toRow(r, th, evms.get(r.p.code), equipment.get(r.p.id) ?? []));
 });
 
+/**
+ * The projects the request's viewer sees, in register order (new projects first): a confidential project only for its team
+ * (ING-29, src/server/dal/project-visibility.ts); outside a request every project. Memoised per request.
+ */
+export const listProjects = cache(async (): Promise<ProjectRow[]> => {
+  const [all, hidden] = await Promise.all([listAllProjects(), hiddenProjects()]);
+  return hidden.codes.size ? all.filter((p) => !hidden.codes.has(p.code)) : all;
+});
+
+/** A project the request's viewer sees (null when unknown or hidden: the pages answer 404, the writers "Unknown project"). */
 export async function getProject(code: string): Promise<ProjectRow | null> {
   return (await listProjects()).find((p) => p.code === code) ?? null;
 }

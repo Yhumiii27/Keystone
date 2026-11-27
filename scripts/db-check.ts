@@ -159,8 +159,9 @@ const D5_COUNTS: Record<string, number> = {
   eng_column_mappings: 6, eng_import_deltas: 4, eng_imports: 0, pid_sheets: 1, pid_tags: 24, pid_validation_steps: 5, machine_type_phases: 28,
   // app_settings: the health thresholds and, since delivery 7, the seed record "keystone.seed" (R-011, A-15), the "Reset to
   // defaults" document (R-170) and the record that the demo referents were seeded (R-041); delivery 8, the hours-variance
-  // threshold (R-088) and the change control board threshold (R-069, P-6c).
-  machine_type_cost_categories: 25, machine_type_itp_systems: 17, reference_values: 60, app_settings: 6, connectors: 11, connector_sync_runs: 0, import_formats: 6,
+  // threshold (R-088) and the change control board threshold (R-069, P-6c); ING-29 (27 Nov 2026), the record that the demo's
+  // confidential project was seeded (src/server/db/seed/confidential.ts).
+  machine_type_cost_categories: 25, machine_type_itp_systems: 17, reference_values: 60, app_settings: 7, connectors: 11, connector_sync_runs: 0, import_formats: 6,
 };
 
 /**

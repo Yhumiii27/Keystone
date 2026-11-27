@@ -22,6 +22,7 @@ import {
 import { getRateGrid } from './hr';
 import { createNextOccurrence, recurrenceLinks, recurrenceOf } from './task-recurrence';
 import { listMentionablePersons, notifyTasksAssigned } from './task-notices';
+import { visibleProjectRows } from './project-visibility';
 
 export interface TaskRow {
   /** "T-2314". */
@@ -139,6 +140,9 @@ export async function listTasks(filter: TaskFilter = {}): Promise<TaskRow[]> {
   if (filter.projectCode) where.push(eq(projects.code, filter.projectCode));
   if (filter.activityCode) where.push(eq(activities.code, filter.activityCode));
   if (filter.number) where.push(eq(tasks.number, filter.number));
+  // ING-29: the tasks of a confidential project the viewer is not on the team of are never listed (My work of someone else…).
+  const visible = await visibleProjectRows(tasks.projectId);
+  if (visible) where.push(visible);
   const rows = await db
     .select({
       t: tasks, full: who.fullName, short: who.shortName, initials: who.initials, job: who.jobTitle,

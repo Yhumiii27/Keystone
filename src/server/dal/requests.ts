@@ -17,6 +17,7 @@ import {
   type Priority, type RequestEventAction, type RequestStatus, type StageCode,
 } from '@/server/db/codes';
 import { findPerson, nameOf, nextNumber, recordActivity, requirePerson, requireProject, writeAudit } from '@/server/db/helpers';
+import { visibleProjectRows } from './project-visibility';
 import {
   activities, departments, persons, projects, requestActivityChoices, resourceRequestEvents, resourceRequests, stageTransitions, tasks, users,
 } from '@/server/db/schema';
@@ -99,6 +100,9 @@ export async function listResourceRequests(filter: RequestFilter = {}): Promise<
   if (filter.number) where.push(eq(resourceRequests.number, filter.number));
   if (filter.requestedBy) where.push(sql`(${pm.fullName} = ${filter.requestedBy} or ${pm.shortName} = ${filter.requestedBy})`);
   if (filter.person) where.push(sql`(${who.fullName} = ${filter.person} or ${who.shortName} = ${filter.person})`);
+  // ING-29: a confidential project's requests only for its team.
+  const visible = await visibleProjectRows(resourceRequests.projectId);
+  if (visible) where.push(visible);
   const rows = await db
     .select({
       r: resourceRequests, code: projects.code, short: projects.shortCode, pname: projects.name, pshort: projects.shortName,

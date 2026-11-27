@@ -5,6 +5,7 @@ import { boolean, check, date, doublePrecision, foreignKey, index, integer, json
 import type { CalendarCode, CostType, MachineTypeCode, StageCode, StageGroup, TransitionMode, ValidationStatus, ZoneCode } from '../codes';
 import type { PackFamily } from '@/domain/engineering-pack';
 import type { ProjectCategory } from '@/domain/project-category';
+import type { ProjectConfidentiality } from '@/domain/confidentiality';
 import { id, keur, months, num, timestamps } from './_common';
 import { CODE3_RE, CURRENCY_RE, filled, numbered, oneOf, ordered, shaped, within } from './_checks';
 import { clients, countries, persons, zones } from './organisation';
@@ -335,7 +336,14 @@ export const projects = pgTable('projects', {
    * project's leads and the director on the Contract screen; published at the end of pub_projets as `categorie`.
    */
   category: text('category').$type<ProjectCategory>().notNull().default('client'),
+  /**
+   * Owner's decisions of 27 Nov 2026 (ING-29): `normal` (default) or `confidential` — a confidential project is seen only by its
+   * team (named team, task assignees, internal stakeholders; src/domain/confidentiality.ts). Set by the project's leads and the
+   * director (audited); to be published at the end of pub_projets as `confidentialite` (normal | confidentiel) by Matrix.
+   */
+  confidentiality: text('confidentiality').$type<ProjectConfidentiality>().notNull().default('normal'),
 }, (t) => [
+  oneOf<ProjectConfidentiality>()('projects_confidentiality_domain', t.confidentiality, ['normal', 'confidential']),
   check('projects_kind_check', sql`${t.kind} in ('client', 'internal')`),
   check('projects_category_check', sql`${t.category} in ('client', 'rd')`),
   check('projects_capex_code_check', sql`${t.capexCode} ~ '^CPX-[A-Z]{3}-[0-9]{4}-[0-9]{2,}$'`),

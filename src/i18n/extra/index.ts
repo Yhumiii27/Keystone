@@ -102,6 +102,7 @@ import d9SQuality from './d9-s-quality.json';
 import d9SFollowup2 from './d9-s-followup2.json';
 import d9SAlerts from './d9-s-alerts.json';
 import d9RdRecurring from './d9-rd-recurring.json';
+import d9Confidentiality from './d9-confidentiality.json';
 import d9CeConformity from './d9-ce-conformity.json';
 
 export const EXTRA_FR: Record<string, string> = {
@@ -206,4 +207,5 @@ export const EXTRA_FR: Record<string, string> = {
   ...d9VigieViews,
   ...d9Planning,
   ...d9Noclient,
+  ...d9Confidentiality,
 };

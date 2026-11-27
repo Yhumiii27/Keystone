@@ -27,6 +27,7 @@ import { bomShortfall, type ShortfallLine } from '@/domain/bom';
 import { isCancellablePo, poCancelReason, poCancelRight, poX3State, type PoCancelActor, type PoCancelKind } from '@/domain/orders';
 import { leadsProject } from './project-team';
 import { orderDeliveryTerms } from '@/domain/order-terms';
+import { visibleProjectRows } from './project-visibility';
 
 type Q = DB | Tx;
 export type { ShortfallLine };
@@ -156,7 +157,8 @@ export async function getPurchaseOrder(number: string): Promise<PurchaseOrderRow
 
 /** Every order, all projects (project register order) — Where-used, ECO impact ("Open purchase orders"). */
 export async function listAllPurchaseOrders(): Promise<PurchaseOrderRow[]> {
-  return loadOrders(await getDb(), undefined);
+  // ING-29: a confidential project's orders only for its team.
+  return loadOrders(await getDb(), await visibleProjectRows(purchaseOrders.projectId));
 }
 
 /** Orders of any project with a line on one of these parts (Where-used "Purchase orders", ECO impact). */

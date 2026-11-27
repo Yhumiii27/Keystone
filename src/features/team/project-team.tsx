@@ -6,10 +6,11 @@ import { UsersFour } from '@phosphor-icons/react/dist/ssr';
 import type { FormDef } from '@/components/app/form-def';
 import { Avatar } from '@/components/app/Badges';
 import { SectionCard } from '@/components/app/SectionCard';
+import { PROJECT_CONFIDENTIALITIES, PROJECT_CONFIDENTIALITY_LABEL, type ProjectConfidentiality } from '@/domain/confidentiality';
 import { PROJECT_TEAM_ROLES, PROJECT_TEAM_ROLE_LABEL } from '@/domain/rights';
 import type { T } from '@/i18n/translate';
 import type { TeamCardMember } from '@/server/dal/project-team';
-import { AddTeamMemberButton, MemberControls } from './project-team-client';
+import { AddTeamMemberButton, ConfidentialityButton, MemberControls } from './project-team-client';
 import s from './project-team.module.css';
 
 export interface ProjectTeamCardProps {
@@ -19,7 +20,24 @@ export interface ProjectTeamCardProps {
   members: TeamCardMember[];
   /** People who can join (company staff not on the team), by name; null when the viewer does not manage the team. */
   candidates: { personId: string; name: string; jobTitle: string | null }[] | null;
+  /** ING-29: the project's confidentiality; `canSetConfidentiality` shows the "Confidentiality" side panel button. */
+  confidentiality?: ProjectConfidentiality;
+  canSetConfidentiality?: boolean;
   t: T;
+}
+
+/** ING-29 "Confidentiality" side panel (translated). */
+export function confidentialityForm(current: ProjectConfidentiality, t: T): FormDef {
+  return {
+    title: t('Project confidentiality'),
+    submit: t('Save'),
+    fields: [
+      {
+        id: 'confidentiality', label: t('Confidentiality'), type: 'select', required: true, defaultValue: current,
+        options: PROJECT_CONFIDENTIALITIES.map((c) => ({ value: c, label: t(PROJECT_CONFIDENTIALITY_LABEL[c]) })),
+      },
+    ],
+  };
 }
 
 /** "Add to team" dialog (translated). */
@@ -34,7 +52,7 @@ export function addTeamMemberForm(candidates: NonNullable<ProjectTeamCardProps['
   };
 }
 
-export function ProjectTeamCard({ code, context, members, candidates, t }: ProjectTeamCardProps) {
+export function ProjectTeamCard({ code, context, members, candidates, confidentiality = 'normal', canSetConfidentiality = false, t }: ProjectTeamCardProps) {
   const manage = candidates != null;
   const roles = PROJECT_TEAM_ROLES.map((r) => ({ value: r, label: t(PROJECT_TEAM_ROLE_LABEL[r]) }));
   return (
@@ -42,7 +60,14 @@ export function ProjectTeamCard({ code, context, members, candidates, t }: Proje
       title={t('Project team')}
       subtitle={t('The named team edits the project — the project managers and deputies also move its stage, plan structure and minutes; the others read it')}
       icon={UsersFour}
-      actions={manage && candidates.length ? <AddTeamMemberButton code={code} context={context} form={addTeamMemberForm(candidates, t)} /> : undefined}
+      actions={
+        manage || canSetConfidentiality ? (
+          <>
+            {canSetConfidentiality && <ConfidentialityButton code={code} context={context} form={confidentialityForm(confidentiality, t)} />}
+            {manage && candidates.length ? <AddTeamMemberButton code={code} context={context} form={addTeamMemberForm(candidates, t)} /> : null}
+          </>
+        ) : undefined
+      }
       gap={10}
     >
       {members.length ? (
@@ -67,6 +92,9 @@ export function ProjectTeamCard({ code, context, members, candidates, t }: Proje
         </div>
       ) : (
         <span className={s.empty}>{t('No named team for this project yet')}</span>
+      )}
+      {confidentiality === 'confidential' && (
+        <span className={s.note}>{t('Confidential project · seen only by its team: the named team, the people assigned to its tasks and its internal stakeholders')}</span>
       )}
       {manage && <span className={s.note}>{t('The project manager of record is changed in the Projects register')}</span>}
     </SectionCard>
