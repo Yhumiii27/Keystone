@@ -14,7 +14,7 @@
 // No I/O, no translation. Golden values: src/domain/contract.test.ts (prototype renderVals, EN and FR).
 import type { Lang } from '@/i18n/translate';
 import {
-  AMENDMENT_AWAITING, amendmentStatus, beforePgNow, bondType, contractType,
+  AMENDMENT_AWAITING, amendmentStatus, beforePgNow, bondType, contractTypeOfInput,
   type AmendmentStatus, type BondType, type ContractType, type CustomerInvoiceStatus, type PaymentMilestoneStatus,
 } from '@/server/db/codes';
 import { BASE_CURRENCY, isCurrency, type CurrencyCode } from './currency';
@@ -621,8 +621,10 @@ export function parseSheetField(key: unknown, raw: unknown, year: number): Parse
       return v ? { ok: true, value: { reference: v } } : { ok: false, error: 'Reference is required' };
     case 'client':
       return v ? { ok: true, value: { client: v } } : { ok: false, error: 'Client is required' };
-    case 'type':
-      return contractType.isCode(v) ? { ok: true, value: { type: v } } : { ok: false, error: 'Unknown contract type' };
+    case 'type': {
+      const type = contractTypeOfInput(v);
+      return type ? { ok: true, value: { type } } : { ok: false, error: 'Unknown contract type' };
+    }
     case 'signed': {
       if (!v) return { ok: true, value: { signedOn: null } };
       const iso = parseDateInput(v, year);

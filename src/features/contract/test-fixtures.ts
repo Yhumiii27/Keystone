@@ -124,7 +124,7 @@ export function scenarioData(name: string): ContractData {
   return {
     ...c,
     sheet: {
-      ...c.sheet, client: 'Port authority', type: 'lump_sum_epc', signedOn: isoOfDemoDate(CT.signed),
+      ...c.sheet, client: 'Port authority', type: 'lump_sum_turnkey', signedOn: isoOfDemoDate(CT.signed),
       governingLaw: 'French law · Commercial court of Le Havre',
       scope: 'Terminal extension: steel structure, two 250 t gantry cranes, HV connection and yard works — design, supply, erection and commissioning.',
     },

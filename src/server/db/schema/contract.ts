@@ -59,7 +59,7 @@ export const contracts = pgTable('contracts', {
   version: rowVersion(),
   ...timestamps,
 }, (t) => [
-  oneOf<ContractType>()('contracts_type_domain', t.type, ['lump_sum_epc', 'unit_rates', 'cost_plus', 'framework']),
+  oneOf<ContractType>()('contracts_type_domain', t.type, ['lump_sum_turnkey', 'unit_rates', 'cost_plus', 'framework']),
   shaped('contracts_currency_shape', t.currency, CURRENCY_RE),
   oneOf<PaymentRule>()('contracts_payment_rule_domain', t.paymentRule, ['net', 'days_eom', 'eom_days']),
   within('contracts_retention_pct_range', t.retentionPct, 0, 100),
