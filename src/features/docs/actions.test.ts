@@ -140,7 +140,7 @@ describe('documents Server Functions', () => {
     const HAND_OFF = 'Download needs Codex — the document files are stored in Codex';
     as('Julien Wagner', 'J. Wagner', 'member');
     expect(await logDownloadAction('HLT-026', 'PID-HLT-026', 'Native')).toEqual({
-      ok: true, toast: HAND_OFF, link: { href: 'http://localhost:3100/?document=PID-HLT-026&revision=D', label: 'Open Codex' },
+      ok: true, toast: HAND_OFF, link: { href: 'http://localhost:3100/documents/PID-HLT-026', label: 'Open Codex' },
     });
     expect(await logDownloadAction('HLT-026', 'PID-HLT-026', 'Zip' as never)).toEqual({ error: 'Invalid request' });
     expect(await logDownloadAction('HLT-026', 'NOPE-000')).toEqual({ error: 'Unknown document' });

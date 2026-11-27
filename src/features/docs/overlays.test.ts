@@ -61,7 +61,7 @@ describe('document record drawer markup', () => {
     expect(html).toContain('class="tag tag-accent');
     expect(html).toContain('href="/projects/HLT-026/documents?deposit=RPT-HLT-014"');
     // R-033: "Ouvrir dans Codex" and the history link open the record in Codex, in a new tab.
-    expect(html.match(/<a [^>]*href="http:\/\/localhost:3100\/\?document=RPT-HLT-014&amp;revision=A"[^>]*>/g)?.length).toBe(2);
+    expect(html.match(/<a [^>]*href="http:\/\/localhost:3100\/documents\/RPT-HLT-014"[^>]*>/g)?.length).toBe(2);
     expect(html.match(/<a [^>]*target="_blank"[^>]*href="http:\/\/localhost:3100[^"]*"[^>]*>|<a [^>]*href="http:\/\/localhost:3100[^"]*"[^>]*target="_blank"[^>]*>/g)?.length).toBe(2);
   });
 

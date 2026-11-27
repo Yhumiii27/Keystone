@@ -204,7 +204,7 @@ describe('document record drawer (showDoc, docVals) — EN and FR', () => {
       expect(d.distribution, number).toEqual(dist);
       // D-2 = a (R-127): no download log in Keystone (the prototype's g.dl): a link to the history in Codex instead.
       expect(d, number).not.toHaveProperty('downloads');
-      expect(d.historyHref, number).toBe(`http://localhost:3100/?document=${number}&revision=${record.revision}`);
+      expect(d.historyHref, number).toBe(`http://localhost:3100/documents/${encodeURIComponent(number)}`);
       // "Punch item" has no French in the prototype dictionary ("Réserve" added).
       expect(d.links.map((l) => ({ kind: l.kind, id: l.ref })), number).toEqual(
         g.links.map((l: any) => ({ kind: lang === 'fr' && l.kind === 'Punch item' ? 'Réserve' : l.kind, id: l.id })),
@@ -225,7 +225,7 @@ describe('document record drawer (showDoc, docVals) — EN and FR', () => {
   it('actions and links: Open in Codex, new revision hand-off, relation targets, close keeps the vault state', async () => {
     const d = await drawer('fr', 'REC-HLT-009', DIRECTOR, true, { view: 'audit' });
     // R-033: "Open in Codex" opens the record in Codex (it was the toast "Ouverture de Codex · REC-HLT-009 rév. A").
-    expect(d.codexHref).toBe('http://localhost:3100/?document=REC-HLT-009&revision=A');
+    expect(d.codexHref).toBe('http://localhost:3100/documents/REC-HLT-009');
     expect(d.newRevisionHref).toBe('/projects/HLT-026/documents?scope=all&view=audit&deposit=REC-HLT-009');
     expect(d.closeHref).toBe('/projects/HLT-026/documents?scope=all&view=audit');
     // R-128: PO-2026-118 is not an HLT-026 order (seed left as is, owner question): inert.

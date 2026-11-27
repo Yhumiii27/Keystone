@@ -2,9 +2,8 @@
 // built here, like the Cursus and Vigie links. Codex owns the documents and their files; Keystone opens them in Codex in a
 // new tab (render the links with CODEX_LINK_ATTRS: the Mac app hands target=_blank links to the browser).
 //
-// TODO(codex) — D-1 (D-1a/D-1b answered, R-033): Codex publishes no deep links yet. Until it does, every link opens Codex's home with
-// query parameters Codex ignores today (`project`, `document`, `revision`, `documents`, `view`): a proposal to agree with
-// Codex. Once the index read (R-033, mirror.ts `applyCodexIndex`) fills `documents.codex_url`, Codex's own link of a record
+// A document opens on Codex's deep link `/documents/{id}` (Codex's contract CX-08). TODO(codex) — D-1: the other links (home with
+// `project`, `documents`, `view`) still carry query parameters Codex ignores today: a proposal to agree with Codex. Once the index read (R-033, mirror.ts `applyCodexIndex`) fills `documents.codex_url`, Codex's own link of a record
 // wins over the guess. In production without NEXT_PUBLIC_CODEX_URL the links point at Codex's local address (start-up
 // warning, as for Cursus and Vigie).
 import { codexPublicUrl } from './config';
@@ -37,10 +36,12 @@ export function codexHomeUrl(project?: string | null): string {
 
 /**
  * A document record in Codex ("Open in Codex", My approvals, the drawer's history link): Codex's own link when the index
- * read brought one, else Codex's home with the number and revision (TODO(codex) D-1: ignored by Codex today).
+ * read brought one, else Codex's deep link `/documents/{id}` (Codex's contract CX-08, docs/api.md « Lien profond »: it opens
+ * the record under its current identifier or any former one). The contract has no revision parameter: `revision` is kept in
+ * the signature for the callers but not sent — Codex shows the record with its revisions.
  */
-export function codexDocumentUrl(number: string, revision?: string | null, codexUrl?: string | null): string {
-  return safeCodexUrl(codexUrl) ?? `${codexPublicUrl()}/${qs({ document: number, revision })}`;
+export function codexDocumentUrl(number: string, _revision?: string | null, codexUrl?: string | null): string {
+  return safeCodexUrl(codexUrl) ?? `${codexPublicUrl()}/documents/${encodeURIComponent(number.trim())}`;
 }
 
 /** Codex's document types register ("Edit in Codex"; TODO(codex) D-1: `view` is ignored today). */
