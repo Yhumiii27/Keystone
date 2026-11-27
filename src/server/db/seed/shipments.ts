@@ -45,7 +45,7 @@ export const DEMO_SHIPMENT = {
   equipment: 'EQ-02',
   label: 'Modules MEMU M1–M3',
   forwarder: 'Transports Delmas',
-  origin: 'Atelier EPC2i — Lyon',
+  origin: 'Atelier de l’entreprise — Lyon',
   destination: 'Le Havre — terminal site',
   // R-158 lot B: dated before the demo date (Fri 25 Sep 2026) — the shipment has left and arrived (lot A: 12 → 14 Oct).
   etd: '2026-09-21',

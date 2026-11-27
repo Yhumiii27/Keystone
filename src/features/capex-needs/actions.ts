@@ -91,7 +91,7 @@ export async function setNeedAnswerStatusAction(number: string, to: string): Pro
 }
 
 /**
- * K-10 (a): creates the EPC2i project from an ordered need with the New project wizard's draft (checked as the wizard's own
+ * K-10 (a): creates the Keystone project from an ordered need with the New project wizard's draft (checked as the wizard's own
  * creation is). The first equipment line is the need's (its type, quantity, options, capacity, catalogue version, need reference);
  * the draft's other lines are kept. Returns the project code.
  */

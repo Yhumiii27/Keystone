@@ -294,7 +294,7 @@ All 59 registry screens are built (`built: true` in `src/config/screens.ts`; `sr
 
 ## 5. System boundaries
 
-Keystone mirrors what the other EPC2i applications own, links to them and records the viewer's own progress through an outbox. No
+Keystone mirrors what the other Atrium applications own, links to them and records the viewer's own progress through an outbox. No
 Keystone Server Function creates or edits a Vigie NCR / HSE item, a Cursus clearance or a Codex document. Vigie and Cursus were not
 modified by this delivery.
 

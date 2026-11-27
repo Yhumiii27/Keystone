@@ -1,5 +1,5 @@
 // R-158 lot B — packing list (liste de colisage) of a shipment: parties, transport, then each load with its content (HS code,
-// quantities, packages, dimensions, weights, origin, customs value) and the shipment's totals. Generic layout until EPC2i's
+// quantities, packages, dimensions, weights, origin, customs value) and the shipment's totals. Generic layout until the company's
 // standard format (owner's decision 10): replace this file to change it.
 import type { PdfBlock } from '../types';
 import {

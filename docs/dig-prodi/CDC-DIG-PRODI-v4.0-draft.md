@@ -5,8 +5,8 @@
 >
 > Note du responsable produit (21 oct. 2026) : le CDC intègre plusieurs niveaux de gestion de projet, du CAPEX global de
 > montage de l’usine (géré par la filiale, qui devra avoir accès à notre outil) jusqu’au projet industriel de création des
-> équipements (géré par EPC2i). Le projet doit donc commencer par un CAPEX ouvert par la filiale, qui ouvre un projet de
-> besoin machine chez EPC2i (si le CAPEX inclut des machines), idéalement depuis un catalogue qui pourrait faire office d’un
+> équipements (géré par l’entreprise). Le projet doit donc commencer par un CAPEX ouvert par la filiale, qui ouvre un projet de
+> besoin machine chez l’entreprise (si le CAPEX inclut des machines), idéalement depuis un catalogue qui pourrait faire office d’un
 > nouveau logiciel pour créer et paramétrer les machines et proposer le catalogue aux filiales dans leurs ouvertures de CAPEX.
 
 ## 1. Contexte, Enjeux et Objectifs de la Refonte (v4.0)
@@ -92,7 +92,7 @@ La solution doit permettre de modéliser deux typologies de projets avec des cir
    - Staffing : Chef de projet filiale + Co-DIG (Support opérationnel léger).
    - Suivi : Revue trimestrielle en Copil Projet.
 2. Grand Projet Stratégique (Capex majeur, nouvelle usine, > 20 % du CA de la filiale) :
-   - Staffing renforcé : Chef de Projet dédié + Contrôleur de Gestion (CDG) de filiale + PMO EPC 2i en appui opérationnel.
+   - Staffing renforcé : Chef de Projet dédié + Contrôleur de Gestion (CDG) de filiale + PMO de l’entreprise en appui opérationnel.
    - Suivi : Revue mensuelle stricte et audits transversaux.
 
 ## 4. Exigences Fonctionnelles et Techniques de la Plateforme
@@ -106,7 +106,7 @@ La solution doit permettre de modéliser deux typologies de projets avec des cir
     Pack Ingénierie), l'avancement budgétaire (écart d'incertitude), et le suivi de la montée en puissance (Ramp-up).
 - Sécurité, Hébergement et Confidentialité :
   - Hébergement des données impérativement en France pour répondre aux critères de souveraineté et de conformité du groupe.
-  - Gestion fine des rôles et des profils (isolation des portefeuilles entre le Groupe et la filiale EPC 2i, tout en
+  - Gestion fine des rôles et des profils (isolation des portefeuilles entre le Groupe et la filiale d’ingénierie, tout en
     autorisant des vues croisées pour les fonctions centrales comme la DAF ou le SSE).
 - Intelligence Artificielle et Aide à la Décision :
   - Capacités d'analyse prédictive ou d'assistant intelligent intégré pour détecter et alerter automatiquement en cas de

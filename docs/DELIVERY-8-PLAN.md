@@ -38,7 +38,7 @@ Items split across lots: R-015 (change-request events in `cost-change`; deliveri
 | R-044 | `roles-rates-hr` | partly buildable | M | Créer le rôle Finance (contrat, facturation, grille de taux) |
 | R-139 | `roles-rates-hr` | partly buildable | S | "View as client" entry for the director and the project's PM (P-11) |
 | R-083 | `roles-rates-hr` | partly buildable | L | Dater la grille de taux par rôle et unifier la valorisation des heures |
-| R-178 | `roles-rates-hr` | partly buildable | S | Fournir et charger les listes de référence réelles d'EPC2i |
+| R-178 | `roles-rates-hr` | partly buildable | S | Fournir et charger les listes de référence réelles de l’entreprise |
 | R-086 | `roles-rates-hr` | buildable | S | Afficher le coût main-d’œuvre du portefeuille par zone sur Ressources |
 | R-087 | `roles-rates-hr` | buildable | S | Compétences : échelle unique 1–5 et deux indicateurs |
 | R-088 | `roles-rates-hr` | buildable | S | Rendre réglable le seuil d’écart d’heures (±10 %, inclus), couleurs distinctes |

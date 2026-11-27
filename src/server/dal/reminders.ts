@@ -184,7 +184,7 @@ export interface ReminderRun {
   emailSkipped: number;
 }
 
-/** Keystone's address + the screen's link ("https://pm.epc2i.fr/projects/HLT-026/plan?act=A1250"). */
+/** Keystone's address + the screen's link ("https://pm.atrium.example/projects/HLT-026/plan?act=A1250"). */
 export const absoluteLink = (screen: string, params: Record<string, unknown>, projectCode: string | null) =>
   `${getConfig().mail.publicUrl}${deepLink(screen as ScreenId, params, projectCode ?? undefined)}`;
 

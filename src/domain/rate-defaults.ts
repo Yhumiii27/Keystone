@@ -2,7 +2,7 @@
 // Pure module (seeds, DAL, tests).
 //
 // The five premium multipliers keep the prototype's keys and labels (MULTS); their factors are PLACEHOLDERS for the direction
-// to confirm — they are not EPC2i's real coefficients (A-15: nothing fictitious may be presented as EPC2i's data). They are
+// to confirm — they are not the company's real coefficients (A-15: nothing fictitious may be presented as the company's data). They are
 // seeded as first versions dated RATE_GRID_START and stay editable on Resources › Rate cards (director and Finance).
 import type { RateMultiplierKey } from '@/server/db/codes';
 

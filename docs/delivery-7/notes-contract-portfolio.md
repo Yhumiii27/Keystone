@@ -141,7 +141,7 @@ Migrations: `drizzle/0007_fresh_young_avengers.sql` (generated: new columns and 
 ## 5. Open questions
 
 1. **Alert thresholds in Settings.** NEW-D1-1 says "thresholds in Settings". Only the health thresholds have a Settings entry. The approval age (5 days), the over-allocation level (110 %) and the maximum number of alerts (8) are code defaults. Should they get Settings entries?
-2. **Fiscal year.** Is EPC2i's fiscal year the calendar year?
+2. **Fiscal year.** Is the company's fiscal year the calendar year?
 3. **Who sets the budget rate.** The director only, or a Finance role? Should a rate revision be dated, with history?
 4. **Supplier invoice currency.** Should the currency come from the Sage X3 import? Is a currency mismatch with the PO a blocking "diff", or should the invoice be converted?
 5. **Amendment signature.** Should an amendment sent for signature be withdrawable or refusable? Does a refused amendment delete its milestones?

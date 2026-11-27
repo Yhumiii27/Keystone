@@ -1,6 +1,6 @@
-// R-158 lot B — packing list per container (liste de colisage par conteneur), owner's decision 10: one page per load EPC2i
+// R-158 lot B — packing list per container (liste de colisage par conteneur), owner's decision 10: one page per load the company
 // declared — its type, number, seal, declared gross weight and content — signed by who loaded and who checked. No value.
-// Generic layout until EPC2i's standard format: replace this file to change it.
+// Generic layout until the company's standard format: replace this file to change it.
 import type { PdfBlock } from '../types';
 import { contentRows, contentSheet, contentTotals, genericFootnote, header, kgText, loadLabel, typed } from './common';
 import type { ShippingTemplate } from './types';

@@ -21,13 +21,13 @@ describe('Codex links', () => {
   });
 
   it('follows NEXT_PUBLIC_CODEX_URL (trailing slashes trimmed) and encodes the parameters', () => {
-    vi.stubEnv('NEXT_PUBLIC_CODEX_URL', 'https://codex.epc2i.fr//');
-    expect(codexHomeUrl('HLT 026')).toBe('https://codex.epc2i.fr/?project=HLT+026');
-    expect(codexDocumentUrl('A&B/1 ?', 'C')).toBe('https://codex.epc2i.fr/documents/A%26B%2F1%20%3F');
+    vi.stubEnv('NEXT_PUBLIC_CODEX_URL', 'https://codex.atrium.example//');
+    expect(codexHomeUrl('HLT 026')).toBe('https://codex.atrium.example/?project=HLT+026');
+    expect(codexDocumentUrl('A&B/1 ?', 'C')).toBe('https://codex.atrium.example/documents/A%26B%2F1%20%3F');
   });
 
   it('Codex’s own link of a record wins over the guess — http(s) only, never a script or a relative path', () => {
-    expect(codexDocumentUrl('PID-HLT-026', 'D', 'https://codex.epc2i.fr/doc/123')).toBe('https://codex.epc2i.fr/doc/123');
+    expect(codexDocumentUrl('PID-HLT-026', 'D', 'https://codex.atrium.example/doc/123')).toBe('https://codex.atrium.example/doc/123');
     for (const bad of ['javascript:alert(1)', 'data:text/html,x', '/doc/123', 'ftp://codex/x', 'not a url', '', null, undefined])
       expect(codexDocumentUrl('PID-HLT-026', 'D', bad), String(bad)).toBe('http://localhost:3100/documents/PID-HLT-026');
     expect([safeCodexUrl(' http://codex/x '), safeCodexUrl('JAVASCRIPT:x')]).toEqual(['http://codex/x', null]);

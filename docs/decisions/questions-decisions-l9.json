@@ -205,8 +205,8 @@
    "questions": [
     {
      "id": "D9-19",
-     "q": "Quelles données financières d’un projet EPC2i la filiale voit-elle dans Arche ?",
-     "context": "La vue pub_avancement_projets publie le côté vente seulement : contrat, avenants signés et facturé en k€, sans coût interne, taux, EAC ni marge (P-05, testé). Ajouter les coûts ou la marge exposerait les marges d’EPC2i aux filiales.",
+     "q": "Quelles données financières d’un projet Keystone la filiale voit-elle dans Arche ?",
+     "context": "La vue pub_avancement_projets publie le côté vente seulement : contrat, avenants signés et facturé en k€, sans coût interne, taux, EAC ni marge (P-05, testé). Ajouter les coûts ou la marge exposerait les marges de l’entreprise aux filiales.",
      "default": "Côté vente seulement (actuel)",
      "alts": [
       "Ajouter le reste à facturer",

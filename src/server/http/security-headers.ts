@@ -71,7 +71,7 @@ export function isHttpsRequest(url: string, forwardedProto: string | null): bool
   }
 }
 
-/** HSTS: one year, this host only (EPC2i's other hosts are not known to be HTTPS-only). */
+/** HSTS: one year, this host only (the company's other hosts are not known to be HTTPS-only). */
 export const HSTS_VALUE = 'max-age=31536000';
 
 /** Features the pages never use are closed; the camera stays available to Keystone itself (site photos from a tablet). */

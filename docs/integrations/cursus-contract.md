@@ -69,7 +69,7 @@ who can resend it); a redirection is not followed.
 | 401 | `{ "ok": false, "error": "Invalid API key" }` | Missing or wrong key (final: fix the key). |
 | 413 | `{ "ok": false, "error": "Event too large (256 KB at most)" }` | Final. |
 | 429 | `{ "ok": false, "error": "Too many requests" }` + `Retry-After` | Retried. |
-| 503 | `{ "ok": false, "error": "…" }` + `Retry-After: 60` | Retried: no key configured, the Cursus connector disabled by EPC2i's IT (D-7a), or Keystone's database unavailable. |
+| 503 | `{ "ok": false, "error": "…" }` + `Retry-After: 60` | Retried: no key configured, the Cursus connector disabled by the company's IT (D-7a), or Keystone's database unavailable. |
 
 Refusals carry `error` but no `code` yet (Cursus's suggested `{ error, code }` body; Cursus copies `error` into its log).
 
@@ -108,7 +108,7 @@ department can resend an old failed event after newer ones.
 - One audit row per event received (actor "Cursus", area "Integrations"); no activity event (people's data, R-173).
 - Effect: the Leave & working calendar, and **the people's capacity in the load plan** (R-084: 40 h a week less 8 h per day off).
 
-### 3.2 `heures.validees` — stored, **not applied** (the Cursus timesheet link awaits EPC2i's confirmation, R-030)
+### 3.2 `heures.validees` — stored, **not applied** (the Cursus timesheet link awaits the company's confirmation, R-030)
 
 ```json
 { "matricule": "EMP-0012", "semaine": "2026-10-05", "projets": { "K-2614": 15, "K-2611": 0 } }
@@ -156,10 +156,10 @@ Header `X-Api-Key` on every call; 5 s time-out. The routes without `/v1` (deprec
 (`CURSUS_DIRECTORY=off`), with the same `X-Api-Key` as the other routes:
 
 ```json
-[{ "matricule": "EMP-0018", "nom": "Wagner", "prenom": "Julien", "email": "julien.wagner@epc2i.fr", "equipe": "Engineering" }]
+[{ "matricule": "EMP-0018", "nom": "Wagner", "prenom": "Julien", "email": "julien.wagner@atrium.example", "equipe": "Engineering" }]
 ```
 
-Keystone reads it once a day and on "Sync now" once EPC2i switches it on; matches by matricule, else by work e-mail; creates
+Keystone reads it once a day and on "Sync now" once the company switches it on; matches by matricule, else by work e-mail; creates
 the persons it does not know (never a user account); never deletes anyone; never changes a name or an e-mail typed in Keystone.
 
 ## 6. Requests to Cursus and open points
@@ -167,14 +167,14 @@ the persons it does not know (never a user account); never deletes anyone; never
 | Point | Request / question |
 |---|---|
 | Staff directory | No `/annuaire` route in Cursus: needed for R-027 (§5), or another way to get matricule, name, e-mail and team. |
-| Absences as data | No `pub_absences` view (Cursus is not on the shared EPC2I PostgreSQL server yet: no PostgreSQL schema, no `pub_` views). Keystone relies on the events only; a view would let it re-sync after a failed event. |
+| Absences as data | No `pub_absences` view (Cursus is not on the shared Atrium PostgreSQL server yet: no PostgreSQL schema, no `pub_` views). Keystone relies on the events only; a view would let it re-sync after a failed event. |
 | Contractual hours | Cursus exposes no contractual hours / part time: Keystone's capacity stays 40 h a week less the absence days (R-084). |
 | Planned hours per day | Keystone now pushes them (§ 7, R-180) by Cursus's routes; nothing in Cursus reads the `pub_taches_jours` view (kept: the push uses its rule for Keystone tasks). |
-| Planned tasks: owner of the precedence | Keystone sends the schedule's named assignments and the tasks not covered by one (§ 7.2): Cursus proposes one line per task; confirm with EPC2i that a to-do inside an assignment of the same person and activity is not proposed on its own. |
+| Planned tasks: owner of the precedence | Keystone sends the schedule's named assignments and the tasks not covered by one (§ 7.2): Cursus proposes one line per task; confirm with the company that a to-do inside an assignment of the same person and activity is not proposed on its own. |
 | Planned tasks: weekend and holidays | Tasks follow `pub_taches_jours` (Monday–Friday); assignments follow the activity's working calendar (a 6-day site calendar includes Saturday). Cursus zeroes holidays, absences and days off itself. |
 | Matricule in cancellations at exit | Cursus `server/src/actions/sorties.ts:71` sends `absence.annulee` with the default `EMP-xxxx` matricule (`absenceKeystone('absence.annulee', a)`) instead of `identifiantKeystone(...)`, unlike the other senders. Keystone removes the weeks by absence id, so it copes, but the matricule differs after the payroll-matricule switch. |
-| Project identifier | Keystone sends and expects its own project codes until EPC2i settles the shared project key (NEW-SYS-1 / R-022). |
-| Half days | Sent as whole days (Cursus's rule); Keystone stores whole days. A half-day field only if EPC2i asks for it. |
+| Project identifier | Keystone sends and expects its own project codes until the company settles the shared project key (NEW-SYS-1 / R-022). |
+| Half days | Sent as whole days (Cursus's rule); Keystone stores whole days. A half-day field only if the company asks for it. |
 | Refusal body | Keystone answers `{ ok, error }`; adding Cursus's suggested `code` is possible if Cursus wants it. |
 | Travel decisions | Keystone stores `demande.decision` only; updating the Keystone travel request from it (by `reference`) is a later lot. |
 

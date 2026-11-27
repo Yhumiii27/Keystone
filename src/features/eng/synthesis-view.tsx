@@ -64,7 +64,7 @@ export function SynthesisBody({ view, t, pack }: { view: SynthesisScreenView; t:
   return (
     <div className={s.page}>
       <EngKpis kpis={view.kpis} />
-      {/* R-191: EPC2i's share of the engineering pack and its % completeness (G2 target above 80 %). */}
+      {/* R-191: The company's share of the engineering pack and its % completeness (G2 target above 80 %). */}
       {pack && <EngineeringPackCard view={pack} t={t} />}
 
       <div className={cx('card', 'elev-sm', s.cardMatrix)}>

@@ -17,7 +17,7 @@
 
 ## 2. Ce que le module doit permettre
 
-Préparer, documenter, suivre et clôturer chaque envoi de matériel d’EPC2i vers le site de la filiale (ou d’un client
+Préparer, documenter, suivre et clôturer chaque envoi de matériel de l’entreprise vers le site de la filiale (ou d’un client
 externe) : quoi part, dans quels colis et conteneurs, par quel transport, avec quels documents, où en est l’envoi, et ce
 qui est arrivé (ou manque) à la réception sur site.
 
@@ -36,9 +36,9 @@ qui est arrivé (ou manque) à la réception sur site.
 | **Réception sur site** | À l’arrivée, pointage colis par colis (reçu, manquant, endommagé) ; un écart crée une **réserve** (punch list, R-185 : rattachée à l’équipement) ; la réception soldée passe l’expédition en « réceptionnée ». |
 | **Liens** | Dates réelles d’enlèvement et d’arrivée → jalons `expedition` et `arrivee_site` de `pub_jalons_projets` ; étape *Expédition* du cycle de vie (livraisons cochées par le module) ; risque « retard de fret » proposé quand l’ETA dépasse le besoin site. |
 | **Filiale / CAPEX** | La filiale suit l’avancement dans l’application CAPEX via une vue **`pub_expeditions`** (expédition, équipement, statut, ETD / ETA, dates réelles, nombre de colis — sans valeurs) ; pas d’accès filiale dans Keystone (cohérent avec R-190). |
-| **Droits** | Préparation et suivi : chef de projet et responsables du projet, **rôle logistique** si EPC2i en a un (sinon chef de projet) ; valeurs et coûts : comme le budget ; lecture : équipe projet. |
+| **Droits** | Préparation et suivi : chef de projet et responsables du projet, **rôle logistique** si l’entreprise en a un (sinon chef de projet) ; valeurs et coûts : comme le budget ; lecture : équipe projet. |
 | **Sage X3** | Rien d’échangé au départ (A-1a « à discuter ») ; les coûts de fret réels arriveront avec les extractions X3 (R-034). |
-| **Hors périmètre** | Réservation de fret, suivi GPS / API transitaire, gestion des stocks de la filiale, rapatriement de matériel (retour chantier → EPC2i), outillage envoyé sur chantier (proposition P7). |
+| **Hors périmètre** | Réservation de fret, suivi GPS / API transitaire, gestion des stocks de la filiale, rapatriement de matériel (retour chantier → l’entreprise), outillage envoyé sur chantier (proposition P7). |
 
 **Ordre de construction proposé** : (1) expéditions, colis, chargements, contrôle colisage ↔ nomenclature ; (2) transport,
 jalons, réception sur site et réserves ; (3) douane, valeurs, coûts et documents (PDF + Codex) ; (4) liens jalons CAPEX,
@@ -52,24 +52,24 @@ cycle de vie, risque et vue `pub_expeditions` (demande à Matrix pour la copie e
 4. **Contrôle bloquant** : le colisage doit être soldé (ou l’écart justifié) avant de cocher « Colisage & documents douaniers » (recommandé) ?
 5. **Réception sur site** : pointage colis par colis, un écart crée une réserve sur l’équipement (recommandé) ?
 6. **Filiale** : suivi dans l’application CAPEX par une vue `pub_expeditions` sans valeurs, sans accès dans Keystone (recommandé) ?
-7. **Qui prépare les expéditions** : y a-t-il un rôle « logistique / supply chain » chez EPC2i (nouveau profil), ou le chef de projet et l’acheteur ?
-8. **Données à fournir** : transitaires habituels, Incoterms pratiqués, modèles de packing list / facture proforma d’EPC2i.
+7. **Qui prépare les expéditions** : y a-t-il un rôle « logistique / supply chain » chez l’entreprise (nouveau profil), ou le chef de projet et l’acheteur ?
+8. **Données à fournir** : transitaires habituels, Incoterms pratiqués, modèles de packing list / facture proforma de l’entreprise.
 
 ## 5. Décisions du responsable produit (25 oct. 2026)
 
 1. **Pas de vue portefeuille** : une vue projet seulement (écran « Expéditions » du projet).
 2. **Le transport s’organise d’après l’Incoterm du contrat du projet** : le contrat porte son Incoterm ; les étapes à la
-   charge d’EPC2i (emballage, chargement, dédouanement export, transport principal, assurance, dédouanement import,
+   charge de l’entreprise (emballage, chargement, dédouanement export, transport principal, assurance, dédouanement import,
    déchargement, livraison site) en découlent.
 3. **Keystone génère tous les documents nécessaires, sauf les factures** (facture commerciale, facture douane / proforma) :
    packing list, liste de colisage par conteneur, bon de livraison, marquage des colis, lettre de voiture CMR,
    instructions d’expédition au transitaire (pour le B/L ou la LTA), demande de certificat d’origine / EUR.1 et données
-   de la déclaration d’export ; formats standard d’EPC2i fournis plus tard (modèles génériques en attendant).
+   de la déclaration d’export ; formats standard de l’entreprise fournis plus tard (modèles génériques en attendant).
 4. **Le contrôle du colisage bloque** la case « Colisage & documents douaniers » tant qu’il n’est pas soldé.
 5. **Un écart à la réception crée une réserve** (sur l’équipement).
 6. **La filiale suit dans Arche, rien dans Keystone** — et c’est vrai pour tous les points où la filiale (client interne)
    avait accès à Keystone : ces éléments remontent dans Arche par les vues `pub_`, plus dans Keystone.
-7. **Un profil « Logistique » existe** chez EPC2i : nouveau profil Keystone qui prépare et suit les expéditions.
-8. **Les transitaires sont des externes sans accès** : EPC2i saisit elle-même dans Keystone ce qu’il faut noter.
+7. **Un profil « Logistique » existe** chez l’entreprise : nouveau profil Keystone qui prépare et suit les expéditions.
+8. **Les transitaires sont des externes sans accès** : l’entreprise saisit elle-même dans Keystone ce qu’il faut noter.
 9. **Incoterms paramétrables** depuis l’administration ; tous les Incoterms 2020 créés au départ, avec une description.
-10. **Packing lists** : EPC2i déclare le nombre de conteneurs et leur contenu ; formats standard fournis plus tard.
+10. **Packing lists** : l’entreprise déclare le nombre de conteneurs et leur contenu ; formats standard fournis plus tard.

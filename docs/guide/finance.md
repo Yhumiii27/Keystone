@@ -67,7 +67,7 @@ what-if, majorations du chantier. Une personne sans rôle de la grille n’est *
 « Taux manquant »), jamais à un taux inventé.
 
 Les cinq majorations livrées (heures supplémentaires × 1,25, samedi × 1,5, dimanche et jour férié × 2, nuit × 1,3, astreinte
-× 0,35) sont des valeurs provisoires en attente des valeurs d’EPC2i (R-178).
+× 0,35) sont des valeurs provisoires en attente des valeurs de l’entreprise (R-178).
 
 ### 4. Facturation, budget et heures (consultation)
 

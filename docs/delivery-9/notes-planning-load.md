@@ -142,7 +142,7 @@ the window on both screens ("Hours by role, next 8 weeks" / "8 weeks" / "week sh
 
 Answered on 18 Oct 2026 (fourth round, §5): 1 (named demo assignments: yes), 2 (external crews out of the load plan), 3 (keep
 2 h/d, warn the PM at J-15), 4 (department + skills-matrix levels are enough); 5 follows from answer 2 (the owner's 2 h/d count
-when an activity has no EPC2i labour). 6–8 stay open.
+when an activity has no company labour). 6–8 stay open.
 
 ## 5. Owner answers 18 Oct 2026 — fourth round
 
@@ -159,12 +159,12 @@ when an activity has no EPC2i labour). 6–8 stay open.
 `src/domain/planning-load.ts`:
 - **labour** (`isLabour`) = an assignment that carries hours: units × h/d, else planned hours (the spreading rule's own test).
   Equipment days and material tonnes are not labour.
-- **external labour** (`isExternalLabour`) = labour that is not EPC2i staff: **unnamed and without a department** (a crew, a
+- **external labour** (`isExternalLabour`) = labour that is not company staff: **unnamed and without a department** (a crew, a
   subcontractor, an imported labour resource matched to nobody — "Steel erection crew, Subcontractor · 6 ironworkers"), or
   **named after a person whose rate-grid role is external** (`rate_roles.is_external`, R-083: "Contractor — structural
   (external)"; no demo person has one).
-- **EPC2i labour** (`isInternalLabour`) = a named staff person, or an unnamed assignment carrying an EPC2i department (a role
-  such as "2 electricians · MEP"). Only EPC2i labour loads a person or a department.
+- **company labour** (`isInternalLabour`) = a named staff person, or an unnamed assignment carrying a company department (a role
+  such as "2 electricians · MEP"). Only company labour loads a person or a department.
 
 The assignments have no type column: the department is what the schedule import and the table import already set from the
 matched person (and what the levelling reads); an unnamed assignment without one cannot be placed in any capacity. No migration.
@@ -174,7 +174,7 @@ callers that classify any assignment).
 
 ### 5.2 Owner-only activities and the J-15 notice (answer 2)
 
-- **Load**: an activity's owner puts 2 h per working day on their department whenever the activity has **no EPC2i labour** —
+- **Load**: an activity's owner puts 2 h per working day on their department whenever the activity has **no company labour** —
   owner only (unchanged), but also an external crew only, or equipment / material only (the owner coordinates the subcontractor
   or the hire; before, any assignment cancelled the owner's share — open question 5 of §4).
 - **J-15 list** (`unassignedActivitiesAt(activities, assignments, today, days = 15)`, `listUnassignedActivities(today, code?)`):
@@ -271,6 +271,6 @@ hours = h/d × the activity's original duration, actual = planned × % complete,
 2. Should the J-15 notice also go to the co-PMs / deputies, and be sent again when the activity is still unassigned at J-5?
    Default: once, PM of record only (like the other alerts).
 3. External labour: is "no department" the right marker, or should the assignment carry an explicit internal / external type
-   (a column filled by the imports)? A subcontractor with a department would count as EPC2i labour today.
+   (a column filled by the imports)? A subcontractor with a department would count as company labour today.
 4. Skills: which activities / assignments require which skill and level (data the owner provides) before the trade can be
    refined by the skills matrix.

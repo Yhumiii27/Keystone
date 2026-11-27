@@ -1,6 +1,6 @@
 // Shipments — /projects/[code]/shipments (R-158 lot A; owner's decisions of 25 Oct 2026, docs/delivery-9/cadrage-r158-expeditions.md
 // § 5; notes docs/delivery-9/notes-r158-shipments.md). The project's shipments of its equipment to the site: transport organised
-// from the contract's Incoterm (decision 2), loads and their content declared by EPC2i (decision 10), the packing control against
+// from the contract's Incoterm (decision 2), loads and their content declared by the company (decision 10), the packing control against
 // the BOM of the shipment's equipment lines with its per-HS-code summary (decision 4). Editors: the director, Logistics (every
 // project) and the project's leads (`canEditShipments`); the team and the other internal roles read; the client is refused
 // (R-042). Header primary "New shipment" for the editors when the project has an equipment line.

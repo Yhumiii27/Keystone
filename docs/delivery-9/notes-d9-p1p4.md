@@ -23,7 +23,7 @@ au-dessus du planning fournisseur (R-204) :
   défaut, jamais dans le futur), note. Une ligne par commande (`po_expediting`).
 - **Jalons d’inspection** chez le fournisseur (`po_inspections`, numérotés I-1, I-2… par commande) : nature (revue de plans,
   inspection matière, inspection en cours de fabrication, **FAT**, inspection avant expédition, autre), nom (par défaut la
-  nature), lieu (usine du fournisseur par défaut), date prévue, inspecteur (texte : une personne d’EPC2i ou un organisme tiers),
+  nature), lieu (usine du fournisseur par défaut), date prévue, inspecteur (texte : une personne de l’entreprise ou un organisme tiers),
   **résultat** (planifiée, conforme, conforme avec réserves, non conforme), date du résultat (jamais dans le futur), commentaire.
   Une inspection encore planifiée se modifie ou se supprime ; une inspection enregistrée est conservée (enregistrement qualité) :
   on enregistre une contre-inspection.

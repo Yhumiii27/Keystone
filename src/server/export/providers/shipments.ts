@@ -42,7 +42,7 @@ async function shipmentsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | n
       col('ref', t('Shipment'), 'text', 10), col('step', t('Step'), 'text', 28), col('party', t('Party'), 'text', 14), col('planned', t('Planned'), 'date'),
       col('actual', t('Done on'), 'date'), col('note', t('Note'), 'text', 30),
     ], data.shipments.flatMap((s) => shipmentSteps(inc?.split ?? null, s.steps, todayIso(ctx)).map((st) => ({
-      ref: s.ref, step: t(INCOTERM_STEP_LABEL[st.step]), party: st.tracked ? t('EPC2i (seller)') : t('Buyer'), planned: st.plannedOn, actual: st.actualOn, note: dt(st.note),
+      ref: s.ref, step: t(INCOTERM_STEP_LABEL[st.step]), party: st.tracked ? t('Company (seller)') : t('Buyer'), planned: st.plannedOn, actual: st.actualOn, note: dt(st.note),
     })))),
     sheet(t('Loads and content'), [
       col('ref', t('Shipment'), 'text', 10), col('load', t('Load number'), 'integer'), col('type', t('Load type'), 'text', 16), col('identifier', t('Container number or plate'), 'text', 18),

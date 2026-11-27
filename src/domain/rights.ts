@@ -145,7 +145,7 @@ export const roleReadOnly = (role: RoleKey, screen: ScreenId) => financeReadOnly
 
 /**
  * R-159: the fabrication follow-up and the inspections of a purchase order (plan, record the result, report the NCR) — the
- * portfolio director, procurement and quality, on every project (EPC2i's purchasing and quality serve every project, like
+ * portfolio director, procurement and quality, on every project (the company's purchasing and quality serve every project, like
  * Logistics on the shipments; décision prise sans demander). The project's PMs and the other internal roles read.
  */
 export const EXPEDITING_ROLES: readonly RoleKey[] = ['director', 'procurement', 'quality'];
@@ -164,7 +164,7 @@ export const canSeeFxExposure = (role: string) => (FX_ROLES as readonly string[]
 
 /**
  * R-158: who prepares and follows a project's shipments (Shipments screen: shipments, loads, content, packing control, transport
- * steps, status) — the portfolio director and Logistics on every project (like Finance on the contract: EPC2i's logistics serves
+ * steps, status) — the portfolio director and Logistics on every project (like Finance on the contract: The company's logistics serves
  * every project, not a named team), or one of the project's leads (PM of record, co-PM, deputy) whose workspace has the screen.
  * The rest of the team and the other roles read.
  */

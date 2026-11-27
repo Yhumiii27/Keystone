@@ -4,7 +4,7 @@ Profil de démonstration : **Camille Verdier** (coordinatrice logistique, servic
 [tronc commun](README.md).
 
 Le rôle **Logistique** vient de la décision 7 du responsable produit du 25 oct. 2026 (R-158, module Expéditions) : la
-logistique d’EPC2i prépare et suit les expéditions du matériel vers le site de la filiale ou du client. En production, la DSI
+logistique de l’entreprise prépare et suit les expéditions du matériel vers le site de la filiale ou du client. En production, la DSI
 l’attribue par le rôle d’application Entra ID `Keystone.Logistics` (valeur `logistics`) ou par un groupe associé à `logistics`
 ([`docs/EXPLOITATION.md`](../EXPLOITATION.md) § 6).
 
@@ -39,7 +39,7 @@ en retard, écarts de colisage à solder.
 4. **Valider la liste de colisage** : l’expédition passe « préparée ». Une modification du contenu la ramène en brouillon.
    Le livrable « Colisage & documents douaniers » du cycle de vie ne se coche que lorsque toutes les expéditions du projet sont
    validées.
-5. **Organiser le transport** d’après l’Incoterm du contrat : les étapes à la charge d’EPC2i (emballage, chargement,
+5. **Organiser le transport** d’après l’Incoterm du contrat : les étapes à la charge de l’entreprise (emballage, chargement,
    dédouanement export, transport principal, assurance, livraison site… selon l’Incoterm) se planifient et se datent
    (« Modifier » sur l’étape) ; celles de l’acheteur sont affichées sans suivi.
 6. **Suivre** : « Marquer enlevée » (départ réel), « Marquer en transit », « Marquer arrivée » (arrivée réelle). Une alerte

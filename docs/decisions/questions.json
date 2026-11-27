@@ -450,7 +450,7 @@
     },
     {
      "id": "I-1a",
-     "title": "Hébergement de Keystone (et des applications EPC2i)",
+     "title": "Hébergement de Keystone (et des applications Atrium)",
      "question": "Où Keystone doit-il être hébergé en production : sur le cloud Microsoft en France, sur un cloud souverain français ou sur un serveur interne ?",
      "context": "Aujourd'hui, Keystone tourne sur un Mac (application locale avec base embarquée), ce qui ne permet pas de l'utiliser à plusieurs. La cible comprend une base PostgreSQL, le serveur web, un processus de synchronisation en tâche de fond et un stockage de fichiers. Les données clients sont concernées, et Cursus, Vigie et Codex ont le même besoin d'hébergement.",
      "options": [
@@ -466,7 +466,7 @@
       },
       {
        "key": "c",
-       "label": "Serveur interne EPC2i",
+       "label": "Serveur interne de l’entreprise",
        "detail": "Vous gardez la main sur tout, mais les sauvegardes, la sécurité et l'accès des clients externes sont à votre charge."
       }
      ],
@@ -518,7 +518,7 @@
       {
        "key": "b",
        "label": "Autre fournisseur d'entreprise (Google, Okta…)",
-       "detail": "Possible grâce aux standards de connexion OIDC ou SAML, si EPC2i ne gère pas ses comptes avec Microsoft."
+       "detail": "Possible grâce aux standards de connexion OIDC ou SAML, si l’entreprise ne gère pas ses comptes avec Microsoft."
       },
       {
        "key": "c",
@@ -564,7 +564,7 @@
      "id": "I-3a",
      "title": "Ordre de branchement des connecteurs réels",
      "question": "Dans quel ordre faut-il remplacer les connecteurs simulés par de vrais échanges ?",
-     "context": "Tous les échanges sont aujourd'hui simulés : avec Cursus, Vigie et Codex (les applications EPC2i), Sage X3, SolidWorks PDM, Outlook et Teams. Lucca n'est plus nécessaire pour les heures, qui viennent de Cursus.",
+     "context": "Tous les échanges sont aujourd'hui simulés : avec Cursus, Vigie et Codex (les applications Atrium), Sage X3, SolidWorks PDM, Outlook et Teams. Lucca n'est plus nécessaire pour les heures, qui viennent de Cursus.",
      "options": [
       {
        "key": "a",
@@ -607,7 +607,7 @@
       {
        "key": "c",
        "label": "Via un outil d'intégration existant",
-       "detail": "Si EPC2i dispose déjà d'un outil d'échange de données relié à X3."
+       "detail": "Si l’entreprise dispose déjà d'un outil d'échange de données relié à X3."
       }
      ],
      "recommended": "a",
@@ -4469,7 +4469,7 @@
       },
       {
        "key": "per_org",
-       "label": "Langue fixée par organisation (EPC2i FR, client = contrat)",
+       "label": "Langue fixée par organisation (entreprise FR, client = contrat)",
        "detail": "Personne ne choisit sa langue : l'interne reste en français et le portail client suit la langue du contrat."
       }
      ],

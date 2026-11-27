@@ -58,7 +58,7 @@ describe('R-044 · the Finance persona', () => {
     // R-158: + the Logistics persona; D9-06: the client persona is gone — nine users.
     expect((await listUsers()).length).toBe(9);
     const [p] = await db.select({ email: persons.email }).from(persons).where(eq(persons.fullName, 'Léa Marchand'));
-    expect(p.email).toBe('lea.marchand@epc2i.fr');
+    expect(p.email).toBe('lea.marchand@atrium.example');
   });
 
   it('backfill of a database seeded before delivery 8: created once, then a no-op', async () => {

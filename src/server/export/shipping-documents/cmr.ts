@@ -1,7 +1,7 @@
 // R-158 lot B — CMR consignment note (lettre de voiture CMR) for road transport, with the boxes of the CMR convention's form:
 // sender, consignee, place of delivery, place and date of taking over, documents attached, the goods (marks, packages, nature,
 // statistical number, gross weight, volume), the sender's instructions, the carrier and the three signatures. No value.
-// Generic layout until EPC2i's standard (pre-printed) form: replace this file to change it.
+// Generic layout until the company's standard (pre-printed) form: replace this file to change it.
 import { col, sheet } from '../providers/common';
 import { consigneeText, contentRows, day, genericFootnote, header, incotermText, SHIPPER, typed } from './common';
 import type { ShippingTemplate } from './types';

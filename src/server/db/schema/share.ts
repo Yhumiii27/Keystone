@@ -1,4 +1,4 @@
-// Data shared with the other EPC2I tools (docs/delivery-9/notes-share-views.md). Most pub_ views read the business tables
+// Data shared with the other Atrium tools (docs/delivery-9/notes-share-views.md). Most pub_ views read the business tables
 // directly (drizzle/0035_share.sql, 0038_share_followup.sql); this table holds what SQL cannot compute: a project's earned-value
 // progress and SPI, computed in TypeScript at its data date (src/server/dal/evm.ts) and refreshed by the scheduled job
 // `share-progress` (src/server/dal/share-progress.ts). Read by pub_avancement_projets (Arche, R-189). Sales side only: no cost,

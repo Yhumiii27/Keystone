@@ -67,13 +67,13 @@ describe('roles', () => {
 
 describe('identity e-mail', () => {
   it('takes email, else preferred_username, else upn, lower-cased; non-addresses are ignored', () => {
-    expect(emailFromClaims({ email: ' Romain.Aubert@EPC2i.fr ', preferred_username: 'x@y.fr' })).toBe('romain.aubert@epc2i.fr');
-    expect(emailFromClaims({ preferred_username: 'R.Aubert@epc2i.fr' })).toBe('r.aubert@epc2i.fr');
-    expect(emailFromClaims({ preferred_username: 'raubert', upn: 'raubert@epc2i.fr' })).toBe('raubert@epc2i.fr');
+    expect(emailFromClaims({ email: ' Romain.Aubert@Atrium.example ', preferred_username: 'x@y.fr' })).toBe('romain.aubert@atrium.example');
+    expect(emailFromClaims({ preferred_username: 'R.Aubert@atrium.example' })).toBe('r.aubert@atrium.example');
+    expect(emailFromClaims({ preferred_username: 'raubert', upn: 'raubert@atrium.example' })).toBe('raubert@atrium.example');
     expect(emailFromClaims({ email: 'not an address', preferred_username: '' })).toBeNull();
     // An e-mail its domain owner did not verify is ignored (nOAuth): the UPN identifies the person instead.
-    expect(emailFromClaims({ email: 'marie.lefebvre@epc2i.fr', xms_edov: false, preferred_username: 'guest_x.com#EXT#@epc2i.onmicrosoft.com' })).toBe('guest_x.com#ext#@epc2i.onmicrosoft.com');
-    expect(emailFromClaims({ email: 'marie.lefebvre@epc2i.fr', xms_edov: true })).toBe('marie.lefebvre@epc2i.fr');
+    expect(emailFromClaims({ email: 'marie.lefebvre@atrium.example', xms_edov: false, preferred_username: 'guest_x.com#EXT#@atrium-example.onmicrosoft.com' })).toBe('guest_x.com#ext#@atrium-example.onmicrosoft.com');
+    expect(emailFromClaims({ email: 'marie.lefebvre@atrium.example', xms_edov: true })).toBe('marie.lefebvre@atrium.example');
     expect(normaliseEmail('a@b')).toBeNull();
     expect(normaliseEmail('a b@c.fr')).toBeNull();
     expect(normaliseEmail(`${'a'.repeat(250)}@b.fr`)).toBeNull();
@@ -82,7 +82,7 @@ describe('identity e-mail', () => {
 
 describe('sign-in decision', () => {
   const user = (over: Partial<SignInUser> = {}): SignInUser => ({ userId: 'u1', personId: 'p1', entraObjectId: null, active: true, ...over });
-  const base = { oid: 'oid-1', email: 'romain.aubert@epc2i.fr', roles: ['pm' as const], byObjectId: null, persons: [{ personId: 'p1' }], userOfPerson: null };
+  const base = { oid: 'oid-1', email: 'romain.aubert@atrium.example', roles: ['pm' as const], byObjectId: null, persons: [{ personId: 'p1' }], userOfPerson: null };
 
   it('signs in the person of the e-mail, creating or reusing their user', () => {
     expect(decideSignIn(base)).toEqual({ ok: true, personId: 'p1', userId: null, roles: ['pm'] });

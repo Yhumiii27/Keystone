@@ -1,6 +1,6 @@
 // R-158 lot B — delivery note (bon de livraison): what is delivered to the site, by load, with blank columns for the consignee to
 // check the quantities received, and the signatures of the shipper, the carrier and the consignee. No value. Generic layout until
-// EPC2i's standard format: replace this file to change it.
+// The company's standard format: replace this file to change it.
 import { col, sheet } from '../providers/common';
 import { contentRows, genericFootnote, header, partyFields, transportFields } from './common';
 import type { ShippingTemplate } from './types';

@@ -5,7 +5,7 @@
 import '@norma/charte/nocturne.css';
 import './globals.css';
 import { interClassName } from '@norma/charte/fonts/inter';
-import { THEME_COOKIE, themeOf } from '@norma/charte/ds/theme';
+import { themeFromCookieHeader, themeOf } from '@norma/charte/ds/theme';
 import { useSyncExternalStore } from 'react';
 import { I18nProvider } from '@/i18n/client';
 import { DEFAULT_LANG, type Lang } from '@/i18n/translate';
@@ -18,10 +18,9 @@ function cookieLang(): Lang {
   return (m?.[1] as Lang | undefined) ?? DEFAULT_LANG;
 }
 
-/** Display of the epc2i-theme cookie (dark, the default, on the first render). */
+/** Display of the atrium-theme cookie, the former name as a fallback (dark, the default, on the first render). */
 function cookieTheme(): string {
-  const m = new RegExp(`(?:^|;\\s*)${THEME_COOKIE}=([a-z]+)(?:;|$)`).exec(document.cookie);
-  return themeOf(m?.[1]);
+  return themeFromCookieHeader(document.cookie);
 }
 
 export default function GlobalError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {

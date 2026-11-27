@@ -73,7 +73,7 @@ export interface InboxNeed extends NeedRecord {
   /** Latest first. */
   answers: NeedAnswerRow[];
   latest: NeedAnswerRow | null;
-  /** The EPC2i project delivering the need (K-10), from its answers. */
+  /** The Keystone project delivering the need (K-10), from its answers. */
   projectCode: string | null;
   /** Default central amount of a new answer (catalogue price × quantity, E50), null without catalogue price. */
   defaultAmount: number | null;
@@ -302,7 +302,7 @@ export type NeedProjectInput = Omit<WizardCreateInput, 'equipments' | 'capexLink
 };
 
 /**
- * K-10, (a): creates the EPC2i project from an ordered need with the wizard's creation path (`createWizardProject`): EQ-01 = the
+ * K-10, (a): creates the Keystone project from an ordered need with the wizard's creation path (`createWizardProject`): EQ-01 = the
  * need's equipment line (type from its catalogue version, quantity, options, capacity, besoin_ref, catalogue code and version),
  * the project's CAPEX link set, and — in the same transaction — the need's answers pointing at the project and (R-190) its client
  * flagged as the subsidiary when it is that subsidiary. Never automatic.

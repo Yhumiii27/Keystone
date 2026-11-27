@@ -16,9 +16,9 @@ describe('e-mail transport (R-199, R-036)', () => {
 
   it('file: the .eml folder (default <data dir>/mail, or KEYSTONE_MAIL_DIR relative to the working directory)', () => {
     expect(parse({ KEYSTONE_MAIL_TRANSPORT: 'file' }).config.mail.dir).toBe(path.join(cwd, '.data', 'mail'));
-    const r = parse({ KEYSTONE_MAIL_TRANSPORT: 'FILE', KEYSTONE_MAIL_DIR: 'outbox', KEYSTONE_MAIL_FROM: 'Keystone <keystone@epc2i.fr>', KEYSTONE_PUBLIC_URL: 'https://keystone.epc2i.fr/' });
+    const r = parse({ KEYSTONE_MAIL_TRANSPORT: 'FILE', KEYSTONE_MAIL_DIR: 'outbox', KEYSTONE_MAIL_FROM: 'Keystone <keystone@atrium.example>', KEYSTONE_PUBLIC_URL: 'https://keystone.atrium.example/' });
     expect(r.errors).toEqual([]);
-    expect(r.config.mail).toEqual({ transport: 'file', dir: path.join(cwd, 'outbox'), from: 'Keystone <keystone@epc2i.fr>', publicUrl: 'https://keystone.epc2i.fr' });
+    expect(r.config.mail).toEqual({ transport: 'file', dir: path.join(cwd, 'outbox'), from: 'Keystone <keystone@atrium.example>', publicUrl: 'https://keystone.atrium.example' });
   });
 
   it('smtp and graph await IT: refused with a clear message (production stops, elsewhere the default none applies)', () => {
@@ -40,9 +40,9 @@ describe('e-mail transport (R-199, R-036)', () => {
   });
 
   it('the sender must be an address; the links follow KEYSTONE_PUBLIC_URL, else the Entra redirect origin', () => {
-    expect(formatIssues(parse({ KEYSTONE_MAIL_FROM: 'Keystone' }).errors)).toEqual(['KEYSTONE_MAIL_FROM must be an e-mail address, optionally with a name: Keystone <keystone@epc2i.fr>']);
+    expect(formatIssues(parse({ KEYSTONE_MAIL_FROM: 'Keystone' }).errors)).toEqual(['KEYSTONE_MAIL_FROM must be an e-mail address, optionally with a name: Keystone <keystone@atrium.example>']);
     expect([mailAddressOf('a@b.fr'), mailAddressOf('Name <a@b.fr>'), mailAddressOf('a@b'), mailAddressOf('<a@b.fr')]).toEqual(['a@b.fr', 'a@b.fr', null, null]);
-    expect(parse({ ENTRA_REDIRECT_URI: 'https://pm.epc2i.fr/api/auth/callback' }).config.mail.publicUrl).toBe('https://pm.epc2i.fr');
+    expect(parse({ ENTRA_REDIRECT_URI: 'https://pm.atrium.example/api/auth/callback' }).config.mail.publicUrl).toBe('https://pm.atrium.example');
     expect(formatIssues(parse({ KEYSTONE_PUBLIC_URL: 'ftp://x' }).errors)).toEqual(['KEYSTONE_PUBLIC_URL must be an http:// or https:// URL']);
   });
 

@@ -18,7 +18,7 @@
 
 | Item | Proposal |
 |---|---|
-| Base URL | `VIGIE_API_URL` on Keystone's side (e.g. `https://vigie.epc2i.local`). Unset → Keystone runs its local mock over the mirror. |
+| Base URL | `VIGIE_API_URL` on Keystone's side (e.g. `https://vigie.atrium.local`). Unset → Keystone runs its local mock over the mirror. |
 | Authentication | **PLACEHOLDER (V-3):** header `X-Api-Key: <VIGIE_API_KEY>` on every call. Provisional: Vigie chooses its scheme (API key, OAuth client credentials, mTLS). |
 | Format | JSON, UTF-8, `content-type: application/json`. Dates `YYYY-MM-DD`, timestamps ISO 8601 with offset. |
 | Time-out | Keystone waits 5 s per call; an error or time-out keeps the last mirror (the screen says when it was refreshed). |

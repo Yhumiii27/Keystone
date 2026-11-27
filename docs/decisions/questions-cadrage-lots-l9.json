@@ -10,7 +10,7 @@
   ]},
   {"id": "planning", "title": "Planning avancé", "item": "R-206 · R-200 · R-204", "questions": [
    {"id": "K-206", "q": "Diagnostic de qualité du planning (14 contrôles DCMA) et analyse des retards ?", "context": "Liens manquants, contraintes dures, marges négatives, durées trop longues… et comparaison référence / réel par activité, glissement du chemin critique. Ne change aucune donnée : c’est un rapport.", "default": "Lancer : une carte « Qualité du planning » sur l’écran Planning, avec le détail par contrôle", "alts": ["Lancer, mais seulement les 14 contrôles (sans l’analyse des retards)", "Plus tard", "Non"]},
-   {"id": "K-206b", "q": "Les seuils des contrôles DCMA sont-ils ceux du standard ?", "context": "Exemples du standard : moins de 5 % de contraintes dures, moins de 5 % d’activités de plus de 44 jours ouvrés, aucune marge négative.", "default": "Oui, les seuils du standard, modifiables plus tard dans Paramètres", "alts": ["Seuils propres à EPC2i, que je donnerai"]},
+   {"id": "K-206b", "q": "Les seuils des contrôles DCMA sont-ils ceux du standard ?", "context": "Exemples du standard : moins de 5 % de contraintes dures, moins de 5 % d’activités de plus de 44 jours ouvrés, aucune marge négative.", "default": "Oui, les seuils du standard, modifiables plus tard dans Paramètres", "alts": ["Seuils propres à l’entreprise, que je donnerai"]},
    {"id": "K-200", "q": "Nivellement automatique des ressources ?", "context": "Décaler les activités non critiques pour respecter la capacité des ressources, sur une copie du planning comparée à la référence avant d’être adoptée.", "default": "Plus tard : la capacité réelle attend les absences de Cursus (R-084)", "alts": ["Lancer maintenant, sur la capacité théorique", "Non"]},
    {"id": "K-204", "q": "Planning multi-niveaux (plannings fournisseurs consolidés, codes d’activité) ?", "context": "Modéliser les plannings des fournisseurs dans le chemin critique et les relier aux réceptions ; filtrer par lot d’achat, site ou équipement.", "default": "Plus tard", "alts": ["Lancer seulement les codes d’activité (filtres et regroupements)", "Lancer tout", "Non"]}
   ]},
@@ -29,7 +29,7 @@
    {"id": "K-207", "q": "Automatisations sans code (règles « si / alors » configurables) ?", "context": "Par exemple : « si une commande dépasse 50 k€, prévenir le directeur » ou « approuver automatiquement sous un seuil ». Les circuits d’approbation sont aujourd’hui fixés dans le code.", "default": "Plus tard : d’abord la procédure d’achats (R-094)", "alts": ["Lancer une version limitée aux notifications (pas d’approbation automatique)", "Non"]}
   ]},
   {"id": "langues", "title": "Langues", "item": "R-209", "questions": [
-   {"id": "K-209", "q": "Ajouter d’autres langues que le français et l’anglais ?", "context": "Les filiales passent par Arche ; Keystone sert surtout aux équipes d’EPC2i.", "default": "Non pour Keystone ; la question se pose pour Arche", "alts": ["Oui (précisez les langues dans la note)", "Plus tard"]}
+   {"id": "K-209", "q": "Ajouter d’autres langues que le français et l’anglais ?", "context": "Les filiales passent par Arche ; Keystone sert surtout aux équipes de l’entreprise.", "default": "Non pour Keystone ; la question se pose pour Arche", "alts": ["Oui (précisez les langues dans la note)", "Plus tard"]}
   ]}
  ]
 }

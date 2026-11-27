@@ -1,7 +1,7 @@
 # Keystone PM — guide utilisateur (bêta)
 
-Keystone PM est l’outil de gestion de projets et de portefeuille d’EPC2i. Ce guide décrit **ce que fait l’application
-aujourd’hui**, rôle par rôle. Il ne décrit pas les procédures d’EPC2i qui sont encore en cours de définition (procédure
+Keystone PM est l’outil de gestion de projets et de portefeuille de l’entreprise. Ce guide décrit **ce que fait l’application
+aujourd’hui**, rôle par rôle. Il ne décrit pas les procédures de l’entreprise qui sont encore en cours de définition (procédure
 d’achat, matrice RACI, gel hebdomadaire des données) : l’application ne les impose pas encore.
 
 Les guides décrivent la version de la **livraison 8**.
@@ -26,7 +26,7 @@ Le guide du **client** attend l’ouverture du portail client (I-2b, R-179). Les
 
 ## Prendre en main
 
-- **Se connecter.** En production : « Se connecter avec Microsoft » (compte EPC2i). Sur la bêta de démonstration : le
+- **Se connecter.** En production : « Se connecter avec Microsoft » (compte de l’entreprise). Sur la bêta de démonstration : le
   sélecteur **« Voir en tant que »** en bas de la barre latérale choisit un profil (aucun mot de passe : la bêta est protégée
   par l’identification du serveur).
 - **Navigateur ou application Windows.** Keystone s’ouvre dans un navigateur, de n’importe où ; sous Windows, ceux qui le

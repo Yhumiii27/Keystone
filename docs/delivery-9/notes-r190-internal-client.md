@@ -1,7 +1,7 @@
 # Livraison 9 — lot « client interne » (R-190, partie restante)
 
 Statut : construit sur la branche `r190-internal-client` (depuis `8c6b3cf`, « Merge pull request #34 ») le 24 oct. 2026, lancé par le
-responsable produit le même jour. Demande d’Arche **K-05** de l’entrée « Rattacher les projets EPC2i au CAPEX dans pub_projets
+responsable produit le même jour. Demande d’Arche **K-05** de l’entrée « Rattacher les projets Keystone au CAPEX dans pub_projets
 (R-190) » de `REQUESTS.md` : la partie « admettre qu’une filiale du groupe soit le client d’un projet (client interne) ». Le
 rattachement CAPEX (`projects.capex_code`, `besoin_ref`, carte « Rattachement CAPEX ») était déjà fait (lot share-views,
 `notes-share-views.md` § 4). Références : `docs/dig-prodi/ARCHITECTURE-CAPEX-KEYSTONE.md`, `notes-r187-capex-needs.md` (création du
@@ -130,7 +130,7 @@ puis revalide.
 - `npx next typegen && npm run typecheck && npm run lint` : sans erreur.
 - `npm test` : Test Files 399 passed | 1 skipped (400) · Tests 4314 passed | 11 skipped (4325).
 - `npx tsx --conditions=react-server scripts/db-check.ts` : All checks passed (343 contrôles, dont les deux de R-190).
-- PostgreSQL 16 local, disposition du serveur commun (socle `infra/postgres-socle/` rejoué sur une base `epc2i` neuve) :
+- PostgreSQL 16 local, disposition du serveur commun (socle `infra/postgres-socle/` rejoué sur une base commune neuve, `epc2i` jusqu’au renommage) :
   `npm run db:migrate` (seed demo) puis `db-check --postgres` : All checks passed ; `postgres.integration.test.ts` +
   `backup.test.ts` : 2 fichiers, 25 tests passés.
 - `E2E_PORT=3650 npm run test:e2e` : 26 passed.

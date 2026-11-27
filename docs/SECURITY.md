@@ -1,6 +1,6 @@
 # Security policy — Keystone PM
 
-Keystone PM is EPC2i's internal project and portfolio management application. This page says how its dependencies are watched
+Keystone PM is the company's internal project and portfolio management application. This page says how its dependencies are watched
 and updated, how to report a vulnerability, which advisories are known, and what an external penetration test must cover
 before production (R-174). The French runbook for IT is [`docs/EXPLOITATION.md`](EXPLOITATION.md).
 
@@ -56,7 +56,7 @@ switcher is a demonstration feature with no sign-in (and is only ever exposed be
 
 ### 4.1 Test accounts
 
-- IT creates, in the EPC2i Entra ID tenant, one test account per Keystone role — `director`, `pm`, `depthead`, `member`,
+- IT creates, in the company Entra ID tenant, one test account per Keystone role — `director`, `pm`, `depthead`, `member`,
   `englead`, `quality`, `procurement` (and `finance` once R-044 is merged) — each with the matching app role of the Keystone app
   registration (or a group mapped by `ENTRA_GROUP_ROLES`). A client account waits for the client portal (I-2b).
 - Each account's e-mail must be on a person in Keystone: the base is seeded for the test (the demo data set, whose persona

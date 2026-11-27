@@ -66,7 +66,7 @@ describe('GDPR reminder for Claude analysis (R-173)', () => {
 
 // Delivery 9 (R-187, Arche K-02): the capex connector — Arche's web app for the deep links, and where its views are read.
 describe('ARCHE_URL, ARCHE_SOURCE (R-187)', () => {
-  const PG = 'postgres://keystone_app:secret@db:5432/epc2i';
+  const PG = 'postgres://keystone_app:secret@db:5432/atrium';
   it('default: Arche on localhost:3400; the views read on the shared server with DATABASE_URL, else the demo simulation', () => {
     expect(parse({}).config.arche).toEqual({ url: 'http://localhost:3400', source: 'simulation' });
     expect(parse({ DATABASE_URL: PG }).config.arche).toEqual({ url: 'http://localhost:3400', source: 'server' });
@@ -87,7 +87,7 @@ describe('ARCHE_URL, ARCHE_SOURCE (R-187)', () => {
 
 // Matrix D21: the subsidiaries connector — where matrix.pub_filiales is read.
 describe('MATRIX_SOURCE (Matrix D21)', () => {
-  const PG = 'postgres://keystone_app:secret@db:5432/epc2i';
+  const PG = 'postgres://keystone_app:secret@db:5432/atrium';
   it('default: read on the shared server with DATABASE_URL, else the demo simulation; "server" without DATABASE_URL is an error', () => {
     expect(parse({}).config.matrix).toEqual({ source: 'simulation' });
     expect(parse({ DATABASE_URL: PG }).config.matrix).toEqual({ source: 'server' });

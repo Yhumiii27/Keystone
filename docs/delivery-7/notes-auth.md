@@ -1,7 +1,7 @@
 # Delivery 7 — lot "auth" notes: Microsoft Entra ID sign-in (R-038) and real users (R-039)
 
 Scope: `docs/DELIVERY-7-PLAN.md` §1 (defaults for R-038 demo mode and R-040 role source) and §2 lot "auth".
-Owner decisions applied: I-2a (Entra ID for every EPC2i application), I-2b (no client access at launch: IT opens no
+Owner decisions applied: I-2a (Entra ID for every Atrium application), I-2b (no client access at launch: IT opens no
 client account; nothing in the code blocks it later), P-10a (a client sees only its organisation's projects), P-13
 (the author of an action is the signed-in user), D-7a (IT configures outside the app: no user-administration screen).
 
@@ -142,7 +142,7 @@ unique constraints `users_person_id_unique`, `users_entra_object_id_unique`. Dat
 1. **Who can sign in in production.** A user signs in only if their e-mail is on a person in Keystone. With the
    production seed (R-011, reference data only) nobody can sign in until the staff directory is loaded (R-027, Cursus
    import) or a first list of people with their e-mails is provided. Which comes first?
-2. **E-mail domain of the demo personas.** Assumed `prenom.nom@epc2i.fr` (the client persona keeps the prototype's
+2. **E-mail domain of the demo personas.** Assumed `prenom.nom@atrium.example` (the client persona keeps the prototype's
    `n.bensaid@port-exemple.fr`). Only the demo data set uses it.
 3. **Role order.** The default active role of a multi-role user is the highest in the order director, pm, depthead,
    englead, quality, procurement, member, client. Confirm, and confirm that rights follow the active role only.

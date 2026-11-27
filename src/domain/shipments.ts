@@ -47,7 +47,7 @@ export type ShipmentMode = (typeof SHIPMENT_MODES)[number];
 export const isShipmentMode = (v: unknown): v is ShipmentMode => typeof v === 'string' && (SHIPMENT_MODES as readonly string[]).includes(v);
 export const SHIPMENT_MODE_LABEL: Record<ShipmentMode, string> = { road: 'Road', sea: 'Sea', air: 'Air', multimodal: 'Multimodal' };
 
-/** Loads EPC2i declares (decision 10). */
+/** Loads the company declares (decision 10). */
 export const LOAD_TYPES = ['truck', 'c20', 'c40', 'c40hc', 'open_top', 'flat_rack', 'out_of_gauge'] as const;
 export type LoadType = (typeof LOAD_TYPES)[number];
 export const isLoadType = (v: unknown): v is LoadType => typeof v === 'string' && (LOAD_TYPES as readonly string[]).includes(v);
@@ -61,7 +61,7 @@ export const incotermModeMismatch = (incotermModes: 'any' | 'sea' | null, mode: 
 /** One transport step of a shipment, from the contract's Incoterm. */
 export interface ShipmentStepView {
   step: IncotermStep;
-  /** EPC2i organises and tracks it (the seller's under the Incoterm); the buyer's are shown, not tracked. */
+  /** The company organises and tracks it (the seller's under the Incoterm); the buyer's are shown, not tracked. */
   tracked: boolean;
   plannedOn: string | null;
   actualOn: string | null;

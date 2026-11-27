@@ -1,5 +1,5 @@
 // Sign-in rules (R-038 Microsoft Entra ID, R-039 real users) — pure, shared by the proxy, the auth routes and the DAL.
-// Decisions: I-2a (Entra ID for every EPC2i application), D9-06 / D9-22 (clients never see Keystone: no client role, a
+// Decisions: I-2a (Entra ID for every Atrium application), D9-06 / D9-22 (clients never see Keystone: no client role, a
 // token's 'client' role is ignored), DELIVERY-7-PLAN §1 (roles come from Entra ID — app roles in the token, or group ids mapped by IT in
 // configuration —, the person from the token e-mail matched to `persons`; no user-administration screen, D-7a).
 import type { RoleKey } from '@/config/screens';
@@ -129,7 +129,7 @@ export function normaliseEmail(v: unknown): string | null {
 
 /**
  * The e-mail that identifies the person: `email`, else `preferred_username`, else `upn` (Entra UPNs are addresses). An
- * `email` the token marks as unverified (`xms_edov: false`) is not used. Only tokens of the EPC2i tenant reach this
+ * `email` the token marks as unverified (`xms_edov: false`) is not used. Only tokens of the company tenant reach this
  * (issuer and tenant are checked), and the person is then bound to the Microsoft object id, not to the e-mail.
  */
 export function emailFromClaims(claims: IdentityClaims): string | null {

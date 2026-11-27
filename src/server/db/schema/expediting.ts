@@ -41,7 +41,7 @@ export const poInspections = pgTable(
     /** Where it is held ("Supplier's works, Lyon"); null = the supplier's works. */
     location: text('location'),
     plannedOn: date('planned_on', { mode: 'string' }),
-    /** Inspector as typed (a person of EPC2i, a third-party inspector). */
+    /** Inspector as typed (a person of the company, a third-party inspector). */
     inspectorName: text('inspector_name'),
     result: text('result').$type<PoInspectionResult>().notNull().default('planned'),
     resultOn: date('result_on', { mode: 'string' }),

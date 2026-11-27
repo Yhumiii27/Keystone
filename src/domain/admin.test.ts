@@ -231,7 +231,7 @@ describe('Activity & integrations rules (plumbKpis / actChips / actRows / connRo
   it('audit trail CSV (ISO 9001): header, newest first as given, RFC 4180 quoting, ISO timestamps', () => {
     // R-168: the user account (e-mail), the reason and the values before / after (JSON) follow the prototype's six columns.
     const csv = auditCsv([
-      { occurredAt: '2026-09-25T07:12:00.000Z', who: 'Romain Aubert', object: 'CR-008', change: 'status: Draft → In review', area: 'Change control', projectCode: 'HLT-026', userEmail: 'romain.aubert@epc2i.fr' },
+      { occurredAt: '2026-09-25T07:12:00.000Z', who: 'Romain Aubert', object: 'CR-008', change: 'status: Draft → In review', area: 'Change control', projectCode: 'HLT-026', userEmail: 'romain.aubert@atrium.example' },
       {
         occurredAt: '2026-09-24T15:30:00.000Z', who: 'Léa Marchand', object: 'Rate card', change: 'base: 82 → 85 €/h, "senior"', area: 'Settings', projectCode: null,
         userEmail: null, reason: 'Annual review', before: { rate: 82 }, after: { rate: 85 },
@@ -239,7 +239,7 @@ describe('Activity & integrations rules (plumbKpis / actChips / actRows / connRo
     ]);
     expect(csv.split('\r\n')).toEqual([
       'When (UTC),Who,Object,Change,Area,Project,User,Reason,Before,After,On behalf of',
-      '2026-09-25T07:12:00.000Z,Romain Aubert,CR-008,status: Draft → In review,Change control,HLT-026,romain.aubert@epc2i.fr,,,,',
+      '2026-09-25T07:12:00.000Z,Romain Aubert,CR-008,status: Draft → In review,Change control,HLT-026,romain.aubert@atrium.example,,,,',
       '2026-09-24T15:30:00.000Z,Léa Marchand,Rate card,"base: 82 → 85 €/h, ""senior""",Settings,,,Annual review,"{""rate"":82}","{""rate"":85}",',
       '',
     ]);

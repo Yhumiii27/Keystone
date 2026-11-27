@@ -86,11 +86,11 @@ export const MAIL_TRANSPORTS = ['none', 'file'] as const;
 export type MailTransportMode = (typeof MAIL_TRANSPORTS)[number];
 export const MAIL_TRANSPORTS_AWAITING_IT = ['smtp', 'graph'] as const;
 /** Sender of Keystone's e-mails when KEYSTONE_MAIL_FROM is unset (a domain that never delivers: IT names the real one). */
-export const DEFAULT_MAIL_FROM = 'Keystone <keystone@epc2i.invalid>';
+export const DEFAULT_MAIL_FROM = 'Keystone <keystone@atrium.invalid>';
 /** Keystone's address in e-mail links when neither KEYSTONE_PUBLIC_URL nor ENTRA_REDIRECT_URI is set (the Mac, port 3000). */
 export const DEFAULT_PUBLIC_URL = 'http://localhost:3000';
 
-/** "Keystone <keystone@epc2i.fr>" or "keystone@epc2i.fr" → its address; null when not one. */
+/** "Keystone <keystone@atrium.example>" or "keystone@atrium.example" → its address; null when not one. */
 export function mailAddressOf(v: string): string | null {
   const m = /^(?:[^<>@]*<([^<>\s@]+@[^<>\s@]+\.[^<>\s@]+)>|([^<>\s@]+@[^<>\s@]+\.[^<>\s@]+))$/.exec(v.trim());
   return m ? (m[1] ?? m[2]) : null;
@@ -241,7 +241,7 @@ const VARS = {
     )
     .optional(),
   KEYSTONE_MAIL_DIR: z.string().optional(),
-  KEYSTONE_MAIL_FROM: z.string().refine((v) => mailAddressOf(v) != null, 'must be an e-mail address, optionally with a name: Keystone <keystone@epc2i.fr>').optional(),
+  KEYSTONE_MAIL_FROM: z.string().refine((v) => mailAddressOf(v) != null, 'must be an e-mail address, optionally with a name: Keystone <keystone@atrium.example>').optional(),
   KEYSTONE_PUBLIC_URL: httpUrl.optional(),
   // R-017: the in-process read caches, on unless "off".
   KEYSTONE_READ_CACHE: onOff.optional(),
@@ -496,7 +496,7 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
       if (v[name] != null) warnings.push({ variable: name, message: 'is ignored unless KEYSTONE_FILE_SCAN=clamav' });
 
   const anthropic = v.ANTHROPIC_API_KEY ?? null;
-  // R-173 (GDPR): meeting transcripts analysed by Claude leave EPC2i for Anthropic, a sub-processor — with real data the
+  // R-173 (GDPR): meeting transcripts analysed by Claude leave the company for Anthropic, a sub-processor — with real data the
   // sub-processing agreement (DPA) must be signed. A reminder at start-up, no behaviour change.
   if (anthropic && v.KEYSTONE_AI !== 'off' && (production || v.KEYSTONE_SEED === 'production'))
     warnings.push({

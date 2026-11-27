@@ -1,6 +1,6 @@
 // R-158 lot A (owner's decision 9, 25 Oct 2026 — docs/delivery-9/cadrage-r158-expeditions.md § 5): the Incoterms, a reference
 // table parameterisable in administration (Settings), seeded with the 11 Incoterms 2020 in both seeds. Each Incoterm splits the
-// steps of a shipment between the seller (EPC2i) and the buyer (the client or the subsidiary); a shipment organises and tracks the
+// steps of a shipment between the seller (the company) and the buyer (the client or the subsidiary); a shipment organises and tracks the
 // seller's steps (decision 2). Pure module: no I/O, no translation (EN source labels; FR in src/i18n/extra/d9-shipments.json).
 //
 // Texts of an Incoterm (name, description) are reference data typed in two languages — columns `name_en` / `name_fr`,
@@ -30,7 +30,7 @@ export const INCOTERM_STEP_LABEL: Record<IncotermStep, string> = {
 
 export type IncotermParty = 'seller' | 'buyer';
 export const isIncotermParty = (v: unknown): v is IncotermParty => v === 'seller' || v === 'buyer';
-export const INCOTERM_PARTY_LABEL: Record<IncotermParty, string> = { seller: 'Seller · EPC2i', buyer: 'Buyer' };
+export const INCOTERM_PARTY_LABEL: Record<IncotermParty, string> = { seller: 'Seller · company', buyer: 'Buyer' };
 
 /** Who bears each step. */
 export type IncotermSplit = Record<IncotermStep, IncotermParty>;

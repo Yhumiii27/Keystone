@@ -38,7 +38,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
           <div className={s.wordmark}>{t('Keystone')}</div>
         </div>
         <CardTitle as="span">{t('Sign in to Keystone')}</CardTitle>
-        <p className={s.lead}>{t('Use your EPC2i Microsoft account.')}</p>
+        <p className={s.lead}>{t('Use your company Microsoft account.')}</p>
         {message && (
           <p className={cx(s.notice, s.alert)} role="alert">
             <WarningCircle size={16} className={s.noticeIcon} aria-hidden />

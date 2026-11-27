@@ -1,5 +1,5 @@
 // Keystone.exe — the Windows application of Keystone PM (R-210, owner's answer L9-X2 of 31 Oct 2026): the Keystone web
-// app of the EPC2i server in a native window (Microsoft Edge WebView2). The web access stays; each user chooses.
+// app of the Atrium server in a native window (Microsoft Edge WebView2). The web access stays; each user chooses.
 // Build: desktop/windows/build.ps1 (or the "Windows app" workflow, run by hand).
 using System.Reflection;
 using Microsoft.Web.WebView2.Core;

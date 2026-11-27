@@ -8,7 +8,7 @@
 //   Answers    Keystone's answer to a need (need_answers), published to Arche by keystone.pub_reponses_besoins (K-02, one row per
 //              answer, the most recent is authoritative): nature, qualification, reason, estimate class and range (K-03), lead time,
 //              validity, Codex document reference, project created at the order (K-10), status.
-//   Order      A need Arche marks `ordered` (G2 of its CAPEX) lets the director create the EPC2i project with the need's equipment
+//   Order      A need Arche marks `ordered` (G2 of its CAPEX) lets the director create the Keystone project with the need's equipment
 //              line, or add the line to an existing project — always a person's action, never automatic.
 import type { RoleKey } from '@/config/screens';
 import { ESTIMATE_CLASSES, estimateRange, isEstimateClass, offerClassError, type EstimateClass, type OfferNature } from './estimate-class';
@@ -139,7 +139,7 @@ export function parseNeedRow(r: Row): NeedRecord | null {
  * Portfolio › Projects in their workspace). Never the client; Finance does not have the Projects register.
  */
 export const CAPEX_NEED_READERS: readonly RoleKey[] = ['director', 'pm'];
-/** Who answers a need and creates the project at the order: the portfolio director (EPC2i's commercial commitment). */
+/** Who answers a need and creates the project at the order: the portfolio director (the company's commercial commitment). */
 export const CAPEX_NEED_WRITERS: readonly RoleKey[] = ['director'];
 export const canReadCapexNeeds = (role: string) => (CAPEX_NEED_READERS as readonly string[]).includes(role);
 export const canAnswerCapexNeeds = (role: string) => (CAPEX_NEED_WRITERS as readonly string[]).includes(role);

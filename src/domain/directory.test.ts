@@ -1,5 +1,5 @@
 // R-027 (NEW-CURSUS-2 "a"): matching Cursus's staff directory with Keystone's persons — matricule first, then the work
-// e-mail among EPC2i persons; ambiguous e-mails reported; external contacts never touched; new persons with a unique short
+// e-mail among company persons; ambiguous e-mails reported; external contacts never touched; new persons with a unique short
 // name; existing short names, names and e-mails never overwritten; team → department by exact name only.
 import { describe, expect, it } from 'vitest';
 import { directoryEntryOf, initialsOf, planDirectoryImport, shortNameOf, uniqueShortName, type DirectoryEntry, type DirectoryPerson } from './directory';
@@ -12,8 +12,8 @@ const DEPTS = [{ id: 'd-eng', name: 'Engineering' }, { id: 'd-site', name: 'Site
 
 describe('directory rows', () => {
   it('keeps a usable row (trimmed, e-mail lower-cased, invalid e-mail dropped); refuses rows without matricule or name', () => {
-    expect(directoryEntryOf({ matricule: ' EMP-0018 ', nom: ' Wagner ', prenom: 'Julien', email: 'Julien.Wagner@EPC2i.fr', equipe: 'Engineering' }))
-      .toEqual({ matricule: 'EMP-0018', nom: 'Wagner', prenom: 'Julien', email: 'julien.wagner@epc2i.fr', equipe: 'Engineering' });
+    expect(directoryEntryOf({ matricule: ' EMP-0018 ', nom: ' Wagner ', prenom: 'Julien', email: 'Julien.Wagner@Atrium.example', equipe: 'Engineering' }))
+      .toEqual({ matricule: 'EMP-0018', nom: 'Wagner', prenom: 'Julien', email: 'julien.wagner@atrium.example', equipe: 'Engineering' });
     expect(directoryEntryOf({ matricule: 'EMP-1', nom: 'A', prenom: 'B', email: 'not-an-email' })).toMatchObject({ email: null, equipe: null });
     for (const raw of [null, [], 'x', { nom: 'A', prenom: 'B' }, { matricule: 'EMP 1', nom: 'A', prenom: 'B' }, { matricule: 'EMP-1', nom: '', prenom: 'B' }])
       expect(directoryEntryOf(raw), JSON.stringify(raw)).toBeNull();
@@ -31,12 +31,12 @@ describe('directory rows', () => {
 describe('planDirectoryImport', () => {
   it('matches by matricule, then by e-mail (case-insensitive); fills what is missing, never renames nor overwrites', () => {
     const persons = [
-      P('p1', { shortName: 'J. Wagner', fullName: 'Julien Wagner', matricule: 'EMP-0018', email: 'julien.wagner@epc2i.fr', departmentId: 'd-eng' }),
-      P('p2', { shortName: 'A. Ollivier', email: 'Amelie.Ollivier@epc2i.fr' }),
+      P('p1', { shortName: 'J. Wagner', fullName: 'Julien Wagner', matricule: 'EMP-0018', email: 'julien.wagner@atrium.example', departmentId: 'd-eng' }),
+      P('p2', { shortName: 'A. Ollivier', email: 'Amelie.Ollivier@atrium.example' }),
     ];
     const plan = planDirectoryImport([
       E('EMP-0018', { nom: 'Wagner-Roy', prenom: 'Julien', email: 'jw@other.fr', equipe: 'Engineering' }),
-      E('EMP-0020', { nom: 'Ollivier', prenom: 'Amélie', email: 'amelie.ollivier@epc2i.fr', equipe: 'Site ops' }),
+      E('EMP-0020', { nom: 'Ollivier', prenom: 'Amélie', email: 'amelie.ollivier@atrium.example', equipe: 'Site ops' }),
     ], persons, DEPTS);
     expect(plan.matched).toEqual([{ matricule: 'EMP-0018', personId: 'p1' }, { matricule: 'EMP-0020', personId: 'p2' }]);
     // p1: nothing changes (same department, its name and e-mail kept). p2: matricule, full name, team kept as text.
@@ -46,8 +46,8 @@ describe('planDirectoryImport', () => {
   });
 
   it('an e-mail held by several persons matches nobody and is reported; no person is created with it', () => {
-    const persons = [P('p1', { email: 'shared@epc2i.fr' }), P('p2', { email: 'SHARED@epc2i.fr' })];
-    const plan = planDirectoryImport([E('EMP-1', { email: 'shared@epc2i.fr' })], persons, DEPTS);
+    const persons = [P('p1', { email: 'shared@atrium.example' }), P('p2', { email: 'SHARED@atrium.example' })];
+    const plan = planDirectoryImport([E('EMP-1', { email: 'shared@atrium.example' })], persons, DEPTS);
     expect([plan.matched, plan.updates, plan.creates]).toEqual([[], [], []]);
     expect(plan.reports).toEqual([{ matricule: 'EMP-1', reason: 'E-mail held by several persons: not matched' }]);
   });
@@ -62,24 +62,24 @@ describe('planDirectoryImport', () => {
   it('creates the persons nobody matches: unique short name, initials, department by exact name only', () => {
     const persons = [P('p1', { shortName: 'J. Wagner' })];
     const plan = planDirectoryImport([
-      E('EMP-3', { email: 'julien.wagner2@epc2i.fr', equipe: 'Engineering' }),
+      E('EMP-3', { email: 'julien.wagner2@atrium.example', equipe: 'Engineering' }),
       E('EMP-4', { nom: 'Diallo', prenom: 'Aïcha', equipe: 'engineering' }),
     ], persons, DEPTS);
     expect(plan.creates).toEqual([
-      { matricule: 'EMP-3', fullName: 'Julien Wagner', shortName: 'J. Wagner (2)', initials: 'JW', email: 'julien.wagner2@epc2i.fr', departmentId: 'd-eng', directoryTeam: null },
+      { matricule: 'EMP-3', fullName: 'Julien Wagner', shortName: 'J. Wagner (2)', initials: 'JW', email: 'julien.wagner2@atrium.example', departmentId: 'd-eng', directoryTeam: null },
       { matricule: 'EMP-4', fullName: 'Aïcha Diallo', shortName: 'A. Diallo', initials: 'AD', email: null, departmentId: null, directoryTeam: 'engineering' },
     ]);
   });
 
   it('a matricule listed twice, a person matched twice, an e-mail given to two new persons, a person with another matricule: reported', () => {
-    const persons = [P('p1', { email: 'a@epc2i.fr', matricule: 'EMP-9' }), P('p2', { email: 'b@epc2i.fr' })];
+    const persons = [P('p1', { email: 'a@atrium.example', matricule: 'EMP-9' }), P('p2', { email: 'b@atrium.example' })];
     const plan = planDirectoryImport([
-      E('EMP-5', { email: 'a@epc2i.fr' }), // p1 carries EMP-9
-      E('EMP-6', { email: 'b@epc2i.fr' }),
-      E('EMP-7', { email: 'b@epc2i.fr' }), // p2 already matched by EMP-6
+      E('EMP-5', { email: 'a@atrium.example' }), // p1 carries EMP-9
+      E('EMP-6', { email: 'b@atrium.example' }),
+      E('EMP-7', { email: 'b@atrium.example' }), // p2 already matched by EMP-6
       E('EMP-6'),
-      E('EMP-8', { email: 'new@epc2i.fr' }),
-      E('EMP-10', { email: 'new@epc2i.fr', nom: 'Other' }),
+      E('EMP-8', { email: 'new@atrium.example' }),
+      E('EMP-10', { email: 'new@atrium.example', nom: 'Other' }),
     ], persons, DEPTS);
     expect(plan.reports.map((r) => [r.matricule, r.reason])).toEqual([
       ['EMP-5', 'E-mail held by a person with another matricule: not matched'],
@@ -92,8 +92,8 @@ describe('planDirectoryImport', () => {
   });
 
   it('a missing e-mail is filled in only when nobody else holds it', () => {
-    const persons = [P('p1', { matricule: 'EMP-1' }), P('p2', { email: 'taken@epc2i.fr' })];
-    expect(planDirectoryImport([E('EMP-1', { email: 'taken@epc2i.fr' })], persons, DEPTS).updates).toEqual([{ personId: 'p1', set: { fullName: 'Julien Wagner' } }]);
-    expect(planDirectoryImport([E('EMP-1', { email: 'free@epc2i.fr' })], persons, DEPTS).updates).toEqual([{ personId: 'p1', set: { fullName: 'Julien Wagner', email: 'free@epc2i.fr' } }]);
+    const persons = [P('p1', { matricule: 'EMP-1' }), P('p2', { email: 'taken@atrium.example' })];
+    expect(planDirectoryImport([E('EMP-1', { email: 'taken@atrium.example' })], persons, DEPTS).updates).toEqual([{ personId: 'p1', set: { fullName: 'Julien Wagner' } }]);
+    expect(planDirectoryImport([E('EMP-1', { email: 'free@atrium.example' })], persons, DEPTS).updates).toEqual([{ personId: 'p1', set: { fullName: 'Julien Wagner', email: 'free@atrium.example' } }]);
   });
 });

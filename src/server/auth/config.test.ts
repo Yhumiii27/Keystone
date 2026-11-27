@@ -32,14 +32,14 @@ describe('session configuration', () => {
     expect(sessionConfig(ENTRA_ENV)).toMatchObject({ secure: true, cookieName: '__Host-ks-session', txCookieName: '__Host-ks-signin' });
     const local = sessionConfig({ ...ENTRA_ENV, ENTRA_REDIRECT_URI: 'http://localhost:3000/api/auth/callback' });
     expect(local).toMatchObject({ secure: false, cookieName: 'ks-session', txCookieName: 'ks-signin' });
-    expect(() => sessionConfig({ ...ENTRA_ENV, ENTRA_REDIRECT_URI: 'http://keystone.epc2i.fr/api/auth/callback' })).toThrow(/https/);
+    expect(() => sessionConfig({ ...ENTRA_ENV, ENTRA_REDIRECT_URI: 'http://keystone.atrium.example/api/auth/callback' })).toThrow(/https/);
   });
 });
 
 describe('Entra configuration', () => {
   it('derives the v2.0 issuer from the tenant id and defaults the post-logout page', () => {
     const c = entraConfig(ENTRA_ENV);
-    expect(c).toMatchObject({ issuer: ISSUER, tenantId: TENANT, clientId: CLIENT_ID, postLogoutRedirectUri: 'https://keystone.epc2i.test/sign-in?signedOut=1', groupRoles: {} });
+    expect(c).toMatchObject({ issuer: ISSUER, tenantId: TENANT, clientId: CLIENT_ID, postLogoutRedirectUri: 'https://keystone.atrium.test/sign-in?signedOut=1', groupRoles: {} });
   });
 
   it('names the first missing or invalid variable', () => {

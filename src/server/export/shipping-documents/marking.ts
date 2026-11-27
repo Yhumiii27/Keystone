@@ -1,6 +1,6 @@
 // R-158 lot B — package marking labels (marquage des colis): one label per package — consignee, destination, shipment and project,
 // load, content, package number "n / N", gross weight per package, dimensions and handling marks. Four labels a page. No value.
-// Generic layout until EPC2i's standard format (label size, logos, barcodes): replace this file to change it.
+// Generic layout until the company's standard format (label size, logos, barcodes): replace this file to change it.
 import type { PdfBlock } from '../types';
 import { consigneeText, genericFootnote, header, kgText, numText, typed } from './common';
 import type { ShippingTemplate } from './types';

@@ -90,7 +90,7 @@ describe('M-19: the closed list', () => {
 
   it('refuses a column outside the table\'s list, a sensitive column, a non-text value and an empty change', async () => {
     const [p] = await db.select().from(persons).limit(1);
-    expect(await refusal('persons', 'corriger', { id: p.id }, { email: 'x@epc2i.fr' }))
+    expect(await refusal('persons', 'corriger', { id: p.id }, { email: 'x@atrium.example' }))
       .toEqual({ code: 'P0K01', message: 'Colonne sensible « persons.email » refusée (données personnelles, RGPD)' });
     expect((await refusal('persons', 'corriger', { id: p.id }, { job_title: 'X', matricule: 'EMP-1' })).message).toContain('Colonne sensible « persons.matricule »');
     expect((await refusal('persons', 'corriger', { id: p.id }, { rate_role_id: null })).message).toContain('Colonne sensible');
@@ -110,7 +110,7 @@ describe('M-19: the closed list', () => {
   it('writes nothing for a refusal', async () => {
     const before = await auditCount();
     const [p] = await db.select().from(persons).limit(1);
-    await refusal('persons', 'corriger', { id: p.id }, { job_title: 'Nouveau', email: 'x@epc2i.fr' });
+    await refusal('persons', 'corriger', { id: p.id }, { job_title: 'Nouveau', email: 'x@atrium.example' });
     expect(await auditCount()).toBe(before);
     expect((await db.select().from(persons).where(eq(persons.id, p.id)))[0].jobTitle).toBe(p.jobTitle);
   });

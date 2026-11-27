@@ -1,6 +1,6 @@
 # Delivery 9 — lot "cursus-contract" (R-031, R-084 absence part, R-029 alignment): Cursus's real contract
 
-Cursus (EPC2i's HR app, owner of absences and timesheets) already sends events to Keystone, but to its own contract, which
+Cursus (the company's HR app, owner of absences and timesheets) already sends events to Keystone, but to its own contract, which
 Keystone did not accept: every event failed (wrong address, `Authorization: Bearer` refused, `donnees` unknown, `du` / `au`
 refused). Cursus owns the data, so **Cursus's contract is authoritative**: Cursus `docs/API-KEYSTONE.md` (« Événements envoyés par
 Cursus », « Verdict Go / No Go », « Demandes de déplacement », « Anciennes routes ») and `docs/keystone-openapi.json` (webhook
@@ -103,7 +103,7 @@ Header `X-Api-Key` unchanged. The mock connector is unchanged.
 ## 5. Gaps found on Cursus's side — requests to Cursus (not fixed here; Keystone never modifies Cursus)
 
 1. **No staff directory route** (`/annuaire`): R-027 cannot run; a route or another source of matricule / name / e-mail / team is needed.
-2. **No `pub_absences` view**: Cursus is not on the shared EPC2I PostgreSQL server (no PostgreSQL schema, no `pub_` views merged);
+2. **No `pub_absences` view**: Cursus is not on the shared Atrium PostgreSQL server (no PostgreSQL schema, no `pub_` views merged);
    Keystone depends on the events alone and cannot re-sync absences after a failed event.
 3. **No contractual hours / part time exposed**: capacity stays 40 h a week less the absence days.
 4. **Nothing in Cursus reads Keystone's `pub_taches_jours`** (planned hours per day): Cursus takes them by `PUT /v1/taches`.

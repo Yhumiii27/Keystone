@@ -47,7 +47,7 @@ describe('users', () => {
     }
     const db = await getDb();
     const [romain] = await db.select({ email: persons.email }).from(persons).where(eq(persons.fullName, 'Romain Aubert'));
-    expect(romain.email).toBe('romain.aubert@epc2i.fr');
+    expect(romain.email).toBe('romain.aubert@atrium.example');
   });
 
   it('backfills the persona users of a database seeded before migration 0007, once', async () => {
@@ -57,7 +57,7 @@ describe('users', () => {
     await db.transaction((tx) => backfillDemoUsers(tx));
     expect(await demoUsersToBackfill(db)).toBe(0);
     const a = (await listUserAccounts()).find((x) => x.personaRole === 'member')!;
-    expect(a).toMatchObject({ roles: ['member'], email: 'julien.wagner@epc2i.fr', department: 'Engineering' });
+    expect(a).toMatchObject({ roles: ['member'], email: 'julien.wagner@atrium.example', department: 'Engineering' });
   });
 
   it('resolves the user of a viewer: its own id when signed in, the persona user of a role otherwise', async () => {
@@ -74,8 +74,8 @@ describe('users', () => {
   it('delivers role notifications to every holder of the role, with a read state per user', async () => {
     const db = await getDb();
     // A second project manager signs in (a directory person with an e-mail).
-    await db.update(persons).set({ email: 'sophie.renard@epc2i.fr' }).where(eq(persons.fullName, 'Sophie Renard'));
-    const r = await signInUser({ oid: 'oid-sophie', email: 'sophie.renard@epc2i.fr', roles: ['pm', 'depthead'] });
+    await db.update(persons).set({ email: 'sophie.renard@atrium.example' }).where(eq(persons.fullName, 'Sophie Renard'));
+    const r = await signInUser({ oid: 'oid-sophie', email: 'sophie.renard@atrium.example', roles: ['pm', 'depthead'] });
     expect(r).toMatchObject({ ok: true, created: true, account: { roles: ['pm', 'depthead'], department: 'MEP', title: 'Head of MEP' } });
     if (!r.ok) return;
     const sophie = await viewerOf(r.account.userId, 'pm');
@@ -115,8 +115,8 @@ describe('users', () => {
     const projects = await listProjects();
     const hlt = projects.find((p) => p.code === 'HLT-026')!; // PM R. Aubert, client Port authority
     const db = await getDb();
-    await db.update(persons).set({ email: 'r.aubert@epc2i.fr' }).where(eq(persons.fullName, 'Romain Aubert'));
-    const r = await signInUser({ oid: 'oid-romain', email: 'r.aubert@epc2i.fr', roles: ['pm'] });
+    await db.update(persons).set({ email: 'r.aubert@atrium.example' }).where(eq(persons.fullName, 'Romain Aubert'));
+    const r = await signInUser({ oid: 'oid-romain', email: 'r.aubert@atrium.example', roles: ['pm'] });
     if (!r.ok) throw new Error(r.reason);
     const romain = await viewerOf(r.account.userId, 'pm');
     const teams = await listProjectTeams();
@@ -137,10 +137,10 @@ describe('users', () => {
 
   it('keeps one account per person even when two first sign-ins race', async () => {
     const db = await getDb();
-    await db.update(persons).set({ email: 'olivier.blanc@epc2i.fr' }).where(eq(persons.fullName, 'Olivier Blanc'));
+    await db.update(persons).set({ email: 'olivier.blanc@atrium.example' }).where(eq(persons.fullName, 'Olivier Blanc'));
     const [a, b] = await Promise.all([
-      signInUser({ oid: 'oid-olivier', email: 'olivier.blanc@epc2i.fr', roles: ['depthead'] }),
-      signInUser({ oid: 'oid-olivier', email: 'olivier.blanc@epc2i.fr', roles: ['depthead'] }),
+      signInUser({ oid: 'oid-olivier', email: 'olivier.blanc@atrium.example', roles: ['depthead'] }),
+      signInUser({ oid: 'oid-olivier', email: 'olivier.blanc@atrium.example', roles: ['depthead'] }),
     ]);
     expect(a.ok && b.ok).toBe(true);
     const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(users).where(eq(users.personId, await personId('Olivier Blanc')));
@@ -149,21 +149,21 @@ describe('users', () => {
 
   it('creates the person of an unknown e-mail from the token only when asked (central sign-in of Clavis)', async () => {
     const db = await getDb();
-    const plain = await signInUser({ oid: 'oid-lucie', email: 'lucie.fontaine@epc-groupe.com', roles: ['pm'] });
+    const plain = await signInUser({ oid: 'oid-lucie', email: 'lucie.fontaine@groupe.example', roles: ['pm'] });
     expect(plain).toEqual({ ok: false, reason: 'unknown_user' });
-    const r = await signInUser({ oid: 'oid-lucie', email: 'lucie.fontaine@epc-groupe.com', roles: ['pm'], createPerson: { name: 'Lucie Fontaine' } });
+    const r = await signInUser({ oid: 'oid-lucie', email: 'lucie.fontaine@groupe.example', roles: ['pm'], createPerson: { name: 'Lucie Fontaine' } });
     expect(r.ok && r.created).toBe(true);
-    const [p] = await db.select().from(persons).where(eq(persons.email, 'lucie.fontaine@epc-groupe.com'));
+    const [p] = await db.select().from(persons).where(eq(persons.email, 'lucie.fontaine@groupe.example'));
     expect(p).toMatchObject({ fullName: 'Lucie Fontaine', initials: 'LF' });
     // The short name is unique: the demo data set already has an "L. Fontaine".
     expect(p.shortName).toMatch(/^L\. Fontaine( \(\d+\))?$/);
     // The next sign-in finds the account by its object id: no second person.
-    const again = await signInUser({ oid: 'oid-lucie', email: 'lucie.fontaine@epc-groupe.com', roles: ['pm'], createPerson: { name: 'Lucie Fontaine' } });
+    const again = await signInUser({ oid: 'oid-lucie', email: 'lucie.fontaine@groupe.example', roles: ['pm'], createPerson: { name: 'Lucie Fontaine' } });
     expect(again.ok && !again.created).toBe(true);
-    const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(persons).where(eq(persons.email, 'lucie.fontaine@epc-groupe.com'));
+    const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(persons).where(eq(persons.email, 'lucie.fontaine@groupe.example'));
     expect(n).toBe(1);
     // Without a role nothing is created.
-    expect(await signInUser({ oid: 'oid-x', email: 'x.y@epc-groupe.com', roles: [], createPerson: { name: 'X Y' } })).toEqual({ ok: false, reason: 'unknown_user' });
-    expect(await db.select().from(persons).where(eq(persons.email, 'x.y@epc-groupe.com'))).toHaveLength(0);
+    expect(await signInUser({ oid: 'oid-x', email: 'x.y@groupe.example', roles: [], createPerson: { name: 'X Y' } })).toEqual({ ok: false, reason: 'unknown_user' });
+    expect(await db.select().from(persons).where(eq(persons.email, 'x.y@groupe.example'))).toHaveLength(0);
   });
 });

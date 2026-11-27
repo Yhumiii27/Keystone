@@ -1,6 +1,6 @@
 import 'server-only';
 // Cursus staff directory → Keystone persons (R-027, NEW-CURSUS-2 "a"): the writer applies the pure plan of
-// src/domain/directory.ts in one transaction — matches by matricule, then work e-mail; creates the missing EPC2i persons;
+// src/domain/directory.ts in one transaction — matches by matricule, then work e-mail; creates the missing company persons;
 // never deletes, never creates a user account or a role (Microsoft Entra ID gives them at sign-in, R-038), never touches an
 // external contact. Dormant until CURSUS_DIRECTORY=on (Cursus has no directory endpoint yet): `runDirectoryImport` is what
 // the daily job "cursus-directory" and the Cursus row's "Sync now" call. After an import, the Cursus events left unresolved

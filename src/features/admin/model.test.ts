@@ -313,7 +313,7 @@ describe('Activity, integrations & audit view model', () => {
     const keys = ['DATABASE_URL', 'VIGIE_SOURCE', 'ARCHE_SOURCE', 'MATRIX_SOURCE'] as const;
     const prev = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
     // VIGIE_SOURCE=server needs the shared server (DATABASE_URL); Arche and Matrix stay simulated.
-    Object.assign(process.env, { DATABASE_URL: 'postgres://keystone_app@localhost:5432/epc2i', VIGIE_SOURCE: 'server', ARCHE_SOURCE: 'simulation', MATRIX_SOURCE: 'simulation' });
+    Object.assign(process.env, { DATABASE_URL: 'postgres://keystone_app@localhost:5432/atrium', VIGIE_SOURCE: 'server', ARCHE_SOURCE: 'simulation', MATRIX_SOURCE: 'simulation' });
     try {
       const vigie = (await listAdminConnectors()).find((c) => c.name === 'Vigie')!;
       expect([vigie.link, vigie.state, vigie.mode, vigie.canSync, vigie.lastSyncAt]).toEqual(['live', 'ok', 'sql', true, '2026-09-25T05:30:00.000Z']);

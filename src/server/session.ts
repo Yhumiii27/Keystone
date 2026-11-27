@@ -9,7 +9,7 @@ import { DEFAULT_PROJECT } from '@/config/screens';
 import { resolveCurrentProject } from '@/server/dal/current-project';
 import { currentDelegation } from '@/server/delegation-scope';
 import { DEFAULT_LANG, makeT, type Lang, type T } from '@/i18n/translate';
-import { THEME_COOKIE, themeOf, type Theme } from '@norma/charte/ds/theme';
+import { themeFromCookies, type Theme } from '@norma/charte/ds/theme';
 
 /** Cookie names for user preferences (stand-in until real users/preferences exist in the DB). */
 export const COOKIE = {
@@ -53,10 +53,14 @@ export const getLang = cache(async (): Promise<Lang> => {
 });
 
 /**
- * Dark / light display (Norma 1.0): the suite's `epc2i-theme` cookie, dark by default. The root layout sets it as
- * `data-theme` on <html> at render (no flash); the header's ThemeToggle changes both in the browser.
+ * Dark / light display (Norma 3.0): the suite's `atrium-theme` cookie, the former name still read as a fallback during the
+ * transition (`themeFromCookies`), dark by default. The root layout sets it as `data-theme` on <html> at render (no flash);
+ * the header's ThemeToggle changes both in the browser (writing the new name only).
  */
-export const getTheme = cache(async (): Promise<Theme> => themeOf((await cookies()).get(THEME_COOKIE)?.value));
+export const getTheme = cache(async (): Promise<Theme> => {
+  const jar = await cookies();
+  return themeFromCookies((name) => jar.get(name)?.value);
+});
 
 /** `{ lang, t }` for Server Components. */
 export const getI18n = cache(async (): Promise<{ lang: Lang; t: T }> => {

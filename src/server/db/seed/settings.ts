@@ -38,7 +38,7 @@ export function defaultReferenceValues(): { listKey: ReferenceListKey; code: str
 
 /**
  * What Settings › "Reset to defaults" restores (R-170), stored in app_settings "settings.defaults": the SETTINGS0 lists,
- * the six SETTINGS0 locations (demo data set only: a production database has EPC2i's own warehouses, which a reset must
+ * the six SETTINGS0 locations (demo data set only: a production database has the company's own warehouses, which a reset must
  * never replace by the prototype's, A-15) and the default health thresholds. The DAL reads only this document at run time.
  */
 export function settingsDefaultsDocument(opts: { demo: boolean } = { demo: true }): SettingsDefaults {

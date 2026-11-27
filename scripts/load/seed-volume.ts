@@ -1,4 +1,4 @@
-// R-017 — grows a DEMO database to a realistic EPC2i size, for the load measurements (npm run load:measure).
+// R-017 — grows a DEMO database to a realistic company size, for the load measurements (npm run load:measure).
 //   npm run load:seed                                  PGlite of KEYSTONE_DATA_DIR (default ./.data): created and seeded if empty
 //   KEYSTONE_DATA_DIR=/tmp/ks-load npm run load:seed   a throw-away data directory (recommended)
 //   DATABASE_URL=postgres://… npm run load:seed        a PostgreSQL server already migrated with the demo seed (db:migrate)
@@ -22,7 +22,7 @@ const arg = (name: string, def: number) => {
   return a ? Number(a.split('=')[1]) : def;
 };
 
-/** Targets of the realistic size (owner's order of magnitude for EPC2i, R-017), multiplied by --scale. */
+/** Targets of the realistic size (owner's order of magnitude for the company, R-017), multiplied by --scale. */
 export const VOLUME_TARGETS = {
   projects: 150,
   activities: 30_000,

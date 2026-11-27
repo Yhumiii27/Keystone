@@ -120,7 +120,7 @@ describe('R-051 — approval delegation', () => {
     expect(await decideOnBehalfAction({ delegationId: pmDelegation, decision: PO, ok: true })).toEqual({ ok: true });
     expect((await getPurchaseOrder('PO-1082'))?.status).toBe('ordered');
     const audit = (await listAudit({ limit: 10 })).find((a) => a.object.includes('PO-1082'))!;
-    expect([audit.who, audit.onBehalfOf, audit.userEmail]).toEqual(['Antoine Girard', 'Romain Aubert', 'antoine.girard@epc2i.fr']);
+    expect([audit.who, audit.onBehalfOf, audit.userEmail]).toEqual(['Antoine Girard', 'Romain Aubert', 'antoine.girard@atrium.example']);
     const act = (await listActivity({ limit: 10 })).find((a) => a.what.includes('PO-1082'))!;
     expect([act.who, act.onBehalfOf]).toEqual(['Antoine Girard', 'Romain Aubert']);
     // Gone from both queues; the scope ended with the call.

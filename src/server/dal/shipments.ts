@@ -641,7 +641,7 @@ export async function advanceShipment(projectCode: string, ref: string, from: Sh
   });
 }
 
-/** "Edit step": planned / actual date and note of a step EPC2i organises under the contract's Incoterm. */
+/** "Edit step": planned / actual date and note of a step the company organises under the contract's Incoterm. */
 export async function setShipmentStep(projectCode: string, ref: string, input: StepInput, actor: Actor): Promise<void> {
   if (!isIncotermStep(input.step)) throw new Error('Unknown shipment');
   const db = await getDb();

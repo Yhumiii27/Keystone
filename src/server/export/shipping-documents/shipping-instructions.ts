@@ -1,7 +1,7 @@
 // R-158 lot B — shipping instructions to the forwarder (instructions d'expédition): what the forwarder needs to draw up the bill of
 // lading (sea), the air waybill (air) or the consignment note (road) — parties, Incoterm, places, dates, the loads (type, number,
 // seal, packages, gross weight), the goods by HS code and the declared value, the special instructions. Generic layout until
-// EPC2i's standard format: replace this file to change it.
+// The company's standard format: replace this file to change it.
 import { LOAD_TYPE_LABEL } from '@/domain/shipments';
 import { col, sheet } from '../providers/common';
 import { day, eurText, genericFootnote, header, hsGroups, hsSheet, hsTotals, incotermText, partyFields, restrictionBlocks, typed } from './common';
@@ -28,7 +28,7 @@ export const shippingInstructions: ShippingTemplate = (d, c) => {
         [c.t('Incoterm'), incotermText(d, c)], [c.t('Place of loading'), typed(c, s.origin)],
         [c.t('Place of discharge'), typed(c, s.destination)], ['ETD · ETA', `${day(c, s.etd)} · ${day(c, s.eta)}`],
         ...(c.values ? [[c.t('Declared value'), eurText(c, value)] as [string, string]] : []),
-        [c.t('Freight'), d.incoterm && ['EXW', 'FCA', 'FAS', 'FOB'].includes(d.incoterm.code) ? c.t('Collect (buyer)') : c.t('Prepaid (EPC2i)')],
+        [c.t('Freight'), d.incoterm && ['EXW', 'FCA', 'FAS', 'FOB'].includes(d.incoterm.code) ? c.t('Collect (buyer)') : c.t('Prepaid (company)')],
       ] },
       { kind: 'heading', text: c.t('Loads') },
       { kind: 'table', sheet: loads },

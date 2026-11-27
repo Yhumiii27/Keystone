@@ -1,4 +1,4 @@
-// The Keystone window: the Keystone web app of the EPC2i server in WebView2 (R-210). No local server and no local
+// The Keystone window: the Keystone web app of the Atrium server in WebView2 (R-210). No local server and no local
 // database (unlike the Mac app of the demo, R-019): the window is a thin client of the server chosen in keystone.json.
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
@@ -109,7 +109,7 @@ internal sealed class MainForm : Form
     {
       Directory.CreateDirectory(AppSettings.WebViewDataDir);
       // The profile lives in %LOCALAPPDATA%\Keystone\WebView2 (not next to the exe): the session cookie survives a restart
-      // and an update of Keystone.exe. Windows single sign-on: a PC signed in with an EPC2i work account may skip the
+      // and an update of Keystone.exe. Windows single sign-on: a PC signed in with a company work account may skip the
       // Microsoft password page.
       _env = await CoreWebView2Environment.CreateAsync(null, AppSettings.WebViewDataDir,
         new CoreWebView2EnvironmentOptions { AllowSingleSignOnUsingOSPrimaryAccount = true });
@@ -157,11 +157,11 @@ internal sealed class MainForm : Form
       // A newer navigation replaced this one, or the response became a download: nothing failed.
       CoreWebView2WebErrorStatus.OperationCanceled => null,
       CoreWebView2WebErrorStatus.HostNameNotResolved =>
-        "L’adresse du serveur est introuvable. Vérifiez votre connexion (réseau d’EPC2i ou VPN) et l’adresse du serveur.",
+        "L’adresse du serveur est introuvable. Vérifiez votre connexion (réseau de l’entreprise ou VPN) et l’adresse du serveur.",
       CoreWebView2WebErrorStatus.CannotConnect or CoreWebView2WebErrorStatus.ServerUnreachable
         or CoreWebView2WebErrorStatus.Timeout or CoreWebView2WebErrorStatus.Disconnected
         or CoreWebView2WebErrorStatus.ConnectionAborted or CoreWebView2WebErrorStatus.ConnectionReset =>
-        "Le serveur ne répond pas. Vérifiez votre connexion à Internet ou au réseau d’EPC2i, puis réessayez.",
+        "Le serveur ne répond pas. Vérifiez votre connexion à Internet ou au réseau de l’entreprise, puis réessayez.",
       CoreWebView2WebErrorStatus.CertificateCommonNameIsIncorrect or CoreWebView2WebErrorStatus.CertificateExpired
         or CoreWebView2WebErrorStatus.ClientCertificateContainsErrors or CoreWebView2WebErrorStatus.CertificateRevoked
         or CoreWebView2WebErrorStatus.CertificateIsInvalid =>
@@ -224,7 +224,7 @@ internal sealed class MainForm : Form
     var version = Application.ProductVersion.Split('+')[0];
     var webView = _env?.BrowserVersionString ?? "—";
     MessageBox.Show(this,
-      $"Keystone {version}\nApplication Windows de Keystone, la gestion de projets d’EPC2i.\n\n" +
+      $"Keystone {version}\nApplication Windows de Keystone, la gestion de projets de l’entreprise.\n\n" +
       $"Serveur : {_settings.ServerUrl}{(_settings.Locked ? " (fixé par le service informatique)" : "")}\n" +
       $"Microsoft Edge WebView2 : {webView}\n" +
       $"Données de navigation : {AppSettings.WebViewDataDir}",

@@ -21,7 +21,7 @@ if pgrep -f "$APP/Contents/MacOS/Keystone" >/dev/null; then
   exit 1
 fi
 # Only ever delete bundles that are this app.
-ours() { [[ "$(plutil -extract CFBundleIdentifier raw "$1/Contents/Info.plist" 2>/dev/null)" == "com.epc2i.keystone" ]]; }
+ours() { [[ "$(plutil -extract CFBundleIdentifier raw "$1/Contents/Info.plist" 2>/dev/null)" == "com.atrium.keystone" ]]; }
 OUT="desktop/dist/Keystone.app"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -45,7 +45,7 @@ PLIST="$OUT/Contents/Info.plist"
 plutil -create xml1 "$PLIST"
 plutil -insert CFBundleName -string "Keystone" "$PLIST"
 plutil -insert CFBundleDisplayName -string "Keystone" "$PLIST"
-plutil -insert CFBundleIdentifier -string "com.epc2i.keystone" "$PLIST"
+plutil -insert CFBundleIdentifier -string "com.atrium.keystone" "$PLIST"
 plutil -insert CFBundleExecutable -string "Keystone" "$PLIST"
 plutil -insert CFBundleIconFile -string "Keystone" "$PLIST"
 plutil -insert CFBundlePackageType -string "APPL" "$PLIST"
@@ -54,7 +54,7 @@ plutil -insert CFBundleVersion -string "$(date +%Y%m%d%H%M)" "$PLIST"
 plutil -insert LSMinimumSystemVersion -string "13.0" "$PLIST"
 plutil -insert LSApplicationCategoryType -string "public.app-category.productivity" "$PLIST"
 plutil -insert NSHighResolutionCapable -bool true "$PLIST"
-plutil -insert NSHumanReadableCopyright -string "Système EPC2i — Gestion de projets" "$PLIST"
+plutil -insert NSHumanReadableCopyright -string "Suite Atrium — Gestion de projets" "$PLIST"
 plutil -insert NSAppTransportSecurity -dictionary "$PLIST"
 plutil -insert NSAppTransportSecurity.NSAllowsLocalNetworking -bool true "$PLIST"
 plutil -insert KeystoneProjectDir -string "$PROJECT" "$PLIST"

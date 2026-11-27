@@ -81,7 +81,7 @@ export async function getNamedTeam(code: string, q?: Q): Promise<TeamCardMember[
   return rows.map((r) => ({ ...toMember(r), jobTitle: by.get(r.personId)?.jobTitle ?? null, department: by.get(r.personId)?.department ?? null }));
 }
 
-/** People who can join a project's team: EPC2i staff (no client organisation) not on it yet, by name. */
+/** People who can join a project's team: company staff (no client organisation) not on it yet, by name. */
 export async function teamCandidates(code: string): Promise<{ personId: string; name: string; jobTitle: string | null }[]> {
   const db = await getDb();
   const onTeam = new Set((await teamRows(db, [code])).map((r) => r.personId));
@@ -167,7 +167,7 @@ async function trace(
   await recordActivity(q, { actorName: actor.name, actorPersonId, text, kind: 'change', projectId });
 }
 
-/** Adds an EPC2i person to the project's team with a team role (a client contact never joins the internal team). */
+/** Adds a company person to the project's team with a team role (a client contact never joins the internal team). */
 export async function addTeamMember(code: string, personId: string, role: ProjectTeamRole, actor: TeamActor): Promise<void> {
   const db = await getDb();
   try {

@@ -85,7 +85,7 @@ describe('consolidation', () => {
     expect(slipped.criticalPath).toContain('PO-1082/F20');
   });
 
-  it('a from-project tie: EPC2i’s approval drives the manufacturing', () => {
+  it('a from-project tie: The company’s approval drives the manufacturing', () => {
     const s = supplier({ ties: [{ supplier: 'F20', activity: 'A10', direction: 'from_project', lag: 2 }, { supplier: 'F30', activity: 'A30', direction: 'to_project', lag: 0 }] });
     const r = schedule(consolidateNetwork(project, [s]).input);
     // A10 finishes 9 Jan; FS+2 → 14 Jan (later than the committed 12 Jan).

@@ -768,7 +768,7 @@ The exhaustive status→tag table per object is in 02 §DS-TONES and must be reu
 
 ### 8.1 Starting point already in the repository
 
-The repository root (`/Users/gga/Systeme EPC2i/Keystone`) already holds an empty application scaffold. The architecture below builds on it.
+The repository root (`/Users/gga/Atrium/Keystone`) already holds an empty application scaffold. The architecture below builds on it.
 
 | Item | Current state |
 |---|---|

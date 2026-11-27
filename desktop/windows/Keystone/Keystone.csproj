@@ -22,8 +22,8 @@
     <!-- Overridden by build.ps1 with the version of package.json. -->
     <Version>0.1.0</Version>
     <Product>Keystone</Product>
-    <Company>EPC2i</Company>
-    <Copyright>Système EPC2i — Gestion de projets</Copyright>
+    <Company>Atrium</Company>
+    <Copyright>Suite Atrium — Gestion de projets</Copyright>
     <Description>Keystone — gestion de projets</Description>
     <NeutralLanguage>fr-FR</NeutralLanguage>
     <SatelliteResourceLanguages>fr</SatelliteResourceLanguages>

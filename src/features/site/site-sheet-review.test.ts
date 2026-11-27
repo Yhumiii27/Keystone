@@ -72,7 +72,7 @@ beforeAll(async () => {
 describe('R-118 · a contractor crew is never typed with the name of a person Keystone knows', () => {
   const crew = (name: string) => ({ person: '__crew', crew: name, role: 'Expertise', from: '12 Oct 2026', to: '23 Oct 2026' });
 
-  it('"Add a rotation": refused for an EPC2i person (off the team or on it, full or short name, any case or accents); a real crew is accepted', async () => {
+  it('"Add a rotation": refused for a company person (off the team or on it, full or short name, any case or accents); a real crew is accepted', async () => {
     as('pm');
     const n = (await site()).rotation.length;
     for (const name of ['Amélie Ollivier', 'Marion Kerviel', 'M. Kerviel', '  amelie   OLLIVIER ', 'Julien Wagner']) {
@@ -86,7 +86,7 @@ describe('R-118 · a contractor crew is never typed with the name of a person Ke
     const s = await site();
     expect(s.rotation.length).toBe(n + 1);
     expect(s.rotation.at(-1)).toMatchObject({ person: 'Sous-traitant — 3 électriciens', personId: null });
-    // No unlinked rotation of an EPC2i person: no conflict without a department (that the PM could arbitrate) was created.
+    // No unlinked rotation of a company person: no conflict without a department (that the PM could arbitrate) was created.
     expect(s.collisions.filter((c) => c.person === 'Amélie Ollivier' || c.person === 'Marion Kerviel').every((c) => c.personId !== null)).toBe(true);
   });
 

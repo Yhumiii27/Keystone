@@ -203,7 +203,7 @@ export function shipmentsView(
   function shipmentView(s: ShipmentRow): ShipmentView {
     const c = s.control;
     const steps = shipmentSteps(split, s.steps, today).map((st): StepRowView => ({
-      step: st.step, label: t(INCOTERM_STEP_LABEL[st.step]), party: st.tracked ? t('EPC2i (seller)') : t('Buyer'), tracked: st.tracked,
+      step: st.step, label: t(INCOTERM_STEP_LABEL[st.step]), party: st.tracked ? t('Company (seller)') : t('Buyer'), tracked: st.tracked,
       planned: date(st.plannedOn), actual: date(st.actualOn), note: dt(st.note), state: st.state,
       stateLabel: t({ done: 'Done', late: 'Late', planned: 'Planned', todo: 'To plan', buyer: 'Buyer’s step' }[st.state]),
       form: { plannedOn: st.plannedOn ?? '', actualOn: st.actualOn ?? '', note: st.note ?? '' },
@@ -364,7 +364,7 @@ export function shipmentsView(
       state: !data.hasContract ? 'none' : inc ? 'set' : 'unset',
       code: inc?.code ?? '', name: inc ? incotermText(lang, inc.nameEn, inc.nameFr) : '', place: data.incotermPlace ? dataText(data.incotermPlace, lang) : '',
       description: inc ? incotermText(lang, inc.descriptionEn, inc.descriptionFr) : '', modes: inc ? t(INCOTERM_MODES_LABEL[inc.modes]) : '',
-      split: split ? (Object.keys(INCOTERM_STEP_LABEL) as IncotermStep[]).map((k) => ({ label: t(INCOTERM_STEP_LABEL[k]), party: split[k] === 'seller' ? t('EPC2i (seller)') : t('Buyer'), seller: split[k] === 'seller' })) : [],
+      split: split ? (Object.keys(INCOTERM_STEP_LABEL) as IncotermStep[]).map((k) => ({ label: t(INCOTERM_STEP_LABEL[k]), party: split[k] === 'seller' ? t('Company (seller)') : t('Buyer'), seller: split[k] === 'seller' })) : [],
     },
     shipments,
     hasEquipment: data.equipment.length > 0,

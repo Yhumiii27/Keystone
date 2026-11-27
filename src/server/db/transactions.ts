@@ -5,7 +5,7 @@ import 'server-only';
 // two transactions whose reads and writes overlap (SQLSTATE 40001, or 40P01 for a deadlock) and the transaction is run
 // again from the start on fresh data, up to TX_RETRY.attempts times. On PGlite transactions already run one at a time;
 // the same setting applies so both drivers behave alike. On a PostgreSQL server, transactions also take Keystone's write
-// lock first and run one at a time (withWriteLockedTransactions below, shared EPC2I server).
+// lock first and run one at a time (withWriteLockedTransactions below, shared Atrium server).
 //
 // Consequence for writers: a transaction callback may run more than once. It must only touch the database through `tx`
 // (no HTTP call, no e-mail) and must not accumulate into variables declared outside the callback without resetting them.
@@ -120,7 +120,7 @@ export function withSerializableTransactions<D extends DB>(db: D): D {
 const inWriteLock = new AsyncLocalStorage<true>();
 
 /**
- * PostgreSQL server (shared EPC2I server, plan § 4.5 in Matrix): every `db.transaction()` of this handle first takes Keystone's
+ * PostgreSQL server (shared Atrium server, plan § 4.5 in Matrix): every `db.transaction()` of this handle first takes Keystone's
  * write lock — pg_advisory_xact_lock(hashtext(lockName)), released at commit or rollback — so Keystone's transactions run one
  * after the other, as on PGlite, while plain reads stay parallel. Why on top of R-010: SERIALIZABLE + retry keeps the numbers
  * right, but many simultaneous writers of the same "max + 1" (20 project creations at once on the test server) exhaust the

@@ -33,17 +33,17 @@ describe('MIME message', () => {
     expect(encodeHeader(long).split('\r\n ').every((w) => w.length <= 75)).toBe(true);
     expect(addressHeader('a@b.fr', 'Amélie Ollivier')).toMatch(/^=\?UTF-8\?B\?.+\?= <a@b\.fr>$/);
     expect([addressHeader('a@b.fr', 'R. "Bob" Aubert'), addressHeader('a@b.fr', null)]).toEqual(['"R. Bob Aubert" <a@b.fr>', '<a@b.fr>']);
-    expect([fromHeader('Keystone <ks@epc2i.fr>'), fromHeader('ks@epc2i.fr')]).toEqual(['"Keystone" <ks@epc2i.fr>', '<ks@epc2i.fr>']);
+    expect([fromHeader('Keystone <ks@atrium.example>'), fromHeader('ks@atrium.example')]).toEqual(['"Keystone" <ks@atrium.example>', '<ks@atrium.example>']);
     expect(mailDate(new Date('2026-09-28T05:00:00Z'))).toBe('Mon, 28 Sep 2026 05:00:00 +0000');
   });
 
   it('a text message: one UTF-8 part, CRLF line ends, auto-generated', () => {
-    const raw = buildMime({ from: 'Keystone <ks@epc2i.fr>', to: 'a@b.fr', toName: 'A. B', subject: 'Rappel', text: 'Bonjour,\nÉchéance 2 oct.' }, {
-      date: new Date('2026-09-28T05:00:00Z'), messageId: 'm1@epc2i.fr', boundary: 'B',
+    const raw = buildMime({ from: 'Keystone <ks@atrium.example>', to: 'a@b.fr', toName: 'A. B', subject: 'Rappel', text: 'Bonjour,\nÉchéance 2 oct.' }, {
+      date: new Date('2026-09-28T05:00:00Z'), messageId: 'm1@atrium.example', boundary: 'B',
     });
     const m = parse(raw);
     expect(m.headers).toEqual([
-      'From: "Keystone" <ks@epc2i.fr>', 'To: "A. B" <a@b.fr>', 'Subject: Rappel', 'Date: Mon, 28 Sep 2026 05:00:00 +0000', 'Message-ID: <m1@epc2i.fr>', 'MIME-Version: 1.0',
+      'From: "Keystone" <ks@atrium.example>', 'To: "A. B" <a@b.fr>', 'Subject: Rappel', 'Date: Mon, 28 Sep 2026 05:00:00 +0000', 'Message-ID: <m1@atrium.example>', 'MIME-Version: 1.0',
       'Auto-Submitted: auto-generated', 'Content-Type: text/plain; charset=utf-8', 'Content-Transfer-Encoding: base64',
     ]);
     expect(m.parts[0].body.toString('utf8')).toBe('Bonjour,\r\nÉchéance 2 oct.');
@@ -51,7 +51,7 @@ describe('MIME message', () => {
 
   it('attachments: multipart/mixed, the text first, each file in base64 with its name', () => {
     const pdf = new TextEncoder().encode('%PDF-1.7 test');
-    const raw = buildMime({ from: 'ks@epc2i.fr', to: 'a@b.fr', subject: 'R', text: 'Ci-joint', attachments: [{ fileName: 'status-report-HLT-026.pdf', mime: 'application/pdf', body: pdf }] }, {
+    const raw = buildMime({ from: 'ks@atrium.example', to: 'a@b.fr', subject: 'R', text: 'Ci-joint', attachments: [{ fileName: 'status-report-HLT-026.pdf', mime: 'application/pdf', body: pdf }] }, {
       date: new Date(0), messageId: 'm2@x', boundary: 'ks-b',
     });
     expect(raw).toContain('Content-Type: multipart/mixed; boundary="ks-b"');
@@ -76,16 +76,16 @@ describe('transports', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ks-mail-'));
     vi.stubEnv('KEYSTONE_MAIL_TRANSPORT', 'file');
     vi.stubEnv('KEYSTONE_MAIL_DIR', dir);
-    vi.stubEnv('KEYSTONE_MAIL_FROM', 'Keystone <keystone@epc2i.fr>');
+    vi.stubEnv('KEYSTONE_MAIL_FROM', 'Keystone <keystone@atrium.example>');
     const t = mailTransport();
     expect(t.mode).toBe('file');
-    const r = await t.send({ to: 'Amelie.Ollivier@epc2i.fr', toName: 'Amélie Ollivier', subject: 'Échéances', text: 'Bonjour' });
+    const r = await t.send({ to: 'Amelie.Ollivier@atrium.example', toName: 'Amélie Ollivier', subject: 'Échéances', text: 'Bonjour' });
     expect(r.status).toBe('sent');
     const files = fs.readdirSync(dir);
     expect(files).toHaveLength(1);
-    expect(files[0]).toMatch(/^\d{8}T\d{6}Z-[0-9a-f]{8}-amelie-ollivier-epc2i-fr\.eml$/);
+    expect(files[0]).toMatch(/^\d{8}T\d{6}Z-[0-9a-f]{8}-amelie-ollivier-atrium-example\.eml$/);
     const raw = fs.readFileSync(path.join(dir, files[0]), 'utf8');
-    expect(raw).toContain('From: "Keystone" <keystone@epc2i.fr>');
+    expect(raw).toContain('From: "Keystone" <keystone@atrium.example>');
     expect(decodeWords(/Subject: (.+)/.exec(raw)![1])).toBe('Échéances');
     fs.rmSync(dir, { recursive: true, force: true });
   });

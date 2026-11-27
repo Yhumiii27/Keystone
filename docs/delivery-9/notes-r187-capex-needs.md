@@ -134,7 +134,7 @@ Une ligne par réponse ; la plus récente (`repondu_le`, puis `numero`) fait foi
   pas ; le client est renvoyé à l’accueil par `getScreenAccess('projects')`. Finance n’a pas le registre des projets : pas de lecture.
 - **Actualiser** : directeur et chefs de projet.
 - **Répondre, modifier, changer le statut, créer le projet, ajouter à un projet** : **directeur** seulement (engagement commercial
-  d’EPC2i), contrôlé dans la Server Function puis dans le DAL.
+  de l’entreprise), contrôlé dans la Server Function puis dans le DAL.
 
 ## 8. Démonstration et production
 

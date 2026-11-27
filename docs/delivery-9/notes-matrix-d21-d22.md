@@ -167,7 +167,7 @@ filiale ou un autre nom de client ». Un client qui a déjà un `code3` enregist
 - `npm test` : Test Files 401 passed | 1 skipped (402) · Tests 4326 passed | 12 skipped (4338).
 - `npx tsx --conditions=react-server scripts/db-check.ts` : All checks passed (348 contrôles, dont les trois de ce lot et les
   colonnes de `pub_rex` et `pub_clients`).
-- PostgreSQL 16 local, disposition du serveur commun (socle `infra/postgres-socle/` rejoué sur une base `epc2i` neuve) :
+- PostgreSQL 16 local, disposition du serveur commun (socle `infra/postgres-socle/` rejoué sur une base commune neuve, `epc2i` jusqu’au renommage) :
   `npm run db:migrate` (seed demo) puis `db-check --postgres` : All checks passed (348) ; `postgres.integration.test.ts` +
   `src/server/backup/backup.test.ts` : 2 fichiers, 26 tests passés.
 - `E2E_PORT=3660 npm run test:e2e` : 26 passed.

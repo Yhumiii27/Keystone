@@ -147,7 +147,7 @@ Mac app never load it.
 | Isolation | SERIALIZABLE + automatic retry (rather than per-table advisory locks): it also covers every check-then-write inside a transaction. A lock taken mid-transaction would not refresh a SERIALIZABLE snapshot, so locks were not added on top. |
 | Outbox lease | 2 minutes (HTTP calls time out after 5 s). |
 | Seed of a server database | Explicit `KEYSTONE_SEED` required when the database is empty (refused otherwise), so a deploy never loads the demo by omission. PGlite keeps the plan's default (demo). |
-| Production reference data | What the screens need to start (list in §1). Clients, suppliers, storage locations, rates and people are entered by EPC2i or arrive through sign-in and connectors. |
+| Production reference data | What the screens need to start (list in §1). Clients, suppliers, storage locations, rates and people are entered by the company or arrive through sign-in and connectors. |
 | Health | Readiness (database + schema). Public, no detail. |
 | Start-up in production | Configuration errors, an unreachable database or pending migrations stop the process (exit 1). The Mac app (`NODE_ENV=production`, PGlite) is unaffected while its configuration is valid; it logs 3 warnings (links to localhost), which are expected there. |
 
@@ -215,7 +215,7 @@ tests are unchanged except `scripts/db-check.ts` (`app_settings` 1 → 2: the se
 
 1. **Reference data of a production start.** Is the list in §1 right? In particular: machine-type payment patterns, phases and
    ITP systems are the prototype's until the owner supplies the machine-type standards. Storage locations, rates and suppliers
-   are not seeded. Should EPC2i's real warehouses be seeded?
+   are not seeded. Should the company's real warehouses be seeded?
 2. **Draft purchase order numbers** keep the prototype's range PO-1100…1999 in production; this depends on Sage X3 numbering
    (Q-7 / R-014). Year prefixes INV-2026-, RFQ-2026-, BL-2026- follow the frozen clock (R-013).
 3. **Concurrent edits of one record** (two people editing the same risk or task form, the last save winning) are not

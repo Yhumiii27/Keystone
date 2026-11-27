@@ -167,7 +167,7 @@ describe('outbox redelivery', () => {
   it('Vigie on the shared server (D12, D13): every pending entry is deposited once; a second run sends nothing', async () => {
     const db = await getDb();
     await createVigieServer(db);
-    vi.stubEnv('DATABASE_URL', 'postgres://keystone_app@localhost:5432/epc2i'); // VIGIE_SOURCE defaults to server with it
+    vi.stubEnv('DATABASE_URL', 'postgres://keystone_app@localhost:5432/atrium'); // VIGIE_SOURCE defaults to server with it
     vi.stubEnv('ARCHE_SOURCE', 'simulation');
     vi.stubEnv('MATRIX_SOURCE', 'simulation');
     const waiting = (await db.select().from(vigieEcoProgress)).filter((e) => e.syncStatus === 'pending').length;
@@ -180,7 +180,7 @@ describe('outbox redelivery', () => {
   it('D-7a: a connector IT disabled sends nothing — its entries stay pending and go once it is enabled again', async () => {
     const db = await getDb();
     await createVigieServer(db);
-    vi.stubEnv('DATABASE_URL', 'postgres://keystone_app@localhost:5432/epc2i');
+    vi.stubEnv('DATABASE_URL', 'postgres://keystone_app@localhost:5432/atrium');
     vi.stubEnv('ARCHE_SOURCE', 'simulation');
     vi.stubEnv('MATRIX_SOURCE', 'simulation');
     const [entry] = await db.select({ id: vigieEcoProgress.id }).from(vigieEcoProgress).limit(1);

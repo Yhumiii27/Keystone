@@ -1,5 +1,5 @@
 // A fake clamd for the antivirus tests (R-175): speaks zINSTREAM / zPING on a random port of 127.0.0.1 (never one of the
-// EPC2i ports, never clamd's 3310 — Keystone's smoke-test port on the Mac) or on a unix socket. Its behaviour is switched
+// Atrium ports, never clamd's 3310 — Keystone's smoke-test port on the Mac) or on a unix socket. Its behaviour is switched
 // per test: scan (OK, or FOUND for the EICAR test string), error, size limit (answers and closes while the client is still
 // writing), timeout (never answers), reset (drops the connection), silent close.
 import fs from 'node:fs';

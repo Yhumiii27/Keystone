@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 // Charter, touch targets and Inter come from the suite's common base (norma/charte, Norma 2.1: nocturne.css, touch.css, then coque.css — the common shell, COQUE.md): Inter is served from the
-// repository, so `next build` needs no network. data-theme: the viewer's dark / light display (epc2i-theme cookie).
+// repository, so `next build` needs no network. data-theme: the viewer's dark / light display (atrium-theme cookie, former name read as a fallback).
 export default async function RootLayout({ children }: LayoutProps<'/'>) {
   const [lang, theme] = await Promise.all([getLang(), getTheme()]);
   return (

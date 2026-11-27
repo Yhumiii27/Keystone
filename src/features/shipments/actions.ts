@@ -181,7 +181,7 @@ export async function advanceShipmentAction(code: unknown, ref: unknown, from: u
   return run(code, isRef(ref) && isShipmentStatus(from), (c, a) => advanceShipment(c, ref as string, from as never, a), 'Shipment status updated');
 }
 
-/** "Edit step" of a step EPC2i organises. */
+/** "Edit step" of a step the company organises. */
 export async function setShipmentStepAction(code: unknown, ref: unknown, step: unknown, values: unknown): Promise<ShipmentActionResult> {
   const r = await parsed(code, parseStepForm(step, strings(values)));
   if ('error' in r) return r;

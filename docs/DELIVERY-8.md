@@ -129,7 +129,7 @@ buildable part is done and the rest waits for the owner or another system (the r
 | R-044 (partly) | Finance role and persona (Léa Marchand): contract on every project (P-4), read-only Budget, Hours and Billing, rates, margins; issuing invoices stays the PMs' and the director's |
 | R-139 (partly) | "View as client" for the director and the project's leads, with a preview banner on the portal (P-11 a) |
 | R-083 (partly) | Dated rate grid (roles and multipliers by effective date) and one valuation of hours by the person's grid role (A-10); the production source of a person's grid role is open |
-| R-178 (partly) | Production multipliers as placeholders and the reference-data sheet `docs/referentiels-a-fournir.md`; EPC2i's real values awaited |
+| R-178 (partly) | Production multipliers as placeholders and the reference-data sheet `docs/referentiels-a-fournir.md`; the company's real values awaited |
 | R-086 | Labour cost to date by zone on Resources (R-2 a) |
 | R-087 | One 1–5 skills scale and two indicators: no expert, single expert (R-5a, R-5b) |
 | R-088 | Hours-variance threshold in Settings (10 %, inclusive, symmetric, distinct over / under looks) (R-6b) |

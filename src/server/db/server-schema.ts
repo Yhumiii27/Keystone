@@ -1,4 +1,4 @@
-// Keystone on a PostgreSQL server (R-002) — the shared EPC2I server (decision M-01 in Matrix: one database `epc2i`, one
+// Keystone on a PostgreSQL server (R-002) — the shared Atrium server (decision M-01 in Matrix: one database, `epc2i` then `atrium`, one
 // schema per tool, Keystone connects as `keystone_app`, owner of the schema `keystone` and of nothing else). Owner's decisions
 // of 18 Oct 2026:
 // - the published migrations (drizzle/*.sql) and the schema files (`pgTable`) stay as they are. drizzle-kit writes
