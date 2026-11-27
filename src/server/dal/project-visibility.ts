@@ -88,15 +88,21 @@ export async function hiddenProjectsFor(viewer: VisibilityViewer, q?: Q): Promis
   return { ids: new Set(hidden.map((h) => h.id)), codes: new Set(hidden.map((h) => h.code)) };
 }
 
-/** The viewer of the current request, or null outside a request (jobs, scripts, seed, publications: system reads). */
+/**
+ * The viewer of the current request, or null outside a request (jobs, scripts, seed, publications: system reads). The request
+ * scope is probed with `cookies()` first: the session module (and the React modules it loads) is imported only inside a request,
+ * so a script run by tsx (db-check, worker) never loads it.
+ */
 export async function requestViewer(): Promise<VisibilityViewer | null> {
   try {
-    const { getViewer } = await import('@/server/session');
-    return await getViewer();
+    const { cookies } = await import('next/headers');
+    await cookies();
   } catch (e) {
     if (e instanceof Error && e.message.includes('was called outside a request scope')) return null;
     throw e;
   }
+  const { getViewer } = await import('@/server/session');
+  return getViewer();
 }
 
 /** A viewer set explicitly for work done on someone's behalf outside a request (scheduled reports e-mailed to a person). */
