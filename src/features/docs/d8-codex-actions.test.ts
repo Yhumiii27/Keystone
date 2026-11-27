@@ -49,8 +49,8 @@ describe('downloads: the Codex hand-off (D-2 = a, R-127)', () => {
     const audit = (await listAudit({ projectCode: 'HLT-026' })).length;
     const shared = await logDownloadAction('HLT-026', 'PID-HLT-026', 'PDF');
     const internal = await logDownloadAction('HLT-026', 'LST-INS-026', 'Native');
-    expect(shared).toEqual({ ok: true, toast: DOWNLOAD_IN_CODEX, link: { href: 'http://localhost:3100/?document=PID-HLT-026&revision=D', label: 'Open Codex' } });
-    expect(internal).toMatchObject({ ok: true, link: { href: expect.stringContaining('document=LST-INS-026'), label: 'Open Codex' } });
+    expect(shared).toEqual({ ok: true, toast: DOWNLOAD_IN_CODEX, link: { href: 'http://localhost:3100/documents/PID-HLT-026', label: 'Open Codex' } });
+    expect(internal).toMatchObject({ ok: true, link: { href: expect.stringContaining('/documents/LST-INS-026'), label: 'Open Codex' } });
     // Nothing is written: no download log, no audit row, no revalidation.
     expect((await listAudit({ projectCode: 'HLT-026' })).length).toBe(audit);
     expect(revalidatePath).not.toHaveBeenCalled();
@@ -101,7 +101,7 @@ describe('deposit hand-off with Codex connected (A-15, R-033): refused with an "
     const r = await depositInCodexAction({ project: 'HLT-026', type: 'CER', title: 'Mill certificate' });
     const rev = await depositInCodexAction({ project: 'HLT-026', revisionOf: 'GA-HLT-026' });
     expect(r).toEqual({ error: 'Codex is connected — deposit the document in Codex', link: { href: 'http://localhost:3100/?project=HLT-026', label: 'Open Codex' } });
-    expect(rev).toEqual({ error: 'Codex is connected — deposit the document in Codex', link: { href: 'http://localhost:3100/?document=GA-HLT-026', label: 'Open Codex' } });
+    expect(rev).toEqual({ error: 'Codex is connected — deposit the document in Codex', link: { href: 'http://localhost:3100/documents/GA-HLT-026', label: 'Open Codex' } });
     expect((await listVaultDocuments()).length).toBe(before);
     expect((await getDocumentRecord('GA-HLT-026'))!.status).not.toBe('draft');
   });
